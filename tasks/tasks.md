@@ -22,6 +22,7 @@
 | **EP-15** | **Tags + Labels** | EP-01, EP-09, EP-10 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
 | **EP-16** | **Attachments + Media** | EP-01, EP-07, EP-10, EP-12 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
 | **EP-17** | **Edit Locking + Collaboration Control** | EP-01, EP-08, EP-10, EP-12 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
+| **EP-18** | **MCP Server: Read & Query Interface** | EP-00, EP-01, EP-03, EP-04, EP-05, EP-06, EP-07, EP-08, EP-09, EP-10, EP-11, EP-12, EP-13 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
 
 ## Implementation Order (Suggested)
 

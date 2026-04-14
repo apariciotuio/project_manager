@@ -51,6 +51,7 @@ El trabajo suele entrar en Jira demasiado pronto: enunciados vagos, ownership di
 - Workspace autónomo con listados, filtros, dashboards, búsqueda e inbox priorizado.
 - Tags, adjuntos (imágenes y PDF) y búsqueda semántica sobre contenido interno y documentación Tuio.
 - Exportación e importación explícitas con Jira y administración completa del workspace.
+- **Acceso programático de solo lectura vía MCP** para agentes externos (Claude Code, copilotos, CLIs), con tokens emitidos por admin, aislamiento por workspace y auditoría completa.
 
 ---
 
@@ -78,6 +79,8 @@ El trabajo suele entrar en Jira demasiado pronto: enunciados vagos, ownership di
 | **Dundun** | Capa interna de inteligencia que el producto integra para chat, detección de huecos, generación y sugerencias. Para el usuario es "el asistente". |
 | **Puppet** | Plataforma interna Tuio de búsqueda semántica sobre contenido del workspace y documentación externa. |
 | **Capability** | Capacidad operativa concreta (invitar, configurar Jira, force-unlock, etc.), separada de las etiquetas de contexto. |
+| **MCP (Model Context Protocol)** | Protocolo abierto que permite a agentes externos (IDE copilots, CLIs, otros LLMs) consultar la plataforma mediante *tools* y *resources* tipados, sin tocar la API REST ni la base de datos. |
+| **MCP token** | Credencial emitida por un admin del workspace que vincula a un usuario con **un único workspace** y el alcance `mcp:read`. Se muestra en claro **una sola vez** al crearla; el hash se guarda con argon2id. TTL por defecto 30 días, máximo 90. |
 
 ---
 
@@ -223,3 +226,38 @@ La búsqueda se apoya en **Puppet**, plataforma interna Tuio de búsqueda semán
 - Aislamiento estricto por workspace: un usuario no ve resultados de otro.
 
 El indexado es asíncrono con lag asumido de hasta ~3 segundos. Si Puppet está caído, la búsqueda devuelve error explícito en lugar de fallback silencioso.
+
+### 3.16 Acceso programático (MCP)
+
+La plataforma expone su superficie de **lectura** a agentes externos mediante un servidor **MCP (Model Context Protocol)**. Cualquier cliente MCP estándar —Claude Code, Claude Desktop, copilotos de IDE, CLIs, scripts de reporting u otros agentes— puede consultar el estado del workspace sin tocar la API REST ni la base de datos, con el mismo modelo de permisos que la interfaz web.
+
+**Qué expone**. Un catálogo de ~20 *tools* tipados y 4 *resources* suscribibles, entre otros: detalle y búsqueda de elementos, jerarquía (proyecto → milestone → épica → story → tarea), historial de versiones y diffs, comentarios anclados, revisiones y validaciones, threads del asistente (Dundun), búsqueda semántica (Puppet), tags y labels, metadatos de adjuntos, inbox priorizado, dashboards del workspace, y estado de exportación Jira con indicador de divergencia. Los *resources* `workitem://<id>`, `epic://<id>/tree`, `workspace://<id>/dashboard` y `user://me/inbox` permiten **suscripción en tiempo real**: cambios relevantes llegan al cliente en menos de 2 segundos sobre el mismo bus SSE que usa la UI.
+
+**Qué NO expone** (MVP). No hay *tools* de escritura: ni crear, ni transicionar, ni comentar, ni exportar a Jira, ni aplicar sugerencias de Dundun, ni acciones administrativas. Las operaciones de escritura llegarán en un épico posterior con un modelo de autenticación más estricto y revisión de seguridad dedicada.
+
+**Autenticación y autorización**. El acceso se gobierna con **MCP tokens** emitidos por admins del workspace (capacidad `mcp:issue`). Cada token está vinculado a un **único workspace** (aislamiento estricto, coherente con §3.15), lleva el alcance `mcp:read`, tiene TTL máximo de 90 días (30 por defecto) y puede rotarse o revocarse en cualquier momento. El plaintext del token se muestra **una sola vez** al crearlo; se guarda con argon2id. Un usuario puede tener hasta 10 tokens activos por workspace. Revocar un token surte efecto en ≤ 5 segundos.
+
+La autorización **delega por completo en la capa de aplicación**: el servidor MCP no implementa reglas paralelas; cada *tool* llama al mismo servicio que usa la API REST, con el `actor_id` y `workspace_id` del token. Esto garantiza que cualquier cambio de permisos en la web se refleja automáticamente en MCP.
+
+**Administración**. Desde el panel de administración (ver §3.13) los admins gestionan los tokens MCP de su workspace:
+
+- Emitir un token para un usuario (elige nombre, duración y ve el plaintext una única vez con un diálogo que exige copia o descarga explícita antes de cerrar).
+- Listar tokens activos y revocados, con `last_used_at` y `last_used_ip` para detectar uso indebido.
+- Rotar un token (invalida el anterior y emite uno nuevo).
+- Revocar con confirmación tipeada del nombre.
+- Consultar la **auditoría de invocaciones** por token: herramienta llamada, latencia, resultado, código de error, cliente MCP (nombre y versión). Cada invocación MCP se registra en la misma cola de auditoría que el tráfico REST.
+
+Los usuarios finales disponen además de una vista `/settings/mcp-tokens` para ver sus propios tokens y revocarlos sin necesidad de capacidad administrativa.
+
+**Garantías de seguridad**:
+
+- **Aislamiento por workspace**: un token de W nunca devuelve datos de W'. El `workspace_id` proviene exclusivamente del token; los parámetros que lo contradigan devuelven `forbidden`.
+- **Política de no-enumeración**: las respuestas no distinguen "no existe" de "no puedes verlo" salvo en el caso seguro de elementos borrados lógicamente en el propio workspace.
+- **Rate limiting compartido con REST**: no es una puerta trasera que evite los límites globales.
+- **Auditoría inmutable** de cada invocación con hash de parámetros (nunca el cuerpo en claro).
+- **Puppet sin fallback silencioso**: si la búsqueda semántica no está disponible, el agente recibe un error explícito.
+- **Adjuntos**: MCP devuelve metadatos, nunca el binario; la descarga se obtiene bajo URL firmada de corta duración (≤ 5 min) y vinculada al mismo token.
+
+**Transportes**. El servidor soporta `stdio` (para agentes locales como Claude Code) y HTTP/SSE (para clientes remotos). Ambos activos desde el primer día.
+
+**Para el usuario**, el MCP es simplemente "la forma de dejar que otros agentes lean lo que ya está en la plataforma, con las mismas reglas de permisos y trazabilidad, sin copiar datos a ningún sitio".
