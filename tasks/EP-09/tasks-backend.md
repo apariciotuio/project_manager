@@ -1,6 +1,6 @@
 # EP-09 Backend Subtasks — Listings, Dashboards, Search & Workspace
 
-> **Propagation note (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search is delegated to Puppet (EP-13). Any checkbox below referring to `search_vector`, `tsvector`, GIN FTS index, `phraseto_tsquery`, `plainto_tsquery`, or aggregated denormalized columns is **obsolete** — replace with the Puppet-based flow from `specs/search/spec.md` and EP-13's `PuppetClient`. These lines are retained only as historical context; do NOT implement them. Re-plan this file in the TDD phase.
+> **Scope (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search is delegated to **Puppet** (see EP-13 `PuppetClient`). No PG FTS, no `search_vector`, no `tsvector`, no GIN, no `pg_trgm` for FTS. This file has been rewritten — Group 1 (schema) drops FTS columns, Group 2 (indexing) is replaced by Puppet push-on-write hooks, the Search API group wraps `PuppetClient`. Saved searches are a local feature per decision #24.
 
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
 **Depends on**: EP-12 middleware stack (correlation ID, rate limit, auth), EP-01 FSM (state_entered_at), EP-04 (versioning), EP-00 (JWT), EP-13 (PuppetClient + sync pipeline)
@@ -93,11 +93,10 @@ Response 200: { columns: [{ state, count, avg_age_days,
 ### Acceptance Criteria
 
 WHEN migrations run against a clean PostgreSQL 16 database
-THEN `search_vector tsvector` column exists on `work_items` and is NOT NULL-able
-AND GIN index `idx_work_items_search` exists on `search_vector`
-AND `state_entered_at TIMESTAMPTZ` column exists on `work_items`
+THEN `state_entered_at TIMESTAMPTZ` column exists on `work_items`
 AND composite indexes `(state, updated_at DESC)`, `(owner_id, updated_at DESC)`, `(team_id, updated_at DESC)`, `(state, owner_id, updated_at DESC)` all exist
 AND index on `work_items_history(item_id, created_at DESC)` exists
+AND `saved_searches` table exists with `idx_saved_searches_user ON (workspace_id, user_id)`
 
 WHEN any migration is rolled back
 THEN the rollback completes without error and the schema is identical to the pre-migration state
@@ -105,51 +104,36 @@ THEN the rollback completes without error and the schema is identical to the pre
 WHEN EXPLAIN ANALYZE is run on `SELECT ... WHERE state = $1 ORDER BY updated_at DESC LIMIT 25`
 THEN the query plan uses an index scan, not a sequential scan
 
-- [ ] [RED] Write test asserting `search_vector tsvector` column exists on `work_items`
-- [ ] [RED] Write test asserting GIN index `idx_work_items_search` exists
-- [ ] [GREEN] **Migration 0**: `CREATE EXTENSION IF NOT EXISTS pg_trgm;` — prerequisite for the GIN indexes below AND for EP-05's `gin_trgm_ops` index. Must run before any trigram/tsvector GIN index. Requires DB role with CREATE privilege (in managed PG environments the extension is typically pre-installed by ops).
-- [ ] [GREEN] Migration: add `search_vector tsvector` column to `work_items`
 - [ ] [GREEN] Migration: add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (check EP-01)
-- [ ] [GREEN] Migration: add `aggregated_comment_text TEXT` and `aggregated_task_text TEXT` to `work_items`
-- [ ] [GREEN] Create GIN index on `search_vector`
 - [ ] [GREEN] Add composite indexes:
   - `(state, updated_at DESC)` on `work_items`
   - `(owner_id, updated_at DESC)` on `work_items`
   - `(team_id, updated_at DESC)` on `work_items`
   - `(state, owner_id, updated_at DESC)` on `work_items`
 - [ ] [GREEN] Add index on `work_items_history(item_id, created_at DESC)` for timeline queries
-- [ ] [REFACTOR] Verify all migrations are idempotent and reversible; include EXPLAIN ANALYZE on 3 queries as migration comments (EP-12 requirement)
+- [ ] [GREEN] Migration: `saved_searches (id, workspace_id, user_id, name, query, filters JSONB, created_at, updated_at)` + index
+- [ ] Do NOT add: `search_vector`, GIN index, `aggregated_comment_text`, `aggregated_task_text`, `pg_trgm` extension for FTS (decision #4 — search is Puppet-only)
+- [ ] [REFACTOR] Verify all migrations are idempotent and reversible
 
 ---
 
-## Group 2 — Search Index Maintenance
+## Group 2 — Puppet Indexing Hooks
 
 ### Acceptance Criteria
 
-WHEN a work item's title or description is updated within a transaction
-THEN `search_vector` is updated before that transaction commits
-AND a subsequent FTS query reflects the new content within the same test transaction
+WHEN a work item's title/description/sections are updated within a transaction
+THEN a Celery task `push_to_puppet(entity_type, entity_id, workspace_id)` is enqueued after commit (outbox/transactional-outbox pattern)
+AND the task POSTs the entity payload to Puppet with tag `wm_<workspace_id>` (see EP-13 `PuppetClient.index`)
 
-WHEN a comment is created on a work item
-THEN the Celery task `reindex_work_item_search_vector` is enqueued within 1 second
-AND after task execution, the comment text is searchable via FTS on the parent work item
+WHEN a comment or review response is created
+THEN a Celery task enqueues a push to Puppet for the parent work_item (search scope includes comments per EP-13)
 
-WHEN a comment or review response is deleted
-THEN the parent item's `search_vector` is re-computed excluding the deleted text
-AND a search for the deleted text no longer returns the parent item (after reindex)
+WHEN a comment or work_item is deleted
+THEN a Celery task enqueues `PuppetClient.delete(entity_type, entity_id)`
 
-WHEN `build_search_vector(item_id)` is called
-THEN it assigns: title=weight A, description+spec=weight B, task descriptions=weight C, comment+review text=weight D
-AND the result matches `setweight(to_tsvector('english', title), 'A') || ...` composition
-
-- [ ] [RED] Write unit tests for `tsvector` composition: title=weight A, description/spec=weight B, tasks=weight C, comments=weight D
-- [ ] [GREEN] Implement SQLAlchemy `after_flush` event (or PG trigger) to update `search_vector` synchronously on title/description/spec changes
-- [ ] [GREEN] Verify synchronous update completes in same transaction
-- [ ] [RED] Write tests for Celery task `reindex_work_item_search_vector`
-- [ ] [GREEN] Implement `reindex_work_item_search_vector` Celery task for async comment/review reindexing
-- [ ] [RED] Write tests for re-computation on comment/review deletion
-- [ ] [GREEN] Implement re-computation logic on deletion
-- [ ] [REFACTOR] Extract `build_search_vector(item_id)` as a reusable service function
+- [ ] Push-on-write tasks live in EP-13 (see EP-13 `tasks-backend.md`). EP-09 only wires the SQLAlchemy `after_commit` hook that enqueues them.
+- [ ] [RED] Write test asserting the `after_commit` hook enqueues the Puppet push task exactly once per committed change (not per flush)
+- [ ] [GREEN] Implement the `after_commit` hook
 
 ---
 
@@ -311,39 +295,41 @@ THEN the API returns HTTP 404
 - [ ] [RED] Write tests: pagination, event types, 404
 - [ ] [GREEN] Implement `TimelineQueryService` with cursor-based pagination, indexed by `item_id + created_at`
 
-### Acceptance Criteria — WorkItemSearchService
+### Acceptance Criteria — SearchService (Puppet wrapper)
 
 WHEN a query of 2+ characters is submitted
-THEN results are ranked by `ts_rank_cd` descending; secondary sort is `updated_at` descending
-AND each result includes `rank`, `title_snippet`, `body_snippet` with match terms in `<mark>` tags
-AND snippets are ≤200 characters per matched field
+THEN `SearchService.search(q, workspace_id, facets, cursor, limit)` calls `PuppetClient.search(q, tag=wm_<workspace_id>, facets, cursor, limit)` and returns Puppet's ranked results with snippets verbatim
 
 WHEN the query contains fewer than 2 characters or is empty/whitespace-only
-THEN the API returns HTTP 422 with a descriptive message
+THEN the API returns HTTP 422 with a descriptive message (validated before Puppet call)
 
-WHEN the query is `"payment flow"` (double-quoted phrase)
-THEN the system uses `phraseto_tsquery`; only items containing the exact phrase are returned
-
-WHEN the query is `payment flow` (plain terms)
-THEN the system uses `plainto_tsquery` (AND logic); both terms must appear
+WHEN the query ends with `*` or is a prefix lookup
+THEN the service calls `PuppetClient.prefix(...)` instead of `.search(...)` (decision #24)
 
 WHEN `include_archived` is not supplied (default)
-THEN ARCHIVED items are excluded from results
+THEN the Puppet tag filter includes `archived:false`
 
 WHEN `include_archived=true` is supplied
-THEN ARCHIVED items are included
+THEN the `archived` tag filter is not constrained
 
 WHEN the same user exceeds 30 search requests per minute
-THEN subsequent requests return HTTP 429 with `Retry-After` header
+THEN subsequent requests return HTTP 429 with `Retry-After` header (rate limit applied before Puppet call)
 
 WHEN `state`, `type`, `team_id`, or `owner_id` filters are combined with a query
-THEN all filters are AND-combined with the FTS match condition
-AND results outside the requesting user's access scope are never returned
+THEN they are translated to Puppet tag/facet filters server-side
+AND `wm_<workspace_id>` is ALWAYS enforced (never user-supplied)
 
-### WorkItemSearchService
-- [ ] [RED] Write tests: basic query, phrase query (quoted → `phraseto_tsquery`), empty/short query=422, filter combinations, `include_archived`, pagination, access scope enforcement
-- [ ] [GREEN] Implement `WorkItemSearchService.search(query, filters, cursor, limit, user)` using `ts_rank_cd` and `ts_headline`
-- [ ] [GREEN] Implement query routing: detect quoted strings → `phraseto_tsquery`, plain → `plainto_tsquery`
+WHEN Puppet returns 5xx / times out
+THEN the API returns HTTP 503 `SEARCH_UNAVAILABLE` (no local fallback — no FTS exists)
+
+### SearchService (thin wrapper over PuppetClient)
+- [ ] [RED] Write tests: basic query, prefix (decision #24), empty/short query=422, facet filters, `include_archived`, pagination, access scope enforcement (wm tag), Puppet 5xx → 503
+- [ ] [GREEN] Implement `SearchService.search(query, filters, cursor, limit, user)` as a thin wrapper over `PuppetClient` from EP-13
+- [ ] [GREEN] Implement `/api/v1/search/suggest` endpoint → `PuppetClient.prefix(...)`
+
+### SavedSearchService (decision #24)
+- [ ] [RED] Write tests: create / list (per user) / rename / delete; cannot access other users' saved searches
+- [ ] [GREEN] Implement CRUD service + `GET/POST/PATCH/DELETE /api/v1/saved-searches`
 
 ---
 

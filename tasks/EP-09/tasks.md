@@ -1,36 +1,27 @@
 # Tasks: EP-09 — Listings, Dashboards, Search & Workspace
 
-> **Propagation note (2026-04-14)**: Search is delegated to Puppet — see `specs/search/spec.md`. Any `search_vector`/`tsvector`/FTS tasks below are obsolete. Re-plan in the TDD phase.
+> **Scope (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search delegated to **Puppet** (see `specs/search/spec.md` + EP-13). No PG FTS, no `search_vector`, no `tsvector`, no GIN index, no denormalized aggregated columns, no Elasticsearch. Listings/filters/sorts stay in SQL.
 
 **Status**: Not started
-**Last updated**: 2026-04-13
+**Last updated**: 2026-04-14 (EP polish)
 
 ---
 
 ## Phase 1: Data Layer & Migrations
 
-- [ ] **[RED]** Write tests for `work_items.search_vector` column and GIN index existence
-- [ ] Add `search_vector tsvector` column to `work_items` table (migration)
 - [ ] Add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (migration)
-- [ ] Add `aggregated_comment_text TEXT` and `aggregated_task_text TEXT` denormalized columns (migration)
-- [ ] **[GREEN]** Create GIN index on `search_vector`
 - [ ] Add composite indexes: `(state, updated_at DESC)`, `(owner_id, updated_at DESC)`, `(team_id, updated_at DESC)`, `(state, owner_id, updated_at DESC)`
 - [ ] Add index on `work_items_history (item_id, created_at DESC)` for timeline queries
 - [ ] **[REFACTOR]** Verify all migrations are idempotent and reversible
 
 ---
 
-## Phase 2: Search Index Maintenance
+## Phase 2: Saved Searches (decision #24)
 
-- [ ] **[RED]** Write unit tests for `tsvector` composition function (title weight A, description/spec weight B, tasks weight C, comments weight D)
-- [ ] Implement SQLAlchemy `after_flush` event (or PG trigger) to update `search_vector` on title/description/spec changes (synchronous)
-- [ ] **[GREEN]** Verify synchronous update completes in same transaction
-- [ ] **[RED]** Write tests for Celery task `reindex_work_item_search_vector`
-- [ ] Implement `reindex_work_item_search_vector` Celery task for comment/review async reindexing
-- [ ] **[GREEN]** Verify task enqueues within 1s of comment creation event
-- [ ] **[RED]** Write tests for re-computation on comment deletion
-- [ ] Implement re-computation logic on comment/review deletion
-- [ ] **[REFACTOR]** Extract `build_search_vector(item_id)` as a reusable service function
+- [ ] **[RED]** Write tests for `saved_searches` table (id, workspace_id, user_id, name, query, filters JSONB, created_at, updated_at)
+- [ ] **[GREEN]** Create migration for `saved_searches` with `idx_saved_searches_user ON (workspace_id, user_id)`
+- [ ] **[RED]** Write unit tests for `SavedSearchService.create/list/rename/delete`
+- [ ] **[GREEN]** Implement `SavedSearchService` and `GET/POST/PATCH/DELETE /api/v1/saved-searches`
 
 ---
 
@@ -79,20 +70,19 @@
 
 ---
 
-## Phase 6: Search API (US-094)
+## Phase 6: Search API (US-094) — Puppet delegation
 
-- [ ] **[RED]** Write tests for `GET /api/v1/search?q=...` (basic query, ranked results, snippets)
-- [ ] **[RED]** Write tests for phrase query (quoted terms → `phraseto_tsquery`)
-- [ ] **[RED]** Write tests for query validation (empty query → 422, < 2 chars → 422)
-- [ ] **[RED]** Write tests for search filters (state, type, team_id, owner_id alongside search query)
-- [ ] **[RED]** Write tests for `include_archived` in search
-- [ ] **[RED]** Write tests for pagination of search results
-- [ ] **[RED]** Write tests for result scoping (user cannot see items outside their access scope)
-- [ ] Implement `WorkItemSearchService.search(query, filters, cursor, limit, user)` using `ts_rank_cd`
-- [ ] Implement query routing: detect quoted phrases → `phraseto_tsquery`, plain → `plainto_tsquery`
+- [ ] **[RED]** Write tests for `GET /api/v1/search?q=...` — calls `PuppetClient.search(q, tag=wm_<workspace_id>, filters)` and returns ranked results with snippets
+- [ ] **[RED]** Write tests for prefix / type-ahead (decision #24) — `GET /api/v1/search/suggest?q=...`
+- [ ] **[RED]** Write tests for query validation (empty → 422, < 2 chars → 422)
+- [ ] **[RED]** Write tests for facet filters (state, type, team_id, owner_id) forwarded to Puppet as tag filters
+- [ ] **[RED]** Write tests for `include_archived` toggle → Puppet tag `archived:true|false`
+- [ ] **[RED]** Write tests for pagination of Puppet results
+- [ ] **[RED]** Write tests for result scoping — workspace tag `wm_<workspace_id>` always enforced server-side (user never chooses workspace)
+- [ ] **[RED]** Write tests for degraded mode: when Puppet is unavailable, return `503` with `error.code = "SEARCH_UNAVAILABLE"` (no local fallback — no FTS exists)
+- [ ] Implement `SearchService` as a thin wrapper around `PuppetClient` (EP-13)
 - [ ] Implement `GET /api/v1/search` controller with rate limiting (30 req/min per user)
 - [ ] **[GREEN]** All search tests pass
-- [ ] **[REFACTOR]** Verify GIN index is used via EXPLAIN ANALYZE in integration tests
 
 ---
 
@@ -180,22 +170,25 @@
 
 ## Phase 12: Frontend — Search (US-094)
 
-- [ ] **[RED]** Write component tests for `SearchBar` (debounce 300ms, updates URL params)
-- [ ] **[RED]** Write tests for `SearchResults` (renders highlight snippets, pagination)
+- [ ] **[RED]** Write component tests for `SearchBar` (debounce 150ms, prefix-suggest on keystroke, updates URL params)
+- [ ] **[RED]** Write tests for `SearchResults` (renders highlight snippets from Puppet, pagination)
+- [ ] **[RED]** Write tests for `SavedSearches` panel — list / save-current / delete
 - [ ] **[RED]** Write tests for context recovery (query preserved in URL, back navigation restores state)
-- [ ] Implement `SearchBar` with 300ms debounce and URL param sync
-- [ ] Implement `SearchResults` with `<mark>` highlight rendering
-- [ ] Implement filter controls within search (reuse `FilterBar` components)
+- [ ] Implement `SearchBar` with prefix suggest (calls `/api/v1/search/suggest`) and URL param sync
+- [ ] Implement `SearchResults` with `<mark>` highlight rendering from Puppet snippets
+- [ ] Implement `SavedSearches` side panel with CRUD
+- [ ] Implement filter controls within search (reuse `FilterBar` components; filters become Puppet facet tags)
 - [ ] Implement browser history state for scroll position preservation
+- [ ] Implement degraded-search banner when backend returns 503 `SEARCH_UNAVAILABLE`
 - [ ] **[GREEN]** All search UI tests pass
 
 ---
 
 ## Phase 13: Integration & Performance Validation
 
-- [ ] Run `EXPLAIN ANALYZE` on all critical queries; verify index usage
+- [ ] Run `EXPLAIN ANALYZE` on all critical listing/filter queries; verify index usage
 - [ ] Load test list API with 10k items — verify P95 < 200ms
-- [ ] Load test search with 50k documents — verify P95 < 400ms
+- [ ] Search perf is Puppet's responsibility; verify our wrapper adds <50ms overhead (stub Puppet + measure)
 - [ ] Load test dashboard endpoints — verify cache hit P95 < 150ms
 - [ ] Verify no N+1 queries in any endpoint (SQLAlchemy query counting in integration tests)
 - [ ] Verify all endpoints return 401 for unauthenticated requests

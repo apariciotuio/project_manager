@@ -202,7 +202,7 @@ AND on result: `ok` shows a green checkmark + "Connection successful"; `auth_fai
 WHEN `POST /api/v1/admin/integrations/jira/{id}/test` returns `{status: "auth_failure"}`
 THEN the inline result shows "Authentication failed — check your API token"
 
-WHEN the retry button in `JiraSyncLogTable` is clicked by a user lacking `retry_exports` capability
+WHEN the retry button in `JiraExportHistoryTable` is clicked by a user lacking `retry_exports` capability
 THEN the button is absent (not just disabled)
 
 ### Jira Config List (`app/admin/integrations/jira/page.tsx`)
@@ -224,9 +224,9 @@ THEN the button is absent (not just disabled)
 - [ ] [GREEN] Implement `JiraProjectMappings` as a section within config detail page
 - [ ] [GREEN] Work item type mappings: table with platform type → Jira issue type ID mapping
 
-### Sync Log Viewer
-- [ ] [RED] Test: log list with status filter, pagination, retry button on failed log (requires RETRY_EXPORTS capability)
-- [ ] [GREEN] Implement `JiraSyncLogTable` within config detail page
+### Export History Viewer
+- [ ] [RED] Test: export history list (from `jira_export_events` — EP-11) with status filter, pagination, retry button on failed export (requires RETRY_EXPORTS capability)
+- [ ] [GREEN] Implement `JiraExportHistoryTable` within config detail page — sourced from EP-11 export events, not from a `sync_logs` table (decision #26)
 - [ ] [GREEN] Retry button: disabled if user lacks `retry_exports` capability (check from current member context)
 
 ---

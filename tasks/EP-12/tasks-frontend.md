@@ -1,6 +1,6 @@
 # EP-12 Frontend Subtasks — Responsive, Security, Performance
 
-> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Sentry frontend integration, product-event tracking, trace-sampling and related tasks below are **obsolete**. Re-plan at TDD time.
+> **Scope (2026-04-14, decisions_pending.md #27)**: Observability deferred. Drop Sentry frontend, product-event tracking, ops dashboard page, trace sampling. Keep `X-Correlation-ID` plumbing + showing the ID in error UI for support handoff. Below is rewritten — obsolete sections are removed.
 
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS
 **Note**: Layout primitives (Group 1) must be built before any other epic's frontend work begins. All other epics reuse these components.
@@ -15,7 +15,6 @@
 | CSRF token | `X-CSRF-Token` request header; auto-attached for state-changing methods |
 | Job progress | `GET /api/v1/jobs/{job_id}/progress` SSE stream |
 | CSP violations | auto-reported by browser to `POST /api/v1/csp-report` |
-| Sentry | `NEXT_PUBLIC_SENTRY_DSN` env var |
 
 ---
 
@@ -233,27 +232,14 @@ AND the submit button re-enables after displaying errors
 
 ---
 
-## Group 8 — Observability: Sentry Frontend
+## Group 8 — Observability (removed — decision #27)
 
-### Acceptance Criteria
+Sentry FE, `@sentry/nextjs`, `sentry.client.config.ts`, `sentry.server.config.ts`, beforeSend hooks — **all out of scope**.
 
-WHEN a `beforeSend` hook is configured in Sentry
-THEN `Authorization` header values are stripped from all request breadcrumbs
-AND no PII beyond `user_id` appears in Sentry event properties
+Retained: the `ErrorBoundary` still catches render errors and shows the `correlation_id` in the fallback UI (with copy-to-clipboard) so users can hand it to support. Errors are logged to the browser console only.
 
-WHEN the `ErrorBoundary` catches a render error
-THEN `Sentry.captureException()` is called with `correlation_id` as extra context
-
-WHEN Sentry DSN is not configured
-THEN the application starts normally with a console warning
-AND errors are still logged to stdout (Sentry is non-blocking)
-
-## Group 8 — Observability: Sentry Frontend
-
-- [ ] [GREEN] Add `@sentry/nextjs` to dependencies
-- [ ] [GREEN] Configure `sentry.client.config.ts` — `dsn`, `environment`, `beforeSend` (strip Authorization headers from breadcrumbs)
-- [ ] [GREEN] Configure `sentry.server.config.ts` — same DSN, server-side options
-- [ ] [GREEN] Wrap top-level layout in `ErrorBoundary` that captures to Sentry with `correlation_id`
+- [ ] [RED] Test: `ErrorBoundary` fallback shows the request `correlation_id` and exposes a copy button
+- [ ] [GREEN] Implement `ErrorBoundary` with correlation-ID display
 
 ---
 
@@ -358,11 +344,6 @@ THEN zero violations with impact `critical` or `serious` are present; the pipeli
 
 ---
 
-## Group 12 — Ops Dashboard Page (`app/admin/ops/page.tsx`)
+## Group 12 — Ops Dashboard Page (removed — decision #27)
 
-**Blocked by**: `GET /api/v1/ops/queue-depths` and `GET /api/v1/ops/integration-health` (EP-12 backend)
-
-- [ ] [GREEN] Implement ops dashboard page visible only to members with ops capability
-- [ ] [GREEN] Queue depth section: table of queues with depth and consumer count
-- [ ] [GREEN] Integration health section: per-integration status with error streak
-- [ ] [GREEN] Auto-refresh every 30s via React Query `refetchInterval`
+Ops dashboard, queue-depth view, integration-health view — **all out of scope**. The corresponding backend endpoints are also out of scope.

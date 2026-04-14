@@ -4,6 +4,8 @@
 **Date**: 2026-04-13
 **Status**: NOT STARTED
 
+> **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no `sync_logs`. Export is upsert-by-key (re-export UPDATEs the same Jira issue via `jira_issue_key`). Inbound is a user-initiated `POST /work-items/import-from-jira` action. `SyncService` / `sync_task` / Celery Beat below are **obsolete** — drop during TDD, replace with `ImportService` per `specs/import/spec.md`.
+
 ---
 
 ## Phase 1 — Data Model & Domain
@@ -98,14 +100,15 @@
 - [ ] [RED] Test: `ExportService.retry_export()` sets status=retrying and dispatches task for failed export
 - [ ] [GREEN] Implement `ExportService` in `application/services/export_service.py`
 
-### 3.6 SyncService
+### 3.6 ImportService (replaces SyncService — decision #12)
 
-- [ ] [RED] Test: `SyncService.sync_all_active_exports()` skips configs with state=error
-- [ ] [RED] Test: `SyncService.sync_all_active_exports()` calls adapter for each syncable export
-- [ ] [RED] Test: `SyncService.sync_all_active_exports()` updates jira_status on success
-- [ ] [RED] Test: `SyncService.sync_all_active_exports()` sets jira_status=not_found on 404
-- [ ] [RED] Test: `SyncService.sync_all_active_exports()` skips the issue and continues on 429/5xx (no abort)
-- [ ] [GREEN] Implement `SyncService` in `application/services/sync_service.py`
+- [ ] [RED] Test: `ImportService.import_from_jira(key, project_id, workspace_id)` creates a `draft` work_item with `imported_from_jira=true`, `jira_source_key=<key>`
+- [ ] [RED] Test: raises `JiraConfigNotFoundError` when no active Jira config for workspace
+- [ ] [RED] Test: raises `JiraNotFoundError` when Jira issue does not exist
+- [ ] [RED] Test: raises `AlreadyImportedError` (409) with existing `work_item_id` when another workspace work_item already has the same `jira_source_key`
+- [ ] [RED] Test: audit event `work_item.imported` recorded
+- [ ] [GREEN] Implement `ImportService` in `application/services/import_service.py`
+- [ ] See `specs/import/spec.md` for full scenarios
 
 ### 3.7 Divergence detection
 
@@ -130,11 +133,9 @@
 - [ ] [RED] Test: task marks failed after max_retries exhausted
 - [ ] [GREEN] Implement `export_task` in `infrastructure/tasks/export_task.py`
 
-### 4.2 SyncTask
+### 4.2 (Sync task removed — decision #26)
 
-- [ ] [RED] Test: task calls SyncService.sync_all_active_exports() and completes
-- [ ] [GREEN] Implement `sync_task` in `infrastructure/tasks/sync_task.py`
-- [ ] Configure Celery Beat schedule (*/15 minutes)
+No Celery Beat, no polling. Import is synchronous from the API controller (one Jira GET + one DB insert).
 
 ---
 
@@ -152,17 +153,27 @@
 - [ ] [RED] Test: `POST /exports/:id/retry` returns 202 on valid retry
 - [ ] [GREEN] Implement `ExportController` in `presentation/controllers/export_controller.py`
 
+### 5.2 Import controller (decision #12)
+
+- [ ] [RED] Test: `POST /work-items/import-from-jira` returns 201 with new work_item payload (state=draft, imported_from_jira=true, jira_source_key=<key>)
+- [ ] [RED] Test: returns 422 `JIRA_CONFIG_NOT_FOUND` when workspace has no active Jira config
+- [ ] [RED] Test: returns 422 `JIRA_ISSUE_NOT_FOUND` when key does not exist in Jira
+- [ ] [RED] Test: returns 409 `ALREADY_IMPORTED` with existing `work_item_id` on duplicate import
+- [ ] [GREEN] Implement `ImportController` in `presentation/controllers/import_controller.py`
+
 ---
 
 ## Phase 6 — Integration & Manual QA
 
 - [ ] Integration test: full export flow against Jira sandbox (or WireMock stub of Jira API)
-- [ ] Integration test: sync task updates status after Jira status changes in stub
+- [ ] Integration test: re-export updates the same Jira issue (upsert-by-key), not a new issue
 - [ ] Integration test: retry flow succeeds after simulated 500 on first attempt
+- [ ] Integration test: `POST /work-items/import-from-jira` creates draft work_item from a stubbed Jira issue
 - [ ] Manual QA: export blocked for non-Ready element — verify 422 message
 - [ ] Manual QA: export trigger → Jira issue visible → link shown in UI
 - [ ] Manual QA: edit work item post-export → divergence indicator appears
-- [ ] Manual QA: re-export after divergence → new Jira issue created, divergence cleared
+- [ ] Manual QA: re-export after divergence → same Jira issue updated, divergence cleared
+- [ ] Manual QA: import from Jira → draft work item appears; subsequent export updates the original issue
 
 ---
 

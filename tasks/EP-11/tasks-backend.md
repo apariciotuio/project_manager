@@ -3,6 +3,8 @@
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
 **Depends on**: EP-10 (jira_configs, jira_project_mappings, credentials_store, JiraClient, AuditService), EP-04 (versioning, current_version_id on work_item), EP-12 (middleware, auth)
 
+> **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no `sync_logs`. Export is upsert-by-key (re-export UPDATEs the same Jira issue via `jira_issue_key`). Inbound is a user-initiated `POST /work-items/import-from-jira` action; no automated status sync. `SyncService`/`SyncTask`/`sync_all_active_exports` below are **obsolete** — drop during TDD, replace with `ImportService` + `import_from_jira` endpoint per `specs/import/spec.md`.
+
 ---
 
 ## API Contract (interface for frontend)
@@ -230,14 +232,15 @@ AND the old export record remains queryable with its original `version_id`
 - [ ] [RED] Test: returns `True` when version_id differs from latest successful export
 - [ ] [GREEN] Implement as inline method in `ExportService` (no separate class needed)
 
-### SyncService
-- [ ] [RED] Test: `sync_all_active_exports()` skips configs with state=error
-- [ ] [RED] Test: processes exports in batches of 100 in a paginated loop until no records remain (Fixed per backend_review.md CA-5); assert loop terminates correctly at batch boundary (e.g. exactly 100 records → one batch, 101 records → two batches)
-- [ ] [RED] Test: `max_items_per_run=1000` default — loop stops after processing 1000 records even if more exist
-- [ ] [RED] Test: updates `jira_status` on success
-- [ ] [RED] Test: sets `jira_status=not_found` on `JiraNotFoundError` (404)
-- [ ] [RED] Test: logs and continues (does NOT abort) on 429/5xx for individual issue
-- [ ] [GREEN] Implement `SyncService` in `application/services/sync_service.py` using paginated loop: `offset=0; while offset < max_items_per_run: batch = repo.get_syncable(batch_size=100, offset=offset); if not batch: break; process(batch); offset += len(batch)`
+### ImportService (replaces SyncService — decision #12)
+- [ ] [RED] Test: `import_from_jira(jira_issue_key, project_id, workspace_id)` fetches issue via `JiraApiAdapter.get_issue()`, creates new `work_item` in `draft` state with `imported_from_jira=True` and `jira_source_key=<key>`
+- [ ] [RED] Test: raises `JiraConfigNotFoundError` when no active config for workspace
+- [ ] [RED] Test: raises `JiraNotFoundError` (maps to 422) when issue does not exist
+- [ ] [RED] Test: duplicate import detection — if a work_item with matching `jira_source_key` already exists in the workspace, raises `AlreadyImportedError` (maps to 409) with existing `work_item_id`
+- [ ] [RED] Test: import audits `work_item.imported` in `audit_events`
+- [ ] [GREEN] Implement `ImportService` in `application/services/import_service.py`
+- [ ] [GREEN] Extend `JiraApiAdapter` with `get_issue(key)` returning a minimal payload (summary, description ADF, issue_type, status) sufficient to populate a `draft` work item
+- [ ] See `specs/import/spec.md` for full scenarios
 
 ---
 
@@ -273,10 +276,8 @@ AND the Layer 2 idempotency check prevents a duplicate Jira issue
 - [ ] [GREEN] Implement `export_task` with `acks_late=True`, `reject_on_worker_lost=True`, `max_retries=3`, `soft_time_limit=45` (guards against hung Jira connections; `SoftTimeLimitExceeded` must be caught, export marked failed, no retry)
 - [ ] [GREEN] Update `jira_config.consecutive_failures` on auth/permission/server errors; reset on success
 
-### SyncTask (`infrastructure/tasks/sync_task.py`)
-- [ ] [RED] Test: calls `SyncService.sync_all_active_exports()` and completes
-- [ ] [GREEN] Implement `sync_task`
-- [ ] [GREEN] Configure Celery Beat schedule: `*/15 minutes` in `CELERYBEAT_SCHEDULE`
+### (Sync task removed — decision #26)
+No Celery Beat, no polling. Import is synchronous from the API controller (single Jira GET + one DB insert).
 
 ---
 
@@ -333,13 +334,23 @@ THEN the response is HTTP 404 (not 403 — do not leak item existence)
 - [ ] [GREEN] Implement `ExportController` in `presentation/controllers/export_controller.py`
 - [ ] All endpoints: 401 if no auth, 403 if insufficient scope, 404 if work_item not accessible to user
 
+### Import Controller (decision #12)
+
+- [ ] [RED] Test: `POST /work-items/import-from-jira` returns 201 with new work_item (state=draft, imported_from_jira=true, jira_source_key=<key>)
+- [ ] [RED] Test: returns 422 `JIRA_CONFIG_NOT_FOUND` when workspace has no active Jira config
+- [ ] [RED] Test: returns 422 `JIRA_ISSUE_NOT_FOUND` when key does not exist in Jira
+- [ ] [RED] Test: returns 409 `ALREADY_IMPORTED` with existing `work_item_id` on duplicate import
+- [ ] [RED] Test: 403 if caller lacks `create_work_item` capability for the target project
+- [ ] [GREEN] Implement `ImportController` in `presentation/controllers/import_controller.py`
+
 ---
 
 ## Group 7 — Integration Tests
 
 - [ ] Integration test: full export flow against WireMock stub of Jira API (trigger → task runs → jira_key set → success status)
-- [ ] Integration test: sync task updates `jira_status` after Jira status changes in stub
+- [ ] Integration test: re-export updates the same Jira issue (upsert-by-key — PUT /rest/api/3/issue/{key}), not a new issue
 - [ ] Integration test: retry flow — simulate 500 on first attempt, success on retry
 - [ ] Integration test: Layer 2 idempotency — crash after Jira call but before DB update; re-run task; assert no duplicate Jira issue
 - [ ] Integration test: `diverged=true` after editing work item post-export
 - [ ] Integration test: re-export clears divergence (new export version_id matches current)
+- [ ] Integration test: `POST /work-items/import-from-jira` creates a `draft` work item with `imported_from_jira=true`, `jira_source_key=<key>`; subsequent export upserts the original Jira issue

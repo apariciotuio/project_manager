@@ -315,7 +315,7 @@ interface CommentInputProps {
 
 - [ ] 4.3 [RED] Test: textarea; submit on Cmd/Ctrl+Enter or button; empty body disabled; anchor data passed when provided
 - [ ] 4.3a [RED] Test: paste image from clipboard → upload starts via EP-16 upload flow, placeholder `![Uploading…]()` inserted at cursor, replaced with `![filename](attachment_id)` on upload success; drag-drop image onto editor same flow; failed upload shows inline error and removes placeholder
-- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx` — support paste-from-clipboard (`paste` event on `ClipboardData.files`) and drag-drop (`drop` event) for images; each image triggers EP-16 `request-upload` → PUT to presigned URL → `confirm` flow; markdown image syntax inserted at cursor position on success
+- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx` — support paste-from-clipboard (`paste` event on `ClipboardData.files`) and drag-drop (`drop` event) for images; each image triggers EP-16 upload flow (`POST /api/v1/work-items/:id/attachments` multipart → authenticated streaming, no presigned URL — decision #29); markdown image syntax `![filename](attachment_id)` inserted at cursor position on success
 
 ### CommentFeed component
 

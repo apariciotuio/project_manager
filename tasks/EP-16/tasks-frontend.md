@@ -1,14 +1,19 @@
 # EP-16 Frontend Tasks
 
+> **Scope (2026-04-14, decisions_pending.md #29)**: VPN-internal deployment. **Dropped**: scan-status polling (`useScanStatusPoller`), scan-status UI states (`pending`/`quarantined`), presigned URL handling, signed URL refresh on 403, two-phase `request-upload`+`confirm` flow. **Kept**: drag/drop + paste upload, progress UI, image gallery, PDF viewer (inline + download), inline comment images, admin quota dashboard, delete with confirmation. Below is rewritten — obsolete groups removed, not flagged.
+
+---
+
 ## Group 0: Types + API Client
 
 - [ ] **F0.1** Define TypeScript types in `types/attachments.ts`:
-  - `Attachment`, `AttachmentUploadRequest`, `AttachmentUploadResponse`, `AttachmentConfirmResponse`, `ScanStatus` enum (`pending` | `clean` | `quarantined`)
+  - `Attachment { id, filename, mime_type, size_bytes, thumbnail_url?, download_url, uploaded_by, created_at }`. No `ScanStatus` enum (decision #29).
   - AC: `strict: true`; no `any`
-- [ ] **F0.2** [RED] Write tests for attachment API client functions: `requestUpload`, `confirmUpload`, `getAttachment`, `deleteAttachment`, `listAttachments`
+- [ ] **F0.2** [RED] Write tests for attachment API client functions: `uploadAttachment(workItemId, file, onProgress, signal)`, `getAttachment`, `deleteAttachment`, `listAttachments`
   - AC: uses `msw` (Mock Service Worker) for HTTP mocking; no real network calls in tests
 - [ ] **F0.3** [GREEN] Implement API client in `lib/api/attachments.ts`
-  - AC: signed URLs never stored in state beyond component lifecycle; no logging of `upload_url` or `url`
+  - `download_url` is always the backend streaming endpoint (`/api/v1/attachments/:id/download`); never a presigned URL
+  - `uploadAttachment` is a single multipart POST to `/api/v1/work-items/:id/attachments` with `XMLHttpRequest` for progress events; no `request-upload` / `confirm` two-phase flow
 
 ---
 
@@ -42,17 +47,16 @@
 - [ ] **F2.2** [GREEN] Implement `components/attachments/UploadProgress.tsx`
   - Props: `filename: string`, `progress: number` (0-100), `speedKbps?: number`, `status: 'uploading' | 'complete' | 'error'`, `errorMessage?: string`, `onCancel: () => void`, `onRetry?: () => void`
 - [ ] **F2.3** [RED] Write tests for `useUploadManager` hook:
-  - `upload(file)` → calls `requestUpload`, then PUT to presigned URL with XHR progress events, then `confirmUpload`
+  - `upload(file)` → single multipart POST to `/api/v1/work-items/:id/attachments` with XHR progress events; on success returns the `Attachment` metadata
   - Progress updates at 0%, 50%, 100% at correct XHR events
-  - Cancel mid-upload → XHR aborted, `deleteAttachment` called for cleanup
-  - `requestUpload` 422 ATTACHMENT_TYPE_REJECTED → error state, no XHR initiated
-  - `requestUpload` 429 → rate limit error with retry-after display
-  - S3 PUT fails → error state
-  - `confirmUpload` S3 object not found → error state
+  - Cancel mid-upload → XHR aborted; no partial attachment left
+  - 422 `ATTACHMENT_TYPE_REJECTED` → error state
+  - 413 `ATTACHMENT_TOO_LARGE` → error state
+  - 429 → rate-limit error with `Retry-After` display
   - Concurrent uploads (3 files) → independent state per file
   - AC: MSW for API; XHR mocked via jest `XMLHttpRequest` mock
 - [ ] **F2.4** [GREEN] Implement `hooks/useUploadManager.ts`
-  - AC: uses `AbortController` for cancel; `XMLHttpRequest` (not `fetch`) for progress events; signed URL never stored beyond upload lifecycle
+  - AC: uses `AbortController` for cancel; `XMLHttpRequest` (not `fetch`) for progress events
 
 ---
 
@@ -60,16 +64,15 @@
 
 - [ ] **F3.1** [RED] Write tests for `ImageGallery` component:
   - Renders thumbnail grid for image attachments
-  - Renders document tile with icon for PDF attachments
-  - Pending attachment shows spinner overlay
-  - Quarantined attachment shows warning icon; not clickable
+  - Renders document tile with icon for PDF attachments; PDF thumbnails (first page) rendered when `thumbnail_url` present
   - Empty state when no attachments
   - "Show all (N)" link shown when count > 20
   - Click on image tile → lightbox opens
   - AC: RTL; MSW for attachment API
+  - Removed: `pending` spinner overlay, `quarantined` warning icon (decision #29)
 - [ ] **F3.2** [GREEN] Implement `components/attachments/ImageGallery.tsx`
   - Props: `workItemId: string`, `attachments: Attachment[]`, `onDelete?: (id: string) => void`
-  - AC: thumbnails use `<img src={thumbnail_url}>` with `loading="lazy"`; signed URL refresh on 403 (broken image handler)
+  - AC: thumbnails use `<img src={thumbnail_url}>` with `loading="lazy"`; `thumbnail_url` is the backend streaming endpoint; on 204 fall back to generic icon; no 403 refresh flow (no presigned URLs)
 - [ ] **F3.3** [RED] Write tests for `Lightbox` component:
   - Opens with correct image
   - Left/right navigation between images
@@ -82,18 +85,17 @@
   - AC: RTL with `userEvent`; keyboard events tested
 - [ ] **F3.4** [GREEN] Implement `components/attachments/Lightbox.tsx`
   - Props: `images: Attachment[]`, `initialIndex: number`, `onClose: () => void`, `onDownload: (id: string) => void`
-  - AC: no external lightbox library — implement directly (prevents unnecessary deps); focus trap via `focus-trap-react` or manual implementation
 
 ---
 
 ## Group 4: PDF Viewer
 
 - [ ] **F4.1** [RED] Write tests for `PdfViewer` component:
-  - Renders `<iframe>` with presigned URL as `src` when `navigator.pdfViewerEnabled === true`
+  - Renders `<iframe src={download_url}>` when `navigator.pdfViewerEnabled === true` (browser-native viewer)
   - Renders PDF.js fallback when `navigator.pdfViewerEnabled === false`
   - Download button present and calls `onDownload`
-  - "Open in new tab" button present with correct `href`
-  - URL refresh: if attachment has expired URL, fetches fresh URL before rendering
+  - "Open in new tab" button present with `href={download_url}` (backend streaming endpoint — JWT cookie must accompany for auth)
+  - No URL refresh flow — `download_url` is a stable backend path, not a presigned URL
   - AC: RTL; mock `navigator.pdfViewerEnabled`
 - [ ] **F4.2** [GREEN] Implement `components/attachments/PdfViewer.tsx`
   - Props: `attachment: Attachment`, `onDownload: () => void`
@@ -104,23 +106,22 @@
 ## Group 5: Comment Editor — Inline Image Paste/Drag
 
 - [ ] **F5.1** [RED] Write tests for `useCommentInlineImage` hook:
-  - Paste event with image/png clipboardData item → triggers upload flow, inserts placeholder `![Uploading…]()`
-  - Paste event with text/plain → no upload triggered
-  - Upload complete → placeholder replaced with `![filename](signed_url)`
+  - Paste event with `image/*` clipboardData item → triggers multipart upload, inserts placeholder `![Uploading…]()`
+  - Paste event with `text/plain` → no upload triggered
+  - Upload complete → placeholder replaced with `![filename](attachment_id)` (BE renders the image by substituting `attachment_id` to the download endpoint)
   - Upload failed → placeholder replaced with `![Upload failed — try again]()`
   - Drop image onto editor → same as paste
   - Drop non-image onto editor → rejected with tooltip text
-  - AC: uses FakeStorageAdapter equivalent; no real network
+  - AC: MSW for API; no real network
 - [ ] **F5.2** [GREEN] Implement `hooks/useCommentInlineImage.ts`
-  - AC: `comment_id` passed to `requestUpload` when available; works with both new (no ID yet) and existing comments
+  - AC: `comment_id` (when available) or `work_item_id` passed to upload endpoint
 - [ ] **F5.3** [RED] Write tests for inline image rendering in `CommentBody` component:
-  - `![alt](url)` markdown → `<img>` rendered inline
-  - Broken image (403) → fetch fresh signed URL and re-render
-  - `scan_status='pending'` in attachment → spinner + polling (5s)
-  - `scan_status='quarantined'` → warning message, no image
+  - `![alt](attachment_id)` markdown → `<img src={/api/v1/attachments/:id/download}>` rendered inline
+  - Soft-deleted image → EP-07 BE substitution omits the ref; rendered as placeholder text
+  - Removed: scan-status polling (5s), pending spinner, quarantined warning (decision #29)
   - AC: RTL; MSW for GET /api/v1/attachments/:id
 - [ ] **F5.4** [GREEN] Wire `useCommentInlineImage` into existing comment editor component
-  - AC: does not break existing comment text input; paste handler is additive, not replacement
+  - AC: paste handler is additive, not a replacement for text input
 
 ---
 
@@ -134,7 +135,7 @@
   - Workspace admin sees only own workspace row
   - AC: RTL; MSW for `GET /api/v1/admin/storage/usage`
 - [ ] **F6.2** [GREEN] Implement `components/admin/StorageUsageDashboard.tsx`
-  - AC: bytes displayed in human-readable format (KB/MB/GB); no raw byte counts shown to users
+  - AC: bytes displayed in human-readable format (KB/MB/GB)
 - [ ] **F6.3** [RED] Write tests for `WorkspaceQuotaEditor` component:
   - Renders current quota with edit button
   - Edit mode: input field + save/cancel
@@ -168,13 +169,6 @@
 
 ---
 
-## Group 8: Scan Status Polling
+## Group 8: (removed — no scan-status polling per decision #29)
 
-- [ ] **F8.1** [RED] Write tests for `useScanStatusPoller` hook:
-  - Polls `GET /api/v1/attachments/:id` every 5s while `scan_status='pending'`
-  - Stops polling when `scan_status` becomes `clean` or `quarantined`
-  - Stops polling on component unmount (no memory leak)
-  - Returns current `scan_status` and `url` (once clean)
-  - AC: use `jest.useFakeTimers()` for interval; MSW
-- [ ] **F8.2** [GREEN] Implement `hooks/useScanStatusPoller.ts`
-  - AC: `useEffect` cleanup cancels interval; max poll duration: 5 minutes then stop (prevent infinite polling on stuck task)
+`useScanStatusPoller`, 5s polling, pending/quarantined UI states — **all out of scope**. VPN-internal deployment; attachments are available immediately after upload returns 201.

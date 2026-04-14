@@ -1,6 +1,6 @@
 # EP-12 — Implementation Checklist
 
-> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is deferred. Sentry/Prometheus/OTel/Loki/product_events/LLM-metrics/health-dashboard items are obsolete. Re-plan at TDD time.
+> **Scope (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Keep: Python stdlib `logging` to stdout + `CorrelationIDMiddleware`. Drop: Sentry, Prometheus, Grafana, Loki, OpenTelemetry, trace sampling, `product_events` table, LLM-token metrics, health dashboards, integration-health endpoints, ops monitoring page. EP-12 narrows to Responsive + Security + Performance (+ correlation-id logging).
 
 **Status: NOT STARTED**
 
@@ -10,15 +10,16 @@ TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [R
 
 ## Group 1 — Foundation (do this first, all other groups depend on it)
 
-- [ ] [RED] Test: CorrelationIDMiddleware generates UUID when header absent, passes through when valid UUID present, rejects and regenerates invalid UUID
+- [ ] [RED] Test: `CorrelationIDMiddleware` generates UUID when `X-Correlation-ID` header absent, passes through when valid UUID present, rejects and regenerates on invalid UUID
 - [ ] [GREEN] Implement `CorrelationIDMiddleware` — inject/generate `X-Correlation-ID`, set on response header
-- [ ] [RED] Test: structured log output includes `correlation_id`, `timestamp`, `level`, `logger`, `message` fields
-- [ ] [GREEN] Configure structlog with JSON renderer and contextvars processor
-- [ ] [GREEN] Wire CorrelationIDMiddleware to bind correlation_id into structlog contextvars per request
+- [ ] [RED] Test: log output is plain stdout lines (not JSON), contains `correlation_id` and `level`
+- [ ] [GREEN] Configure Python `logging.basicConfig` with stream=sys.stdout and a `Formatter` that emits `correlation_id` from a `ContextVar`
+- [ ] [GREEN] Wire `CorrelationIDMiddleware` to set the `correlation_id` ContextVar per request
 - [ ] [REFACTOR] Extract log configuration to `app/infrastructure/logging/setup.py`, import in `app/main.py`
 - [ ] [RED] Test: `RequestLoggingMiddleware` logs method, path, status_code, duration_ms after each request
-- [ ] [GREEN] Implement `RequestLoggingMiddleware`
+- [ ] [GREEN] Implement `RequestLoggingMiddleware` using stdlib `logging`
 - [ ] Document middleware chain order in `app/main.py` comments
+- [ ] Do NOT add: `structlog`, `sentry-sdk`, `prometheus_client`, `opentelemetry-*`, `python-json-logger`, `@sentry/nextjs`. `logging` + `correlation_id` is the whole observability story (decision #27).
 
 ---
 
@@ -83,7 +84,7 @@ TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [R
 
 - [ ] Audit all settings for hardcoded secrets (grep for common patterns: password, secret, key, token in source)
 - [ ] [GREEN] Add startup validation: if any required secret is None in production, raise ConfigurationError with variable name
-- [ ] [GREEN] Add `scrub_sensitive_data` before_send hook in Sentry init to strip Authorization headers
+- [ ] [GREEN] Logging formatter scrubs known-sensitive keys (Authorization, token, password, secret, api_key) from log lines
 
 ---
 
@@ -139,51 +140,18 @@ TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [R
 
 ---
 
-## Group 4 — Observability
+## Group 4 — Correlation ID (the whole "observability" scope — decision #27)
 
 ### 4.1 Correlation ID on frontend
 
-- [ ] [RED] Test: API client generates UUID per request and sends X-Correlation-ID header
-- [ ] [RED] Test: correlation_id shown in error UI when request fails
+- [ ] [RED] Test: API client generates UUID per request and sends `X-Correlation-ID` header
+- [ ] [RED] Test: correlation_id shown in error UI when request fails (copy-to-clipboard helper for support)
 - [ ] [GREEN] Implement correlation ID generation in `lib/api-client.ts`
 - [ ] [GREEN] Show correlation_id in ErrorBoundary fallback and toast error messages
 
-### 4.2 Sentry backend
+### 4.2–4.6 (Removed per decision #27)
 
-- [ ] [GREEN] Add sentry-sdk to dependencies (Python)
-- [ ] [GREEN] Initialize Sentry in `app/main.py` with FastAPI, SQLAlchemy, Celery integrations
-- [ ] [GREEN] Add `scrub_sensitive_data` before_send hook
-- [ ] [RED] Test: unhandled exception is captured (mock Sentry client, verify capture_exception called)
-- [ ] [RED] Test: handled integration failure calls capture_exception with correlation_id extra
-- [ ] [GREEN] Inject correlation_id and user_id as Sentry tags in CorrelationIDMiddleware
-
-### 4.3 Sentry frontend
-
-- [ ] [GREEN] Add @sentry/nextjs to dependencies
-- [ ] [GREEN] Configure sentry.client.config.ts and sentry.server.config.ts
-- [ ] [GREEN] Wrap top-level layout in ErrorBoundary that captures to Sentry with correlation_id
-
-### 4.4 Product event service
-
-- [ ] [RED] Test: `ProductEventService.track()` calls backend with correct event schema
-- [ ] [RED] Test: backend unavailability does not propagate exception (logs warning only)
-- [ ] [GREEN] Implement `ProductEventService` and `ProductEventBackend` interface
-- [ ] [GREEN] Implement Postgres-backed backend (append-only `product_events` table) ⚠️ originally MVP-scoped — see decisions_pending.md
-- [ ] [GREEN] Emit events at: login, element created/submitted/reviewed/exported, search, integration sync/fail, member invite/remove
-
-### 4.5 Integration failure visibility
-
-- [ ] [RED] Test: Jira 401 marks integration as `credential_error`, emits integration.failed event, sends SSE notification to workspace admin
-- [ ] [RED] Test: admin dashboard integration health section reflects failure streak
-- [ ] [GREEN] Implement `integration_sync_log` table and repository
-- [ ] [GREEN] Write integration failure banner query for dashboard
-
-### 4.6 Monitoring dashboard (ops)
-
-- [ ] [GREEN] Create DB view `v_endpoint_metrics` from request logs (requires structured request logging from Group 1)
-- [ ] [GREEN] Create Celery queue depth endpoint: `/api/v1/ops/queue-depths` (ops-only capability)
-- [ ] [GREEN] Create integration health endpoint: `/api/v1/ops/integration-health`
-- [ ] [GREEN] Frontend ops dashboard page with the metrics from spec Scenario 6
+Sentry (BE + FE), ProductEventService, `product_events` table, `integration_sync_log`, Celery queue-depth endpoint, integration-health endpoint, ops monitoring page — **all out of scope**. Production debugging is `docker logs | grep <correlation_id>`. Tradeoff accepted; revisit when scale or ops needs change.
 
 ---
 

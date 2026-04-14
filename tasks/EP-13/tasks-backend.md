@@ -1,46 +1,41 @@
-# Backend Tasks: EP-13 — Semantic Search + Puppet Integration
+# Backend Tasks: EP-13 — Puppet Integration (Search + Sync Pipeline)
 
 **Epic**: EP-13
-**Date**: 2026-04-13
+**Date**: 2026-04-13 (rewritten 2026-04-14 per decisions #4/#9/#24/#28)
 **Status**: Draft
+
+> **Scope (2026-04-14)**: Puppet is the sole search backend. No PG FTS, no hybrid RRF, no keyword+semantic fusion, no learned re-ranker, no per-workspace embeddings. Our BE calls Puppet directly with tag `wm_<workspace_id>`. Below: Hybrid/RRF groups are removed; doc-search collapses into the single search endpoint with Puppet tag scoping.
 
 ---
 
 ## API Contracts (Reference)
 
 ```
-POST   /api/v1/search
-         Body: { q, mode: hybrid|keyword|semantic, scope: items|docs|all, limit, cursor, include_archived }
-         Response: { data: [SearchResult], pagination: {...}, meta: { search_mode_used, fallback_reason } }
+GET    /api/v1/search?q=...&cursor=&limit=&include_archived=&state=&type=&team_id=&owner_id=
+         Response: { data: [SearchResult], pagination: {...}, meta: { puppet_latency_ms } }
 
-GET    /api/v1/work-items/{id}/related-docs
-         Response: { data: [RelatedDoc] }
+GET    /api/v1/search/suggest?q=...
+         Response: { data: [{ title, id, type }] }  -- prefix / type-ahead (decision #24)
 
-GET    /api/v1/docs/{doc_id}/content
-         Response: { doc_id, title, content_html, url, source_name, last_indexed_at }
+GET/POST/PATCH/DELETE /api/v1/saved-searches   (decision #24)
 
 POST   /api/v1/admin/integrations/puppet
 PATCH  /api/v1/admin/integrations/puppet/{id}
 GET    /api/v1/admin/integrations/puppet
 POST   /api/v1/admin/puppet/{id}/health-check        → 202 Accepted
 POST   /api/v1/admin/puppet/reindex                  → 202 Accepted
-
-POST   /api/v1/admin/documentation-sources
-GET    /api/v1/admin/documentation-sources
-DELETE /api/v1/admin/documentation-sources/{id}
+GET    /api/v1/admin/puppet/health                   → { lag_seconds, last_reconcile_at, failure_count_24h }
 ```
 
-SearchResult shape:
+SearchResult shape (returned verbatim from Puppet, plus our wrapper metadata):
 ```json
 {
   "id": "uuid",
-  "result_type": "work_item | doc",
+  "entity_type": "work_item | section | comment | task | doc",
   "title": "string",
   "type": "string",
   "state": "string",
   "score": 1.23,
-  "provenance": "keyword | semantic | both",
-  "matched_by": ["keyword"],
   "snippet": "string",
   "workspace_id": "uuid"
 }
@@ -102,46 +97,37 @@ WHEN `on_work_item_deleted()` is called THEN `puppet.deindex_work_item` is enque
 
 ---
 
-## Group 4: HybridSearchService
+## Group 4: SearchService (thin Puppet wrapper)
 
 **Acceptance Criteria**
-WHEN `mode=hybrid` THEN PG FTS and Puppet run in parallel via `asyncio.gather`
-WHEN Puppet times out THEN results come from PG FTS only and `fallback_reason='puppet_unavailable'` is set
-WHEN RRF fusion runs THEN items in both result sets get higher scores than items in one set only
-WHEN `mode=keyword` THEN no Puppet call is made
+WHEN `SearchService.search(q, workspace_id, facets, cursor, limit)` is called THEN `PuppetClient.search` is called with `tag=wm_<workspace_id>` and facet tags
+WHEN the query ends with `*` OR is short/prefix THEN `PuppetClient.prefix` is used (decision #24)
+WHEN Puppet times out / returns 5xx THEN the wrapper raises `SearchUnavailableError` (controller maps to 503 `SEARCH_UNAVAILABLE` — no local fallback exists)
+WHEN `workspace_id` is missing or not supplied by the session THEN the wrapper raises — `wm_<workspace_id>` is ALWAYS server-enforced, never client-supplied
 
-- [ ] **[RED]** Write test: `mode=hybrid` calls both keyword and Puppet services
-- [ ] **[RED]** Write test: Puppet timeout → fallback to keyword-only, `fallback_reason` set
-- [ ] **[RED]** Write test: RRF fusion scoring — item in both lists scores higher than item in one list
-- [ ] **[RED]** Write test: provenance='both' when item appears in both result sets
-- [ ] **[RED]** Write test: provenance='keyword' when item appears in keyword only
-- [ ] **[RED]** Write test: `mode=keyword` → no Puppet call made (assert fake not called)
-- [ ] **[RED]** Write test: `mode=semantic` → no PG FTS call made
-- [ ] **[RED]** Write test: RRF weights and k configurable via constructor injection
-- [ ] **[RED]** Write test: workspace_ids passed to both engines
-- [ ] **[GREEN]** Implement `application/services/hybrid_search_service.py` with `_rrf_fuse`
-- [ ] **[GREEN]** Read `RRF_K`, `RRF_WEIGHT_KEYWORD`, `RRF_WEIGHT_SEMANTIC` from env vars with defaults (60, 0.40, 0.60)
-- [ ] **[REFACTOR]** Ensure `_semantic_safe` logs at WARN with `integration=puppet` structured field
+- [ ] **[RED]** Write test: `search()` calls Puppet with correct `tag=wm_<workspace_id>`
+- [ ] **[RED]** Write test: facet filters (state/type/team_id/owner_id/archived) forwarded as Puppet tags
+- [ ] **[RED]** Write test: Puppet timeout → `SearchUnavailableError` (no partial result)
+- [ ] **[RED]** Write test: prefix endpoint routes to `PuppetClient.prefix`
+- [ ] **[RED]** Write test: workspace_id must come from session, never from request body/query
+- [ ] **[GREEN]** Implement `application/services/search_service.py` as a thin wrapper over `PuppetClient`
+- [ ] **[GREEN]** No `RRF_K` / `RRF_WEIGHT_*` env vars — no fusion. Remove any such references if they leaked into earlier drafts.
 
 ---
 
-## Group 5: DocSearchService
+## Group 5: SavedSearchService (decision #24)
 
 **Acceptance Criteria**
-WHEN `DocSearchService.search()` is called THEN Puppet queries the `docs` collection
-WHEN Puppet is unavailable THEN empty result with `fallback_reason` is returned (no keyword fallback for docs)
-WHEN `DocContentService.get_content()` is called THEN content is fetched from Puppet and cached in Redis
+WHEN a user creates a saved search THEN `(workspace_id, user_id, name, query, filters)` is persisted
+WHEN a user lists saved searches THEN only their own records are returned
+WHEN a user runs a saved search THEN `SearchService.search()` is called with the stored `(query, filters)`
 
-- [ ] **[RED]** Write test: `DocSearchService.search()` passes `collection='docs'` to Puppet
-- [ ] **[RED]** Write test: doc search filters by user's workspace_ids plus public sources
-- [ ] **[RED]** Write test: Puppet unavailable → empty list returned with fallback_reason
-- [ ] **[RED]** Write test: `DocContentService.get_content()` — cache hit returns without Puppet call
-- [ ] **[RED]** Write test: access denied when doc workspace not in user's workspace_ids and not public
-- [ ] **[RED]** Write test: content_html is sanitized (bleach) before returning
-- [ ] **[GREEN]** Implement `application/services/doc_search_service.py`
-- [ ] **[GREEN]** Implement `application/services/doc_content_service.py`
-- [ ] **[GREEN]** Implement `infrastructure/cache/doc_content_cache.py` (Redis, TTL 3600s)
-- [ ] **[REFACTOR]** Content truncation at 500KB with `content_truncated: true` flag
+- [ ] **[RED]** Write test: CRUD on `saved_searches` scoped to the calling user
+- [ ] **[RED]** Write test: cannot read/update/delete another user's saved search (404, not 403, to avoid leaking existence)
+- [ ] **[GREEN]** Implement `SavedSearchService` + `saved_search_repo_impl.py`
+- [ ] **[GREEN]** Wire CRUD controller at `/api/v1/saved-searches`
+
+(DocSearch / DocContent — collapsed into the main search flow. Puppet indexes both internal and external documentation under their own tags; our wrapper passes the query untouched. No separate `DocContentService`, no `doc_content_cache.py` in our repo — doc rendering is Puppet's responsibility or a direct Puppet URL.)
 
 ---
 
@@ -210,37 +196,33 @@ WHEN `puppet.health_check` completes THEN `integration_configs.last_health_check
 
 ---
 
-## Group 9: Search + Doc Controllers
+## Group 9: Search Controllers
 
 **Acceptance Criteria**
-WHEN `POST /api/v1/search` is called with `mode=hybrid` THEN `HybridSearchService.search()` is called
-WHEN `q` is empty THEN 400 with `INVALID_QUERY`
-WHEN `mode` is invalid THEN 400 with `INVALID_MODE`
+WHEN `GET /api/v1/search?q=...` is called THEN `SearchService.search()` is called with the session's `workspace_id` (never from the request)
+WHEN `q` is empty / < 2 chars THEN 422 with `INVALID_QUERY`
 WHEN unauthenticated THEN 401
-WHEN `GET /api/v1/docs/{id}/content` is called for inaccessible doc THEN 403
+WHEN Puppet is unavailable THEN 503 `SEARCH_UNAVAILABLE`
 
-- [ ] **[RED]** Write integration test: POST search, mode=hybrid, returns SearchResult list with provenance
-- [ ] **[RED]** Write test: empty `q` → 400 INVALID_QUERY
-- [ ] **[RED]** Write test: invalid mode → 400 INVALID_MODE
-- [ ] **[RED]** Write test: invalid scope → 400 INVALID_SCOPE
+- [ ] **[RED]** Write integration test: GET search returns Puppet result list with snippets, wm tag injected server-side
+- [ ] **[RED]** Write test: empty / short `q` → 422 INVALID_QUERY
 - [ ] **[RED]** Write test: unauthenticated → 401
-- [ ] **[RED]** Write test: `scope=all` returns both work items and docs
-- [ ] **[RED]** Write test: related-docs returns up to 5 docs for work item
-- [ ] **[RED]** Write test: doc content — 403 for inaccessible doc
-- [ ] **[RED]** Write test: doc content — 404 for unknown doc_id
+- [ ] **[RED]** Write test: Puppet 5xx → 503 SEARCH_UNAVAILABLE (no fallback)
+- [ ] **[RED]** Write test: `GET /search/suggest` → returns prefix matches
+- [ ] **[RED]** Write test: workspace isolation — user from workspace A cannot see results from workspace B even by manipulating query params
 - [ ] **[GREEN]** Implement `presentation/controllers/search_controller.py`
-- [ ] **[GREEN]** Implement `presentation/controllers/doc_controller.py`
-- [ ] **[GREEN]** Implement `presentation/controllers/related_docs_controller.py`
-- [ ] **[REFACTOR]** `POST /api/v1/search` → `GET /api/v1/search` kept as deprecated alias (keyword-only, 200 + deprecation header)
+- [ ] **[GREEN]** Implement `presentation/controllers/saved_search_controller.py`
+- [ ] **[GREEN]** Implement `presentation/controllers/puppet_health_controller.py` (GET /admin/puppet/health)
 
 ---
 
 ## Group 10: Tests (Integration + E2E)
 
-- [ ] **[RED]** Integration test: full hybrid search flow with fake PuppetClient and real PG FTS
-- [ ] **[RED]** Integration test: Puppet unavailable → keyword-only fallback, correct meta
+- [ ] **[RED]** Integration test: end-to-end search flow with `FakePuppetClient`
+- [ ] **[RED]** Integration test: Puppet unavailable → 503 SEARCH_UNAVAILABLE
 - [ ] **[RED]** Integration test: reconcile job detects drift and reindexes
 - [ ] **[RED]** Integration test: admin creates puppet config → health check triggered
 - [ ] **[RED]** Integration test: workspace isolation enforced (user A cannot see workspace B items)
+- [ ] **[RED]** Integration test: push-on-write — creating/updating a work_item fires a Puppet index task within 3s of commit
 - [ ] **[GREEN]** Implement all integration tests using fakes (no real Puppet API in test suite)
 - [ ] **[REFACTOR]** Ensure no tests import `PuppetClient` directly — all use `FakePuppetClient` implementing `IPuppetClient`

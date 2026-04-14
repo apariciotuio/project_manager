@@ -1,33 +1,25 @@
-# Frontend Tasks: EP-13 — Semantic Search + Puppet Integration
+# Frontend Tasks: EP-13 — Puppet Integration (Search + Sync)
 
 **Epic**: EP-13
-**Date**: 2026-04-13
+**Date**: 2026-04-13 (rewritten 2026-04-14 per decisions #4/#9/#24/#28)
 **Status**: Draft
+
+> **Scope (2026-04-14)**: Puppet is the sole search backend. No mode toggle (hybrid/keyword/semantic), no provenance badges, no fallback banner (Puppet outage → 503 not a partial result). Add: prefix type-ahead, saved searches UI. Below is rewritten — obsolete sections removed.
 
 ---
 
 ## API Contracts (Reference)
 
 ```typescript
-// POST /api/v1/search
-type SearchRequest = {
-  q: string
-  mode: 'hybrid' | 'keyword' | 'semantic'
-  scope: 'items' | 'docs' | 'all'
-  limit?: number          // default 20, max 50
-  cursor?: string | null
-  include_archived?: boolean
-}
-
+// GET /api/v1/search?q=...&cursor=&limit=&state=&type=&team_id=&owner_id=&include_archived=
+// No `mode`, no `scope` — Puppet is the only search backend; doc results flow through the same endpoint.
 type SearchResult = {
   id: string
-  result_type: 'work_item' | 'doc'
+  entity_type: 'work_item' | 'section' | 'comment' | 'task' | 'doc'
   title: string
   type?: string           // work_item only
   state?: string          // work_item only
   score: number
-  provenance: 'keyword' | 'semantic' | 'both'
-  matched_by: Array<'keyword' | 'semantic'>
   snippet: string
   workspace_id: string
 }
@@ -36,11 +28,16 @@ type SearchResponse = {
   data: SearchResult[]
   pagination: { cursor: string | null; has_next: boolean }
   meta: {
-    total_count: number
-    search_mode_used: 'hybrid' | 'keyword' | 'semantic'
-    fallback_reason: 'puppet_unavailable' | null
+    puppet_latency_ms: number
   }
 }
+
+// GET /api/v1/search/suggest?q=...
+type SuggestResult = { id: string; title: string; type: string }
+type SuggestResponse = { data: SuggestResult[] }
+
+// /api/v1/saved-searches CRUD
+type SavedSearch = { id: string; name: string; query: string; filters: Record<string, unknown>; created_at: string; updated_at: string }
 
 // GET /api/v1/work-items/{id}/related-docs
 type RelatedDoc = {
@@ -74,51 +71,51 @@ type DocSource = { id: string; name: string; source_type: string; url: string; i
 
 ---
 
-## Group 1: Search UI — Mode Toggle
+## Group 1: Search Bar + Type-Ahead (decision #24)
 
 **Acceptance Criteria**
-WHEN the user clicks a mode tab THEN the URL param `mode` updates immediately
-WHEN `mode` changes THEN the search query re-fires without losing the `q` value
-WHEN Puppet fallback was used THEN a non-blocking info banner shows "Semantic search unavailable — showing keyword results"
+WHEN the user types ≥2 chars THEN `GET /api/v1/search/suggest?q=...` is called with 150ms debounce
+WHEN the user submits (Enter or click) THEN `GET /api/v1/search?q=...&<filters>` is called and results render
+WHEN Puppet returns 503 THEN a persistent banner shows "Search is temporarily unavailable" and results area is empty
 
-- [ ] **[RED]** Write component test: `ModeToggle` renders three tabs (hybrid, keyword, semantic)
-- [ ] **[RED]** Write test: clicking a tab updates `mode` URL param
-- [ ] **[RED]** Write test: active tab reflects current `mode` URL param value
-- [ ] **[GREEN]** Implement `components/search/ModeToggle.tsx`
-  - Props: `mode: SearchMode`, `onChange: (mode: SearchMode) => void`
-  - Renders as tab strip using Tailwind
-- [ ] **[RED]** Write test: fallback banner renders when `meta.fallback_reason === 'puppet_unavailable'`
-- [ ] **[GREEN]** Add fallback banner to `SearchResults.tsx` — reads from `meta`
-- [ ] **[RED]** Write test: `SearchBar` passes `mode` in request body
-- [ ] **[GREEN]** Update `SearchBar.tsx`: change from GET to POST `/api/v1/search`, include `mode` and `scope`
-- [ ] **[REFACTOR]** URL state: `useSearchParams` drives `mode`, `scope`, `q` — no React state duplication
+- [ ] **[RED]** Write test: `SearchBar` debounces suggest calls at 150ms
+- [ ] **[RED]** Write test: suggest dropdown renders ≤5 results, keyboard nav (↑/↓/Enter)
+- [ ] **[RED]** Write test: 503 response shows "Search unavailable" banner
+- [ ] **[GREEN]** Implement `components/search/SearchBar.tsx` with prefix suggestions
+- [ ] **[REFACTOR]** URL state: `useSearchParams` drives `q` and filters — no React state duplication
 
 ---
 
-## Group 2: Search Results List with Provenance Badges
+## Group 2: Search Results List
 
 **Acceptance Criteria**
-WHEN a result has `provenance='both'` THEN both "Keyword" and "Semantic" badges render
-WHEN a result has `provenance='keyword'` THEN only "Keyword" badge renders
-WHEN `result_type='doc'` THEN `DocResultCard` renders instead of work item card
+WHEN results render THEN each card shows title, type/state, snippet (HTML-safe), entity-type icon
 WHEN results are loading THEN skeleton cards render (not a spinner)
+WHEN `entity_type='doc'` THEN `DocResultCard` renders (external link + source)
 
-- [ ] **[RED]** Write test: `ProvenanceBadge` renders "Keyword" for `provenance='keyword'`
-- [ ] **[RED]** Write test: `ProvenanceBadge` renders both badges for `provenance='both'`
-- [ ] **[GREEN]** Implement `components/search/ProvenanceBadge.tsx`
-  - Props: `provenance: 'keyword' | 'semantic' | 'both'`
-  - Keyword badge: blue; Semantic badge: violet; Both: both rendered
-- [ ] **[RED]** Write test: `SearchResultCard` renders `ProvenanceBadge` using result.provenance
-- [ ] **[GREEN]** Update `SearchResultCard.tsx`: add `ProvenanceBadge`, render snippet with highlight markup
+- [ ] **[RED]** Write test: `SearchResultCard` renders title, snippet (sanitized), state/type chips
+- [ ] **[GREEN]** Implement `components/search/SearchResultCard.tsx`
 - [ ] **[RED]** Write test: `DocResultCard` renders `source_name` and external link icon
 - [ ] **[GREEN]** Implement `components/search/DocResultCard.tsx`
-  - Shows title, source_name, snippet, provenance badge, external link to `url`
-  - On click: opens `DocPreviewPanel` (not external URL directly)
-- [ ] **[RED]** Write test: `SearchResults` renders `DocResultCard` for `result_type='doc'`, `SearchResultCard` for `work_item`
-- [ ] **[GREEN]** Update `SearchResults.tsx`: type-dispatch on `result_type`
+- [ ] **[RED]** Write test: `SearchResults` renders `DocResultCard` for `entity_type='doc'`, `SearchResultCard` otherwise
 - [ ] **[RED]** Write test: skeleton cards render when `isLoading=true`
 - [ ] **[GREEN]** Add skeleton loading state (3 placeholder cards) to `SearchResults.tsx`
-- [ ] **[REFACTOR]** Pagination: "Load more" button using cursor from `meta.pagination`
+- [ ] **[REFACTOR]** Pagination: "Load more" button using cursor from `pagination`
+- [ ] Removed: `ProvenanceBadge`, `ModeToggle`, hybrid/keyword/semantic mode switcher, Puppet-fallback banner. Puppet is the only backend — no provenance to display (decision #4).
+
+---
+
+## Group 2b: Saved Searches (decision #24)
+
+**Acceptance Criteria**
+WHEN the user saves a search THEN `(name, query, filters)` is persisted for their user
+WHEN the user opens the saved-search side panel THEN only their own saves are listed
+WHEN the user clicks a saved search THEN the URL is replaced with the saved `(q, filters)` and results re-fetch
+
+- [ ] **[RED]** Write test: `SavedSearchesPanel` lists only the current user's saves
+- [ ] **[RED]** Write test: "Save this search" captures current URL query + filter state into a named save
+- [ ] **[RED]** Write test: rename + delete happy paths
+- [ ] **[GREEN]** Implement `components/search/SavedSearchesPanel.tsx` + API client in `lib/api/saved-searches.ts`
 
 ---
 

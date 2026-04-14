@@ -1,6 +1,6 @@
 # EP-12 Backend Subtasks — Responsive, Security, Performance
 
-> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. All Sentry, Prometheus, OpenTelemetry, Loki, health-dashboard, trace-sampling, LLM-metrics, and `product_events` tasks below are **obsolete**. Keep only stdlib logging + `CorrelationIDMiddleware`. Re-plan this file at TDD time.
+> **Scope (2026-04-14, decisions_pending.md #27)**: Observability deferred. Keep stdlib `logging` + `CorrelationIDMiddleware`. Drop Sentry, Prometheus, OpenTelemetry, Loki, Grafana, trace sampling, LLM-metrics, `product_events`, integration-health endpoint, ops queue-depth endpoint, ops dashboard. Below is rewritten — obsolete sections are removed, not flagged.
 
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
 **Note**: EP-12 must be implemented FIRST. All other epics depend on this middleware stack.
@@ -22,18 +22,12 @@ GET  /api/v1/jobs/{job_id}/progress    -- SSE stream for long-running Celery job
 POST /api/v1/csp-report               -- CSP violation reports (no-auth, log at WARN)
      Body: CSP report JSON
      Response: 204
-
-GET  /api/v1/ops/queue-depths          -- ops only (requires ops capability)
-     Response 200: { "queues": [{ "name", "depth", "consumers" }] }
-
-GET  /api/v1/ops/integration-health    -- ops only
-     Response 200: { "integrations": [{ "id", "type", "state", "error_streak" }] }
 ```
 
 ### Middleware chain (all requests)
 ```
-CorrelationIDMiddleware  → X-Correlation-ID header in/out
-RequestLoggingMiddleware → structured log per request
+CorrelationIDMiddleware  → X-Correlation-ID header in/out (ContextVar bound)
+RequestLoggingMiddleware → stdlib logging line per request (method, path, status, duration_ms, correlation_id)
 CORSMiddleware           → ALLOWED_ORIGINS allowlist
 RateLimitMiddleware      → Redis sliding window (10/min unauth, 300/min auth)
 JWTAuthMiddleware        → validate token, attach user to request.state
@@ -49,7 +43,7 @@ InputValidationMiddleware → Pydantic, handled by FastAPI
 
 WHEN a request arrives with no `X-Correlation-ID` header
 THEN the middleware generates a UUID v4 and adds it to the response as `X-Correlation-ID`
-AND structlog binds `correlation_id` for the entire request context
+AND the `correlation_id` ContextVar is set for the entire request context
 
 WHEN a request arrives with a valid UUID in `X-Correlation-ID`
 THEN that value is passed through unchanged to the response header
@@ -63,10 +57,7 @@ THEN the order is: CorrelationID → RequestLogging → CORS → RateLimit → J
 AND no handler executes before all earlier middleware passes
 
 WHEN a request completes (any status code)
-THEN a single structured JSON log line is emitted containing: `method`, `path`, `status_code`, `duration_ms`, `correlation_id`
-
-WHEN any log line is emitted
-THEN it is valid single-line JSON with at minimum: `timestamp`, `level`, `logger`, `message`, `correlation_id`, `environment`
+THEN a single log line is emitted containing: `method`, `path`, `status_code`, `duration_ms`, `correlation_id`
 
 ### CorrelationIDMiddleware
 - [ ] [RED] Test: generates UUID v4 when `X-Correlation-ID` header absent
@@ -74,10 +65,10 @@ THEN it is valid single-line JSON with at minimum: `timestamp`, `level`, `logger
 - [ ] [RED] Test: rejects and regenerates when header contains invalid UUID
 - [ ] [RED] Test: `X-Correlation-ID` always present in response header
 - [ ] [GREEN] Implement `CorrelationIDMiddleware` in `app/presentation/middleware/correlation_id.py`
-- [ ] [GREEN] Bind `correlation_id` into structlog contextvars per request
+- [ ] [GREEN] Bind `correlation_id` into a `ContextVar` consumed by the logging formatter
 
-### Structured Logging
-- [ ] [RED] Test: log output is valid JSON with fields: `correlation_id`, `timestamp`, `level`, `logger`, `message`
+### Logging (stdlib only — decision #27)
+- [ ] [RED] Test: log line includes `correlation_id` via a `Filter`/`Formatter` reading from ContextVar
 - [ ] [GREEN] Configure structlog with JSON renderer and contextvars processor in `app/infrastructure/logging/setup.py`
 - [ ] [GREEN] Import and initialize in `app/main.py`
 
@@ -170,7 +161,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 ### Secrets Handling
 - [ ] Grep codebase for hardcoded secrets (patterns: password, secret, key, token in non-test source)
 - [ ] [GREEN] Add startup validation: if any required secret is None in production, raise `ConfigurationError` with variable name
-- [ ] [GREEN] Add `scrub_sensitive_data` `before_send` hook in Sentry init to strip `Authorization` headers and credential fields
+- [ ] [GREEN] Logging formatter scrubs known-sensitive keys (`Authorization`, `token`, `password`, `secret`, `api_key`, `credentials`) from log records
 
 ---
 
@@ -291,51 +282,12 @@ Both EP-03 and EP-08 must delegate to `SseHandler.stream(channel, request)` — 
 
 ---
 
-## Group 4 — Observability
+## Group 4 — Observability (removed — decision #27)
 
-### Acceptance Criteria — Sentry & Observability
+Sentry, ProductEventService, `product_events` table, `integration_sync_log`, `v_endpoint_metrics` view, `/api/v1/ops/queue-depths`, `/api/v1/ops/integration-health`, Prometheus, Grafana, Loki, OpenTelemetry, trace sampling — **all out of scope**.
 
-WHEN an unhandled exception occurs
-THEN `sentry_sdk.capture_exception()` is called automatically
-AND the Sentry event includes `correlation_id` tag and `user_id`, `workspace_id` as context
+Retained:
+- `CorrelationIDMiddleware` + stdlib `logging` → stdout (Group 1)
+- Correlation ID on FE error UI (see `tasks.md` Group 4.1)
 
-WHEN `scrub_sensitive_data` before_send hook runs
-THEN `Authorization` headers and any key matching `credentials`, `token`, `secret`, `password` are stripped from Sentry breadcrumbs
-
-WHEN `ProductEventService.track(event)` is called and the analytics backend is unavailable
-THEN no exception propagates to the caller
-AND a WARN log is emitted with the event name and `correlation_id`
-
-WHEN `GET /api/v1/ops/queue-depths` is called without the `ops` capability
-THEN the API returns HTTP 403
-
-WHEN Jira returns HTTP 401 during sync
-THEN an `integration.failed` product event is emitted
-AND the workspace admin receives an SSE notification
-AND `jira_config.state` is set to `credential_error` (transition to error after 3 consecutive failures per EP-10 rules)
-
-### Sentry Backend
-- [ ] [GREEN] Add `sentry-sdk` to dependencies (Python)
-- [ ] [GREEN] Initialize Sentry in `app/main.py` with `FastApiIntegration`, `SqlalchemyIntegration`, `CeleryIntegration`; `traces_sample_rate=0.1`
-- [ ] [GREEN] Add `scrub_sensitive_data` before_send hook
-- [ ] [GREEN] Inject `correlation_id` and `user_id` as Sentry tags in `CorrelationIDMiddleware`
-- [ ] [RED] Test: unhandled exception is captured (mock Sentry client, verify `capture_exception` called)
-- [ ] [RED] Test: handled integration failure calls `capture_exception` with `correlation_id` extra
-
-### Product Event Service
-- [ ] [RED] Test: `ProductEventService.track()` calls backend with correct event schema
-- [ ] [RED] Test: backend unavailability does NOT propagate exception — logs warning only
-- [ ] [GREEN] Implement `ProductEventService` and `ProductEventBackend` interface in `app/application/services/product_event_service.py`
-- [ ] [GREEN] Implement Postgres-backed backend: append-only `product_events` table ⚠️ originally MVP-scoped — see decisions_pending.md
-- [ ] [GREEN] Emit events at: login, element created/submitted/reviewed/exported, search performed, integration sync/fail, member invite/remove
-
-### Integration Failure Visibility
-- [ ] [RED] Test: Jira 401 marks integration as `credential_error`, emits `integration.failed` product event, sends SSE notification to workspace admin
-- [ ] [RED] Test: admin dashboard integration health reflects failure streak
-- [ ] [GREEN] Implement `integration_sync_log` table and repository (verify alignment with EP-10 `jira_sync_logs` — no duplicate migration)
-- [ ] [GREEN] Write integration failure banner query for dashboard
-
-### Ops Dashboard Endpoints
-- [ ] [GREEN] Create DB view `v_endpoint_metrics` from request log table (requires structured request logging from Group 1)
-- [ ] [GREEN] Implement `GET /api/v1/ops/queue-depths` (requires ops capability; reads Celery queue depth from Redis)
-- [ ] [GREEN] Implement `GET /api/v1/ops/integration-health`
+Integration failures are surfaced at the API boundary (error response + structured log line with `correlation_id`, `integration_id`, `error_code`). No separate `integration_sync_log`/product-event trail. Re-evaluate when scale or ops needs change.

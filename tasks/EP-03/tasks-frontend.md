@@ -1,46 +1,40 @@
-# EP-03 Frontend Tasks — Clarification, Conversation & Assisted Actions
+# EP-03 Frontend Tasks — Clarification, Conversation & Assisted Actions (Dundun proxy)
 
 Branch: `feature/ep-03-frontend`
 Refs: EP-03
 Depends on: EP-00 frontend, EP-01 frontend (WorkItem types), EP-03 backend API
 
+> **Scope (2026-04-14, decisions_pending.md #17, #32)**: Chat transport is **WebSocket** (proxied through our BE to Dundun `/ws/chat`). No SSE stream for chat, no `LLM_TIMEOUT` payload, no token-count display. Message history fetched on demand via `GET /api/v1/threads/{id}/history` (delegated to Dundun). Keep: diff viewer, split-view, suggestion UI, quick actions, gap panel.
+
 ---
 
 ## API Contract (Blocked by: EP-03 backend)
 
-**SSE stream:** `GET /api/v1/threads/{thread_id}/stream` — `text/event-stream`
+**Chat transport:** WebSocket `wss://<host>/ws/conversations/{thread_id}`. Frame schema is owned by Dundun and forwarded verbatim:
 ```
-event: token
-data: {"content": "partial..."}
-
-event: done
-data: {"message_id": "uuid"}
-
-event: error
-data: {"code": "LLM_TIMEOUT", "message": "..."}
+{"type": "progress", "content": "..."}
+{"type": "response", "content": "...", "message_id": "<dundun-id>"}
+{"type": "error", "code": "<dundun-error-code>", "message": "..."}
 ```
 
 **Thread response:**
 ```typescript
 interface ConversationThread {
   id: string
-  thread_type: 'element' | 'general'
-  work_item_id: string | null
-  owner_user_id: string
-  title: string | null
-  status: 'active' | 'archived'
+  work_item_id: string | null            // null for general threads
+  user_id: string                        // threads are per-user (decision #17)
+  dundun_conversation_id: string
+  last_message_preview: string | null
+  last_message_at: string | null
   created_at: string
-  updated_at: string
 }
 
 interface ConversationMessage {
+  // history is fetched from Dundun via GET /threads/{id}/history;
+  // schema mirrors Dundun's message shape (no token_count, no prompt metadata in our DB)
   id: string
-  thread_id: string
-  author_type: 'human' | 'assistant' | 'system'
-  author_user_id: string | null
+  role: 'user' | 'assistant' | 'system'
   content: string
-  message_type: 'text' | 'summary' | 'system_error' | 'gap_question' | 'suggestion_card'
-  token_count: number
   created_at: string
 }
 ```
@@ -125,11 +119,11 @@ interface GapPanelProps {
   - "Run AI Review" button triggers `triggerAiReview()` and shows loading state
   - After AI review triggered, shows "Review in progress..." status
   - Dismissible: each gap has dismiss button (client-side dismiss, not persisted)
-  - LLM-sourced gaps labeled "AI" badge; rule-based gaps labeled "Rule" badge
+  - Dundun-sourced gaps labeled "AI" badge; rule-based gaps labeled "Rule" badge
 - [ ] [GREEN] Implement `src/components/clarification/gap-panel.tsx`:
   - Fetches gap findings via `getGapQuestions(workItemId)` using React Query
   - Groups: blocking first, then warnings, then info
-  - "Run AI Review" calls `triggerAiReview()` then polls `getSuggestionSet` or waits for SSE notification
+  - "Run AI Review" calls `triggerAiReview()` then waits for an SSE event on the work-item channel (EP-08) signalling that `/api/v1/dundun/callback` has written new findings
   - Error state: "Gap analysis unavailable" with retry
 
 ### Acceptance Criteria — GapPanel
@@ -141,7 +135,7 @@ THEN blocking findings are rendered first (red indicator)
 AND warning findings follow (yellow indicator)
 AND no info-severity findings are shown in the blocking section
 
-WHEN a gap has `source = "llm"`
+WHEN a gap has `source = "dundun"`
 THEN it displays an "AI" badge next to the message
 
 WHEN a gap has `source = "rule"`
@@ -198,19 +192,18 @@ interface ConversationThreadProps {
 ```
 
 - [ ] [RED] Write component tests:
-  - Renders message list with human/assistant distinction
-  - Streaming assistant message: renders incrementally as tokens arrive
-  - Loading skeleton on initial fetch
+  - Renders message list with user/assistant distinction
+  - Streaming assistant message: appends progress frames incrementally
+  - Loading skeleton on initial fetch of history
   - Error state with retry button
   - Empty state: "Start the conversation by sending a message"
   - Input textarea disabled while assistant is responding
-  - `onDone` event from SSE appends final message with correct `message_id`
+  - Final `{"type":"response", "message_id": ...}` frame finalizes the bubble
 - [ ] [GREEN] Implement `src/components/conversation/conversation-thread.tsx`:
-  - Message list fetched via `getThread()` (paginated, load-more at top)
-  - SSE via `streamThread()`: on mount starts stream, on unmount calls cleanup function (tear down `EventSource`)
-  - Streaming state: append tokens to last assistant message in local state
-  - Message types: `summary` rendered differently (collapsed header); `gap_question` renders as `ClarificationQuestion`; `system_error` renders as inline error banner
-  - Auto-scroll to bottom on new message
+  - History fetched via `getThreadHistory(threadId)` (delegates to Dundun) on mount
+  - WebSocket via `useConversationWs(threadId)`: opens on mount, closes on unmount; reconnects with exponential backoff on transient drops
+  - Streaming state: append content from `progress` frames to the last assistant bubble
+  - Auto-scroll to bottom on new frame
 - [ ] [GREEN] Implement `MessageComposer` sub-component: textarea, send button, Ctrl+Enter to submit; disabled when `isStreaming = true`
 
 ### Acceptance Criteria — ConversationThread
@@ -226,26 +219,22 @@ THEN the human message is immediately appended to the displayed list (optimistic
 AND the `MessageComposer` textarea is cleared
 AND `MessageComposer` is disabled while streaming is in progress
 
-WHEN SSE `event: token` events arrive
+WHEN WS `progress` frames arrive
 THEN the partial content is appended to the last assistant message bubble incrementally
-AND the message bubble does NOT re-render from scratch on each token (no flash)
+AND the bubble does NOT re-render from scratch on each frame (no flash)
 
-WHEN SSE `event: done` arrives
-THEN the streaming message's `message_id` is set to the value from the event
+WHEN a WS `response` frame arrives
+THEN the streaming message's `message_id` is set to the value from the frame
 AND the MessageComposer is re-enabled
 
-WHEN SSE `event: error` arrives (e.g., LLM_TIMEOUT)
-THEN an inline error banner is appended as a `system_error` message type
+WHEN a WS `error` frame arrives
+THEN an inline error banner is appended (with Dundun's `code` + `message`)
 AND the MessageComposer is re-enabled
 AND a "Retry" option is shown
 
-WHEN the component unmounts while SSE stream is active
-THEN the `EventSource` is closed (cleanup function called)
+WHEN the component unmounts while the WS is open
+THEN the WebSocket is closed (cleanup function called)
 AND no further state updates occur after unmount
-
-WHEN a `summary` type message is in the list
-THEN it is rendered as a collapsed "Earlier context summarised" header
-AND clicking it expands to show the summary text
 
 ---
 

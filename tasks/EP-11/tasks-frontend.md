@@ -1,7 +1,9 @@
 # EP-11 Frontend Subtasks — Export & Sync with Jira
 
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS, React Query
-**Depends on**: EP-09 (WorkItemDetail page where export UI lives), EP-10 frontend (Jira config/sync log viewer from admin), EP-12 (API client, SkeletonLoader, ErrorBoundary)
+**Depends on**: EP-09 (WorkItemDetail page where export UI lives), EP-10 frontend (Jira config/export history viewer from admin), EP-12 (API client, SkeletonLoader, ErrorBoundary)
+
+> **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no automated sync. Export UI is upsert-by-key (re-export UPDATEs the same Jira issue). New user-initiated "Import from Jira" action added below.
 
 ---
 
@@ -182,8 +184,31 @@ THEN `EmptyState` renders with message "No exports yet"
 
 ---
 
+## Group N — Import from Jira (decision #12)
+
+### Acceptance Criteria
+
+WHEN the user picks "Import from Jira" in the project work-item list
+THEN a modal opens asking for a Jira issue key (e.g. `PROJ-123`)
+
+WHEN the user confirms a valid Jira key
+THEN `POST /api/v1/work-items/import-from-jira` is called with `{ jira_issue_key, project_id }`
+AND on 201 the user is navigated to the new draft work-item detail page
+AND on 422 `JIRA_ISSUE_NOT_FOUND` an inline error is shown ("Issue not found in Jira — check the key")
+AND on 409 `ALREADY_IMPORTED` the user is offered a link to the existing work item
+
+### Tasks
+
+- [ ] [RED] Test: `importFromJira({ jira_issue_key, project_id })` API client — 201 returns work_item; 422 returns typed error; 409 returns typed error with `work_item_id`
+- [ ] [GREEN] Implement `importFromJira` in `lib/api/imports.ts`
+- [ ] [RED] Test: `ImportFromJiraModal` — input validation (`^[A-Z][A-Z0-9]+-\d+$`), submit calls API, success navigates, 422 shows inline error, 409 shows "Already imported — [open existing]"
+- [ ] [GREEN] Implement `ImportFromJiraModal` in `components/imports/ImportFromJiraModal.tsx`
+- [ ] [GREEN] Add "Import from Jira" action to project work-item list menu (visible only if user has `create_work_item` capability AND workspace has an active Jira config)
+
+---
+
 ## Notes
 
 - No separate page for export — all UI lives inside the work item detail view (EP-09).
-- Admin-side Jira sync log viewer is covered in EP-10 frontend (`JiraSyncLogTable`).
-- Export status polling is NOT needed: the export history is fetched on section open. For real-time status updates if required in future, use EP-12 SSE infrastructure.
+- Admin-side Jira export history viewer is covered in EP-10 frontend (`JiraExportHistoryTable`). There is no `sync_logs` table (decision #26).
+- Export status polling is NOT needed: the export history is fetched on section open. For real-time status updates if required in future, use EP-08 SSE infrastructure.

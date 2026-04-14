@@ -2,7 +2,7 @@
 
 Living document. Tracks where we are in the plan refinement process. Update after every completed step so we can resume without re-reading the whole conversation history.
 
-**Last updated:** 2026-04-14 (FSM enum normalized to English)
+**Last updated:** 2026-04-14 (Final EP polish complete)
 
 ---
 
@@ -59,11 +59,12 @@ Living document. Tracks where we are in the plan refinement process. Update afte
 **Ficheros canónicos (orden de precedencia):**
 1. `decisions_pending.md` — decisiones resueltas, fuente de verdad
 2. `assumptions.md` — stack asumido, sincronizado con decisions_pending
-3. `progress.md` (este) — estado de avance
-4. `tech_info.md` — overview técnico
-5. `docs/project_overview.md` — visión producto
-6. `megadocumento_mvp_prd_admin_backlog.md` — PRD completo
-7. `tasks/EP-*/` — docs por épica (los que toca propagar)
+3. **`tasks/implementation_plan.md`** — **plan por milestones (M0-M8), arranca aquí cuando se quiera codear**
+4. `progress.md` (este) — estado de avance
+5. `tech_info.md` — overview técnico
+6. `docs/project_overview.md` — visión producto (ES narrativa)
+7. `megadocumento_mvp_prd_admin_backlog.md` — PRD completo (ES narrativa)
+8. `tasks/EP-*/` — docs por épica (design/proposal/specs/tasks-*)
 
 **NUNCA tocar** sin confirmación: `CLAUDE.md`, `AGENTS.md`, `apm_modules/**`, `.apm/**`, `tasks/reviews/**`, `tasks/consistency_review.md`.
 
@@ -77,6 +78,7 @@ Living document. Tracks where we are in the plan refinement process. Update afte
 | Track 2 — technical decisions | ✅ done | 32 decisions resolved in `decisions_pending.md`, all 🟢 |
 | **Track 1 — propagation to EP docs** | 🟢 **complete** | All 18 EPs updated; see per-EP table below |
 | Track 3 — consistency fixes | 🟢 complete | 20 schema issues audited. 15 resolved indirectly by Track 1; 5 residuals fixed here (EP-08 tasks deps, EP-09 phantom state/type enums in listings spec, dashboard TTL 60→120s, pagination shape `next_cursor`→`cursor+has_next`, `element_id`→`work_item_id` in EP-10/EP-12 specs, `audit_logs`→`audit_events` unified table in EP-00 + de-dupe in EP-10). 0 marked obsolete. One broader drift flagged (not in scope): FSM enum Spanish in EP-01 design vs English everywhere else. |
+| EP polish pass | ✅ done | 8 EPs polished (EP-03, EP-07, EP-09, EP-10, EP-11, EP-12, EP-13, EP-16), 0 drift remaining |
 
 ---
 
@@ -123,20 +125,20 @@ Status legend: 🔴 pending · 🟡 in progress · 🟢 done · ⚪ minor / skip
 | EP-00 | 🟢 | No auto-create workspace; HS256 JWT; Superadmin seed config; `returnTo`; multi-workspace routing; `users.is_superadmin` | 0 files — already aligned (AD-05/AD-07 in design; bootstrap spec annotated; HS256/no RS256 documented) |
 | EP-01 | 🟢 | Canonical `work_items` schema (full column list); FSM lowercase; derived_state materialized; due_date | 0 files — already canonical (design.md authoritative; FSM, schema, types all aligned with decisions_pending.md) |
 | EP-02 | 🟢 | JSON-schema typed templates 3-layer; create `specs/templates/spec.md` | 2 files — specs/templates/spec.md fully rewritten with 3-layer model + JSON schema; design.md templates table now `schema JSONB` + canonical type enum |
-| EP-03 | 🟢 **MAJOR** | Thin Dundun proxy; drop LLM/prompts; single `dundun` Celery queue; conversation_threads pointer to Dundun; diff viewer stays | 1 file — design.md §1-§2 fully rewritten: conversation_threads pointer to Dundun (no history cache), DundunClient HTTP+WS, chat WS proxy, async callback pattern, agents list, quick actions, diff viewer kept in-house. Remaining sections (suggestion model, gap detection, endpoints) pre-existing content now references the proxy |
+| EP-03 | 🟢 **MAJOR** | Thin Dundun proxy; drop LLM/prompts; single `dundun` Celery queue; conversation_threads pointer to Dundun; diff viewer stays | 1 file — design.md §1-§2 fully rewritten. Polish pass (2026-04-14): tasks.md + tasks-backend.md + tasks-frontend.md now aligned — LLMProvider/PromptRegistry/AnthropicAdapter/prompt-YAML/tiktoken/token-budget/conversation_messages/summarise items dropped; replaced with DundunClient, FakeDundunClient, HMAC callback, WS proxy endpoint, single `dundun` queue, per-user threads |
 | EP-04 | 🟢 | Granular 0-100%; validator rules DB-editable; spec gen via Dundun callback; archive job | 1 file — design.md: granular scoring float [0,1], validator rules via EP-06 DB table, spec gen delegated to Dundun (wm_spec_gen_agent via Celery callback), section-version archive job |
 | EP-05 | 🟢 | Breakdown via Dundun; cross-item deps; `dnd-kit`; no reverse FSM | 1 file — design.md: task_dependencies (source_id/target_id + cross-item), Dundun breakdown via Celery callback, dnd-kit, unmark-done endpoint, READ COMMITTED concurrency |
 | EP-06 | 🟢 | Validation rules editable via API/UI; event emission; `review_requests`/`review_responses` naming | 1 file — design.md: validation_requirements + workspace_id + is_active + admin API; cross-epic fan-out uses in-process bus + direct call |
-| EP-07 | 🟢 **MAJOR** | Reactions, mentions, edit history, version tagging, outbox, SSE push, export, Puppet search for comments/timeline | 1 file — design.md: Markdown-aware diff (remark+diff-match-patch), outbox pattern for timeline, reactions/mentions/comment_versions/version_tags tables, manual versions, permanent delete, SSE push, export, per-user timeline, Puppet-indexed comment/timeline search |
+| EP-07 | 🟢 **MAJOR** | Reactions, mentions, edit history, version tagging, outbox, SSE push, export, Puppet search for comments/timeline | 1 file — design.md: Markdown-aware diff (remark+diff-match-patch), outbox pattern for timeline, reactions/mentions/comment_versions/version_tags tables, manual versions, permanent delete, SSE push, export, per-user timeline, Puppet-indexed comment/timeline search. Polish pass: tasks-backend + tasks-frontend presigned-URL refs → authenticated streaming download endpoint |
 | EP-08 | 🟢 | `AbstractEventBus`; no email; teams soft-delete; fix inbox queries | 1 file — design.md: teams soft-delete (deleted_at); AbstractEventBus + InProcessEventBus default; inbox UNION references review_requests/review_responses |
-| EP-09 | 🟢 **MAJOR** | Search fully delegated to PuppetClient; drop PG FTS; `saved_searches` table | 2 files — design.md §4 rewritten (Puppet delegation, no FTS/tsvector/RRF); specs/search/spec.md fully rewritten (PuppetClient API, tag filters, saved_searches, prefix, degraded fallback) |
-| EP-10 | 🟢 | 5 profiles as constants; Superadmin surface (web/API); project-scoped Jira; no partitioning/MV/vault; audit indexes | 1 file — design.md: 5 profiles + superadmin flag, Superadmin surface section (web/API + deferred list), project-scoped mapping table, no MV/vault, Fernet with rotation, updated audit indexes |
-| EP-11 | 🟢 **MAJOR** | Jira upsert-by-key; `import-from-jira` action new; drop `sync_logs`/polling/webhooks; rename spec | 4 files — design.md rewritten (upsert-by-key + import flow, no polling/webhooks/sync_logs, exported_by→users(id)); specs/sync/spec.md gutted to redirect; specs/import/spec.md created with full scenarios; progress.md updated |
-| EP-12 | 🟢 | Drop observability (keep stdlib log + correlation ID); rename scope | 2 files — design.md: scope note (obs deferred), middleware stack reordered per brief; specs/observability/spec.md reduced to stdlib logging + correlation ID only |
-| EP-13 | 🟢 **MAJOR** | PuppetClient + push-on-write pipeline; saved searches, faceted, prefix; drop RRF hybrid | 1 file — design.md: scope note, arch overview rewritten (Puppet-only, no hybrid), IPuppetClient interface (search/prefix/index/delete/health) aligned with brief, §3 replaced with SearchService thin wrapper + tag builder (no RRF fusion) |
+| EP-09 | 🟢 **MAJOR** | Search fully delegated to PuppetClient; drop PG FTS; `saved_searches` table | 2 files — design.md §4 rewritten (Puppet delegation, no FTS/tsvector/RRF); specs/search/spec.md fully rewritten (PuppetClient API, tag filters, saved_searches, prefix, degraded fallback). Polish pass: tasks.md + tasks-backend.md Groups 1/2/6/12 rewritten — no `search_vector`, no GIN FTS index, no tsvector composition, no `build_search_vector`, no `reindex_work_item_search_vector`. Replaced with SearchService wrapper, SavedSearchService, Puppet after-commit push hook, suggest endpoint, 503 SEARCH_UNAVAILABLE |
+| EP-10 | 🟢 | 5 profiles as constants; Superadmin surface (web/API); project-scoped Jira; no partitioning/MV/vault; audit indexes | 1 file — design.md: 5 profiles + superadmin flag, Superadmin surface section, project-scoped mapping table, no MV/vault, Fernet with rotation. Polish pass: tasks.md + tasks-backend.md + tasks-frontend.md — `jira_sync_logs` migration/model/repo/test/UI refs dropped; `JiraSyncLogTable` renamed `JiraExportHistoryTable` sourced from EP-11 export events |
+| EP-11 | 🟢 **MAJOR** | Jira upsert-by-key; `import-from-jira` action new; drop `sync_logs`/polling/webhooks | 4 files — design.md rewritten; specs/sync/spec.md gutted; specs/import/spec.md created. Polish pass: tasks.md + tasks-backend.md + tasks-frontend.md — SyncService/SyncTask/sync_all_active_exports/Celery Beat items dropped; ImportService + ImportController + `POST /work-items/import-from-jira` + ImportFromJiraModal added; integration tests updated for upsert-by-key |
+| EP-12 | 🟢 | Drop observability (keep stdlib log + correlation ID); rename scope | 2 files — design.md + specs/observability/spec.md previously reduced. Polish pass: tasks.md + tasks-backend.md + tasks-frontend.md — Sentry/`sentry-sdk`/`@sentry/nextjs`/`product_events`/ProductEventService/`integration_sync_log`/`v_endpoint_metrics`/ops queue-depth + integration-health endpoints/ops dashboard page removed (not flagged). Kept: CorrelationIDMiddleware, stdlib logging, ErrorBoundary showing correlation_id |
+| EP-13 | 🟢 **MAJOR** | PuppetClient + push-on-write pipeline; saved searches, faceted, prefix; drop RRF hybrid | 1 file — design.md: scope note + arch rewrite (earlier round). Polish pass: proposal.md fully rewritten (frames EP-13 as "Puppet integration — search + sync pipeline"); tasks-backend.md Groups 4/5/9/10 rewritten — HybridSearchService/RRF fusion/DocSearchService/DocContentService/ProvenanceBadge/ModeToggle dropped; SearchService thin wrapper + SavedSearchService + prefix endpoint + Puppet-health endpoint added; tasks-frontend.md rewritten — API contract + Group 1 (search bar with type-ahead) + Group 2 (result list) + Group 2b (saved searches). No hybrid/keyword/semantic mode toggle, no provenance badges, no fallback banner |
 | EP-14 | 🟢 | Minor alignment with EP-01 `work_items` schema | 3 files — design+proposal types→Spanish (mejora/tarea/iniciativa/cambio/requisito); VALID_PARENT_TYPES rewritten; validation spec table canonicalized |
 | EP-15 | 🟢 | Minor: cross-cutting renames + Puppet tag propagation | 1 file — design: archived→archived_at, added Puppet Search Integration + EP-13 dep |
-| EP-16 | 🟢 | Drop ClamAV/signed URLs; PDF thumbnails; authenticated streaming endpoint | 2 files — design.md: scope note, drop scan_status + presigned URLs, add authenticated download stream + PDF thumbnail via pdf2image; security spec rewritten with authenticated streaming |
+| EP-16 | 🟢 | Drop ClamAV/signed URLs; PDF thumbnails; authenticated streaming endpoint | 2 files — design.md + security spec. Polish pass: tasks-backend.md + tasks-frontend.md fully rewritten — ClamAV Celery scan task, `attachment_scan_status`, presigned PUT/GET, `request-upload`+`confirm` two-phase flow, `useScanStatusPoller`, pending/quarantined UI states all removed. Kept: single-phase multipart upload, authenticated streaming download/`thumbnail` endpoints, PDF thumbnails via pdf2image, ImageGallery/Lightbox/PdfViewer, admin quota dashboard, comment inline images |
 | EP-17 | 🟢 | Section-level locks; presence service integrated | 1 file — design.md: scope note, section-level lock key, endpoints re-scoped to /sections/:section_id/lock, admin locks GET, presence events on shared SSE channel |
 
 ---

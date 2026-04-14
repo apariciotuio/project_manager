@@ -165,9 +165,8 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 - [ ] Migration: create `context_presets` table (workspace_id, name, description)
 - [ ] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields)
 - [ ] Migration: create `jira_project_mappings` table
-- [ ] Migration: create `jira_sync_logs` table with status index
 - [ ] `audit_events` table + PG RULEs are created by EP-00 (shared unified table — see EP-00 design.md §audit_events). EP-10 writes only with `category IN ('admin','domain')`. Do NOT redeclare the table or the rules here.
-- [ ] Add composite indexes per design.md section 2 (workspace_state, validation_rules_lookup, routing_rules_lookup, audit indexes, sync_log_status, work_items_owner_state)
+- [ ] Add composite indexes per design.md section 2 (workspace_state, validation_rules_lookup, routing_rules_lookup, audit indexes, work_items_owner_state). No `sync_log_status` — decision #26 removed `sync_logs`.
 - [ ] Verify all foreign keys, NOT NULL constraints, enum constraints
 
 ---
@@ -179,7 +178,7 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 - [ ] `domain/models/validation_rule.py` — `ValidationRule`, `Enforcement` (required|recommended|blocked_override), `ElementType`
 - [ ] `domain/models/routing_rule.py` — `RoutingRule`
 - [ ] `domain/models/project.py` — `Project`, `ProjectState`, `ContextSource`, `ContextPreset`, `TemplateBinding`
-- [ ] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraSyncLog`, `JiraHealthStatus`
+- [ ] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraHealthStatus` (no `JiraSyncLog` — decision #26 removed sync logs)
 - [ ] `domain/models/audit_event.py` — `AuditEvent` as immutable frozen dataclass; no setters
 
 ---
@@ -190,7 +189,7 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 - [ ] `domain/repositories/invitation_repo.py` — create, get_by_token_hash, get_by_email, update_state
 - [ ] `domain/repositories/rule_repo.py` — CRUD for validation + routing rules; `get_active(workspace_id, project_id, element_type)`
 - [ ] `domain/repositories/project_repo.py` — project, context_source, context_preset CRUD
-- [ ] `domain/repositories/jira_repo.py` — jira_config, mappings, sync_log CRUD
+- [ ] `domain/repositories/jira_repo.py` — jira_config and mappings CRUD
 - [ ] `domain/repositories/audit_repo.py` — write-only: `record(payload)` only; no update/delete methods on interface
 - [ ] `domain/repositories/dashboard_repo.py` — `IDashboardRepository` interface: `get_workspace_health`, `get_org_health`, `get_process_health`, `get_integration_health` (Fixed per backend_review.md LV-4 — SQL aggregations belong in infrastructure, not in DashboardService)
 
@@ -377,7 +376,6 @@ THEN the API returns HTTP 409 with `error.code: integration_unavailable`
 - [ ] [RED] `test_jira_health_check_task` — ok stays active, 3 consecutive failures → error state + SSE alert
 - [ ] [RED] `test_jira_health_recovery` — error → ok → active, audit event recorded
 - [ ] [RED] `test_jira_project_mapping` — success, jira project key validated, default type mappings applied
-- [ ] [RED] `test_jira_sync_log_retry` — success, already-synced rejected, integration-unavailable rejected
 - [ ] [RED] `test_jira_credentials_never_in_response` — GET config returns no credential fields
 - [ ] [RED] `test_jira_credentials_not_in_audit` — audit event for credential update has no token values
 - [ ] [GREEN] `application/services/jira_config_service.py` — CRUD, test connection, disable/enable, mapping CRUD

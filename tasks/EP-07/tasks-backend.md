@@ -269,8 +269,8 @@ THEN `AttachmentService.soft_delete_by_comment(comment_id)` is called in the sam
 AND all attachment rows with matching `comment_id` have `soft_deleted_at` set
 
 WHEN `GET /api/v1/work-items/{id}/comments` is called and a comment body contains inline image markdown (`![alt](attachment_id)`)
-THEN the API response substitutes each `attachment_id` reference with a signed URL from EP-16's attachment endpoint
-AND `scan_status != 'clean'` images are omitted from substitution (rendered as placeholder text)
+THEN the API response substitutes each `attachment_id` reference with EP-16's authenticated download URL `/api/v1/attachments/:id/download` (no presigned URL — decision #29; VPN-internal, capability-checked streaming)
+AND `soft_deleted_at IS NOT NULL` images are omitted from substitution (rendered as placeholder text)
 
 ### Acceptance Criteria — AnchorRecomputeTask
 

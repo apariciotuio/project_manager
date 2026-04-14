@@ -18,8 +18,7 @@
 - [ ] Migration: create `context_presets` table (workspace_id, name, description)
 - [ ] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields)
 - [ ] Migration: create `jira_project_mappings` table
-- [ ] Migration: create `jira_sync_logs` table with status index
-- [ ] `audit_events` table is created in EP-00 (shared unified table, see EP-00 design.md §audit_events). EP-10 only writes with `category IN ('admin','domain')` — do NOT create the table or its PG RULEs here.
+- [ ] `audit_events` table is created in EP-00 (shared unified table, see EP-00 design.md §audit_events). EP-10 only writes with `category IN ('admin','domain')` — do NOT create the table or its PG RULEs here. Do NOT create `sync_logs` (decision #26).
 - [ ] Verify all foreign keys, NOT NULL constraints, and enum constraints are in place
 
 ### Domain Models
@@ -28,7 +27,7 @@
 - [ ] `domain/models/validation_rule.py` — `ValidationRule`, `Enforcement`, `ElementType` enums
 - [ ] `domain/models/routing_rule.py` — `RoutingRule`
 - [ ] `domain/models/project.py` — `Project`, `ProjectState`, `ContextSource`, `ContextPreset`, `TemplateBinding`
-- [ ] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraSyncLog`, `JiraHealthStatus`
+- [ ] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraHealthStatus` (no `JiraSyncLog` — decision #26 removed sync logs)
 - [ ] `domain/models/audit_event.py` — `AuditEvent` (immutable value object; no setters)
 
 ### Repository Interfaces
@@ -36,7 +35,7 @@
 - [ ] `domain/repositories/invitation_repo.py` — interface with create, get_by_token_hash, get_by_email, update_state
 - [ ] `domain/repositories/rule_repo.py` — interface for validation and routing rules CRUD + get_active(workspace_id, project_id, element_type)
 - [ ] `domain/repositories/project_repo.py` — interface for project, context source, context preset CRUD
-- [ ] `domain/repositories/jira_repo.py` — interface for jira_config, mappings, sync_log CRUD
+- [ ] `domain/repositories/jira_repo.py` — interface for jira_config and mappings CRUD
 - [ ] `domain/repositories/audit_repo.py` — write-only interface: `record(payload)` only; no update/delete methods defined
 
 ### Shared Infrastructure
@@ -127,7 +126,6 @@ All steps follow RED → GREEN → REFACTOR.
 - [ ] [RED] Unit: `test_jira_health_check_task` — ok stays active, 3 consecutive failures → error state + SSE alert
 - [ ] [RED] Unit: `test_jira_health_recovery` — error → ok → active, audit event recorded
 - [ ] [RED] Unit: `test_jira_project_mapping` — success, jira project key validated, default type mappings applied
-- [ ] [RED] Unit: `test_jira_sync_log_retry` — success, already-synced rejected, integration-unavailable rejected
 - [ ] [RED] Unit: `test_jira_credentials_never_in_response` — GET config returns no credential fields
 - [ ] [RED] Unit: `test_jira_credentials_not_in_audit` — audit event for credential update has no token values
 
