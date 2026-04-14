@@ -1,0 +1,64 @@
+---
+description: DDD layered architecture, SOLID principles, API design, error handling conventions
+globs: "**/src/**,**/app/**,**/api/**,**/services/**,**/src/**/*.py,**/src/**/*.ts,**/src/**/*.js,**/app/**/*.py,**/app/**/*.ts,**/app/**/*.js,**/api/**/*.py,**/api/**/*.ts,**/api/**/*.js,**/services/**/*.py,**/services/**/*.ts,**/services/**/*.js"
+---
+
+# Backend Standards
+
+Extended reference (package): `apm_modules/somostuio/coding-agents-config/docs/playbooks/backend-implementation-playbook.md`
+
+If a local override exists at `docs/playbooks/backend-implementation-playbook.md`, prefer the local file.
+
+When work changes API contracts, persistence models, or service boundaries, read the playbook before implementation.
+
+Decisions and guidelines — the model already knows DDD, SOLID, REST.
+
+## Architecture
+
+DDD-inspired layered architecture. Dependencies point inward.
+
+| Layer | Location | Responsibility | Depends on |
+|-------|----------|----------------|------------|
+| Presentation | `controllers/`, `routes/` | Parse HTTP, call services, format response. NO business logic. | Application |
+| Application | `services/`, `validators/` | Validate input, orchestrate domain, handle transactions. | Domain |
+| Domain | `models/`, `repositories/` | Business rules, entity behavior. Pure — no external deps. | Nothing |
+| Infrastructure | `infrastructure/persistence/`, `infrastructure/adapters/` | Implement domain interfaces, DB, external APIs, cache. | Domain interfaces |
+
+## DDD Application
+
+- **Entities** in `domain/models/` — have identity, contain own business logic, validate invariants
+- **Repositories** — interface in `domain/repositories/`, impl in `infrastructure/persistence/`. Always inject via constructor. Use mappers between domain and persistence models
+- **Services** in `application/services/` — orchestrate domain objects, handle transactions. NO direct DB access
+- **Controllers** in `presentation/controllers/` — HTTP concerns only. Delegate immediately. NO business logic
+
+**Transformers/Mappers**: Dedicated class in `infrastructure/<adapter>/` for complex transforms, static method for simple ones. Can be uni- or bidirectional.
+
+## SOLID Application
+
+- **SRP**: Controllers=HTTP, Services=orchestration, Repos=persistence, Validators=validation
+- **ISP**: Split interfaces: `IReadRepository`, `IWriteRepository`
+- **DIP**: Inject all deps via constructor. Domain defines interfaces, infrastructure implements
+
+## Coding Standards
+
+**Naming**: Python=`snake_case` (files, vars, funcs), `PascalCase` (classes). TS=`camelCase` (files, vars), `PascalCase` (classes). DB=`snake_case`. Constants=`UPPER_SNAKE_CASE`.
+
+**`__init__.py` must be empty** — no re-exports. Import directly from module.
+
+**Type Safety**: `strict: true` in TS. No `any` — use `unknown`. Type all function params and returns.
+
+**Error Handling**: Custom error classes + global error middleware. Controllers throw, middleware maps to HTTP. Never catch and ignore.
+
+## External Dependency Wrapping
+
+Wrap if replacing the library would touch business logic: AI/LLM frameworks, payment providers, communication services, cloud SDKs, auth providers. Don't wrap stable utilities (`uuid`, `dayjs`, `zod`).
+
+## API Design
+
+- **Response format**: Success `{ "data": {...}, "message": "..." }`, Error `{ "error": { "message", "code", "details" } }`
+- **Commits**: `<type>(<scope>): <description>` — `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+- **Branches**: `feature/<ticket-id>-backend`, `fix/<ticket-id>-backend`
+
+## Anti-patterns
+
+Business logic in controller · Direct DB in service · Catch-and-ignore errors · `any` types · Hardcoded config · God service · N+1 queries · Over-mocking · Domain objects with ORM decorators

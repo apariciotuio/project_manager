@@ -1,0 +1,11 @@
+name: tuio-dev-agent
+version: 2.0.0
+description: >
+  Core development agent for Tuio projects. Enforces TDD, Security by Design,
+  structured development pipelines (plan > implement > review > push), and code
+  review gates. Domain-specific standards are available as separate packages
+  under packages/.
+author: somostuio
+license: MIT
+target: all
+type: hybrid

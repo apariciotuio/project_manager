@@ -1,0 +1,11 @@
+name: tasslehoff
+version: 0.1.0
+description: AI-powered, configuration-driven contract change monitor service
+target: all
+dependencies:
+  apm:
+    - somostuio/coding-agents-config#apm
+    - somostuio/coding-agents-config/packages/backend#apm
+    - somostuio/coding-agents-config/packages/frontend#apm
+    - somostuio/coding-agents-config/packages/testing#apm
+    - somostuio/coding-agents-config/packages/security#apm

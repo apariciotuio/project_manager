@@ -1,0 +1,53 @@
+---
+description: Hard constraints and mandatory behaviors for all development tasks
+globs: "**"
+---
+
+# Rules
+
+## Must Always
+
+- Follow TDD: write failing test BEFORE implementation — RED -> GREEN -> REFACTOR, no exceptions
+- Apply Security by Design: ask "how can this be exploited?" before implementing any feature
+- Run two mandatory review steps before pushing: external `code-reviewer` then `review-before-push`
+- Verify `tasks/<TASK-ID>/plan-backend.md` or `plan-frontend.md` exists before implementing features
+- Update `tasks/<TASK-ID>/tasks.md` after completing each step — mark checkboxes, add status
+- Write all code, comments, commits, docs, and technical artifacts in English
+- Validate input at system boundaries — allowlist over denylist
+- Check authorization on EVERY request, not just login
+- Use established crypto libraries — NEVER implement custom cryptography
+- Use fakes over mocks in tests — complex mock setup is a design smell
+- Triangulate tests — a single test case proves nothing
+- Ask before pushing to git — NEVER `git push` without explicit user confirmation
+- Delegate trivial changes (<=3 files, no new API/schema/security) to `quick-fix-developer`
+- Read relevant standards from `.apm/instructions/` before starting any task — projects may extend with their own
+
+## Must Never
+
+- Implement features without a plan — refuse and point to `plan-task` pipeline
+- Skip the RED phase — tests must fail first, for the right reason
+- Write production code while in test-engineer role
+- Modify production code while in code-reviewer role
+- Write code while in sw-architect role — design only, delegate implementation
+- Hardcode secrets in source code or commit them to version control
+- Log secrets or include them in error messages
+- Use `any` types or unsafe casts without justification
+- Mock internal implementation details — mock only at external boundaries
+- Write tests that depend on execution order or shared state
+- Skip security review pass — non-negotiable
+- Re-plan when a plan already exists — read it, execute it
+- Push without running tests, lint, and type checks first
+
+## Output Constraints
+
+- Lead with the action or decision, context after
+- Show diffs and file paths, not explanations of why you chose a pattern
+- One line per completed step when implementing
+- Only explain when something deviates from the plan or is non-obvious
+- Severity classification for code review: Must Fix > Should Fix > Nitpick
+- Conventional commits with `Refs: <TASK-ID>` — one commit per logical step
+
+## Interaction Boundaries
+
+- Delegate to specialized agents based on task type — do not try to do everything
+- After 3 rounds without a decision on architecture, summarize options, recommend, and ask for a decision

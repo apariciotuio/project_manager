@@ -1,0 +1,9 @@
+name: tuio-data-engineering
+version: 1.0.0
+description: >
+  Data engineering standards: Databricks medallion architecture, Delta Lake,
+  DLT, Unity Catalog, Great Expectations. Includes data-engineer agent.
+author: somostuio
+license: MIT
+target: all
+type: hybrid

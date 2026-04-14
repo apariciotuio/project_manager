@@ -1,0 +1,9 @@
+name: tuio-ml-engineering
+version: 1.0.0
+description: >
+  ML engineering standards: MLflow experiment tracking, model registry,
+  feature engineering, deployment, monitoring. Includes ml-engineer agent.
+author: somostuio
+license: MIT
+target: all
+type: hybrid

@@ -1,0 +1,9 @@
+name: tuio-documentation
+version: 1.0.0
+description: >
+  Documentation standards: READMEs, changelogs, API specs, ADRs,
+  code documentation. Includes update-docs prompt.
+author: somostuio
+license: MIT
+target: all
+type: hybrid
