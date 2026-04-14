@@ -1,5 +1,7 @@
 # EP-12 — Implementation Checklist
 
+> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is deferred. Sentry/Prometheus/OTel/Loki/product_events/LLM-metrics/health-dashboard items are obsolete. Re-plan at TDD time.
+
 **Status: NOT STARTED**
 
 TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [REFACTOR] = clean up
@@ -166,7 +168,7 @@ TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [R
 - [ ] [RED] Test: `ProductEventService.track()` calls backend with correct event schema
 - [ ] [RED] Test: backend unavailability does not propagate exception (logs warning only)
 - [ ] [GREEN] Implement `ProductEventService` and `ProductEventBackend` interface
-- [ ] [GREEN] Implement Postgres-backed backend (MVP: append-only `product_events` table)
+- [ ] [GREEN] Implement Postgres-backed backend (append-only `product_events` table) ⚠️ originally MVP-scoped — see decisions_pending.md
 - [ ] [GREEN] Emit events at: login, element created/submitted/reviewed/exported, search, integration sync/fail, member invite/remove
 
 ### 4.5 Integration failure visibility

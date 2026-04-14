@@ -10,7 +10,7 @@
 
 Delta (change-set) is operationally simpler to write but requires replaying a chain to reconstruct any version — O(n) reconstruction, complex failure modes if a delta is corrupt, and harder to implement cross-version diff. Full snapshot makes reconstruction O(1), diff straightforward (two blobs, compare), and the storage overhead is acceptable for the expected load.
 
-Storage math: A work item with 10 sections averaging 2KB per section = 20KB per snapshot. At 100 versions per item and 10,000 items: 20GB. Manageable with PostgreSQL JSONB + a compression column storage setting (`TOAST`). For MVP, this is the right call. Delta can be adopted later if storage becomes a concern — the API contract does not change.
+Storage math: A work item with 10 sections averaging 2KB per section = 20KB per snapshot. At 100 versions per item and 10,000 items: 20GB. Manageable with PostgreSQL JSONB + a compression column storage setting (`TOAST`). This is the right call at this scale. Delta can be adopted later if storage becomes a concern — the API contract does not change. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### EP-07 additive migration on `work_item_versions`
 
@@ -165,7 +165,7 @@ Two-pass diff:
 - For character-level highlighting within changed lines, apply a second-pass word diff using `difflib.SequenceMatcher` on the changed lines only.
 - Output format: list of `DiffHunk` objects (context lines, added lines, removed lines) — serialized to JSON for the API response.
 
-**No external diff library dependency for MVP.** `difflib` is sufficient. If Markdown-aware diff becomes a requirement, swap in `mdformat` + custom differ — the service interface does not change.
+**Markdown-aware diff (resolution #22)**: the diff viewer parses both snapshots with `remark` (Markdown AST) and aligns block nodes, then runs `diff-match-patch` on the inline text of each pair to produce a rich, granular diff suitable for the dual-pane accept/reject viewer (EP-03 diff UX). Fallback plain-text `difflib` path retained for non-Markdown fields.
 
 Performance target: <= 2s for 100KB combined content. `difflib` on 100KB of text in CPython is well under 500ms. No async needed for the diff endpoint.
 
@@ -181,7 +181,7 @@ A pure fan-out query over `audit_events + comments + review_responses + work_ite
 
 A `timeline_events` table is a write-side fan-in: each domain action writes to its own table AND appends a denormalized event to `timeline_events`. This is a simple append-only log. Reads are trivial. Pagination is a single `WHERE work_item_id = $1 AND occurred_at < $cursor ORDER BY occurred_at DESC LIMIT $n`. Adding new event types is a migration + one new writer — no query changes.
 
-The downside (dual write) is real but manageable: wrap both writes in the same DB transaction. No outbox needed for MVP.
+**Outbox pattern (resolution #22)**: the domain write and the timeline event are written in the same DB transaction, but the timeline-event row is inserted into a `timeline_events_outbox` table; a Celery worker consumes the outbox and publishes to the in-process event bus + Puppet index pipeline. This decouples the request path from fan-out and guarantees exactly-once delivery via the outbox.
 
 ```sql
 CREATE TABLE timeline_events (
@@ -247,19 +247,84 @@ All endpoints under `/api/v1/work-items/{work_item_id}/`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/timeline` | Unified timeline (filtered, paginated) |
+| `GET` | `/timeline` | Unified timeline for a work item (filtered, paginated). |
+| `GET` | `/timeline/export?format=json|csv` | Export timeline (resolution #22). |
+| `GET` | `/api/v1/users/:id/timeline` | Per-user timeline across all work items they interacted with (resolution #22). |
 
-Query params for `/timeline`: `event_types`, `actor_types`, `from_date`, `to_date`, `before` (cursor), `limit`.
+Query params: `event_types`, `actor_types`, `from_date`, `to_date`, `before` (cursor), `limit`.
+
+Real-time push: new timeline events are streamed to subscribers via the shared SSE channel (same one used by presence + notifications, EP-17/EP-08).
+
+Search: timeline entries are indexed in Puppet (EP-13) via the push-on-write pipeline and searchable from the main searchbar.
+
+### Reactions and @mentions on comments (resolution #22)
+
+```sql
+CREATE TABLE comment_reactions (
+    comment_id UUID NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji      TEXT NOT NULL CHECK (char_length(emoji) BETWEEN 1 AND 16),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (comment_id, user_id, emoji)
+);
+
+CREATE TABLE comment_versions (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    comment_id UUID NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    content    TEXT NOT NULL,
+    edited_by  UUID NOT NULL REFERENCES users(id),
+    edited_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_comment_versions_comment ON comment_versions (comment_id, edited_at DESC);
+```
+
+- `@mentions` in comment bodies are parsed at write time; each mention emits a `notification` to the mentioned user via EP-08.
+- Comment search is delegated to Puppet with tag `wm_comment` + workspace tag.
+
+Endpoints:
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/comments/:id/reactions` | Add a reaction `{ emoji }`. |
+| DELETE | `/comments/:id/reactions/:emoji` | Remove own reaction. |
+| GET | `/comments/:id/versions` | List edit history of a comment. |
+
+### Version tagging (resolution #22)
+
+```sql
+CREATE TABLE version_tags (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    version_id UUID NOT NULL REFERENCES work_item_versions(id) ON DELETE CASCADE,
+    label      TEXT NOT NULL CHECK (char_length(label) BETWEEN 1 AND 64),
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (version_id, label)
+);
+```
+
+Endpoint: `POST /versions/:version_number/tags` `{ label }`; `DELETE /versions/:version_number/tags/:label`.
+
+### User-authored versions
+
+Manual snapshots: `POST /versions/manual` with optional `{ commit_message }`. Creates a version with `trigger='manual'` and the provided message.
+
+### Permanent version delete (resolution #22)
+
+`DELETE /versions/:version_number` — Workspace Admin only; hard-deletes the row and any tags/diffs. Audited (`audit_events`). No cascade into other versions.
+
+### No branch / fork / merge
+
+Out of scope per resolution #22.
 
 ---
 
 ## 7. Storage Considerations
 
-**Snapshot bloat mitigation (MVP):**
+**Snapshot bloat mitigation (current approach):** ⚠️ originally MVP-scoped — see decisions_pending.md
 - PostgreSQL TOAST compression handles JSONB > 2KB automatically. No action needed.
 - `archived = true` flag excludes old versions from default queries without deleting data.
 
-**Post-MVP options if storage becomes critical:**
+**Deferred options if storage becomes critical:**
 1. Delta compression: store only changed sections in snapshot, reconstruct on read.
 2. Cold storage: move `archived = true` snapshots to S3 as compressed JSON blobs; retain row with `snapshot = NULL, storage_url = 's3://...'`.
 3. Retention policy: hard-delete versions older than N days for non-Ready/Archived items.

@@ -41,7 +41,9 @@ CREATE INDEX idx_task_nodes_mat_path     ON task_nodes USING gin(materialized_pa
 `status` FSM (enforced in application layer, not DB constraint):
 - `draft` → `in_progress` (allowed anytime)
 - `in_progress` → `done` (blocked if any predecessor is not `done`)
-- No reverse transitions at MVP
+- No reverse FSM transitions. Re-opening a completed task uses the explicit endpoint
+  `POST /api/v1/tasks/:id/unmark-done` (resolution #20) — it flips `status` back to `in_progress`,
+  emits a `task.reopened` event, and writes a timeline entry.
 
 ### 1.2 task_node_section_links
 
@@ -67,25 +69,27 @@ both the normal case (one section) and the merge case (N sections) without nulla
 
 ### 1.3 task_dependencies
 
-Explicit DAG edges. Only intra-work-item dependencies are allowed at MVP.
+Explicit DAG edges. **Cross-work-item dependencies are allowed** (resolution #20). The DAG validation is global: any cycle across the workspace (not only within one work item) is rejected at insert time. Columns renamed to `source_id` / `target_id` to reflect that the edge no longer scopes to a single work item.
 
 ```sql
 CREATE TABLE task_dependencies (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    task_id         UUID NOT NULL REFERENCES task_nodes(id) ON DELETE CASCADE,
-        -- the dependent task (must wait for depends_on)
-    depends_on_id   UUID NOT NULL REFERENCES task_nodes(id) ON DELETE CASCADE,
+    source_id       UUID NOT NULL REFERENCES task_nodes(id) ON DELETE CASCADE,
+        -- the dependent task (waits for target)
+    target_id       UUID NOT NULL REFERENCES task_nodes(id) ON DELETE CASCADE,
         -- the predecessor task
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by      UUID NOT NULL REFERENCES users(id),
 
-    CONSTRAINT uq_task_dependency UNIQUE (task_id, depends_on_id),
-    CONSTRAINT no_self_dependency  CHECK (task_id != depends_on_id)
+    CONSTRAINT uq_task_dependency UNIQUE (source_id, target_id),
+    CONSTRAINT no_self_dependency  CHECK (source_id != target_id)
 );
 
-CREATE INDEX idx_task_dep_task_id       ON task_dependencies(task_id);
-CREATE INDEX idx_task_dep_depends_on_id ON task_dependencies(depends_on_id);
+CREATE INDEX idx_task_dep_source ON task_dependencies(source_id);
+CREATE INDEX idx_task_dep_target ON task_dependencies(target_id);
 ```
+
+**Cross-work-item dependency allowed**: `source_id` and `target_id` may belong to different work items (same workspace). Cycle detection runs a global DFS across all `task_dependencies` edges in the workspace.
 
 ---
 
@@ -223,38 +227,42 @@ Same reasoning as split: dependency links are dropped on merge. Users re-establi
 All endpoints require Bearer JWT. PATCH/POST/DELETE additionally require owner or editor role on the
 work item, checked in the service layer.
 
+Additional endpoint for reverse status (resolution #20):
+| Method | Path | Notes |
+|---|---|---|
+| POST | /api/v1/tasks/:id/unmark-done | Reopens a `done` task back to `in_progress`; emits `task.reopened`; writes timeline entry. |
+
+Drag-and-drop reordering on the frontend uses **`dnd-kit`** (resolution #20) — no `react-beautiful-dnd`.
+
+### Concurrency
+
+Default isolation level is **READ COMMITTED**. Hot-path service methods (`reorder`, `split`, `merge`) wrap their work item's sibling set in `SELECT ... FOR UPDATE` only when contention is observed (demand-driven upgrade). No advisory locks; no SERIALIZABLE.
+
 ---
 
-## 7. LLM-Assisted Breakdown Generation
+## 7. Breakdown Generation via Dundun
 
-The LLM call is wrapped identically to EP-03/EP-04's pattern. A dedicated adapter in
-`infrastructure/llm/adapters/breakdown_adapter.py` takes a `SpecificationContent` value object and
-returns `list[TaskNodeDraft]`. The service layer persists the drafts and owns the DB transaction.
+> **Resolved 2026-04-14 (decisions_pending.md #20, #32)**: Task breakdown is delegated to Dundun. Our backend owns no LLM SDK, no prompt registry, and no breakdown prompt template. We call Dundun asynchronously via the Celery + callback pattern.
 
-Prompt template: `infrastructure/llm/prompts/breakdown_generation.py` — versioned Python constant.
+Flow:
+1. Controller `POST /api/v1/work-items/:id/tasks/generate` enqueues a Celery task on queue `dundun`.
+2. The Celery task calls `DundunClient.invoke_agent(agent="wm_breakdown_agent", user_id=..., work_item_id=..., callback_url=<BE>/api/v1/dundun/callback, payload={ specification_content })`. Dundun responds 202 with a `request_id`.
+3. Dundun invokes `POST /api/v1/dundun/callback` with the structured response when generation completes.
+4. The callback handler persists `TaskNodeDraft`s, creates `task_nodes` rows, and emits `tasks.generated` on the event bus for the UI to consume via SSE.
 
-The adapter must return structured output (JSON mode or function calling). The schema:
+Dundun returns structured output matching this schema (owned by Dundun, not redefined here):
 ```json
 {
   "tasks": [
-    {
-      "title": "string",
-      "description": "string",
-      "section_type": "string",
-      "subtasks": [
-        { "title": "string", "description": "string" }
-      ]
-    }
+    { "title": "string", "description": "string", "section_type": "string",
+      "subtasks": [ { "title": "string", "description": "string" } ] }
   ]
 }
 ```
 
-`section_type` in the LLM response maps back to the source `work_item_sections` row via
-`SectionRepository.get_by_type(work_item_id, section_type)`. If the section type does not exist on the
-work item, the task node is created with no section link (graceful degradation, not a hard error).
+`section_type` maps to the source `work_item_sections` row. If the section type does not exist, the task node is created with no section link (graceful degradation).
 
-The LLM call is synchronous at MVP. If P95 latency > 5s, promote to a Celery task with a polling
-endpoint — same escape hatch as EP-04's specification generation.
+No synchronous path, no polling loop. The UI subscribes to the SSE stream for live updates. Latency is bounded by Dundun's SLA.
 
 ---
 
@@ -265,7 +273,7 @@ the work item has at least one non-draft `task_node` (i.e., at least one task in
 `done` state, OR at least N task nodes regardless of status — TBD with product, default: any task
 node present means "breakdown started").
 
-At MVP: `breakdown` dimension is `filled = True` if `COUNT(task_nodes WHERE work_item_id = ?) > 0`.
+Currently: `breakdown` dimension is `filled = True` if `COUNT(task_nodes WHERE work_item_id = ?) > 0`.
 
 Integration point: `TaskService.create()` and `TaskService.delete()` call
 `CompletenessCache.invalidate(work_item_id)` after committing, identical to how `SectionService.save()`
@@ -306,11 +314,9 @@ infrastructure/
     task_node_repository_impl.py    # adjacency list queries, recursive CTE
     task_dependency_repository_impl.py
     task_section_link_repository_impl.py
-  llm/
-    adapters/
-      breakdown_adapter.py          # wraps LLM call, returns list[TaskNodeDraft]
-    prompts/
-      breakdown_generation.py
+  dundun/
+    dundun_client.py                # HTTP + WS client, used here via Celery
+    breakdown_callback_handler.py   # consumes POST /api/v1/dundun/callback for wm_breakdown_agent results
 ```
 
 ---
@@ -327,8 +333,8 @@ in Python on every add — it's fast enough and keeps the DB simple.
 **Inheriting dependencies after split/merge**: Rejected. Automatic inheritance silently assigns
 potentially wrong semantics. User explicitly re-adds what applies. Transparent is better than magic.
 
-**Cross-work-item dependencies at MVP**: Rejected. Adds inter-work-item locking, cascades, and UI
-complexity. Scope to same work item. Revisit post-MVP.
+**Cross-work-item dependencies**: Rejected. Adds inter-work-item locking, cascades, and UI
+complexity. Scope to same work item. Revisit later. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 **Storing `section_ids` as a PostgreSQL array on `task_nodes`**: Rejected. Arrays are not queryable by
 element without special indexing, and referential integrity (FK) cannot be enforced on array elements.

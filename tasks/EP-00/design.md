@@ -35,11 +35,29 @@
 
 **Rationale**: Email addresses can change; Google `sub` is stable for the account lifetime. Avoids account takeover via email reuse.
 
-### AD-05: Workspace Bootstrap in Same Transaction as User Creation
+### AD-05: First-login flow — no auto-create personal workspace
 
-**Decision**: On first login, user upsert + workspace creation + membership creation run in a single DB transaction.
+**Decision** (resolved 2026-04-14): On first login, the backend resolves the user's active `workspace_memberships` and routes as follows:
 
-**Rationale**: Eliminates partial state where user exists but has no workspace. If the transaction fails, the user retries login cleanly.
+- **0 memberships**: block with "contact admin" (no auto-create). Workspaces are created by Superadmin only.
+- **1 membership**: land directly in that workspace.
+- **N memberships**: workspace picker UI; last-chosen workspace persisted in session.
+
+**Rationale**: Auto-creating a personal workspace per unknown user is a vector for orphan workspaces and makes tenant boundaries fuzzy. All access must be granted explicitly.
+
+**`returnTo` deeplink**: the original requested path is preserved across the login redirect (`?returnTo=<path>`) and restored post-login once membership is resolved.
+
+### AD-06: Multi-workspace routing
+
+**Decision**: Multiple tenant workspaces share the deployment. The active workspace is resolved on every request via slug (URL path `/workspace/<slug>/...`) or `X-Workspace-Slug` header. Every domain table carries `workspace_id` and is protected by PostgreSQL Row-Level Security.
+
+**Rationale**: Multi-tenant is a hard requirement (decisions_pending.md #1, #2). RLS + `workspace_id` on every table enforces isolation at the DB layer, not just the service layer.
+
+### AD-07: Superadmin bootstrap via config seed
+
+**Decision**: No CLI. A `SEED_SUPERADMIN_EMAILS` environment variable (or initial Alembic fixture) lists the bootstrap superadmin emails. On first Google OAuth login of a seeded email, the resulting `users` row is created with `is_superadmin = true` and pinned to `google_sub`. Subsequent superadmin promotions go through `POST /api/v1/admin/users/:id/grant-superadmin` (audited, superadmin-only).
+
+**Rationale**: Internal product, VPN-only; a CLI adds ops surface for zero benefit. The env seed is set at deploy; after that, promotion is an audited API action.
 
 ---
 
@@ -67,9 +85,10 @@ CREATE TABLE users (
 
 > **Security invariant**: `is_superadmin` is a global flag that crosses workspace boundaries.
 > It is NOT a workspace capability — it lives on `users`, not `workspace_memberships`.
-> Set only via CLI command (`python -m app.cli create-superadmin`) or environment bootstrap.
-> There is NO API endpoint that sets `is_superadmin = true`. Exposing such an endpoint would
-> make privilege escalation trivially exploitable via IDOR or logic bugs. This is non-negotiable.
+> Initial seeding: `SEED_SUPERADMIN_EMAILS` env var (or migration fixture). First Google OAuth
+> login of a seeded email creates the `users` row with `is_superadmin = true` and pins it to
+> `google_sub`. Subsequent promotion: `POST /api/v1/admin/users/:id/grant-superadmin` —
+> superadmin-only, audited. No CLI.
 
 ### `sessions`
 
@@ -245,20 +264,26 @@ sequenceDiagram
     BE->>BE: Verify + decode id_token (sub, email, name, picture)
     BE->>DB: UPSERT users ON CONFLICT (google_sub) DO UPDATE
     DB-->>BE: user record
-    BE->>DB: Check workspace_memberships for user
-    alt First login - no membership
-        BE->>DB: BEGIN TRANSACTION
-        BE->>DB: INSERT workspaces
-        BE->>DB: INSERT workspace_memberships (role=admin)
-        BE->>DB: COMMIT
+    BE->>DB: Resolve active workspace_memberships for user
+    alt 0 active memberships
+        BE->>DB: INSERT audit_events (category='auth', action='login_blocked_no_workspace')
+        BE-->>FE: 302 /login?error=no_workspace
+    else 1 active membership
+        BE->>BE: set active_workspace_id = membership.workspace_id
+    else N active memberships
+        BE->>BE: set active_workspace_id = last_chosen_or_null (session cookie)
     end
     BE->>BE: Generate JWT access token (15 min)
     BE->>BE: Generate opaque refresh token
     BE->>DB: INSERT sessions (token_hash, expires_at)
     BE->>DB: INSERT audit_events (category='auth', action='login_success')
     BE->>Redis: DEL oauth:{state}
-    BE-->>FE: 302 /workspace/{slug} + Set-Cookie (access_token + refresh_token)
-    FE-->>User: Dashboard
+    alt N memberships + no last-chosen
+        BE-->>FE: 302 /workspace/select + Set-Cookie
+    else
+        BE-->>FE: 302 /workspace/{slug}?returnTo=<path> + Set-Cookie
+    end
+    FE-->>User: Dashboard or picker
 ```
 
 ### Token Refresh Flow
@@ -333,9 +358,9 @@ sequenceDiagram
 | Server-side sessions in Redis only | Rejected — Redis becomes a hard dependency for every authenticated request; token revocation is simpler but latency cost on hot paths |
 | Long-lived JWT (24h, no refresh) | Rejected — irrevocable; leaked token valid for full day |
 | Store refresh token in localStorage | Hard no. XSS game over. |
-| RS256 for JWT signing | Preferred for production (asymmetric, frontend can verify without secret). HS256 acceptable for MVP with proper secret rotation. Migrate to RS256 post-MVP. |
+| RS256 for JWT signing | Rejected (resolved 2026-04-14). HS256 with 256-bit secret in env + documented rotation. Single BE + single FE consumer — RS256 adds key management overhead with zero benefit. Migration to RS256 is mechanical if a second service ever consumes tokens. |
 
-**Recommendation**: Proceed with HS256 for MVP with a 256-bit secret from environment variables. Add RS256 migration to post-MVP backlog.
+**Decision (resolved 2026-04-14)**: HS256 with a 256-bit secret from environment variables and documented rotation procedure. No JWKS endpoint. No RS256.
 
 ---
 

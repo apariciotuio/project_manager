@@ -61,7 +61,7 @@ WHEN the comment author edits their comment
 THEN the comment body is updated
 AND an `edited_at` timestamp is recorded
 AND a flag `is_edited = true` is set
-AND the original body is NOT preserved (no comment version history required for MVP)
+AND the original body is NOT preserved (no comment version history required) ⚠️ originally MVP-scoped — see decisions_pending.md
 AND other users see the edited label next to the comment
 
 ---
@@ -118,7 +118,9 @@ AND the total comment count is returned in the response
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Reactions / emoji responses
 - Mentions / notifications

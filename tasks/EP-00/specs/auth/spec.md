@@ -107,7 +107,7 @@ AND `full_name` is stored as that derived value
 ### Session Creation
 
 WHEN authentication succeeds (US-001 flow completes)
-THEN the backend creates a JWT access token signed with HS256 (or RS256 in production) containing:
+THEN the backend creates a JWT access token signed with HS256 (secret from env with documented rotation) containing:
   - `sub`: user UUID
   - `email`
   - `workspace_id`: resolved default workspace ID (may be null on very first login before bootstrap)

@@ -1,4 +1,4 @@
-# Technical Information — MVP Work Maturation Platform
+# Technical Information — Work Maturation Platform
 
 Consolidated technical reference from all 13 epic designs. This is the single source of truth for cross-cutting architectural decisions.
 
@@ -307,7 +307,7 @@ Order is load-bearing:
 | 6 | Rule-based gap detection first | Deterministic, sync. LLM is async opt-in |
 | 7 | Adjacency list + materialized path | Nested sets wrong for concurrent edits |
 | 8 | Capability array, not RBAC | Hybrid roles (Team Lead + Project Admin) would need complex join logic |
-| 9 | PG FTS over Elasticsearch | Sufficient at MVP scale, no operational overhead |
+| 9 | Puppet RAG as sole search backend | Full-text + semantic + prefix + saved searches all served by Puppet. SQL local is only for filters/listings/ID/dashboards. No PG FTS, no Elasticsearch. Push-on-write sync pipeline (<3s eventual consistency) |
 | 10 | SSE over WebSocket | Unidirectional. WebSocket adds complexity for zero benefit |
 | 11 | Cursor pagination everywhere | Offset degrades under concurrent writes |
 | 12 | Jira re-export = new issue | Preserves Jira-side changes, avoids overwrite conflicts |

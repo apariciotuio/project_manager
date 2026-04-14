@@ -198,7 +198,7 @@ interface TaskTreeProps {
 ```
 
 - [ ] 3.5 [RED] Write component test: renders full tree from `useTaskTree`; loading state renders skeleton; empty state renders "No tasks yet" with generate button; error state renders retry
-- [ ] 3.6 [GREEN] Implement `src/components/tasks/TaskTree.tsx` — recursive render, drag-to-reorder using native drag events (no heavy DnD library at MVP)
+- [ ] 3.6 [GREEN] Implement `src/components/tasks/TaskTree.tsx` — recursive render, drag-to-reorder using native drag events (no heavy DnD library) ⚠️ originally MVP-scoped — see decisions_pending.md
 - [ ] 3.7 [RED] Write component test: reorder fires `reorderTasks` with correct `ordered_ids` after drag-drop; optimistic reorder reflected immediately
 - [ ] 3.8 [GREEN] Implement drag-to-reorder within `TaskTree.tsx`
 - [ ] 3.9 [RED] Write component test: merge mode — selecting two nodes enables merge button; clicking merge opens `MergeTaskDialog`

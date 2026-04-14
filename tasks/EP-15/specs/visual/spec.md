@@ -44,7 +44,7 @@ THEN the icon is stored and rendered as a small glyph inside or alongside the ta
 WHEN `icon` is a value not in the predefined catalog (e.g. `"unicorn"`)
 THEN the API returns `400 Bad Request` with `error.code="invalid_icon"` and `allowed_values=[<catalog list>]`
 
-### Predefined icon catalog (MVP set — extensible)
+### Predefined icon catalog (initial set — extensible)
 
 | Key | Description |
 |-----|-------------|

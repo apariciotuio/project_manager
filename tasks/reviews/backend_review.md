@@ -81,7 +81,7 @@ The architect_review flagged these (C1). Confirming from code review perspective
 
 Additionally, the tasks file (Group C, C1.1) describes these tiers in service test acceptance criteria — meaning tests will be written for behavior that cannot work. The tests will never pass on a real DB.
 
-**Fix**: Remove Tiers 3 and 4 from MVP InboxService. The inbox is Tier 1 (pending reviews) + Tier 2 (changes_requested items). Document the removal in EP-08 design.md. Tiers 3/4 require a `blocks` domain concept that is not designed for MVP.
+**Fix**: Remove Tiers 3 and 4 from InboxService. The inbox is Tier 1 (pending reviews) + Tier 2 (changes_requested items). Document the removal in EP-08 design.md. Tiers 3/4 require a `blocks` domain concept that is not designed. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -218,7 +218,7 @@ This UPDATE runs in the same transaction as the INSERTs for nodes A and B. If th
 
 Under `READ COMMITTED` (SQLAlchemy default), this race is possible. The transaction is atomic but other transactions can see intermediate states.
 
-**Fix**: This is acceptable under MVP concurrency assumptions. Document that `task tree operations require READ COMMITTED isolation and callers must not cache display_order between mutations`. If edit contention becomes an issue, add a `SELECT FOR UPDATE` on the parent node before any child reorder.
+**Fix**: This is acceptable under current concurrency assumptions. Document that `task tree operations require READ COMMITTED isolation and callers must not cache display_order between mutations`. If edit contention becomes an issue, add a `SELECT FOR UPDATE` on the parent node before any child reorder. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -248,9 +248,9 @@ If the timeline INSERT fails (e.g., `summary` exceeds 255 chars for a long comme
 
 Under high audit write volume, the audit INSERT is on the critical path of every mutation. If `audit_events` table has I/O contention (large dataset, slow disk), every mutation slows proportionally.
 
-This is by design (synchronous audit = consistent with action). The risk is acceptable at MVP. But the `audit_events` indexes (`actor`, `entity`, `action`) add write overhead on every INSERT.
+This is by design (synchronous audit = consistent with action). The risk is acceptable at current scale. But the `audit_events` indexes (`actor`, `entity`, `action`) add write overhead on every INSERT.
 
-**Fix**: No change needed for MVP. Document in performance notes: "At >1M audit rows, consider partitioning `audit_events` by month. The three indexes on audit_events add ~3ms per write at 100k rows — acceptable."
+**Fix**: No change needed at current scale. Document in performance notes: "At >1M audit rows, consider partitioning `audit_events` by month. The three indexes on audit_events add ~3ms per write at 100k rows — acceptable." ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -325,7 +325,7 @@ If the `integration_exports` table has 10k syncable records (large workspace), t
 ### EP-05
 - Fix cycle detector path return (ALG-1). Add integration test for the API `cycle_path` response field.
 - `TaskService.split()` / `merge()` need tests for concurrent execution (TC-2 documentation).
-- The LLM breakdown generation is synchronous at MVP. Add the 5-second P95 gate explicitly to the tasks file with a plan to promote to Celery if exceeded.
+- The LLM breakdown generation is currently synchronous. Add the 5-second P95 gate explicitly to the tasks file with a plan to promote to Celery if exceeded. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### EP-06
 - `ReadyGateService.check()` must block on `required + waived` combination (ALG-3).
@@ -341,7 +341,7 @@ If the `integration_exports` table has 10k syncable records (large workspace), t
 
 ### EP-08
 - Fix inbox Tier 2 state value (`changes_requested` not `returned`) (ALG-5).
-- Remove Tiers 3 and 4 from MVP — they reference non-existent schema (ALG-6).
+- Remove Tiers 3 and 4 — they reference non-existent schema (ALG-6).
 - Move UNION SQL from `InboxService` to `InboxRepository` implementation (LV-3).
 - `execute_action` — replace with `QuickActionDispatcher` to prevent `NotificationService` becoming a god object (SD-4).
 - DLQ must be configured at infrastructure level — add to EP-12 Celery config (CA-2).
@@ -376,7 +376,7 @@ If the `integration_exports` table has 10k syncable records (large workspace), t
 
 6. **Pure dimension checkers (EP-04)** — `(WorkItem, list[Section], list[Validator]) -> DimensionResult` pure functions. No I/O, no side effects. Trivially testable with parametrized inputs. Correct approach.
 
-7. **Capability array over RBAC (EP-10)** — For MVP with 10 static capabilities and no role inheritance, `text[]` + GIN index is simpler and more direct than RBAC tables. The "can only grant what you hold" constraint is clean and covers the main escalation path.
+7. **Capability array over RBAC (EP-10)** — With 10 static capabilities and no role inheritance, `text[]` + GIN index is simpler and more direct than RBAC tables. The "can only grant what you hold" constraint is clean and covers the main escalation path. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 8. **`timeline_events` table over UNION ALL (EP-07)** — Fan-in on write is the correct call. UNION ALL across 5 tables with cursor pagination would be unmaintainable. Single append-only table with indexed cursor pagination is the right primitive.
 

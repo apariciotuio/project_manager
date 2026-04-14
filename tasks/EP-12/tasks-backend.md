@@ -1,4 +1,6 @@
-# EP-12 Backend Subtasks — Responsive, Security, Performance & Observability
+# EP-12 Backend Subtasks — Responsive, Security, Performance
+
+> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. All Sentry, Prometheus, OpenTelemetry, Loki, health-dashboard, trace-sampling, LLM-metrics, and `product_events` tasks below are **obsolete**. Keep only stdlib logging + `CorrelationIDMiddleware`. Re-plan this file at TDD time.
 
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
 **Note**: EP-12 must be implemented FIRST. All other epics depend on this middleware stack.
@@ -324,7 +326,7 @@ AND `jira_config.state` is set to `credential_error` (transition to error after 
 - [ ] [RED] Test: `ProductEventService.track()` calls backend with correct event schema
 - [ ] [RED] Test: backend unavailability does NOT propagate exception — logs warning only
 - [ ] [GREEN] Implement `ProductEventService` and `ProductEventBackend` interface in `app/application/services/product_event_service.py`
-- [ ] [GREEN] Implement Postgres-backed backend (MVP): append-only `product_events` table
+- [ ] [GREEN] Implement Postgres-backed backend: append-only `product_events` table ⚠️ originally MVP-scoped — see decisions_pending.md
 - [ ] [GREEN] Emit events at: login, element created/submitted/reviewed/exported, search performed, integration sync/fail, member invite/remove
 
 ### Integration Failure Visibility

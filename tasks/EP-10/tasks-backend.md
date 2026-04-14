@@ -166,8 +166,7 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 - [ ] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields)
 - [ ] Migration: create `jira_project_mappings` table
 - [ ] Migration: create `jira_sync_logs` table with status index
-- [ ] Migration: create `audit_events` table (all fields, indexes on actor/entity/action, append-only)
-- [ ] Add PostgreSQL rules: `no_update_audit`, `no_delete_audit` on `audit_events`
+- [ ] `audit_events` table + PG RULEs are created by EP-00 (shared unified table — see EP-00 design.md §audit_events). EP-10 writes only with `category IN ('admin','domain')`. Do NOT redeclare the table or the rules here.
 - [ ] Add composite indexes per design.md section 2 (workspace_state, validation_rules_lookup, routing_rules_lookup, audit indexes, sync_log_status, work_items_owner_state)
 - [ ] Verify all foreign keys, NOT NULL constraints, enum constraints
 

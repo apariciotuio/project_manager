@@ -40,7 +40,7 @@ The bridge to execution. Only Ready elements can be exported, only via explicit 
 - Idempotent export (retry-safe)
 - Snapshot stored as immutable record linked to element version
 - Jira API client (wrapped, not direct dependency in domain)
-- Sync via polling or webhook (MVP: polling is acceptable)
+- Sync via polling or webhook (polling is acceptable) ⚠️ originally MVP-scoped — see decisions_pending.md
 - Export logs with status, timestamps, error details
 
 ## Dependencies

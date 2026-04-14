@@ -2,7 +2,7 @@
 
 ## Status: PENDING
 
-Dependencies: EP-00 (auth, JWT sessions), EP-01 (work_items, reviews, blocks tables)
+Dependencies: EP-00 (auth, JWT sessions), EP-01 (work_items), EP-06 (review_requests, review_responses)
 
 ---
 

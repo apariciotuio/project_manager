@@ -105,6 +105,6 @@ AND task A appears with `is_blocked: false` (no predecessors or all done)
 ### Scenario 6: Tree depth limit
 
 WHEN the task tree contains more than 3 levels of nesting (root → child → grandchild → great-grandchild)
-THEN the system still returns the full tree without truncation at MVP
+THEN the system still returns the full tree without truncation at current target scale
 AND the recursive CTE depth is bounded at 10 levels to prevent pathological inputs
 AND nodes beyond depth 10 are omitted from the response with a `truncated: true` flag at the affected parent

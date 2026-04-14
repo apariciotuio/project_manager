@@ -6,11 +6,12 @@ The system requires secure authentication and identity resolution before any fun
 
 ## Objectives
 
-- Authenticate users via Google OAuth
-- Create/resolve unique user profiles (name, email, avatar)
+- Authenticate users via Google OAuth (no other providers)
+- Create/resolve unique user profiles (name, email, avatar) keyed by `google_sub`
 - Protect all routes behind auth middleware
-- Resolve workspace membership after login
-- Bootstrap initial workspace if none exists
+- Resolve active workspace membership after login (0 → block; 1 → land; N → picker)
+- Support multi-workspace routing (slug/subdomain) with PostgreSQL RLS isolation
+- Seed platform superadmins from config (`SEED_SUPERADMIN_EMAILS`); no CLI
 
 ## User Stories
 
@@ -22,10 +23,12 @@ The system requires secure authentication and identity resolution before any fun
 
 ## Acceptance Criteria
 
-- WHEN a user visits the app unauthenticated THEN they are redirected to Google OAuth
-- WHEN OAuth succeeds THEN a user profile is created (first time) or resolved (returning)
-- WHEN authenticated THEN the user lands in their workspace
-- WHEN session expires THEN the user is redirected to login gracefully
+- WHEN a user visits the app unauthenticated THEN they are redirected to `/login` with `returnTo` preserved
+- WHEN OAuth succeeds THEN a user profile is created (first time) or resolved (returning) by `google_sub`
+- WHEN authenticated AND user has 0 active memberships THEN login is blocked with "contact admin"
+- WHEN authenticated AND user has 1 active membership THEN the user lands directly in that workspace
+- WHEN authenticated AND user has N active memberships THEN a workspace picker is shown (last-chosen persisted)
+- WHEN session expires THEN the user is redirected to login gracefully with `returnTo`
 - WHEN accessing a protected route without session THEN 401/redirect
 - AND login/logout events are auditable
 

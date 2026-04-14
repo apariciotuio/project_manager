@@ -14,7 +14,7 @@ The PRD mentions "Iniciativa" (Initiative) as a WorkItem type. Initiative ≈ Ep
 ## Objectives
 
 - Add `parent_work_item_id` to `work_items` — any work item can be parent of other work items
-- Introduce two new types to the `type` enum: `milestone`, `story` (in addition to existing: idea, bug, enhancement, task, initiative, spike, business_change, requirement)
+- Introduce two new types to the `type` enum: `milestone`, `story` (in addition to existing: idea, bug, mejora, tarea, iniciativa, spike, cambio, requisito)
 - Enforce hierarchy rules per type (e.g., milestone cannot be child of story)
 - Provide a hierarchy tree view: project-level dashboard showing Milestones → Epics → Stories → (existing tasks via EP-05 breakdown)
 - Maintain the existing per-item breakdown (EP-05 task_nodes) as the leaf-level detail within Stories
@@ -45,9 +45,11 @@ The PRD mentions "Iniciativa" (Initiative) as a WorkItem type. Initiative ≈ Ep
 - **Schema change to EP-01**: Add `parent_work_item_id UUID REFERENCES work_items(id) ON DELETE RESTRICT` to `work_items` table
 - **Hierarchy validation service**: `HierarchyValidator.validate_parent(child_type, parent_type)` — pure function, rule-table:
   - `milestone`: no parent (project-level)
-  - `epic` / `initiative`: parent = milestone OR null
-  - `story` / `requirement` / `enhancement`: parent = epic OR initiative OR null
-  - `task` / `bug` / `idea` / `spike` / `business_change`: parent = any above OR null
+  - `iniciativa`: parent = milestone OR null
+  - `story`: parent = iniciativa OR null
+  - `requisito` / `mejora`: parent = iniciativa OR story OR null
+  - `tarea` / `bug` / `idea` / `spike` / `cambio`: parent = any above OR null
+- **Hierarchy levels**: Workspace → Project → Milestone → Epic/Initiative (iniciativa) → Story → Task → Subtask
 - **Roll-up service**: `CompletionRollupService` — computes % complete for a parent based on children states (idempotent, cached in Redis)
 - **New API endpoints**:
   - `GET /api/v1/projects/:id/hierarchy` — full tree

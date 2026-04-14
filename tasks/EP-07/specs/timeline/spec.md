@@ -159,7 +159,9 @@ Response:
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Real-time timeline push (WebSocket / SSE)
 - Per-user timeline views (everyone sees the full timeline)

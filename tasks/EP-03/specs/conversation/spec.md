@@ -22,7 +22,7 @@ Every element has a persistent conversation thread. Users can also open general 
 ## Thread Model Constraints
 
 - One element thread per work item (auto-created on first access, never deleted with the element).
-- General threads are user-created; no upper limit per user in MVP.
+- General threads are user-created; no upper limit per user. ⚠️ originally MVP-scoped — see decisions_pending.md
 - Thread history is immutable — messages are never edited or deleted (soft-delete max for admin).
 - Assistant messages are stored with their full prompt reference (prompt_template_id + version) for auditability.
 - Thread context window is managed server-side: when token count exceeds budget, oldest messages are summarised and archived, with the summary stored as a special `summary` message type.
@@ -112,7 +112,7 @@ AND the user can retry the last message with a single action
 
 ## Out of Scope (US-031)
 
-- Multi-user real-time collaborative threads (no live sync in MVP; user refreshes or polls)
+- Multi-user real-time collaborative threads (no live sync; user refreshes or polls) ⚠️ originally MVP-scoped — see decisions_pending.md
 - Attachments or file uploads in threads
 - Thread export or download
 - Element threads visible to external users (Jira export does not include conversation)

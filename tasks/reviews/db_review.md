@@ -77,9 +77,9 @@ These tables reference `work_items(id)` but don't carry `workspace_id` directly.
 
 String PKs are slower for JOINs than UUIDs. More importantly, this is a seeded lookup table with human-readable IDs (`spec_review_complete`), which means renames require cascading FK updates.
 
-**Impact**: Low at MVP scale, but a trap.
+**Impact**: Low at current scale, but a trap.
 
-**Fix**: Acceptable for MVP since the table is tiny and seeded. Document that `rule_id` values are immutable identifiers, not display names.
+**Fix**: Acceptable since the table is tiny and seeded. Document that `rule_id` values are immutable identifiers, not display names. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -315,7 +315,7 @@ CONSTRAINT no_deep_nesting CHECK (
 
 ### DI-4. `task_dependencies` Missing Cross-Work-Item Guard at DB Level
 
-The UNIQUE constraint `(task_id, depends_on_id)` and the self-dependency CHECK exist, but there's no DB-level check that both tasks belong to the same `work_item_id`. Cross-work-item dependencies are explicitly out of scope for MVP.
+The UNIQUE constraint `(task_id, depends_on_id)` and the self-dependency CHECK exist, but there's no DB-level check that both tasks belong to the same `work_item_id`. Cross-work-item dependencies are explicitly out of scope. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 **Fix**: Add a trigger or application-layer check. A trigger is simpler:
 ```sql
@@ -400,7 +400,7 @@ Same issue as MS-2:
 CREATE INDEX idx_workspace_memberships_capabilities ON workspace_memberships USING GIN (capabilities);
 ```
 
-At MVP scale this is trivial, but use `CONCURRENTLY` as a habit.
+At current scale this is trivial, but use `CONCURRENTLY` as a habit.
 
 ### MS-4. EP-05 `gin_trgm_ops` Requires `pg_trgm` Extension
 
@@ -431,7 +431,7 @@ Repeat in a loop. Or run as a Celery task post-migration.
 
 ### GP-1. `work_item_versions` -- The Storage Problem
 
-**Math at MVP**: 20KB/snapshot x 100 versions x 10K items = 20GB. TOAST compresses ~60%, so ~8GB on disk. Manageable.
+**Math at current target scale**: 20KB/snapshot x 100 versions x 10K items = 20GB. TOAST compresses ~60%, so ~8GB on disk. Manageable.
 
 **Math at 10x (100K items)**: 200GB raw, ~80GB compressed. VACUUM on this table becomes painful (autovacuum takes minutes). Index maintenance on 10M rows adds write overhead.
 
@@ -441,7 +441,7 @@ Repeat in a loop. Or run as a Celery task post-migration.
 
 ### GP-2. `timeline_events` -- Append-Only Growth
 
-**Math**: 100 events/item x 10K items = 1M rows (MVP). At 10x: 10M rows. Each row is ~500 bytes = 5GB.
+**Math**: 100 events/item x 10K items = 1M rows (current target scale). At 10x: 10M rows. Each row is ~500 bytes = 5GB.
 
 **Recommendation**: Partition by `created_at` month when row count exceeds 5M. The cursor pagination query already filters on `occurred_at`, so partition pruning works naturally.
 
@@ -453,7 +453,7 @@ Repeat in a loop. Or run as a Celery task post-migration.
 
 ### GP-4. `notifications` -- Read-Heavy, Write-Heavy
 
-**Math**: 5 notifications/event x 100 events/item x 10K items = 5M notifications (MVP). Most are `read` state.
+**Math**: 5 notifications/event x 100 events/item x 10K items = 5M notifications (current target scale). Most are `read` state.
 
 **Recommendation**: Add a retention job that hard-deletes notifications older than 90 days with state `read` or `actioned`. Keep `unread` indefinitely.
 
@@ -461,7 +461,7 @@ Repeat in a loop. Or run as a Celery task post-migration.
 
 Each snapshot is ~20KB. At 10K exports: 200MB. Not a concern. But the `no_update_integration_exports_snapshot` RULE means old snapshots stay forever.
 
-**Recommendation**: Add a `snapshot_archived_at` column. After 90 days, replace `snapshot_data` with `NULL` and store a reference to cold storage (S3). Or accept the storage cost at MVP.
+**Recommendation**: Add a `snapshot_archived_at` column. After 90 days, replace `snapshot_data` with `NULL` and store a reference to cold storage (S3). Or accept the storage cost. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -480,9 +480,9 @@ EP-09 mentions "PostgreSQL connection pool: min 5, max 20. Redis connection pool
 
 **Fix**: Either:
 - **Option A**: Use PgBouncer in transaction mode. Set PG `max_connections = 200`, PgBouncer pool = 50. All application connections go through PgBouncer.
-- **Option B** (simpler for MVP): Set PG `max_connections = 200`. Reduce per-worker pool to `max = 10` (4 workers x 10 = 40). Celery workers use `pool_size = 2`. Total: 40 + 22 = 62. Headroom for admin connections.
+- **Option B** (simpler short-term): Set PG `max_connections = 200`. Reduce per-worker pool to `max = 10` (4 workers x 10 = 40). Celery workers use `pool_size = 2`. Total: 40 + 22 = 62. Headroom for admin connections.
 
-**Recommendation**: Option B for MVP. Add PgBouncer when connection count exceeds 100 concurrent.
+**Recommendation**: Option B for now. Add PgBouncer when connection count exceeds 100 concurrent. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 

@@ -272,7 +272,7 @@ interface SuggestionPreviewPanelProps {
   - 409 conflict: shows "Content changed since suggestions were generated. Regenerate?" banner
   - Expired set: shows "These suggestions have expired" with "Generate new" button
 - [ ] [GREEN] Implement `SuggestionPreviewPanel`:
-  - Diff display: side-by-side or inline diff using simple string comparison (no diff library needed at MVP — highlight entire proposed block)
+  - Diff display: side-by-side or inline diff using simple string comparison (no diff library needed — highlight entire proposed block) ⚠️ originally MVP-scoped — see decisions_pending.md
   - Accept/reject per item via local state (not API call per toggle)
   - Single "Apply Selected" API call with all accepted IDs
   - Version conflict (409): inline conflict banner, "Regenerate" calls `generateSuggestionSet()`

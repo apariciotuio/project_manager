@@ -222,7 +222,7 @@ AND the retry uses the same export_id as the idempotency key
 ## Out of Scope for This Capability
 
 - Automatic or scheduled exports (EP-11 is explicit-action-only)
-- Webhook-based Jira callbacks (MVP: polling only, covered in sync spec)
+- Webhook-based Jira callbacks (polling only, covered in sync spec) ⚠️ originally MVP-scoped — see decisions_pending.md
 - Bulk export of multiple work items in one action
 - Editing the Jira issue from within the platform post-export
 - Custom field mapping UI (configured via project mappings, not per-export)

@@ -48,7 +48,7 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 - [ ] Create Alembic migration: `sessions` table
 - [ ] Create Alembic migration: `workspaces` table
 - [ ] Create Alembic migration: `workspace_memberships` table
-- [ ] Create Alembic migration: `audit_logs` table
+- [ ] Create Alembic migration: `audit_events` table (unified, see design.md — auth events use `category='auth'`; NOT a separate `audit_logs` table)
 - [ ] Verify all indexes are included in migrations
 - [ ] Run migrations against local dev DB, confirm clean schema
 
@@ -76,13 +76,15 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 ## Phase 5 — Application Services (Backend)
 
 - [ ] **[RED]** Write unit tests for `AuthService.initiate_oauth()`: returns valid redirect URL, state stored in Redis, PKCE challenge correct
-- [ ] **[RED]** Write unit tests for `AuthService.handle_callback()`: happy path, state mismatch 400, state expired 400, Google exchange fails 502, new user created + workspace bootstrapped, returning user resolved
+- [ ] **[RED]** Write unit tests for `AuthService.handle_callback()`: happy path; state mismatch 400; state expired 400; Google exchange fails 502; 0 memberships → `NoWorkspaceAccessError`; 1 membership → routes directly; N memberships → picker; `returnTo` deeplink preserved when valid
 - [ ] **[RED]** Write unit tests for `AuthService.refresh_token()`: valid refresh returns new access token, expired refresh raises, revoked refresh raises
 - [ ] **[RED]** Write unit tests for `AuthService.logout()`: session revoked, audit log written
 - [ ] **[GREEN]** Implement `backend/application/services/auth_service.py`
-- [ ] **[RED]** Write unit tests for `BootstrapService.bootstrap_workspace()`: new user → workspace created with admin membership, returning user → existing workspace returned, race condition handled (mock transaction), public email domain → generic name
-- [ ] **[GREEN]** Implement `backend/application/services/bootstrap_service.py`
-- [ ] **[REFACTOR]** AuthService and BootstrapService: no ORM imports, no HTTP details, pure business logic via injected interfaces
+- [ ] **[RED]** Write unit tests for `MembershipResolverService.resolve()`: 0/1/N cases; respects `last_chosen_workspace_id` when valid
+- [ ] **[GREEN]** Implement `backend/application/services/membership_resolver_service.py`
+- [ ] **[RED]** Write unit tests for `SuperadminSeedService.on_user_created()`: seeded emails flip `is_superadmin=true`; others unchanged; audit event emitted
+- [ ] **[GREEN]** Implement `backend/application/services/superadmin_seed_service.py`
+- [ ] **[REFACTOR]** AuthService + resolver + seed: no ORM imports, no HTTP details, pure business logic via injected interfaces
 - [ ] Implement `backend/application/services/audit_service.py` — `log_event(event_type, user_id, ip, user_agent, outcome, details)` — fire-and-forget, must never raise
 
 ---

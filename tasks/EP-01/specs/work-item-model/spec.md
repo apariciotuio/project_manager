@@ -33,7 +33,7 @@ This spec covers creation, reading, updating, and deletion of work items. It doe
 | `description` | text | Raw input / problem statement |
 | `original_input` | text | Verbatim capture; preserved even if description changes |
 | `priority` | enum | `low`, `medium`, `high`, `critical`; nullable |
-| `due_date` | date | Optional deadline; no enforcement in MVP |
+| `due_date` | date | Optional deadline; no enforcement ⚠️ originally MVP-scoped — see decisions_pending.md |
 | `tags` | string[] | Free-form labels |
 | `completeness_score` | int | 0–100; computed by backend, not user-settable |
 | `derived_state` | enum | `in_progress`, `blocked`, `ready`; computed, not stored |

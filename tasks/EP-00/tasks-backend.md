@@ -23,7 +23,7 @@ Error envelope: `{ error: { code: string, message: string, details: {} } }`
 
 - [ ] Create `backend/` directory structure: `presentation/controllers/`, `application/services/`, `domain/models/`, `domain/repositories/`, `infrastructure/persistence/`, `infrastructure/adapters/`, `infrastructure/jobs/`
 - [ ] Add Python dependencies: `fastapi`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `python-jose[cryptography]`, `httpx`, `redis[asyncio]`, `python-multipart`, `pydantic-settings`, `celery`
-- [ ] Configure environment variables in `.env.example`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `JWT_SECRET`, `JWT_ALGORITHM=HS256`, `ACCESS_TOKEN_TTL=900`, `REFRESH_TOKEN_TTL=2592000`, `REDIS_URL`, `DATABASE_URL`
+- [ ] Configure environment variables in `.env.example`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `JWT_SECRET`, `JWT_ALGORITHM=HS256`, `ACCESS_TOKEN_TTL=900`, `REFRESH_TOKEN_TTL=2592000`, `REDIS_URL`, `DATABASE_URL`, `SEED_SUPERADMIN_EMAILS` (comma-separated)
 - [ ] Configure `alembic.ini` and `env.py` for async SQLAlchemy engine
 - [ ] Configure pytest with `pytest-asyncio`, test DB fixture using `asyncpg`
 
@@ -111,8 +111,8 @@ AND the returned `User` has the same `id` as the first call
 - [ ] Create Alembic migration `001_create_users`: table with `id`, `google_sub`, `email`, `full_name`, `avatar_url`, `status`, `created_at`, `updated_at`; indexes on `google_sub` and `email`
 - [ ] Create Alembic migration `002_create_sessions`: table with `id`, `user_id FK`, `token_hash`, `expires_at`, `revoked_at`, `created_at`, `ip_address`, `user_agent`; indexes on `user_id`, `token_hash`, `expires_at`
 - [ ] Create Alembic migration `003_create_workspaces`: table with `id`, `name`, `slug`, `created_by FK`, `status`, `created_at`, `updated_at`; unique index on `slug`
-- [ ] Create Alembic migration `004_create_workspace_memberships`: table with `id`, `workspace_id FK`, `user_id FK`, `role`, `is_default`, `joined_at`; UNIQUE `(workspace_id, user_id)`; index on `user_id`
-- [ ] Create Alembic migration `005_create_audit_logs`: table with `id`, `event_type`, `user_id FK nullable`, `workspace_id FK nullable`, `ip_address`, `user_agent`, `outcome`, `details JSONB`, `created_at`; indexes on `user_id`, `event_type`, `created_at`
+- [ ] Create Alembic migration `004_create_workspace_memberships`: table with `id`, `workspace_id FK`, `user_id FK`, `role` (display label), `state` CHECK ('invited','active','suspended','deleted'), `is_default`, `joined_at`; UNIQUE `(workspace_id, user_id)`; index on `user_id` + composite `(workspace_id, state)`
+- [ ] Create Alembic migration `005_create_audit_events`: unified append-only table per design.md §audit_events (`id`, `category`, `action`, `actor_id FK nullable`, `workspace_id FK nullable`, `entity_type`, `entity_id`, `ip_address`, `user_agent`, `outcome`, `details JSONB`, `created_at`); indexes per design.md; PostgreSQL RULEs `no_update_audit`, `no_delete_audit`. Auth events use `category='auth'`; admin/domain events written by EP-10 use other categories. Do NOT create a separate `audit_logs` table.
 - [ ] Verify all migrations apply and roll back cleanly against local dev DB
 
 ---
@@ -170,12 +170,14 @@ THEN it returns `None` (not raises)
 ## Phase 5 — Application Services
 
 - [ ] [RED] Write unit tests for `AuthService.initiate_oauth()`: returns valid redirect URL, state stored in Redis with 5-min TTL, PKCE challenge is S256 of verifier
-- [ ] [RED] Write unit tests for `AuthService.handle_callback()`: happy path returns `(User, Workspace)`, state mismatch raises `InvalidStateError`, state expired raises `StateExpiredError`, Google exchange fails raises `OAuthExchangeError`, first login triggers bootstrap, returning user resolves existing workspace
+- [ ] [RED] Write unit tests for `AuthService.handle_callback()`: happy path returns `(User, active_memberships[])`; state mismatch raises `InvalidStateError`; state expired raises `StateExpiredError`; Google exchange fails raises `OAuthExchangeError`; user with 0 memberships → `NoWorkspaceAccessError`; user with 1 → routes to that workspace; user with N → returns `needs_picker=true` with list; `returnTo` deeplink preserved across redirect
 - [ ] [RED] Write unit tests for `AuthService.refresh_token()`: valid refresh token returns new JWT, expired refresh raises `SessionExpiredError`, revoked refresh raises `SessionRevokedError`
 - [ ] [RED] Write unit tests for `AuthService.logout()`: session revoked in DB, audit log entry written with `logout` event type
 - [ ] [GREEN] Implement `application/services/auth_service.py` — no ORM imports, injected repository interfaces
-- [ ] [RED] Write unit tests for `BootstrapService.bootstrap_workspace()`: new user → workspace + admin membership created in single transaction, returning user → existing workspace returned without creating duplicate, public email domain (gmail.com) → generic name not email-derived
-- [ ] [GREEN] Implement `application/services/bootstrap_service.py`
+- [ ] [RED] Write unit tests for `MembershipResolverService.resolve(user_id)`: returns `ResolverOutcome.no_access` when user has 0 active memberships; returns `ResolverOutcome.single(workspace)` when exactly 1; returns `ResolverOutcome.picker(memberships[])` when N; respects `last_chosen_workspace_id` if valid and still active
+- [ ] [GREEN] Implement `application/services/membership_resolver_service.py`
+- [ ] [RED] Write unit tests for `SuperadminSeedService.on_user_created(user)`: if `user.email` in `SEED_SUPERADMIN_EMAILS` → sets `is_superadmin=true` and writes audit event `superadmin_seeded`; otherwise no-op
+- [ ] [GREEN] Implement `application/services/superadmin_seed_service.py`
 - [ ] [GREEN] Implement `application/services/audit_service.py` — `log_event(event_type, user_id, ip, user_agent, outcome, details)` — fire-and-forget, swallows all exceptions with error log (never raises to caller)
 - [ ] [REFACTOR] AuthService and BootstrapService: verify no ORM imports, no HTTP handling, pure orchestration via injected interfaces
 
@@ -191,13 +193,18 @@ WHEN `AuthService.handle_callback()` is called with a `state` value that does no
 THEN it raises `InvalidStateError` (not a generic exception)
 AND no user record is created or modified
 
-WHEN `AuthService.handle_callback()` is called for a first-time user with a corporate email domain
-THEN `BootstrapService.bootstrap_workspace()` is called exactly once
-AND a workspace row + admin membership row are created in the same DB transaction
+WHEN `AuthService.handle_callback()` is called for a user with 0 active memberships
+THEN it raises `NoWorkspaceAccessError`
+AND the controller redirects to `/login?error=no_workspace`
+AND no JWT is issued, no session row is created
 
-WHEN `AuthService.handle_callback()` is called for a returning user
-THEN no workspace or membership is created
-AND the existing workspace is resolved via `WorkspaceMembershipRepository.get_default_for_user()`
+WHEN `AuthService.handle_callback()` is called for a user with exactly 1 active membership
+THEN the callback result contains that workspace
+AND no workspace or membership is created
+
+WHEN `AuthService.handle_callback()` is called for a user with N active memberships and no valid last-chosen
+THEN the callback result indicates `needs_picker=true` with the membership list
+AND the controller redirects to `/workspace/select`
 
 WHEN `AuthService.refresh_token()` is called with a revoked refresh token
 THEN it raises `SessionRevokedError`
@@ -207,8 +214,9 @@ WHEN `AuditService.log_event()` raises an internal DB exception
 THEN the exception is swallowed and logged at ERROR level
 AND the calling code is NOT affected (fire-and-forget contract)
 
-WHEN `BootstrapService.bootstrap_workspace()` is called for a user with `@gmail.com` email
-THEN workspace `name = "My Workspace"` and `slug` matches pattern `my-workspace-[a-z0-9]{6}`
+WHEN `SuperadminSeedService.on_user_created()` runs for a user whose email matches `SEED_SUPERADMIN_EMAILS`
+THEN the user's `is_superadmin` is set to true
+AND an audit event `superadmin_seeded` is written
 
 ---
 
@@ -242,7 +250,7 @@ AND the event is logged at WARN with the first 8 chars of the token only (never 
 ## Phase 7 — Controllers
 
 - [ ] [RED] Write integration tests for `GET /api/v1/auth/google`: returns 302, `Location` header contains `accounts.google.com`, state and verifier stored in Redis
-- [ ] [RED] Write integration tests for `GET /api/v1/auth/google/callback`: happy path (mock Google + DB) sets two cookies and redirects, state mismatch returns 400, state expired returns 400, first login bootstraps workspace and redirects to `/workspace/{slug}`
+- [ ] [RED] Write integration tests for `GET /api/v1/auth/google/callback`: happy path (mock Google + DB) sets two cookies and redirects according to membership resolution (0 → `/login?error=no_workspace`, 1 → `/workspace/{slug}`, N → `/workspace/select`); state mismatch returns 400; state expired returns 400; `returnTo` deeplink preserved when valid
 - [ ] [RED] Write integration tests for `POST /api/v1/auth/refresh`: valid refresh token returns 200 + new `access_token` cookie, expired token returns 401, revoked token returns 401
 - [ ] [RED] Write integration tests for `POST /api/v1/auth/logout`: session revoked in DB, both cookies cleared (Max-Age=0), response is 204
 - [ ] [RED] Write integration tests for `GET /api/v1/auth/me`: authenticated returns `{ data: { id, email, full_name, avatar_url, workspace_id, workspace_slug } }`, unauthenticated returns 401
@@ -352,5 +360,5 @@ THEN no exception is raised and it returns 0
 - [ ] `mypy --strict` clean on all EP-00 modules
 - [ ] `ruff check` and `ruff format` clean
 - [ ] All 5 auth endpoints respond correctly to happy path and documented error cases
-- [ ] `audit_logs` table has entries for login, logout, and failed auth attempts in integration test run
+- [ ] `audit_events` table has entries with `category='auth'` for login, logout, and failed auth attempts in integration test run
 - [ ] Rate limiting tested and confirmed at 429 on 11th request

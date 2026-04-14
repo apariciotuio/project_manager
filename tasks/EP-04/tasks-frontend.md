@@ -42,7 +42,7 @@ interface DimensionResult {
   name: string
   weight: number          // renormalized, sums to 1.0 across applicable dimensions
   filled: boolean
-  score: number           // 0.0 or 1.0 MVP
+  score: number           // 0.0 or 1.0 (originally MVP-scoped — see decisions_pending.md)
   contribution: number    // weight * score
 }
 ```

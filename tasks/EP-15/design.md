@@ -12,7 +12,7 @@ CREATE TABLE tags (
     slug        VARCHAR(100) NOT NULL,
     color       CHAR(7) NOT NULL DEFAULT '#6B7280',
     icon        VARCHAR(50) NULL,
-    archived    BOOLEAN NOT NULL DEFAULT false,
+    archived_at TIMESTAMPTZ NULL,
     created_by  UUID NOT NULL REFERENCES users(id),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -46,7 +46,7 @@ ALTER TABLE work_items ADD COLUMN tag_ids UUID[] NOT NULL DEFAULT '{}';
 ```sql
 CREATE UNIQUE INDEX idx_tags_workspace_slug_active
     ON tags (workspace_id, slug)
-    WHERE archived = false;
+    WHERE archived_at IS NULL;
 ```
 
 Rationale: archived tags are excluded so a new tag can reuse a previously archived slug, and unarchiving a slug that conflicts returns a 409 rather than silently breaking.
@@ -56,7 +56,7 @@ Rationale: archived tags are excluded so a new tag can reuse a previously archiv
 ```sql
 CREATE INDEX idx_tags_workspace_active
     ON tags (workspace_id)
-    WHERE archived = false;
+    WHERE archived_at IS NULL;
 ```
 
 ### Reverse lookup — work items by tag
@@ -82,7 +82,7 @@ OR query: `tag_ids && ARRAY['uuid1', 'uuid2']::uuid[]`
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX idx_tags_name_trgm
     ON tags USING GIN (name gin_trgm_ops)
-    WHERE archived = false;
+    WHERE archived_at IS NULL;
 ```
 
 ---
@@ -202,8 +202,13 @@ Integration points:
 
 ---
 
+## Puppet Search Integration
+
+Tag changes propagate to the EP-13 Puppet sync pipeline. When a work item's tag set changes (attach / detach / tag rename / tag merge), the `work_item.tag_changed` domain event triggers a re-index push so Puppet's metadata for the document includes the updated tag slugs (`tag_<slug>`). Searchbar facets can then filter by tag tag server-side without hitting our DB.
+
 ## Dependencies
 
 - EP-01: `work_items` table, `workspace_id` scoping
 - EP-09: list filter param interface (add `tag_ids`, `tag_mode` to existing filter schema)
 - EP-10: `audit_events` table, `capability` checks for `tags:admin` and `tags:write`
+- EP-13: Puppet push-on-write sync pipeline (tag slugs propagated as document metadata)

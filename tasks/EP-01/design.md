@@ -19,14 +19,14 @@ class WorkItemState(str, Enum):
 class WorkItemType(str, Enum):
     IDEA = "idea"
     BUG = "bug"
-    ENHANCEMENT = "enhancement"
-    TASK = "task"
-    INITIATIVE = "initiative"
+    MEJORA = "mejora"
+    TAREA = "tarea"
+    INICIATIVA = "iniciativa"
     SPIKE = "spike"
-    BUSINESS_CHANGE = "business_change"
-    REQUIREMENT = "requirement"
-    MILESTONE = "milestone"   # added by EP-14 extension
-    STORY = "story"           # added by EP-14 extension
+    CAMBIO = "cambio"
+    REQUISITO = "requisito"
+    MILESTONE = "milestone"   # EP-14 hierarchy
+    STORY = "story"           # EP-14 hierarchy
 
 class DerivedState(str, Enum):
     IN_PROGRESS = "in_progress"
@@ -130,6 +130,8 @@ VALID_TRANSITIONS: frozenset[tuple[WorkItemState, WorkItemState]] = frozenset({
     (READY, EXPORTED),
     (READY, IN_CLARIFICATION),    # revert on substantial change
 })
+# 14 edges total. `derived_state` (in_progress/blocked/ready) is NOT an FSM state — it is
+# materialized write-through (resolution #15) on transitions, validation changes, and review events.
 
 def is_valid_transition(from_state: WorkItemState, to_state: WorkItemState) -> bool:
     return (from_state, to_state) in VALID_TRANSITIONS
@@ -141,23 +143,23 @@ def is_valid_transition(from_state: WorkItemState, to_state: WorkItemState) -> b
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft : create
-    Draft --> InClarification : owner starts work
-    InClarification --> InReview : owner submits
-    InClarification --> ChangesRequested : reviewer requests changes
-    InClarification --> PartiallyValidated : some validations close
-    InClarification --> Ready : owner declares ready*
-    InReview --> ChangesRequested : reviewer requests changes
-    InReview --> PartiallyValidated : review resolves validations
-    InReview --> InClarification : owner pulls back
-    ChangesRequested --> InClarification : owner resumes
-    ChangesRequested --> InReview : owner resubmits
-    PartiallyValidated --> InReview : owner submits remaining
-    PartiallyValidated --> Ready : owner declares ready*
-    Ready --> Exported : explicit export
-    Ready --> InClarification : substantial change reverts
+    [*] --> draft : create
+    draft --> in_clarification : owner starts work
+    in_clarification --> in_review : owner submits
+    in_clarification --> changes_requested : reviewer requests changes
+    in_clarification --> partially_validated : some validations close
+    in_clarification --> ready : owner declares ready*
+    in_review --> changes_requested : reviewer requests changes
+    in_review --> partially_validated : review resolves validations
+    in_review --> in_clarification : owner pulls back
+    changes_requested --> in_clarification : owner resumes
+    changes_requested --> in_review : owner resubmits
+    partially_validated --> in_review : owner submits remaining
+    partially_validated --> ready : owner declares ready*
+    ready --> exported : explicit export
+    ready --> in_clarification : substantial change reverts
 
-    note right of Ready
+    note right of ready
         * = requires all mandatory validations
             OR owner override with justification
     end note
@@ -169,51 +171,67 @@ stateDiagram-v2
 
 ### `work_items` table
 
+> **EP-01 owns the canonical `work_items` schema.** Every column below is listed explicitly.
+> Other epics (EP-02 draft/template, EP-05 hierarchy, EP-06 override audit, EP-07 versioning,
+> EP-09 dashboards, EP-11 Jira import, EP-14 hierarchy, EP-16 attachments) add behavior against
+> these columns but do not redeclare the table.
+
 ```sql
 CREATE TABLE work_items (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id            UUID NOT NULL REFERENCES workspaces(id),              -- multi-tenant RLS
+    project_id              UUID,                                                 -- FK added by EP-10 (see note)
+    type                    TEXT NOT NULL,                                        -- idea|bug|mejora|tarea|iniciativa|spike|cambio|requisito|milestone|story
     title                   VARCHAR(255) NOT NULL,
-    type                    VARCHAR(50) NOT NULL,
-    state                   VARCHAR(50) NOT NULL DEFAULT 'draft',
-    owner_id                UUID NOT NULL REFERENCES users(id),
-    creator_id              UUID NOT NULL REFERENCES users(id),
-    workspace_id            UUID NOT NULL REFERENCES workspaces(id),
-    project_id              UUID,  -- FK added later; nullable at create time (see note below)
     description             TEXT,
-    original_input          TEXT,
-    priority                VARCHAR(20),
-    due_date                DATE,
-    tags                    TEXT[] NOT NULL DEFAULT '{}',
-    completeness_score      SMALLINT NOT NULL DEFAULT 0,
-    has_override            BOOLEAN NOT NULL DEFAULT FALSE,
+    original_input          TEXT,                                                 -- verbatim capture, preserved
+    state                   TEXT NOT NULL DEFAULT 'draft',                        -- FSM state (lowercase snake_case)
+    derived_state           TEXT,                                                 -- materialized write-through: in_progress|blocked|ready
+    owner_id                UUID REFERENCES users(id),
+    team_id                 UUID REFERENCES teams(id),                            -- EP-09 team filtering
+    has_override            BOOLEAN NOT NULL DEFAULT FALSE,                       -- EP-06 audit
     override_justification  TEXT,
-    override_by             UUID REFERENCES users(id),
-    override_at             TIMESTAMPTZ,
-    owner_suspended_flag    BOOLEAN NOT NULL DEFAULT FALSE,
-    state_entered_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    version_number          INTEGER NOT NULL DEFAULT 0,
-    current_version_id      UUID,                            -- FK set after work_item_versions exists; updated by EP-07 versioning service
-    team_id                 UUID REFERENCES teams(id),
+    override_by             UUID REFERENCES users(id),                            -- EP-06 (column lives here)
+    override_at             TIMESTAMPTZ,                                          -- EP-06
+    version_number          INTEGER NOT NULL DEFAULT 0,                           -- EP-03 optimistic lock
+    current_version_id      UUID,                                                 -- EP-06 review pinning / EP-11 divergence
+    state_entered_at        TIMESTAMPTZ NOT NULL DEFAULT now(),                   -- EP-09 dashboards
+    due_date                DATE,                                                 -- resolution #15: deadline support
+    imported_from_jira      BOOLEAN NOT NULL DEFAULT FALSE,                       -- resolution #12: Jira import flag
+    jira_source_key         TEXT,                                                 -- original Jira issue key (if imported)
+    parent_work_item_id     UUID REFERENCES work_items(id) ON DELETE RESTRICT,    -- EP-14 hierarchy
+    materialized_path       TEXT NOT NULL DEFAULT '',                             -- EP-14 adjacency + path hybrid
+    attachment_count        INTEGER NOT NULL DEFAULT 0,                           -- EP-16 denormalized
+    draft_data              JSONB,                                                -- EP-02 auto-save payload
+    template_id             UUID,                                                 -- FK set by EP-10 (templates)
+    created_by              UUID NOT NULL REFERENCES users(id),
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    parent_work_item_id     UUID REFERENCES work_items(id) ON DELETE RESTRICT,
-    materialized_path       TEXT NOT NULL DEFAULT '',
-    attachment_count        INTEGER NOT NULL DEFAULT 0,
+    -- operational
+    owner_suspended_flag    BOOLEAN NOT NULL DEFAULT FALSE,
+    priority                VARCHAR(20),
+    tags                    TEXT[] NOT NULL DEFAULT '{}',
+    completeness_score      SMALLINT NOT NULL DEFAULT 0,
     deleted_at              TIMESTAMPTZ,
     exported_at             TIMESTAMPTZ,
-    export_reference        VARCHAR(255),
 
     CONSTRAINT work_items_title_length CHECK (char_length(title) BETWEEN 3 AND 255),
     CONSTRAINT work_items_completeness_range CHECK (completeness_score BETWEEN 0 AND 100),
     CONSTRAINT work_items_type_valid CHECK (type IN (
-        'idea','bug','enhancement','task','initiative','spike','business_change','requirement',
+        'idea','bug','mejora','tarea','iniciativa','spike','cambio','requisito',
         'milestone','story'
     )),
     CONSTRAINT work_items_state_valid CHECK (state IN (
         'draft','in_clarification','in_review','changes_requested',
         'partially_validated','ready','exported'
+    )),
+    CONSTRAINT work_items_derived_state_valid CHECK (derived_state IS NULL OR derived_state IN (
+        'in_progress','blocked','ready'
     ))
 );
+
+-- DROPPED (resolution #4 / #22): `aggregated_comment_text`, `aggregated_task_text` — no
+-- denormalized search columns. All search delegated to Puppet (EP-13).
 
 CREATE INDEX idx_work_items_project_state ON work_items(project_id, state) WHERE deleted_at IS NULL;
 CREATE INDEX idx_work_items_owner ON work_items(owner_id) WHERE deleted_at IS NULL;
@@ -428,7 +446,12 @@ Rejected. Both libraries conflate graph definition with callback hooks. Business
 
 ### Storing derived_state in the DB
 
-Rejected. Derived state is a function of primary state + blocking conditions. Storing it creates a consistency problem: the blocking conditions table changes and derived_state goes stale. Compute at read time; cache with Redis if list performance becomes an issue (not needed in MVP).
+**Decision (resolved 2026-04-14, resolution #15)**: **materialize `derived_state` write-through**. The column lives on `work_items` and is updated atomically by the service layer on every state transition, validation change, and review event. Read paths (list-view perf, dashboards) get O(1) lookup without computing from blocking conditions on each query.
+
+Invariants:
+- `derived_state` is ONLY written by `TransitionService`, `ValidationService`, and `ReviewService` — never directly by controllers or repositories.
+- Any code path that can change a blocking condition (pending validation, review outcome, override) MUST recompute and persist `derived_state` in the same transaction.
+- Rebuild routine available for data backfill / correctness audits.
 
 ### Separate tables per item type
 
@@ -436,4 +459,4 @@ Rejected. All 8 types share the same lifecycle and 90% of the same fields. Type-
 
 ### Event sourcing for state transitions
 
-Overkill for MVP. The `state_transitions` audit table gives us full history. Rebuilding state from events adds complexity without value at this scale. Revisit if we need time-travel queries or complex projections.
+Overkill at current scale. The `state_transitions` audit table gives us full history. Rebuilding state from events adds complexity without value at this scale. Revisit if we need time-travel queries or complex projections. ⚠️ originally MVP-scoped — see decisions_pending.md

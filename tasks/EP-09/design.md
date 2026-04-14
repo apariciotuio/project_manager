@@ -67,7 +67,7 @@ CREATE INDEX idx_work_items_state_owner ON work_items (state, owner_id, updated_
 ### Sort Options
 
 Supported: `updated_at` (default), `created_at`, `title`, `state`, `completeness`.
-`title` and `state` sorts use `NULLS LAST`. `completeness` is a derived column — store as materialized column or compute inline (simple enough for MVP).
+`title` and `state` sorts use `NULLS LAST`. `completeness` is a derived column — store as materialized column or compute inline (simple enough at current scale).
 
 ### Response Shape
 
@@ -86,17 +86,17 @@ Supported: `updated_at` (default), `created_at`, `title`, `state`, `completeness
 }
 ```
 
-`total_count` requires a `COUNT(*)` with same WHERE clause. Run as separate query — acceptable for MVP. If count queries become slow at scale, switch to estimated counts via `pg_stats`.
+`total_count` requires a `COUNT(*)` with same WHERE clause. Run as separate query — acceptable at current scale. If count queries become slow at scale, switch to estimated counts via `pg_stats`. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
 ## 2. Dashboard Aggregation: Materialized Views vs On-Demand + Redis Cache
 
-**Decision: On-demand SQL queries + Redis cache (TTL 120s). No materialized views for MVP.**
+**Decision: On-demand SQL queries + Redis cache (TTL 120s). No materialized views.** ⚠️ originally MVP-scoped — see decisions_pending.md
 
 Materialized views require `REFRESH MATERIALIZED VIEW` (full recompute or CONCURRENTLY), add operational complexity (refresh scheduling or trigger-based refresh), and provide no latency advantage when Redis is in front. They also don't support per-user/per-team scoping without multiple views.
 
-Redis cache with targeted invalidation on state-change events is simpler, cheaper to operate, and good enough for the load profile of an MVP.
+Redis cache with targeted invalidation on state-change events is simpler, cheaper to operate, and good enough for the expected load profile.
 
 ### Cache Key Strategy
 
@@ -159,90 +159,26 @@ FROM (
 GROUP BY state;
 ```
 
-This returns column summaries and the first 20 cards per column in a single query. At MVP scale (< 5000 items), this runs comfortably under 100ms.
+This returns column summaries and the first 20 cards per column in a single query. At current target scale (< 5000 items), this runs comfortably under 100ms.
 
 For the blocked lane, a separate query fetches blocked items with their pre-block state from the history table.
 
 ---
 
-## 4. Search: PostgreSQL Full-Text Search vs External Search
+## 4. Search: delegated to Puppet RAG (EP-13)
 
-**Decision: PostgreSQL native full-text search (tsvector/tsquery). No external search engine for MVP.**
+**Decision (resolution #4, #9, #24, #28): search is fully delegated to Puppet.** No PostgreSQL FTS. No `tsvector` column. No `aggregated_*_text` denormalized columns. No GIN search index. No Elasticsearch. No RRF hybrid. No per-workspace embeddings. No learned re-ranker. No multi-language.
 
-Elasticsearch/OpenSearch adds: an extra service to operate, replication/index management, eventual consistency guarantees to reason about, and significant infra cost. For an MVP with < 100k documents, PG FTS is fast enough (< 300ms at scale), simpler, and ACID-consistent with the data.
+The product UI calls `PuppetClient.search(query, tags, limit, cursor)` directly from the backend. Puppet returns ranked `document_id`s (work-item IDs, comment IDs, timeline entry IDs) plus snippets. The backend then fetches the full rows by ID for rendering.
 
-Upgrade path exists: if search quality degrades or dataset grows beyond 500k items, add pgvector for semantic search or migrate to a dedicated search service. That decision should be data-driven.
+- Tag filter on every query: `wm_<workspace_id>` plus optional sub-tags (`wm_type_bug`, `wm_project_<id>`, `wm_tag_<slug>`).
+- Prefix / type-ahead: `PuppetClient.search_prefix(prefix, tags)`.
+- Faceted filters: type, state, project, team, owner, tags — applied server-side by Puppet using the document metadata.
+- Saved searches: `saved_searches(id, user_id, workspace_id, name, query_params JSONB, created_at)` — stored on our side; query params are replayed through `PuppetClient`.
+- Eventual consistency target: <3s from write to search visibility.
+- If Puppet is unavailable: the searchbar shows "search unavailable" but CRUD + filter listings remain fully functional (they go straight to Postgres).
 
-### Schema
-
-```sql
--- Extension required for tsvector GIN indexing + trigram support shared with EP-05.
--- Must be created BEFORE any gin_trgm_ops or tsvector GIN indexes. Requires a DB role
--- with CREATE privilege on the database (in managed environments this is typically
--- pre-installed; in local/dev it must be created by a superuser).
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- On work_items table:
-ALTER TABLE work_items ADD COLUMN search_vector tsvector;
-
--- Per db_review.md MS-2: GIN index build takes ACCESS EXCLUSIVE lock — at 10K rows
--- this is ~5s of table-level blocking, at 100K ~30s. Use CONCURRENTLY so the index
--- can be built online without blocking writes. CONCURRENTLY cannot run inside a
--- transaction block — this migration step must set Alembic `transactional_ddl=False`
--- or be executed via `op.execute()` with an explicit autocommit connection.
-CREATE INDEX CONCURRENTLY idx_work_items_search ON work_items USING GIN (search_vector);
-
--- Per db_review.md IDX-8: auto-maintain search_vector via a DB trigger so synchronous
--- fields (title, description) are never out of sync. Async-updated aggregates
--- (comments, tasks) remain maintained by Celery writers.
-CREATE OR REPLACE FUNCTION work_items_search_update() RETURNS trigger AS $$
-BEGIN
-  NEW.search_vector :=
-    setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-    setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-    setweight(to_tsvector('english', COALESCE(NEW.spec_content, '')), 'B') ||
-    setweight(to_tsvector('english', COALESCE(NEW.aggregated_task_text, '')), 'C') ||
-    setweight(to_tsvector('english', COALESCE(NEW.aggregated_comment_text, '')), 'D');
-  RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_work_items_search
-  BEFORE INSERT OR UPDATE OF title, description, spec_content,
-                              aggregated_task_text, aggregated_comment_text
-  ON work_items
-  FOR EACH ROW EXECUTE FUNCTION work_items_search_update();
-
--- tsvector composition (reference — embodied by the trigger above):
-setweight(to_tsvector('english', COALESCE(title, '')), 'A') ||
-setweight(to_tsvector('english', COALESCE(description, '')), 'B') ||
-setweight(to_tsvector('english', COALESCE(spec_content, '')), 'B') ||
-setweight(to_tsvector('english', COALESCE(aggregated_task_text, '')), 'C') ||
-setweight(to_tsvector('english', COALESCE(aggregated_comment_text, '')), 'D')
-```
-
-`aggregated_comment_text` and `aggregated_task_text` are denormalized columns updated async. This avoids a JOIN in the search query.
-
-### Maintenance
-
-- **Synchronous** (same transaction): title, description, spec_content changes via SQLAlchemy `after_flush` event or PG trigger.
-- **Async** (Celery task): comment/review additions — tolerable eventual consistency for MVP.
-
-### Search Query
-
-```sql
-SELECT
-  id, title, type, state, owner_id, team_id,
-  ts_rank_cd(search_vector, query) AS rank,
-  ts_headline('english', title, query, 'MaxWords=10,MinWords=5') AS title_snippet,
-  ts_headline('english', description, query, 'MaxWords=30,MinWords=15') AS body_snippet
-FROM work_items, plainto_tsquery('english', :q) query
-WHERE search_vector @@ query
-  AND state != 'archived'  -- unless include_archived=true
-ORDER BY rank DESC, updated_at DESC
-LIMIT :limit + 1;
-```
-
-Phrase queries substitute `phraseto_tsquery`. The API detects quoted strings in the input and routes accordingly.
+See EP-13 for the push-on-write sync pipeline, the `PuppetClient` API, health check, and document schema.
 
 ---
 
@@ -407,20 +343,20 @@ GET /api/v1/work-items/kanban
           "attachment_count": 2
         }
       ],
-      "next_cursor": "base64string|null"
+      "pagination": { "cursor": "base64string|null", "has_next": false }
     }
   ],
   "group_by": "state"
 }
 ```
 
-Cards are cursor-paginated within each column (25 per column per page, independent `next_cursor` per column). The `limit` param applies per-column; max 25.
+Cards are cursor-paginated within each column (25 per column per page, independent `{cursor, has_next}` per column — canonical EP-12 shape). The `limit` param applies per-column; max 25.
 
 ### Group-by Modes
 
 | `group_by` | Column definition | Special columns |
 |------------|-------------------|-----------------|
-| `state` (default) | One column per FSM state; ARCHIVED excluded; columns ordered by FSM transition order | — |
+| `state` (default) | One column per FSM state (EP-01 canonical enum); soft-deleted items excluded; columns ordered by FSM transition order | — |
 | `owner` | One column per distinct `owner_id` in project; sorted by owner display name | `key: "unowned"` for items without owner |
 | `tag` | One column per tag in project (EP-15 required); items with multiple tags appear in multiple columns | `key: "untagged"` for items with no tags |
 | `parent` | One column per distinct `parent_work_item_id` (EP-14 required) | `key: "no_parent"` for orphan items |
@@ -463,7 +399,7 @@ No drag-and-drop on mobile. Horizontal scroll between columns with `scroll-snap-
 | Decision | Rejected Alternative | Reason |
 |----------|---------------------|--------|
 | Redis cache + on-demand queries | PostgreSQL materialized views | No per-user scoping; refresh scheduling complexity; no latency benefit with Redis in front |
-| PG native FTS | Elasticsearch | Operational overhead unjustified at MVP scale; PG FTS sufficient for < 100k docs |
+| PG native FTS | Elasticsearch | Operational overhead unjustified at current target scale; PG FTS sufficient for < 100k docs ⚠️ originally MVP-scoped — see decisions_pending.md |
 | Single API call for detail | BFF composite fetch | Multiple round trips; waterfall loading; complex error handling |
 | Cursor pagination | Offset pagination | Breaks under concurrent writes; no stable position under inserts |
 | URL params as filter state | Redux/Zustand global store | Bookmarkable URLs; no extra dependency; works with SSR |

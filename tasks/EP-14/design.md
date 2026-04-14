@@ -16,7 +16,7 @@ ALTER TABLE work_items DROP CONSTRAINT work_items_type_valid;
 
 -- Step 2: Add new type CHECK constraint including milestone and story.
 ALTER TABLE work_items ADD CONSTRAINT work_items_type_valid CHECK (type IN (
-    'idea','bug','enhancement','task','initiative','spike','business_change','requirement',
+    'idea','bug','mejora','tarea','iniciativa','spike','cambio','requisito',
     'milestone','story'
 ));
 
@@ -51,16 +51,16 @@ CREATE INDEX idx_work_items_ws_parent
 
 ```python
 class WorkItemType(str, Enum):
-    IDEA            = "idea"
-    BUG             = "bug"
-    ENHANCEMENT     = "enhancement"
-    TASK            = "task"
-    INITIATIVE      = "initiative"
-    SPIKE           = "spike"
-    BUSINESS_CHANGE = "business_change"
-    REQUIREMENT     = "requirement"
-    MILESTONE       = "milestone"   # NEW
-    STORY           = "story"       # NEW
+    IDEA        = "idea"
+    BUG         = "bug"
+    MEJORA      = "mejora"
+    TAREA       = "tarea"
+    INICIATIVA  = "iniciativa"
+    SPIKE       = "spike"
+    CAMBIO      = "cambio"
+    REQUISITO   = "requisito"
+    MILESTONE   = "milestone"   # NEW
+    STORY       = "story"       # NEW
 ```
 
 ---
@@ -87,17 +87,16 @@ from domain.models.work_item import WorkItemType
 # None = any parent type is acceptable (or no parent)
 # frozenset = only these parent types are permitted
 VALID_PARENT_TYPES: dict[WorkItemType, frozenset[WorkItemType] | None] = {
-    WorkItemType.MILESTONE:       frozenset(),            # empty = no parent allowed
-    WorkItemType.EPIC:            frozenset({WorkItemType.MILESTONE}),
-    WorkItemType.INITIATIVE:      frozenset({WorkItemType.MILESTONE}),
-    WorkItemType.STORY:           frozenset({WorkItemType.EPIC, WorkItemType.INITIATIVE}),
-    WorkItemType.REQUIREMENT:     frozenset({WorkItemType.EPIC, WorkItemType.INITIATIVE}),
-    WorkItemType.ENHANCEMENT:     frozenset({WorkItemType.EPIC, WorkItemType.INITIATIVE}),
-    WorkItemType.TASK:            None,
-    WorkItemType.BUG:             None,
-    WorkItemType.IDEA:            None,
-    WorkItemType.SPIKE:           None,
-    WorkItemType.BUSINESS_CHANGE: None,
+    WorkItemType.MILESTONE:  frozenset(),                                 # empty = no parent allowed
+    WorkItemType.INICIATIVA: frozenset({WorkItemType.MILESTONE}),
+    WorkItemType.STORY:      frozenset({WorkItemType.INICIATIVA}),
+    WorkItemType.REQUISITO:  frozenset({WorkItemType.INICIATIVA, WorkItemType.STORY}),
+    WorkItemType.MEJORA:     frozenset({WorkItemType.INICIATIVA, WorkItemType.STORY}),
+    WorkItemType.TAREA:      None,
+    WorkItemType.BUG:        None,
+    WorkItemType.IDEA:       None,
+    WorkItemType.SPIKE:      None,
+    WorkItemType.CAMBIO:     None,
 }
 
 def validate_parent(
@@ -188,13 +187,13 @@ This is one SQL statement. No row-by-row Python loop.
 
 ```python
 STATE_WEIGHTS: dict[WorkItemState, float] = {
-    WorkItemState.DRAFT:               0.0,
-    WorkItemState.IN_CLARIFICATION:    0.1,
-    WorkItemState.CHANGES_REQUESTED:   0.1,
-    WorkItemState.IN_REVIEW:           0.25,
-    WorkItemState.PARTIALLY_VALIDATED: 0.5,
-    WorkItemState.READY:               1.0,
-    WorkItemState.EXPORTED:            1.0,
+    WorkItemState.DRAFT:                     0.0,
+    WorkItemState.IN_CLARIFICATION:          0.1,
+    WorkItemState.CHANGES_REQUESTED:         0.1,
+    WorkItemState.IN_REVIEW:                 0.25,
+    WorkItemState.PARTIALLY_VALIDATED:       0.5,
+    WorkItemState.READY:                     1.0,
+    WorkItemState.EXPORTED:                  1.0,
 }
 
 CACHE_KEY = "rollup:{work_item_id}"
@@ -436,4 +435,4 @@ Rejected for large projects. A project could have hundreds of milestones and tho
 
 ### Async rollup computation only (never synchronous)
 
-Rejected. The `/rollup` endpoint serves the cached value synchronously. Async Celery task only handles cache invalidation. First-read cache miss is accepted as a latency trade-off (typically <50ms for a shallow tree). Fully async with polling adds UI complexity for no benefit at MVP tree depths.
+Rejected. The `/rollup` endpoint serves the cached value synchronously. Async Celery task only handles cache invalidation. First-read cache miss is accepted as a latency trade-off (typically <50ms for a shallow tree). Fully async with polling adds UI complexity for no benefit at current tree depths.

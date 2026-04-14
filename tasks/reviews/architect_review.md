@@ -28,7 +28,7 @@ The consistency_review (issue #5) flagged this, but the inbox query in EP-08 des
 **Fix**: Rewrite the inbox query against EP-06's actual `review_requests` schema. Map the tiers to real states:
 - Tier 1: `review_requests WHERE reviewer_id = :user_id AND status = 'pending'` (direct) + team fan-out via `team_memberships`
 - Tier 2: `work_items WHERE owner_id = :user_id AND state = 'changes_requested'`
-- Tier 3: Remove entirely (no `blocks` table exists) or defer to post-MVP
+- Tier 3: Remove entirely (no `blocks` table exists) or defer
 - Tier 4: Remove entirely (no `decision_owner_id` concept exists) or model it explicitly
 
 ### C2. EP-06 Override Migration Conflicts with EP-01 Column Definitions
@@ -70,7 +70,7 @@ These are two incompatible designs for the same concept. EP-04 line 353 referenc
 
 EP-10 design uses `jira_configs` and `jira_project_mappings` and `jira_sync_logs`. But `tech_info.md` uses `integration_configs` and `integration_project_mappings`. EP-11 references `jira_configs` (matching EP-10). 
 
-**Fix**: Pick one naming convention. Since EP-11 also uses `jira_configs`, standardize on EP-10's names (`jira_configs`, `jira_project_mappings`, `jira_sync_logs`). Update `tech_info.md`. The `integration_*` naming anticipates multi-provider, which is out of scope for MVP and violates YAGNI.
+**Fix**: Pick one naming convention. Since EP-11 also uses `jira_configs`, standardize on EP-10's names (`jira_configs`, `jira_project_mappings`, `jira_sync_logs`). Update `tech_info.md`. The `integration_*` naming anticipates multi-provider, which is out of scope and violates YAGNI. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### C6. workspace_memberships Missing State and Capabilities Columns in EP-00
 
@@ -171,7 +171,7 @@ The inbox (EP-08) runs 4+ sub-queries UNIONed with no result limit per tier. At 
 
 ### SC2. Full-Snapshot Versioning Storage Growth
 
-EP-07's math: 20KB/snapshot x 100 versions x 10k items = 20GB. That is MVP. At 10x (100k items), it is 200GB of JSONB in one table. TOAST compresses, but vacuum and index maintenance become painful.
+EP-07's math: 20KB/snapshot x 100 versions x 10k items = 20GB at current target scale. At 10x (100k items), it is 200GB of JSONB in one table. TOAST compresses, but vacuum and index maintenance become painful.
 
 **Mitigation**: Implement the `archived` column from EP-07's design. Background job archives versions older than 90 days (keeping latest 10). Archived versions moved to a `work_item_versions_archive` table or partitioned by date.
 
@@ -181,7 +181,7 @@ Each authenticated user holds one SSE connection. At 1k concurrent users, that i
 - Each SSE handler subscribes to a Redis pub/sub channel
 - Redis pub/sub does not scale horizontally natively (no consumer groups)
 
-**Mitigation**: At 10x, switch from Redis pub/sub to Redis Streams with consumer groups, or introduce a dedicated message broker (NATS, RabbitMQ). For MVP, Redis pub/sub is fine.
+**Mitigation**: At 10x, switch from Redis pub/sub to Redis Streams with consumer groups, or introduce a dedicated message broker (NATS, RabbitMQ). At current target scale, Redis pub/sub is fine. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### SC4. Dashboard Cache Invalidation Is Too Broad
 
@@ -209,10 +209,10 @@ EP-04 computes completeness on every `GET /completeness` request (cache miss = s
 14 edges in a frozenset. Zero dependencies. Trivially testable. Business rules stay in the service layer, not in framework callbacks. Correct decision.
 
 ### V2. Capability Array Over RBAC (EP-10)
-For an MVP with ~10 capabilities and no role inheritance, a `text[]` column is the right call. Avoids the role-permission join table circus. GIN index makes capability checks fast. Capability granting constraint ("can only grant what you hold") is elegant.
+With ~10 capabilities and no role inheritance, a `text[]` column is the right call. Avoids the role-permission join table circus. GIN index makes capability checks fast. Capability granting constraint ("can only grant what you hold") is elegant. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### V3. Full Snapshot Versioning (EP-07)
-O(1) read, O(1) diff. TOAST handles compression. The storage math works at MVP scale. Delta encoding adds complexity for zero user-facing benefit. Good call.
+O(1) read, O(1) diff. TOAST handles compression. The storage math works at current target scale. Delta encoding adds complexity for zero user-facing benefit. Good call. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### V4. SSE Over WebSocket (EP-08, EP-12)
 Unidirectional server push. No upgrade handshake. Auto-reconnect in browsers. Shared infrastructure across EP-03 and EP-08. The right primitive for the problem.

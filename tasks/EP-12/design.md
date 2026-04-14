@@ -1,4 +1,6 @@
-# EP-12 Technical Design — Responsive, Security, Performance & Observability
+# EP-12 Technical Design — Responsive, Security & Performance
+
+> **Scope change (resolved 2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Prometheus, Grafana, Loki, OpenTelemetry, Sentry, trace sampling, LLM metrics, `product_events`, and health dashboards are out of scope. Only Python stdlib `logging` to stdout + `CorrelationIDMiddleware` remain. See `specs/observability/spec.md` for the reduced surface.
 
 This document defines the canonical patterns for cross-cutting concerns. All other epics inherit these patterns. Deviating from them requires an explicit decision record.
 
@@ -64,14 +66,15 @@ Order matters. Every request passes through this chain:
 ```
 Request
   → CorrelationIDMiddleware        (inject/generate X-Correlation-ID)
-  → RequestLoggingMiddleware       (log method, path, user_agent, ip)
-  → CORSMiddleware                 (allowlist from ALLOWED_ORIGINS env var)
   → RateLimitMiddleware            (Redis sliding window, per IP or per user)
-  → JWTAuthMiddleware              (validate access token, attach user to request state)
-  → CapabilityCheckDecorator       (per-endpoint, require_capabilities([...]))
+  → CORSMiddleware                 (allowlist from ALLOWED_ORIGINS env var)
+  → AuthMiddleware                 (validate JWT access token, attach user to request state)
+  → CapabilityMiddleware           (per-endpoint, require_capabilities([...]))
   → InputValidationMiddleware      (Pydantic, handled by FastAPI)
   → Handler
 ```
+
+Order matters: correlation-ID first so every downstream log line carries it; rate-limit before auth so anonymous floods are cheap to reject; CORS before auth so preflight doesn't bounce on missing JWT.
 
 ### `require_capabilities` decorator
 
@@ -245,74 +248,13 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
         return response
 ```
 
-### Sentry integration
+### Sentry / Prometheus / OpenTelemetry / PostHog — DEFERRED
 
-```python
-# app/main.py — initialize before app creation
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from sentry_sdk.integrations.celery import CeleryIntegration
+Removed per resolution #27. No external error tracking, metrics, tracing, or product-analytics SDKs. Errors are logged to stdout via stdlib `logging`; operators tail logs by correlation ID. Re-introduction requires a new decision.
 
-if settings.SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        environment=settings.ENVIRONMENT,
-        release=settings.APP_VERSION,
-        integrations=[FastApiIntegration(), SqlalchemyIntegration(), CeleryIntegration()],
-        traces_sample_rate=0.1,   # 10% trace sampling — adjust post-MVP
-        before_send=scrub_sensitive_data,  # strip Authorization headers, credentials
-    )
-```
+### Product event service — DEFERRED
 
-Sentry correlation tag injection (in CorrelationIDMiddleware, after sentry_sdk.init):
-```python
-with sentry_sdk.configure_scope() as scope:
-    scope.set_tag("correlation_id", correlation_id)
-    scope.set_user({"id": str(request.state.user_id)}) if authenticated else None
-```
-
-### Product event service
-
-```python
-# app/application/services/product_event_service.py
-class ProductEventService:
-    """Thin adapter over the analytics backend. Fire-and-forget. Never raises."""
-
-    def __init__(self, backend: ProductEventBackend): ...
-
-    async def track(self, event: str, user_id: str, workspace_id: str, properties: dict) -> None:
-        try:
-            await self._backend.send(ProductEvent(
-                event=event,
-                timestamp=datetime.utcnow(),
-                user_id=user_id,
-                workspace_id=workspace_id,
-                properties=properties,
-            ))
-        except Exception:
-            logger.warning("product_event_failed", event=event, user_id=user_id)
-```
-
-Backed by: PostHog (preferred, self-hostable), Segment (if budget allows), or append-only `product_events` table in Postgres for MVP.
-
-### Frontend Sentry setup
-
-```ts
-// sentry.client.config.ts
-import * as Sentry from "@sentry/nextjs";
-
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.NEXT_PUBLIC_ENVIRONMENT,
-  beforeSend(event) {
-    // strip any Authorization header from breadcrumbs
-    return event;
-  },
-});
-```
-
-ErrorBoundary adds correlation_id from the last failed request to the Sentry event.
+No `product_events` table. No PostHog/Segment integration. The `ProductEventService` is not implemented. User-visible actions are captured in `audit_events` (EP-00/EP-10) when they affect security or admin surface; UX analytics are out of scope.
 
 ---
 
@@ -339,12 +281,12 @@ Every story in every epic is "done" when ALL of the following are checked. Not a
 - [ ] Redis cache key documented if caching is used
 - [ ] New indexes added to migration if any new filter column introduced
 
-### Observability
+### Logging (observability deferred — resolution #27)
 
-- [ ] All significant operations emit structured log lines with correlation_id in context
-- [ ] Errors reported to Sentry (handled via capture_exception, unhandled auto-captured)
-- [ ] Product event emitted for user-visible actions (per event taxonomy)
-- [ ] Integration failures surface in the integration_sync_log table
+- [ ] All significant operations emit stdlib `logging` lines with correlation_id in context
+- [ ] Errors are logged to stdout with full traceback; no Sentry
+- [ ] No product-event instrumentation
+- [ ] Integration failures are logged and recorded in `audit_events` (no `integration_sync_log` table)
 
 ### Responsive / Accessibility
 

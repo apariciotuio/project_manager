@@ -66,7 +66,7 @@ AND the snapshot is immutable after creation — no edits to a version record ar
 WHEN a work item accumulates more than 500 versions
 THEN the system retains all versions but marks older versions as `archived = true`
 AND archived versions are excluded from the default version list (fetchable explicitly)
-AND no versions are permanently deleted in MVP
+AND no versions are permanently deleted ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -153,9 +153,11 @@ AND computation must complete within 2 seconds for sections up to 100KB of combi
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Branch/fork versioning (linear history only)
-- User-initiated manual version creation with commit message (trigger = `manual` is system-reserved in MVP)
+- User-initiated manual version creation with commit message (trigger = `manual` is system-reserved)
 - Three-way merge
 - Version tagging / aliases (e.g., "baseline", "approved")

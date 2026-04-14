@@ -107,7 +107,7 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
 | `jira_config_disabled` | `jira_config` | |
 | `jira_config_enabled` | `jira_config` | |
 | `jira_mapping_created` | `jira_project_mapping` | after: full mapping |
-| `jira_export_retried` | `jira_sync_log` | context: `{element_id, attempt}` |
+| `jira_export_retried` | `jira_sync_log` | context: `{work_item_id, attempt}` |
 | `owner_reassigned` | `element` | before/after `owner_id` |
 | `jira_health_degraded` | `jira_config` | context: `{error_type}` |
 
@@ -152,10 +152,10 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
 
 **WHEN** the process health block is requested
 **THEN** it returns:
-- `most_skipped_validations`: top 5 `(element_type, validation_type)` combinations where required validation was overridden, ordered by override count
+- `most_skipped_validations`: top 5 `(work_item_type, validation_type)` combinations where required validation was overridden, ordered by override count
 - `override_rate_pct`: percentage of elements that reached `ready` via a forced override in the last 30 days
 - `exported_vs_not_pct`: percentage of `ready` elements that have a linked Jira issue key vs those that do not
-- `blocked_by_type`: count of `blocked` elements grouped by `element_type`
+- `blocked_by_type`: count of `blocked` elements grouped by `work_item_type`
 - `blocked_by_team`: count of `blocked` elements where `owner` belongs to each team
 
 ---
@@ -191,14 +191,14 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
 
 ### Reassign Orphaned Element Owners
 
-**WHEN** a member with `reassign_owner` capability submits `POST /api/v1/admin/support/reassign-owner` with `{element_id, new_owner_id}`
+**WHEN** a member with `reassign_owner` capability submits `POST /api/v1/admin/support/reassign-owner` with `{work_item_id, new_owner_id}`
 **THEN** the element's `owner_id` is updated to `new_owner_id`
 **AND** the new owner must be an `active` member, otherwise rejected with `422` and `error.code: target_owner_inactive`
 **AND** the previous owner (even if suspended/deleted) retains historical visibility of their work on the element
 **AND** an SSE notification is dispatched to the new owner via EP-08 inbox
 **AND** the audit log records `action: owner_reassigned`, `entity: element`, `before: {owner_id}`, `after: {owner_id}`, `actor`
 
-**WHEN** `element_id` does not exist in the workspace
+**WHEN** `work_item_id` does not exist in the workspace
 **THEN** rejected with `404 Not Found`
 
 **WHEN** the element is in a terminal state (`ready`, `archived`, `cancelled`)
@@ -210,7 +210,7 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
 
 **WHEN** `GET /api/v1/admin/support/orphaned-elements` is called by a member with `reassign_owner` capability
 **THEN** the response returns elements where `owner_id` references a `suspended` or `deleted` member and element state is non-terminal
-**AND** the response includes `{element_id, element_type, title, current_owner_id, current_owner_state, project_id}`
+**AND** the response includes `{work_item_id, work_item_type, title, current_owner_id, current_owner_state, project_id}`
 **AND** results are paginated; default 50 per page
 
 ---
@@ -244,7 +244,7 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
 
 **WHEN** `GET /api/v1/admin/support/failed-exports` is called by a member with `retry_exports` capability
 **THEN** all `jira_sync_log` entries with `status: failed` are returned, ordered by `last_attempt_at` descending
-**AND** each entry includes `{log_id, element_id, element_title, error_message, attempt_count, last_attempt_at}`
+**AND** each entry includes `{log_id, work_item_id, work_item_title, error_message, attempt_count, last_attempt_at}`
 
 **WHEN** `POST /api/v1/admin/support/failed-exports/retry-all` is submitted
 **THEN** all `status: failed` export log entries have new Celery tasks queued
@@ -261,7 +261,7 @@ Audited actions (non-exhaustive; spec for writers: all admin mutations MUST emit
   - Owner is `suspended` or `deleted`
   - Required validation rule references a deleted team (no eligible validators)
   - Element belongs to an archived project
-**AND** each entry includes `{element_id, block_reason, detail}`
+**AND** each entry includes `{work_item_id, block_reason, detail}`
 
 ---
 

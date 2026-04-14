@@ -1,109 +1,197 @@
 # Templates & Header Specs — EP-02
 
-## US-022: Use Templates by Type
+> **Resolved 2026-04-14** (decisions_pending.md #16): Templates are JSON-schema typed and organized in three layers. Layers 1 and 2 are code-immutable. Only Layer 3 (per-type concrete templates) is editable by a Workspace Admin through the admin UI.
 
-### Overview
+## Overview — Three-Layer Template Model
 
-Each of the 8 work item types has an optional template: a structured JSON document that defines default sections and placeholder prompts. When a user selects a type, the template (if one exists for that type) pre-populates the description field with a structured scaffold. Templates are workspace-level configurable; a default system template ships per type. The user can override, extend, or ignore the template at any time.
+### Layer 1 — Universal Sections (immutable, code-owned)
 
----
+Every template contains the same eight universal sections. These are locked in code. Admins cannot add, remove, or reorder them.
 
-### Scenario: Template exists for selected type
+1. `contexto` — Context / background.
+2. `objetivo` — Objective.
+3. `alcance` — Scope (in / out of scope).
+4. `criterios` — Acceptance criteria.
+5. `dependencias` — Dependencies on other items / external systems.
+6. `validaciones` — Validation checklist.
+7. `desglose` — Task / subtask breakdown.
+8. `ownership` — Owner + responsible team + stakeholders.
 
-WHEN a user selects a type during work item creation (e.g., `bug`)
-AND a template exists for `bug` in the active workspace
-THEN the system fetches the template via GET /api/v1/templates?type=bug
-AND pre-populates the description field with the template scaffold
-AND marks the pre-population as template-applied (for tracking)
-AND the user can freely edit or clear the template content
+### Layer 2 — Field Type Catalogue (immutable, code-owned)
 
----
+A closed catalogue of field types any template field can be. Each field type has a fixed JSON-schema shape with `required`, `prefill`, `help_text`, and `validation` metadata.
 
-### Scenario: No template for selected type
+| Type | Semantics |
+|---|---|
+| `text` | Multi-line markdown. |
+| `string` | Single-line string. |
+| `enum` | Single-select from a list. |
+| `multi_enum` | Multi-select from a list. |
+| `date` | ISO-8601 date. |
+| `date_range` | Start + end date. |
+| `duration` | ISO-8601 duration (e.g. P3D). |
+| `reference` | Work-item reference (single). |
+| `reference_list` | Work-item references (many). |
+| `user_reference` | Single user (workspace member). |
+| `user_list` | Many users. |
+| `attachment_list` | File attachment list (see EP-16). |
 
-WHEN a user selects a type for which no template exists in the workspace
-THEN the description field is left empty
-AND no error is shown
-AND creation proceeds normally
+Every Layer-3 field declares: `id`, `type` (from catalogue above), `label`, `required: bool`, `prefill` (default value or expression), `help_text`, `validation` (optional — min/max/pattern/allowed values).
 
----
+### Layer 3 — Per-Type Concrete Templates (editable by Workspace Admin)
 
-### Scenario: User changes type after template was applied
+One template per work-item type. Each template is a JSON document binding concrete fields (Layer 2 types) to the eight universal sections (Layer 1).
 
-WHEN the user selects a type (template is applied)
-AND subsequently changes the type to a different value
-THEN the system prompts: "Changing type will replace the current template. Continue?"
-AND WHEN the user confirms THEN the new type's template (or empty if none) replaces the description field
-AND WHEN the user cancels THEN the type selection reverts and the existing description is untouched
+Built-in templates ship for: `bug`, `story`, `spike`, `milestone`, `idea`, `mejora`, `tarea`, `iniciativa`, `cambio`, `requisito`.
 
----
-
-### Scenario: User edits template content
-
-WHEN the template is applied and the user modifies the description field
-THEN the edits are persisted to the work item normally
-AND the original template is NOT modified
-AND the template scaffold is preserved in `template_id` on the work item for audit purposes only
-
----
-
-### Scenario: Workspace admin creates a custom template
-
-WHEN a workspace admin sends POST /api/v1/templates with a valid type and content
-THEN the system creates a workspace-level template record
-AND it takes precedence over the system-default template for that type in this workspace
-AND returns HTTP 201 with the template id
+Workspace Admins can customize the field list within each universal section (add/remove optional fields, change `required`, adjust `prefill`, update `help_text`). They cannot change Layers 1 or 2.
 
 ---
 
-### Scenario: Workspace admin updates a template
+## Template JSON Schema
 
-WHEN a workspace admin updates an existing template via PATCH /api/v1/templates/{id}
-THEN the update is applied to the template record
-AND existing work items that referenced the old template version are NOT affected (snapshot at creation)
-AND new creations from this point use the updated template
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "work_item_type", "version", "sections"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "work_item_type": {
+      "type": "string",
+      "enum": ["idea","bug","mejora","tarea","iniciativa","spike","cambio","requisito","milestone","story"]
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "sections": {
+      "type": "object",
+      "required": ["contexto","objetivo","alcance","criterios","dependencias","validaciones","desglose","ownership"],
+      "additionalProperties": false,
+      "properties": {
+        "contexto":     { "$ref": "#/$defs/section" },
+        "objetivo":     { "$ref": "#/$defs/section" },
+        "alcance":      { "$ref": "#/$defs/section" },
+        "criterios":    { "$ref": "#/$defs/section" },
+        "dependencias": { "$ref": "#/$defs/section" },
+        "validaciones": { "$ref": "#/$defs/section" },
+        "desglose":     { "$ref": "#/$defs/section" },
+        "ownership":    { "$ref": "#/$defs/section" }
+      }
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/field" }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["id","type","label","required"],
+      "properties": {
+        "id":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "type":      { "enum": ["text","string","enum","multi_enum","date","date_range","duration","reference","reference_list","user_reference","user_list","attachment_list"] },
+        "label":     { "type": "string" },
+        "required":  { "type": "boolean" },
+        "prefill":   {},
+        "help_text": { "type": "string" },
+        "validation":{ "type": "object" }
+      }
+    }
+  }
+}
+```
 
 ---
 
-### Scenario: System default template used when no workspace override exists
+## API
 
-WHEN a user creates a work item of a given type
-AND no workspace-specific template exists for that type
-THEN the system default template for that type is applied (if one exists)
-AND the system default is read-only (cannot be modified, only overridden at workspace level)
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/templates?type=<type>` | workspace member | Resolves active template for `type` in current workspace (workspace override OR built-in default). |
+| GET | `/api/v1/templates` | workspace member | List all active templates for current workspace. |
+| POST | `/api/v1/templates` | `manage_templates` | Create a Layer-3 template override. Rejects structural changes that would violate Layer 1 or Layer 2. |
+| PATCH | `/api/v1/templates/:id` | `manage_templates` | Edit Layer-3 fields, prefills, help_text, required flags. |
+| DELETE | `/api/v1/templates/:id` | `manage_templates` | Remove workspace override; system default re-applies. |
 
----
-
-### Scenario: Template content size limit
-
-WHEN a template body exceeds 50,000 characters
-THEN the system rejects with HTTP 422
-AND returns error code `VALIDATION_ERROR` with `details.field = "content"`
+All mutations validate the payload against the JSON schema above. Structural violations (missing universal section, unknown field `type`, malformed `id`) return HTTP 422 with the JSON-schema error path.
 
 ---
 
-### Scenario: Unauthenticated template fetch
+## Scenario: Resolving the active template for a type
+
+WHEN a user selects `work_item_type = bug` during capture
+THEN the backend resolves the active template by `workspace_id + work_item_type`:
+  - If a Layer-3 override exists for the workspace, return it.
+  - Otherwise return the code-shipped default template.
+AND the frontend renders the form driven by the JSON schema of the returned template.
+
+---
+
+## Scenario: Template pre-population preserves `original_input`
+
+WHEN a draft is created from free-form text
+THEN `work_items.original_input` is stored verbatim.
+AND the structured fields are pre-filled from both the original text (gap detection / LLM fill) and the template `prefill` values.
+AND if the user later clears a field, `original_input` remains intact.
+
+---
+
+## Scenario: Admin edits a Layer-3 template
+
+WHEN a Workspace Admin submits PATCH /api/v1/templates/:id modifying Layer 3 (adds an optional field under `alcance`, removes an optional field from `criterios`)
+THEN the update is applied.
+AND an audit event `template.updated` is emitted with `{before_value, after_value, fields_changed[]}`.
+
+---
+
+## Scenario: Admin attempts to remove a universal section
+
+WHEN a Workspace Admin submits a PATCH whose `sections` object omits `desglose`
+THEN the server rejects with HTTP 422, error code `TEMPLATE_STRUCTURE_IMMUTABLE`.
+AND no change is persisted.
+
+---
+
+## Scenario: Admin attempts to use an unknown field type
+
+WHEN a Workspace Admin POSTs a template with a field of `type = "rating"` (not in Layer 2)
+THEN the server rejects with HTTP 422, error code `TEMPLATE_FIELD_TYPE_INVALID`, pointing to the offending JSON path.
+
+---
+
+## Scenario: Non-admin template mutation
+
+WHEN a workspace member without `manage_templates` capability sends POST or PATCH
+THEN the server returns HTTP 403, error code `FORBIDDEN`.
+
+---
+
+## Scenario: Unauthenticated template fetch
 
 WHEN GET /api/v1/templates is called without a valid JWT
-THEN the system returns HTTP 401
+THEN the server returns HTTP 401.
 
 ---
 
-### Scenario: Non-admin template mutation
+## Scenario: Existing drafts are snapshot-bound to their template
 
-WHEN a non-admin workspace member attempts POST or PATCH on /api/v1/templates
-THEN the system returns HTTP 403
-AND returns error code `FORBIDDEN`
+WHEN a draft was created against template version `v1`
+AND an admin later updates the template to `v2`
+THEN existing drafts keep rendering against their snapshot (`work_items.template_id` references the version in effect at creation).
+AND new drafts use `v2`.
 
 ---
 
-## US-023: Show Functional Header from Creation
+## US-023: Functional Header from Creation
 
 ### Overview
 
-From the moment a work item exists (even in `Draft` state), a persistent header is visible on the detail view. The header shows: type badge, title, state chip, owner avatar + name, completeness score bar, and a "next step" indicator. These are computed and served with every GET /work-items/{id} response. No separate endpoint needed.
-
----
+From the moment a work item exists (even in `draft` state), a persistent header is visible on the detail view. The header shows: type badge, title, state chip, owner avatar + name, completeness score bar, and a "next step" indicator. These are computed and served with every GET /work-items/{id} response. No separate endpoint needed.
 
 ### Scenario: Header visible immediately after creation
 
@@ -113,64 +201,49 @@ THEN the response payload includes the full header block:
   - `title`
   - `state` = `draft`
   - `owner.id`, `owner.display_name`, `owner.avatar_url`
-  - `completeness_score` (0–100)
-  - `derived_state` (computed: `in_progress` | `blocked` | `ready` | null)
-AND the frontend renders these immediately without a second fetch
-
----
+  - `completeness_score` (0–100, granular per decisions_pending.md #19)
+  - `derived_state` (materialized: `in_progress` | `blocked` | `ready` | null)
+AND the frontend renders these immediately without a second fetch.
 
 ### Scenario: Header reflects current state after transition
 
 WHEN a state transition occurs (POST /work-items/{id}/transitions)
-THEN the GET /work-items/{id} response returns updated `state` and `derived_state`
-AND the header chip updates to reflect the new state
+THEN the GET /work-items/{id} response returns updated `state` and `derived_state`.
+AND the header chip updates to reflect the new state.
 
----
-
-### Scenario: Completeness score shown as percentage bar
+### Scenario: Completeness score as percentage bar
 
 WHEN a work item is fetched
-THEN `completeness_score` is an integer 0–100
-AND the frontend renders a visual progress bar
-AND the score updates in real-time as the user fills fields (optimistic update during editing)
-
----
+THEN `completeness_score` is an integer 0–100.
+AND the frontend renders a visual progress bar.
+AND the score updates as the user fills fields (optimistic).
 
 ### Scenario: Owner always shown from creation
 
 WHEN a work item is fetched
-THEN `owner` is always populated (defaults to creator at creation)
-AND if the owner's workspace membership is suspended, `owner.suspended = true` is present
-AND the header shows a warning indicator when the owner is suspended
-
----
+THEN `owner` is always populated (defaults to `created_by` at creation).
+AND if the owner's workspace membership is suspended, `owner.suspended = true` is present.
+AND the header shows a warning indicator when the owner is suspended.
 
 ### Scenario: Next step indicator when completeness is low
 
 WHEN `completeness_score < 30`
-THEN the header shows a "next step" hint (e.g., "Add a description to improve completeness")
-AND the hint is computed from the missing high-weight fields per the completeness algorithm
-
----
+THEN the header shows a "next step" hint computed from the highest-weight missing universal section or required field.
 
 ### Scenario: Derived state shown as secondary indicator
 
 WHEN `derived_state = blocked`
-THEN the header shows a blocking indicator alongside the primary state chip
-AND WHEN `derived_state = ready` AND `state = draft` THEN the header shows a "ready to advance" affordance
-
----
+THEN the header shows a blocking indicator alongside the primary state chip.
+AND WHEN `derived_state = ready` AND `state = draft` THEN the header shows a "ready to advance" affordance.
 
 ### Scenario: Header on a deleted (soft-deleted) item
 
 WHEN a work item has been soft-deleted (`deleted_at IS NOT NULL`)
-THEN GET /work-items/{id} returns HTTP 404
-AND no header is rendered
-
----
+THEN GET /work-items/{id} returns HTTP 404.
+AND no header is rendered.
 
 ### Scenario: Owner avatar fallback
 
 WHEN the owner does not have an avatar_url
-THEN the header renders the owner's initials as a fallback avatar
-AND no broken image is shown
+THEN the header renders the owner's initials as a fallback avatar.
+AND no broken image is shown.

@@ -1,7 +1,7 @@
 
-# Mega documento — PRD + especificación funcional + modelo operativo + backlog del MVP
+# Mega documento — PRD + especificación funcional + modelo operativo + backlog del producto
 
-> Documento unificado que consolida visión de producto, PRD, especificación funcional, modelo operativo, capa administrativa, reglas de negocio, experiencia, integraciones y backlog de implementación del MVP.
+> Documento unificado que consolida visión de producto, PRD, especificación funcional, modelo operativo, capa administrativa, reglas de negocio, experiencia, integraciones y backlog de implementación del producto.
 
 ---
 
@@ -9,11 +9,11 @@
 
 | Campo | Valor |
 |---|---|
-| Documento | Mega documento del MVP |
+| Documento | Mega documento del producto |
 | Naturaleza | PRD formal + alineación interna + especificación funcional + backlog |
 | Estado | Borrador consolidado |
 | Audiencia | Founders, Product, Design, Engineering, QA, Business, Operaciones |
-| Alcance | Todo lo descrito forma parte del MVP |
+| Alcance | Todo lo descrito forma parte del producto |
 | Dependencias externas | Google OAuth, Jira, fuentes de contexto de proyecto |
 | Principio rector | Claridad, validación y trazabilidad antes de ejecución |
 
@@ -25,7 +25,7 @@ Este producto nace para resolver un problema estructural: muchas ideas, bugs, re
 
 La propuesta es construir una capa intermedia y autónoma de **maduración del trabajo**. El sistema debe permitir capturar un input ambiguo, aterrizarlo, estructurarlo, revisarlo, validarlo, desglosarlo y llevarlo a un estado `Ready` con control humano explícito. Después, y solo si el equipo lo decide, podrá exportarse a Jira.
 
-El producto no debe entenderse como un simple generador de tareas. Debe ser el lugar donde el trabajo se **define bien** antes de ejecutarse. Por eso el MVP incluye cuatro dimensiones inseparables:
+El producto no debe entenderse como un simple generador de tareas. Debe ser el lugar donde el trabajo se **define bien** antes de ejecutarse. Por eso el producto incluye cuatro dimensiones inseparables:
 
 1. **Definición estructurada del trabajo**: transformar inputs vagos en especificaciones y desgloses útiles.
 2. **Gobierno del flujo**: ownership único, validaciones, revisiones y paso controlado a `Ready`.
@@ -100,13 +100,20 @@ Ayudar a equipos de producto, tecnología, negocio y QA a convertir inputs ambig
 
 ### 3.3 No objetivos
 
-No son objetivos principales del MVP:
+No son objetivos principales del producto:
 
 - sustituir toda la ejecución posterior a `Ready`;
-- ofrecer edición colaborativa en tiempo real como primera prioridad;
-- construir un RBAC complejo basado en roles funcionales tipo producto o QA;
+- co-edición simultánea del mismo campo (CRDT / Operational Transform tipo Google Docs);
 - automatizar completamente el paso a `Ready` sin criterio humano;
 - convertirse en una suite generalista de gestión empresarial.
+
+**Sí son objetivos en colaboración:**
+
+- base asíncrona como modelo primario (revisiones, versiones, comentarios, validaciones sin coincidencia temporal);
+- **presencia en tiempo real**: indicadores "X está editando/viendo", typing indicator en chat y comentarios, contador "N personas viendo este elemento";
+- edit locks (EP-17) para prevenir last-write-wins sobre el mismo elemento.
+
+La decisión sobre RBAC (capability array vs roles complejos) queda pendiente — ver `decisions_pending.md` #11.
 
 ---
 
@@ -126,7 +133,7 @@ No son objetivos principales del MVP:
 
 ### 4.2 Perfiles operativos adicionales
 
-Para que el sistema funcione de forma realista en un entorno organizativo, el MVP debe contemplar además estos perfiles operativos:
+Para que el sistema funcione de forma realista en un entorno organizativo, el producto debe contemplar además estos perfiles operativos:
 
 | Perfil operativo | Responsabilidad principal |
 |---|---|
@@ -136,7 +143,7 @@ Para que el sistema funcione de forma realista en un entorno organizativo, el MV
 | Team Lead | coordinación de revisiones, carga del equipo y visibilidad operativa |
 | Member | usuario estándar que crea, edita, revisa y colabora |
 
-> Importante: estos perfiles operativos no contradicen la definición previa de que los roles de negocio o contexto en el MVP funcionan como etiquetas. Aquí se distinguen dos capas diferentes: **etiquetas de contexto** y **capacidades administrativas/operativas**.
+> Importante: estos perfiles operativos no contradicen la definición previa de que los roles de negocio o contexto en el producto funcionan como etiquetas. Aquí se distinguen dos capas diferentes: **etiquetas de contexto** y **capacidades administrativas/operativas**.
 
 ### 4.3 Audiencias del documento
 
@@ -184,9 +191,9 @@ Este megadocumento está escrito para servir simultáneamente a:
 
 ---
 
-## 6. Alcance del MVP
+## 6. Alcance del producto
 
-Todo lo descrito en este documento entra en el MVP. No se hará una separación formal entre MVP, V1 y V2. El alcance del MVP incluye:
+Todo lo descrito en este documento entra en el alcance del producto. El alcance incluye:
 
 - captura de elementos desde texto libre;
 - clarificación guiada;
@@ -295,7 +302,7 @@ Reglas:
 
 ### 7.6 Colaboración asíncrona
 
-La colaboración del MVP es asíncrona:
+La colaboración del producto es asíncrona:
 
 - las revisiones no requieren coincidencia temporal;
 - el sistema debe preservar el contexto de todas las interacciones;
@@ -648,7 +655,7 @@ El sistema debe:
 
 ### 10.12 Modos de interacción con el sistema
 
-El MVP debe soportar cuatro modos principales:
+El producto debe soportar cuatro modos principales:
 
 1. **Chat general de refinamiento**  
    para aterrizar ideas y recuperar conversaciones.
@@ -838,9 +845,9 @@ Son capacidades de administración y gobierno como:
 **Regla clave**  
 Las etiquetas de contexto no deben convertirse implícitamente en permisos administrativos.
 
-### 12.6 Modelo de permisos operativos del MVP
+### 12.6 Modelo de permisos operativos
 
-Aunque el MVP no necesita un RBAC complejo, sí necesita una matriz de capacidades operativas clara.
+Aunque el producto no necesita un RBAC complejo, sí necesita una matriz de capacidades operativas clara.
 
 | Capacidad | Member | Team Lead | Project Admin | Workspace Admin | Integration Admin |
 |---|---|---|---|---|---|
@@ -1029,7 +1036,7 @@ El objetivo no es solo guardar enlaces, sino permitir que el sistema utilice ese
 
 ### 12.15 Configuración de integraciones
 
-En el MVP la integración prioritaria es Jira. La administración debe cubrir:
+La integración prioritaria es Jira. La administración debe cubrir:
 
 - alta de la integración;
 - configuración de credenciales;
@@ -1109,7 +1116,7 @@ La auditoría debe registrar:
 
 ### 12.19 Soporte operativo y herramientas administrativas
 
-Aunque no sea una consola avanzada de soporte, el MVP debería permitir ciertas operaciones de mantenimiento sin acudir a ingeniería:
+Aunque no sea una consola avanzada de soporte, el producto debería permitir ciertas operaciones de mantenimiento sin acudir a ingeniería:
 
 - reasignar owner de elementos huérfanos;
 - reactivar o suspender miembros;
@@ -1190,13 +1197,14 @@ La integración Jira debe cumplir:
 - exportación manual y explícita;
 - exportación solo de elementos `Ready`;
 - envío del snapshot final;
-- conservación del vínculo interno/externo;
-- sincronización de estado básico;
-- no modificación automática del contenido tras exportar en el MVP.
+- conservación del vínculo interno/externo (`jira_issue_key`);
+- **re-exportación = UPDATE del mismo issue** (upsert por clave), con check de `updated_at` en Jira para avisar si hubo edit manual antes de sobreescribir;
+- **importación desde Jira**: acción user-initiated que crea un `work_item` en `Borrador` a partir de un issue existente (`imported_from_jira`, `jira_source_key`). Si ese elemento madura y se exporta, actualiza el issue original;
+- **sin sincronización automática**: no hay polling, no hay webhooks, Jira no puede modificar el contenido de la plataforma salvo vía la acción explícita de importar.
 
 ### 14.3 Fuentes de contexto
 
-El sistema debe permitir asociar fuentes relevantes a un proyecto o workspace. En el MVP, estas fuentes se entienden como contexto seleccionado para enriquecer el trabajo. El comportamiento exacto de lectura o explotación dependerá de la implementación final y de las integraciones disponibles.
+El sistema debe permitir asociar fuentes relevantes a un proyecto o workspace. Estas fuentes se entienden como contexto seleccionado para enriquecer el trabajo. El comportamiento exacto de lectura o explotación dependerá de la implementación final y de las integraciones disponibles.
 
 ---
 
@@ -1348,7 +1356,7 @@ El sistema debe permitir asociar fuentes relevantes a un proyecto o workspace. E
 
 ---
 
-## 20. Backlog del MVP
+## 20. Backlog del producto
 
 ### 20.1 Convenciones
 
@@ -1744,8 +1752,8 @@ Una historia no se considera cerrada si no cumple:
 
 ## 23. Resumen final
 
-Este MVP define un sistema completo para capturar, clarificar, estructurar, revisar, validar y preparar trabajo antes de ejecución. El sistema debe funcionar como una capa de maduración autónoma, con ownership claro, colaboración asíncrona, trazabilidad total, administración explícita y exportación opcional a Jira.
+Este producto define un sistema completo para capturar, clarificar, estructurar, revisar, validar y preparar trabajo antes de ejecución. El sistema debe funcionar como una capa de maduración autónoma, con ownership claro, colaboración asíncrona, trazabilidad total, administración explícita y exportación opcional a Jira.
 
-La parte administrativa no es un añadido secundario: es la capa que hace posible que el producto opere con coherencia en un entorno real. Por eso el MVP incluye también gobierno de workspace, miembros, equipos, proyectos, reglas, contexto, integraciones, auditoría y supervisión operativa.
+La parte administrativa no es un añadido secundario: es la capa que hace posible que el producto opere con coherencia en un entorno real. Por eso el producto incluye también gobierno de workspace, miembros, equipos, proyectos, reglas, contexto, integraciones, auditoría y supervisión operativa.
 
 La idea central del producto se mantiene estable en todo el documento: **antes de ejecutar, hay que definir bien**.

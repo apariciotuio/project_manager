@@ -1,4 +1,4 @@
-# MVP Work Maturation Platform — Task Tracker
+# Work Maturation Platform — Task Tracker
 
 ## Epic Summary
 

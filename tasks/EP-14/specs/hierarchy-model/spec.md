@@ -27,7 +27,7 @@ AND `materialized_path = ""`
 
 ### Scenario 3: Legacy types remain valid after migration
 
-WHEN a work item with type `idea`, `bug`, `enhancement`, `task`, `initiative`, `spike`, `business_change`, or `requirement` already exists in the database
+WHEN a work item with type `idea`, `bug`, `mejora`, `tarea`, `iniciativa`, `spike`, `cambio`, or `requisito` already exists in the database
 THEN no migration alters its `type` value
 AND reading that item returns the original type unchanged
 AND all existing FSM transitions continue to work on legacy types

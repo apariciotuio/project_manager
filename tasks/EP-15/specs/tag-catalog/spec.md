@@ -56,7 +56,7 @@ WHEN an admin PATCHes `{ color: "#FF5733" }` without changing `name`
 THEN only `color` is updated; `slug` and `name` are unchanged
 AND an `audit_events` record is written with `action=tag.updated`, `fields_changed=["color"]`
 
-### Scenario: Delete a tag (hard delete — not exposed in initial MVP)
+### Scenario: Delete a tag (hard delete — not exposed initially) ⚠️ originally MVP-scoped — see decisions_pending.md
 
 WHEN a non-admin attempts to DELETE a tag
 THEN the API returns `403 Forbidden`

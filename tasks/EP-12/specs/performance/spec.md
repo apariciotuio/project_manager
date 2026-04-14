@@ -76,7 +76,7 @@ AND on any element status change affecting that user's inbox, the cache key is i
 
 WHEN an element detail is requested
 THEN the response is NOT cached in Redis (detail pages require fresh derived state from the FSM)
-AND computed/aggregated fields (e.g., comment count, attachment count) are cached with TTL 60 seconds with key `element:agg:{element_id}`
+AND computed/aggregated fields (e.g., comment count, attachment count) are cached with TTL 60 seconds with key `element:agg:{work_item_id}`
 
 WHEN the dashboard metrics endpoint is called
 THEN the aggregated result is cached in Redis with key `dashboard:{workspace_id}` and TTL 120 seconds
@@ -93,7 +93,7 @@ AND no 5xx is returned to the client due to cache unavailability alone
 WHEN a query filters by `workspace_id` on any tenant-scoped table
 THEN a composite index exists: `(workspace_id, <primary_sort_column>)` e.g., `(workspace_id, created_at DESC)`
 
-WHEN a query filters by `assignee_id`, `status`, or `element_type`
+WHEN a query filters by `assignee_id`, `status`, or `work_item_type`
 THEN a partial or regular index exists for each high-cardinality filter column
 
 WHEN a full-text search column is used

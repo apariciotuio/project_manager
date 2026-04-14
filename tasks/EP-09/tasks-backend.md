@@ -1,7 +1,9 @@
 # EP-09 Backend Subtasks — Listings, Dashboards, Search & Workspace
 
+> **Propagation note (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search is delegated to Puppet (EP-13). Any checkbox below referring to `search_vector`, `tsvector`, GIN FTS index, `phraseto_tsquery`, `plainto_tsquery`, or aggregated denormalized columns is **obsolete** — replace with the Puppet-based flow from `specs/search/spec.md` and EP-13's `PuppetClient`. These lines are retained only as historical context; do NOT implement them. Re-plan this file in the TDD phase.
+
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
-**Depends on**: EP-12 middleware stack (correlation ID, rate limit, auth), EP-01 FSM (state_entered_at), EP-04 (versioning), EP-00 (JWT)
+**Depends on**: EP-12 middleware stack (correlation ID, rate limit, auth), EP-01 FSM (state_entered_at), EP-04 (versioning), EP-00 (JWT), EP-13 (PuppetClient + sync pipeline)
 
 ---
 

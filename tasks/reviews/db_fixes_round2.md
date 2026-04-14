@@ -63,4 +63,4 @@ Findings that require code/migration work outside of design.md edits, or that we
 
 3. **Timeline workspace_id backfill** — existing `timeline_events` rows must backfill `workspace_id` from `work_items` in a single UPDATE before the NOT NULL constraint takes effect. Add as a data migration step before the ALTER.
 
-4. **work_item_versions search trigger + backfill** — after creating the trigger (IDX-8), existing rows still have NULL `search_vector`. Run MS-5's batched backfill or a one-shot `UPDATE work_items SET title = title` to fire the trigger (cheap at MVP scale; batched at 10x).
+4. **work_item_versions search trigger + backfill** — after creating the trigger (IDX-8), existing rows still have NULL `search_vector`. Run MS-5's batched backfill or a one-shot `UPDATE work_items SET title = title` to fire the trigger (cheap at current target scale; batched at 10x).

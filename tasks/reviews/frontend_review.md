@@ -108,9 +108,9 @@ EP-07 Group 4 item 4.7: "section editor renders comment count badge on selected 
 
 ### MU-3. EP-05 drag-to-reorder uses "native drag events" — this will break on touch devices
 
-EP-05 Group 3 item 3.6: "drag-to-reorder using native drag events (no heavy DnD library at MVP)." Native HTML5 drag events do not fire on touch/mobile. The spec at Group 7 item 7.1 says "drag-to-reorder disabled on touch" but that means mobile users cannot reorder tasks at all.
+EP-05 Group 3 item 3.6: "drag-to-reorder using native drag events (no heavy DnD library)." Native HTML5 drag events do not fire on touch/mobile. The spec at Group 7 item 7.1 says "drag-to-reorder disabled on touch" but that means mobile users cannot reorder tasks at all.
 
-This is acceptable for MVP but needs a mobile alternative — at minimum, up/down arrow buttons on each task node.
+This is acceptable short-term but needs a mobile alternative — at minimum, up/down arrow buttons on each task node.
 
 **Fix**: EP-05 tasks-frontend.md Group 3: add item — "On touch devices (mobile breakpoint): render up/down reorder buttons on each `TaskTreeNode` in place of drag handle. Buttons call `reorderTasks` with adjacent swap."
 
@@ -194,15 +194,15 @@ EP-04 Phase 9: "dimension rows collapse to icon-only on mobile (< 768px) with to
 
 EP-10 Group 1: "admin side navigation collapses to hamburger/drawer." The admin section has 8 subsections (Members, Rules, Projects, Integrations, Audit Log, Dashboard, Support, Health). All of them use `DataTable` which EP-12 specifies scrolls horizontally. The audit log diff expansion, capability editor checkbox grid, and sync log table are all complex desktop-first UIs with no mobile equivalents specified.
 
-Admin being desktop-only is acceptable for MVP, but this needs to be explicit.
+Admin being desktop-only is acceptable for now, but this needs to be explicit. ⚠️ originally MVP-scoped — see decisions_pending.md
 
-**Fix**: EP-10 tasks-frontend.md Group 1: add explicit statement — "Admin section targets desktop (md+) as the primary viewport. Mobile access is supported (no horizontal overflow at page level) but admin flows are not optimized for mobile in MVP."
+**Fix**: EP-10 tasks-frontend.md Group 1: add explicit statement — "Admin section targets desktop (md+) as the primary viewport. Mobile access is supported (no horizontal overflow at page level) but admin flows are not optimized for mobile."
 
 ### MR-5. EP-12 responsive spec Scenario 5 mentions long-press context menus — no epic implements this
 
 EP-12 spec Scenario 5: "WHEN a user long-presses a table row or card on mobile THEN a context menu appears." No epic's tasks-frontend.md implements long-press behavior anywhere. This is either out of scope or needs adding to EP-09 WorkItemCard and EP-08 InboxTierSection.
 
-**Fix**: Either remove this from EP-12 spec Scenario 5 (mark as post-MVP) or add a single implementation note in EP-09 WorkItemCard and EP-08 InboxTierSection: "long-press triggers context menu with primary actions."
+**Fix**: Either remove this from EP-12 spec Scenario 5 (mark as deferred) or add a single implementation note in EP-09 WorkItemCard and EP-08 InboxTierSection: "long-press triggers context menu with primary actions."
 
 ---
 
@@ -264,7 +264,7 @@ EP-12 spec Scenario 5: "WHEN a user long-presses a table row or card on mobile T
 - Group 4: add "N more items" link to pipeline columns capped at 20. (MU-6)
 
 ### EP-10 tasks-frontend.md
-- Group 1: add explicit "admin section is desktop-primary in MVP" statement. (MR-4)
+- Group 1: add explicit "admin section is desktop-primary" statement. (MR-4)
 - Group 2 `MemberCapabilityEditor`: add capability description tooltips. (MU-5)
 
 ### EP-11 tasks-frontend.md
@@ -274,7 +274,7 @@ EP-12 spec Scenario 5: "WHEN a user long-presses a table row or card on mobile T
 - Group 1: add `ToastProvider` + `useToast()` as a layout primitive. (MU-1)
 - Group 1: add `LoadMoreButton` as a layout primitive for cursor pagination. (MU-4)
 - Group 9: extract `createSSEClient` utility that EP-03 and EP-08 share. (CA-4)
-- Spec Scenario 5 (long-press): explicitly mark as post-MVP or add to EP-09/EP-08. (MR-5)
+- Spec Scenario 5 (long-press): explicitly mark as deferred or add to EP-09/EP-08. (MR-5)
 - All epics: mandate `react-hook-form + zod` as the form validation standard. (CA-5)
 
 ---

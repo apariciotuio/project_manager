@@ -1,4 +1,6 @@
-# EP-17 Technical Design — Edit Locking + Collaboration Control
+# EP-17 Technical Design — Section-Level Edit Locking + Presence
+
+> **Resolved 2026-04-14 (decisions_pending.md #30)**: Locks are **section-level**, not work-item-level. A **presence service** (view/edit/typing indicators) runs on the same SSE channel. Heartbeat 30s; 5-min inactivity auto-release. Any user may send an unlock request; Workspace Admin / Superadmin can force-unlock (audited). No CRDT/OT. Comments are never locked. Locks also apply to state transitions.
 
 ## 1. Architecture Overview
 
@@ -24,20 +26,23 @@ Write endpoints
 
 ### Redis (source of truth for active locks)
 
-Key pattern: `lock:work_item:{work_item_id}`
+Key pattern: `lock:work_item:{work_item_id}:section:{section_id}` (section-level per resolution #30). `section_id` may be a `work_item_sections.id` (EP-04) or one of the fixed universal section slugs (`contexto`, `objetivo`, `alcance`, `criterios`, `dependencias`, `validaciones`, `desglose`, `ownership`) for sections not yet persisted.
 
 Value (JSON string):
 ```json
 {
   "holder_id": "<uuid>",
   "holder_display_name": "<string>",
+  "section_id": "<string>",
   "acquired_at": "<iso-8601>",
   "expires_at": "<iso-8601>",
   "last_heartbeat_at": "<iso-8601>"
 }
 ```
 
-TTL: Set to `LOCK_TTL_SECONDS` (default 300) on acquire. Reset to `LOCK_TTL_SECONDS` on each heartbeat. Redis native TTL manages expiry — no cron required for expiry itself.
+TTL: Set to `LOCK_TTL_SECONDS` (default 300, i.e. 5-min inactivity auto-release) on acquire. Reset on each heartbeat. FE sends a heartbeat every 30 seconds. Redis native TTL manages expiry.
+
+**Comments are never locked.** The lock applies to structured section content (EP-04 sections) and to state transitions (the transition attempt checks the lock for the relevant section — default: the work-item header / ownership section).
 
 Clock authority: All timestamps use Redis `TIME` command (returns server-side Unix time). Client-side `datetime.utcnow()` is never used for lock timestamps.
 
@@ -78,16 +83,17 @@ CREATE TYPE lock_event_type AS ENUM (
 CREATE TABLE work_item_lock_events (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     work_item_id    UUID NOT NULL REFERENCES work_items(id) ON DELETE CASCADE,
+    section_id      TEXT NOT NULL,                                     -- section-level lock (resolution #30)
     event_type      lock_event_type NOT NULL,
-    actor_id        UUID REFERENCES users(id) ON DELETE SET NULL,  -- NULL for system-triggered (auto_expired)
-    reason          TEXT,           -- populated for force_released, unlock_requested
-    metadata        JSONB,          -- former holder info, lock timestamps, trigger context
+    actor_id        UUID REFERENCES users(id) ON DELETE SET NULL,      -- NULL for system-triggered (auto_expired)
+    reason          TEXT,                                              -- populated for force_released, unlock_requested
+    metadata        JSONB,                                             -- former holder info, lock timestamps, trigger context
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
-CREATE INDEX idx_lock_events_work_item_id ON work_item_lock_events (work_item_id, created_at DESC);
-CREATE INDEX idx_lock_events_actor_id     ON work_item_lock_events (actor_id, created_at DESC);
+CREATE INDEX idx_lock_events_work_item_section ON work_item_lock_events (work_item_id, section_id, created_at DESC);
+CREATE INDEX idx_lock_events_actor_id          ON work_item_lock_events (actor_id, created_at DESC);
 ```
 
 This table is append-only. No UPDATE, no DELETE paths exposed via any API.
@@ -226,13 +232,14 @@ All endpoints are workspace-scoped. `workspace_id` is extracted from authenticat
 
 | Method | Path | Auth | Capability | Rate limit |
 |--------|------|------|-----------|------------|
-| POST | `/api/v1/work-items/:id/lock` | JWT | None (any member) | 20/min/user |
-| DELETE | `/api/v1/work-items/:id/lock` | JWT | None (holder only) | Standard |
-| POST | `/api/v1/work-items/:id/lock/heartbeat` | JWT | None (holder only) | Standard |
-| POST | `/api/v1/work-items/:id/lock/request-unlock` | JWT | None | 5/hour/user/item |
-| POST | `/api/v1/work-items/:id/lock/respond-to-request` | JWT | None (holder only) | Standard |
-| POST | `/api/v1/work-items/:id/lock/force-release` | JWT | `force_unlock` | Standard |
-| GET | `/api/v1/work-items/:id/lock` | JWT | None | Standard |
+| POST | `/api/v1/work-items/:id/sections/:section_id/lock` | JWT | None (any member) | 20/min/user |
+| DELETE | `/api/v1/work-items/:id/sections/:section_id/lock` | JWT | None (holder only) | Standard |
+| POST | `/api/v1/work-items/:id/sections/:section_id/lock/heartbeat` | JWT | None (holder only) | Standard |
+| POST | `/api/v1/work-items/:id/sections/:section_id/lock/request-unlock` | JWT | None | 5/hour/user/section |
+| POST | `/api/v1/work-items/:id/sections/:section_id/lock/respond-to-request` | JWT | None (holder only) | Standard |
+| POST | `/api/v1/work-items/:id/sections/:section_id/lock/force-release` | JWT | `force_unlock` (Workspace Admin or Superadmin) | Standard |
+| GET | `/api/v1/work-items/:id/sections/:section_id/lock` | JWT | None | Standard |
+| GET | `/api/v1/admin/locks` | JWT | `force_unlock` | Standard |
 
 Response bodies follow the global API shape: `{ "data": {...}, "message": "..." }` for success, `{ "error": {...} }` for errors.
 
@@ -240,19 +247,30 @@ Response bodies follow the global API shape: `{ "data": {...}, "message": "..." 
 
 ---
 
-## 6. SSE Events
+## 6. SSE Events (shared with Presence)
 
-Channel: `sse:work_item:{work_item_id}` (shared with other EP-12 events for this item)
+Channel: `sse:work_item:{work_item_id}` (shared with presence + notifications)
 
 All events follow the shared SSE frame format from EP-12.
 
+Lock events:
 | Event type | Published by | Payload |
 |------------|-------------|---------|
-| `lock_acquired` | `LockService.acquire` | `{ holder_id, holder_display_name, acquired_at, expires_at }` |
-| `lock_released` | `LockService.release` | `{ released_by, released_at, expired: false }` |
-| `lock_released` | Celery auto-expire task | `{ former_holder_id, released_at, expired: true, trigger }` |
-| `lock_force_released` | `LockService.force_release` | `{ forced_by_id, forced_by_display_name, reason, former_holder_id }` |
-| `unlock_requested` | `LockService.request_unlock` | `{ requester_id, requester_display_name, reason, expires_at }` |
+| `lock_acquired` | `LockService.acquire` | `{ holder_id, holder_display_name, section_id, acquired_at, expires_at }` |
+| `lock_released` | `LockService.release` | `{ released_by, section_id, released_at, expired: false }` |
+| `lock_released` | Celery auto-expire task | `{ former_holder_id, section_id, released_at, expired: true, trigger }` |
+| `lock_force_released` | `LockService.force_release` | `{ forced_by_id, forced_by_display_name, section_id, reason, former_holder_id }` |
+| `unlock_requested` | `LockService.request_unlock` | `{ requester_id, requester_display_name, section_id, reason, expires_at }` |
+
+Presence events (resolution #30 — ephemeral, not persisted):
+| Event type | Published by | Payload |
+|------------|-------------|---------|
+| `user.viewing` | `PresenceService.view` | `{ user_id, display_name, work_item_id, since }` |
+| `user.editing_started` | `PresenceService.editing_started` | `{ user_id, display_name, section_id }` |
+| `user.editing_stopped` | `PresenceService.editing_stopped` | `{ user_id, display_name, section_id }` |
+| `user.typing` | `PresenceService.typing` | `{ user_id, display_name, section_id }` |
+
+Presence is stored transiently in Redis (SET with TTL 30s, refreshed by FE heartbeat). Unlike locks, it is not transactional and not audited — it is purely a UX hint. The UI renders "X editing Section Y" and "N viewing" badges from these events.
 
 SSE subscribers on `sse:work_item:{id}` include: detail page viewers, edit mode holder, list views (via workspace-level channel if implemented). The SSE infrastructure from EP-12 (`RedisPubSub`, `SseHandler`) is used without modification.
 
@@ -388,5 +406,5 @@ EP-17 extends the SSE channel registry in EP-12 with a new channel type:
 | Heartbeat interval | 30s, TTL 5min | Shorter interval | 30s is 1/10 of TTL — 10 missed heartbeats before expiry. Robust to transient network hiccups. |
 | Unlock request storage | Redis with TTL | PostgreSQL row | The request is ephemeral. Its TTL IS the auto-release timer. Using PG would require a separate cron to check expiry. |
 | SSE channel reuse | Shared `sse:work_item:{id}` | Dedicated lock channel | The detail page already subscribes to this channel. No new subscription needed. |
-| Section-level locking | Deferred (not in MVP) | Per-section locks | Adds complexity without proportional value at MVP scale. Work-item-level is sufficient. |
+| Section-level locking | Deferred ⚠️ originally MVP-scoped | Per-section locks | Adds complexity without proportional value at current scale. Work-item-level is sufficient. See decisions_pending.md |
 | Lock state in list API | Embedded in list response | Separate lock endpoint per item | N+1 on locks per list row is unacceptable. Embed in the list query with a LEFT JOIN on active locks (via a Redis-backed cache or a PG view of recent acquired events without corresponding released events). |

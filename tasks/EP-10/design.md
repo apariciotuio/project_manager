@@ -11,9 +11,11 @@
 
 ### Decision: Capability Set per Member (Not RBAC)
 
-The permission matrix in section 12.6 of the megadocumento is NOT a role hierarchy — it's a capability matrix with column headers that are named profiles, not system roles. Implementing full RBAC with role tables and role-permission joins is over-engineering for MVP and introduces complexity that has historically caused permission edge cases in similar systems.
+The permission matrix is a capability matrix with named profiles as column headers, not system roles. No roles table, no role-permission join, no role-editor UI, no custom roles (resolution #10, #31).
 
-**Chosen approach**: `workspace_member.capabilities: text[]` — a simple array of capability strings.
+**Five workspace profiles as code constants** (Member, Team Lead, Project Admin, Integration Admin, Workspace Admin) — each profile maps to a fixed capability set. **Superadmin** is a platform-level flag on `users.is_superadmin`, NOT a workspace profile.
+
+**Storage**: `workspace_memberships.capabilities text[]` — resolved from the member's assigned profile at creation and refreshed when profile changes. The profile enum is also stored for display (`workspace_memberships.profile`).
 
 ```sql
 -- No roles table. No role-permission join table.
@@ -160,19 +162,15 @@ integration_configs
   ├── state: active | disabled | error
   └── last_health_check_status
 
-jira_project_mappings
+integration_project_mappings  (project-scoped per resolution #31)
+  ├── id
   ├── integration_config_id
-  ├── workspace_project_id
+  ├── project_id            (workspace project)
   ├── jira_project_key
   └── work_item_type_mappings: jsonb
 
-jira_sync_logs
-  ├── integration_config_id
-  ├── work_item_id
-  ├── status: pending | success | failed | retrying
-  ├── error_message
-  ├── attempt_count
-  └── triggered_by (nullable)
+-- No jira_sync_logs table (resolution #26): polling + webhooks are removed; export is
+-- user-initiated upsert-by-key (EP-11). Audit of exports lives in `audit_events`.
 ```
 
 ### Key Indexing Strategy
@@ -194,14 +192,11 @@ CREATE UNIQUE INDEX uq_validation_rules_workspace_scope
     ON validation_rules(workspace_id, work_item_type, validation_type)
     WHERE project_id IS NULL AND active = true;
 
--- Audit log queries (actor + entity are common filters)
-CREATE INDEX idx_audit_events_actor ON audit_events(workspace_id, actor_id, created_at DESC);
-CREATE INDEX idx_audit_events_entity ON audit_events(workspace_id, entity_type, entity_id, created_at DESC);
-CREATE INDEX idx_audit_events_action ON audit_events(workspace_id, action, created_at DESC);
-
--- Sync log filtering
-CREATE INDEX idx_jira_sync_logs_status ON jira_sync_logs(integration_config_id, status);
-CREATE INDEX idx_jira_sync_logs_work_item ON jira_sync_logs(work_item_id);
+-- Audit log queries — no partitioning (resolution #31). Scale is small enough that
+-- the three composite indexes below are sufficient. Re-evaluate at >1M audit rows.
+CREATE INDEX idx_audit_events_actor  ON audit_events(actor_id, created_at DESC);
+CREATE INDEX idx_audit_events_entity ON audit_events(entity_type, entity_id, created_at DESC);
+CREATE INDEX idx_audit_events_action ON audit_events(action, created_at DESC);
 
 -- Orphan detection (support tools)
 CREATE INDEX idx_work_items_owner_state ON work_items(workspace_id, owner_id, state) WHERE state NOT IN ('ready', 'archived', 'cancelled');
@@ -279,15 +274,15 @@ Declared in EP-00 (single source of truth). EP-10 migration does NOT re-declare 
 
 ### Read Path
 
-`GET /api/v1/admin/audit-log` hits the table directly — no aggregation, no separate audit DB. Use the indexed queries. At MVP scale, this is fine. If audit grows to >10M rows, archive to cold storage (out of scope).
+`GET /api/v1/admin/audit-log` hits the table directly — no aggregation, no separate audit DB. Use the indexed queries. At current scale, this is fine. If audit grows to >10M rows, archive to cold storage (out of scope). ⚠️ originally MVP-scoped — see decisions_pending.md
 
-> **Performance note (per backend_review.md TC-5)**: Synchronous `AuditService.record()` within the caller's transaction is the correct choice — async audit risks losing events on crash. The three indexes on `audit_events` (actor, entity, action) add ~3ms per write at 100k rows — acceptable for MVP. At >1M audit rows, consider partitioning `audit_events` by month to keep index size manageable. No change needed for MVP.
+> **Performance note (per backend_review.md TC-5)**: Synchronous `AuditService.record()` within the caller's transaction is the correct choice — async audit risks losing events on crash. The three indexes on `audit_events` (actor, entity, action) add ~3ms per write at 100k rows — acceptable at current scale. At >1M audit rows, consider partitioning `audit_events` by month to keep index size manageable. No change needed currently. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
 ## 5. Health Dashboard: Aggregation Queries
 
-No materialized views at MVP — run queries on-demand with a Redis cache (TTL 5 minutes).
+No materialized views — run queries on-demand with a Redis cache (TTL 60 seconds, resolution #25/#31).
 
 > **LV-4 fix (per backend_review.md LV-4)**: SQL aggregations must NOT live in `HealthDashboardService`. Each aggregation is a method on `DashboardRepository` in the infrastructure layer. `DashboardService` calls these methods and assembles the response. This makes aggregation queries testable in isolation.
 
@@ -324,8 +319,9 @@ Cache key: `dashboard:{workspace_id}:{project_id or "global"}` — invalidated o
 ```python
 class CredentialsStore:
     """Thin wrapper around environment-configured secrets backend."""
-    # MVP: encrypted column in integration_configs using Fernet (symmetric, workspace-keyed)
+    # Current: encrypted column in integration_configs using Fernet (symmetric, workspace-keyed)
     # Future: HashiCorp Vault / AWS Secrets Manager swap in here
+    # (originally MVP-scoped — see decisions_pending.md)
     
     def store(self, config_id: UUID, credentials: dict) -> str:
         """Returns opaque reference key."""
@@ -486,11 +482,11 @@ infrastructure/
 
 | Decision | Chosen | Rejected | Reason |
 |---|---|---|---|
-| Permission model | Capability array on member | RBAC tables | MVP doesn't need role inheritance; array is simpler, direct, testable |
-| Credential storage | Fernet-encrypted ref in separate column | External vault | Vault is operationally complex for MVP; Fernet with key rotation path is sufficient |
+| Permission model | Capability array on member | RBAC tables | Current scope doesn't need role inheritance; array is simpler, direct, testable ⚠️ originally MVP-scoped — see decisions_pending.md |
+| Credential storage | Fernet-encrypted column with documented key rotation | External vault | No external vault (resolution #31). Fernet symmetric key from env var + rotation runbook is sufficient at scale. |
 | Audit write | Synchronous within transaction | Async event | Audit MUST be consistent with the action; async risks losing events on crash |
 | Rule precedence | Pure function, explicit logic | Strategy pattern | No polymorphism needed; 30 lines of explicit logic beats a class hierarchy |
-| Dashboard data | On-demand queries + Redis cache | Materialized views | MVP data volume doesn't justify mv refresh overhead; cache TTL is acceptable |
+| Dashboard data | On-demand queries + Redis cache (60s TTL) | Materialized views | No MV (resolution #25). Data volume is small; on-demand + short cache is enough. |
 | Health check | Celery periodic task | Cron / APScheduler | Already have Celery for EP-08; consistent infrastructure |
 
 ---
@@ -499,19 +495,32 @@ infrastructure/
 
 Superadmin is a global flag (`users.is_superadmin`) — NOT a workspace capability. It exists outside workspace scope by design.
 
-**Powers granted to superadmin**:
+**Bootstrap (resolution #31)**: `SEED_SUPERADMIN_EMAILS` env var or migration fixture. No CLI. First Google OAuth login of a seeded email creates the `users` row with `is_superadmin = true`. Subsequent grants flow through the audited endpoint below.
 
-| Power | Detail |
-|-------|--------|
-| Create users directly | Bypass OAuth invitation — useful for onboarding before Google OAuth is configured |
-| Force-unlock any work item | Delegates to EP-17's lock service; uses `FORCE_UNLOCK` capability path |
-| Reset OAuth state for any user | Clear `google_sub` binding and session tokens for a given user |
-| View cross-workspace audit log | Query `audit_events` across all workspaces (no `workspace_id` filter applied) |
-| Suspend entire workspaces | Set `workspaces.status = 'suspended'` — blocks all members |
+### Superadmin surface (in-scope per resolution #31)
 
-**Bootstrap**: `python -m app.cli create-superadmin --email=<email>` only. No API endpoint. See EP-00 security invariant note.
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/admin/workspaces` | Create workspace + assign initial Workspace Admin. |
+| GET | `/api/v1/admin/workspaces` | List all workspaces across the platform. |
+| GET | `/api/v1/admin/users` | List all users across the platform. |
+| GET | `/api/v1/admin/audit?scope=global` | Query `audit_events` across all workspaces (no `workspace_id` filter applied). |
+| GET | `/api/v1/admin/health/global` | Platform-wide health snapshot. |
+| POST | `/api/v1/admin/users/:id/grant-superadmin` | Elevate a user to superadmin (audited). |
 
-**Capability `force_unlock`** is granted to workspace admins (via normal capability grant flow) and automatically to superadmin (via short-circuit). It is the only lock-related capability scoped to EP-10's admin surface.
+UI: admin sections are rendered only when `user.is_superadmin === true`.
+
+### Deferred (explicitly out of scope for now)
+
+- Suspend an entire workspace
+- Force-unlock a section on behalf of a workspace (delegated to Workspace Admin)
+- Impersonate another user
+- Bulk CSV import/export
+- Cross-workspace owner reassignment
+
+Re-introducing any of these requires a new decision recorded in `decisions_pending.md`.
+
+**Capability `force_unlock`** is granted to Workspace Admin (via profile) and automatically to superadmin (via short-circuit).
 
 ---
 
@@ -557,11 +566,13 @@ Reuses `integration_configs` table with `provider='puppet'`.
 
 ---
 
-## 14. Out of Scope for MVP
+## 14. Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Multi-workspace capability delegation chains
 - Role templates (predefined capability bundles — users assemble manually)
 - Audit log archiving / cold storage rotation
 - Webhook notifications for admin events
-- Project-specific Jira credentials (project_id scoped integration_config supported by schema, but UI/API is workspace-only at MVP)
+- Project-specific Jira credentials (project_id scoped integration_config supported by schema, but UI/API is workspace-only)
 - Bulk member import via CSV

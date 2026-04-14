@@ -2,7 +2,7 @@
 
 ## Business Need
 
-The MVP is explicitly asynchronous (see PRD section 7.6 — "la colaboración del MVP es asíncrona"). But async collaboration doesn't mean concurrent editing on the same content. Without coordination:
+The product is explicitly asynchronous (see PRD section 7.6 — "la colaboración es asíncrona"). But async collaboration doesn't mean concurrent editing on the same content. Without coordination: ⚠️ originally MVP-scoped — see decisions_pending.md
 - User A opens item X, starts editing
 - User B opens item X, starts editing
 - Both save — last-write-wins silently destroys A's work (or B's, depending on order)
@@ -20,7 +20,7 @@ The PRD emphasizes "control humano en todo momento" and "ownership claro". Edit 
 - Lock expires automatically after inactivity (e.g., 5 minutes no activity)
 - Allow unlock request: sends notification to current lock holder
 - Allow admin (superadmin or workspace admin) to force unlock with audit
-- Optional: section-level locks (edit one section, not the whole item) — deferred post-MVP
+- Optional: section-level locks (edit one section, not the whole item) — deferred ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ## User Stories
 
@@ -89,6 +89,6 @@ The PRD emphasizes "control humano en todo momento" and "ownership claro". Edit 
 
 ## Open Questions
 
-- Section-level locking (allow parallel edits to different sections)? **MVP: work-item level only**
-- Should lock apply to comments too? **MVP: no — comments are append-only, no lock needed**
-- Should lock apply to state transitions? **MVP: yes — state transition is a write**
+- Section-level locking (allow parallel edits to different sections)? **Decision: work-item level only** ⚠️ originally MVP-scoped — see decisions_pending.md
+- Should lock apply to comments too? **Decision: no — comments are append-only, no lock needed** ⚠️ originally MVP-scoped — see decisions_pending.md
+- Should lock apply to state transitions? **Decision: yes — state transition is a write** ⚠️ originally MVP-scoped — see decisions_pending.md

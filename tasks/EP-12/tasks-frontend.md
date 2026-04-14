@@ -1,4 +1,6 @@
-# EP-12 Frontend Subtasks — Responsive, Security, Performance & Observability
+# EP-12 Frontend Subtasks — Responsive, Security, Performance
+
+> **Propagation note (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Sentry frontend integration, product-event tracking, trace-sampling and related tasks below are **obsolete**. Re-plan at TDD time.
 
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS
 **Note**: Layout primitives (Group 1) must be built before any other epic's frontend work begins. All other epics reuse these components.

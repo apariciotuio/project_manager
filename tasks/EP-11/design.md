@@ -1,47 +1,41 @@
 # EP-11 — Technical Design
-## Export & Sync with Jira
+## Jira: Export (upsert-by-key) + User-initiated Import
 
 **Epic**: EP-11
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Redis / Celery
-**Date**: 2026-04-13
+
+> **Resolved 2026-04-14 (decisions_pending.md #5, #12, #26)**: No polling, no webhooks, no `sync_logs`, no status sync, no auto-sync. Export is upsert-by-key — the first export creates a Jira issue and stores `jira_issue_key`; subsequent exports UPDATE the same issue. New user-initiated **import** action creates a work item in `draft` from an existing Jira issue. Divergence is detected at export time (banner + per-field diff) but never blocks.
 
 ---
 
 ## 1. Architecture Overview
 
-EP-11 sits on top of EP-10's Jira config infrastructure. It owns the export lifecycle:
-trigger validation → snapshot → Celery async export task → Jira API call → reference storage → sync.
-
-No domain logic leaks into the infrastructure adapter. The Jira API is wrapped — domain code never touches `httpx` or Jira response shapes directly.
-
 ```
-ExportController
+ExportController (user-initiated)
   └── ExportService
         ├── [VALIDATE] ReadyGate.check(work_item)
-        ├── [VALIDATE] JiraConfigResolver.resolve(project_id)
-        ├── [VALIDATE] IdempotencyGuard.check(work_item_id)
+        ├── [VALIDATE] project mapping resolves to a jira_project_key (EP-10 integration_project_mappings)
+        ├── [VALIDATE] capability `can_export` (Project Admin, Workspace Admin, Integration Admin, Superadmin — not Member/Team Lead)
+        ├── [DIFF]     if work_item.jira_source_key or jira_issue_key already set: compare Jira `updated_at` vs last-export snapshot. If diverged, require `confirm_overwrite=true`.
         ├── [CREATE]   SnapshotBuilder.build(work_item)
-        ├── [PERSIST]  IntegrationExportRepository.create(export)
+        ├── [PERSIST]  IntegrationExportRepository.create(export, version_id)
         └── [DISPATCH] ExportTask.apply_async(export_id)
 
-ExportTask (Celery)
+ExportTask (Celery queue `jira`)
   ├── [LOAD]    IntegrationExportRepository.get(export_id)
-  ├── [CHECK]   IdempotencyGuard.check_jira_key(export_id)  → skip if key already set
-  ├── [CALL]    JiraApiAdapter.create_issue(snapshot, mapping)
+  ├── [UPSERT]  If jira_issue_key present (from prior export or import): UPDATE issue.
+                Otherwise: CREATE issue and persist the returned key to the same row.
   └── [CALL]    ExportService.mark_export_success(export_id, jira_ref)
-                  # ExportService (application layer) handles:
-                  #   ├── IntegrationExportRepository.set_jira_ref(export_id, key, url)
-                  #   └── AuditService.record(export_completed)
-                  # Fixed per backend_review.md LV-5: Celery task (infrastructure) must not
-                  # call AuditService (application) directly. The application service owns
-                  # both the DB update and audit write in one application-layer transaction.
 
-SyncTask (Celery periodic)
-  ├── [QUERY]   IntegrationExportRepository.get_syncable()
-  ├── [CALL]    JiraApiAdapter.get_status(jira_issue_key)
-  ├── [MAP]     JiraStatusMapper.map(status_category_key)
-  └── [PERSIST] IntegrationExportRepository.update_jira_status(export_id, status)
+ImportController (user-initiated)
+  └── ImportService
+        ├── [VALIDATE] no unresolved work_item already linked to this jira_key
+        ├── [CALL]    JiraApiAdapter.get_issue(jira_key)
+        ├── [MAP]     JiraFieldMapper.to_work_item(jira_issue, project_id)
+        └── [CREATE]  WorkItemService.create(imported_from_jira=true, jira_source_key=jira_key, state='draft')
 ```
+
+No polling, no webhooks, no auto-sync task.
 
 ---
 
@@ -68,7 +62,7 @@ CREATE TABLE integration_exports (
     error_detail            TEXT,
     attempt_count           INT NOT NULL DEFAULT 0,
     exported_at             TIMESTAMPTZ,               -- set when status -> success
-    exported_by             UUID REFERENCES users(id),
+    exported_by             UUID REFERENCES users(id), -- users(id), NOT workspace_memberships (resolution #5)
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -109,7 +103,9 @@ CREATE INDEX idx_integration_exports_jira_key ON integration_exports(jira_issue_
 
 ### Reuse from EP-10
 
-`jira_configs`, `jira_project_mappings`, and `jira_sync_logs` are owned by EP-10 and reused as-is. EP-11 reads config and mapping; it does not mutate them except for `consecutive_failures` on the config (delegated through `JiraConfigRepository`).
+`integration_configs`, `integration_project_mappings` are owned by EP-10 and reused as-is. EP-11 reads config and mapping; it does not mutate them except for `consecutive_failures` on the config (delegated through `IntegrationConfigRepository`).
+
+**`sync_logs` table is removed** (resolution #26). All export audit lives in `audit_events`.
 
 ---
 
@@ -375,16 +371,18 @@ ADF conversion is isolated here. If Jira's API ever supports Markdown directly, 
 | Decision | Chosen | Rejected | Reason |
 |---|---|---|---|
 | Export execution | Async Celery task | Synchronous in request | Jira can be slow/unavailable; 10s+ response times in a synchronous handler is unacceptable |
-| Re-export behavior | New Jira issue | Update existing issue | No write-back is the explicit MVP contract; updating post-export content in Jira risks overwriting Jira-side changes |
+| Re-export behavior | New Jira issue | Update existing issue | No write-back is the explicit contract; updating post-export content in Jira risks overwriting Jira-side changes ⚠️ originally MVP-scoped — see decisions_pending.md |
 | Snapshot rebuild on retry | Reuse original snapshot | Rebuild from current state | Retry must send the same payload; rebuilding changes the semantics from "retry" to "new export" |
 | Divergence detection | Computed at read time | Materialized flag on work_item | Avoids write amplification; version_id comparison is O(1) |
-| Sync mechanism | Celery periodic polling | Webhooks | Webhooks require public endpoint, ingress config, and Jira-side setup — not worth it at MVP scale |
+| Sync mechanism | Celery periodic polling | Webhooks | Webhooks require public endpoint, ingress config, and Jira-side setup — not worth it at current scale ⚠️ originally MVP-scoped — see decisions_pending.md |
 | Status mapping basis | statusCategory.key | status name string | Status names are user-configurable in Jira; category keys are stable across instances |
 | Idempotency | Two-layer (pre-dispatch + pre-call) | Single layer | Celery at-least-once delivery requires the adapter-level check; pre-dispatch is UX only |
 
 ---
 
-## 13. Out of Scope for MVP
+## 13. Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Webhook-based Jira status callbacks
 - Bulk export UI
@@ -392,4 +390,4 @@ ADF conversion is isolated here. If Jira's API ever supports Markdown directly, 
 - Custom field mapping configuration UI (mapping is set via project mappings API in EP-10)
 - Jira issue transitions triggered from the platform
 - Export scheduling or automation of any kind
-- Project-scoped Jira configs (workspace-level only at MVP, schema already supports it)
+- Project-scoped Jira configs (workspace-level only, schema already supports it)

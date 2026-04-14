@@ -49,16 +49,17 @@ CREATE TABLE templates (
     workspace_id    UUID REFERENCES workspaces(id) ON DELETE CASCADE,  -- NULL = system default
     type            VARCHAR(50) NOT NULL,
     name            VARCHAR(255) NOT NULL,
-    content         TEXT NOT NULL,
+    schema          JSONB NOT NULL,          -- JSON-schema typed template document (Layer 3) — see specs/templates/spec.md
+    version         INTEGER NOT NULL DEFAULT 1,
     is_system       BOOLEAN NOT NULL DEFAULT FALSE,
     created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT templates_type_valid CHECK (type IN (
-        'idea','bug','enhancement','task','initiative','spike','business_change','requirement'
+        'idea','bug','mejora','tarea','iniciativa','spike','cambio','requisito',
+        'milestone','story'
     )),
-    CONSTRAINT templates_content_length CHECK (char_length(content) <= 50000),
     CONSTRAINT templates_system_no_workspace CHECK (
         NOT (is_system = TRUE AND workspace_id IS NOT NULL)
     )
@@ -122,7 +123,13 @@ Decision: do NOT implement CRDT or OT for drafts. This is pre-creation transient
 
 ## Template Storage Model
 
-Templates are stored as plain `TEXT` (Markdown + optional JSON front-matter). No proprietary format. The `content` field is rendered as Markdown in the description editor.
+Templates are JSON-schema typed documents (see `specs/templates/spec.md`). The structure has three layers:
+
+- **Layer 1** — eight immutable universal sections (code-owned).
+- **Layer 2** — immutable field-type catalogue (`text`, `string`, `enum`, `multi_enum`, `date`, `date_range`, `duration`, `reference`, `reference_list`, `user_reference`, `user_list`, `attachment_list`) with `required`, `prefill`, `help_text`, `validation`.
+- **Layer 3** — editable per-type concrete templates (the `schema` JSONB column).
+
+All template mutations are validated against the JSON schema before persistence. Structural changes that would remove a universal section or introduce an unknown field type are rejected HTTP 422.
 
 Template lookup is a two-step query:
 
@@ -357,7 +364,7 @@ Rejected. Drafts are pre-creation throwaway state. The complexity of CRDT (Yjs o
 
 ### Template as JSON schema (structured sections)
 
-Considered. A JSON schema would allow field-level pre-population (not just description). Rejected for MVP: the 8 item types all share the same field set, so "template = structured scaffold for description field as Markdown" is sufficient. JSON schema templates become relevant only if we introduce type-specific custom fields (post-MVP).
+Considered. A JSON schema would allow field-level pre-population (not just description). Rejected: the 8 item types all share the same field set, so "template = structured scaffold for description field as Markdown" is sufficient. JSON schema templates become relevant only if we introduce type-specific custom fields (deferred). ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### Separate `drafts` microservice
 

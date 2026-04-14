@@ -12,7 +12,8 @@ All auth cookies are HTTP-only, set/cleared by the backend. Frontend never reads
 | Endpoint | When used | Frontend behavior |
 |----------|-----------|-------------------|
 | `GET /api/v1/auth/google` | Login button click | Hard navigate (not fetch) — triggers OAuth redirect |
-| `GET /api/v1/auth/me` | App mount | Determine auth state; redirect to `/login` on 401 |
+| `GET /api/v1/auth/me` | App mount | Determine auth state; redirect to `/login?returnTo=<current path>` on 401 |
+| `GET /api/v1/workspaces/mine` | After login when resolver returns picker | List memberships for the workspace picker UI |
 | `POST /api/v1/auth/refresh` | On 401 from any API call | Called by API client interceptor; retries original request |
 | `POST /api/v1/auth/logout` | Logout button | Clear auth state, redirect to `/login` |
 
@@ -25,7 +26,8 @@ Response shape for `/auth/me`:
     "full_name": "User Name",
     "avatar_url": "https://...",
     "workspace_id": "uuid",
-    "workspace_slug": "acme"
+    "workspace_slug": "acme",
+    "is_superadmin": false
   }
 }
 ```
@@ -147,8 +149,9 @@ THEN it throws a descriptive error (not returns undefined)
 ### Acceptance Criteria — Phase 3
 
 WHEN an unauthenticated request (no `access_token` cookie) hits `/workspace/acme/work-items`
-THEN the middleware returns a redirect to `/login`
-AND the original path is NOT preserved as a `returnTo` param (not required in MVP)
+THEN the middleware returns a redirect to `/login?returnTo=%2Fworkspace%2Facme%2Fwork-items`
+AND the frontend preserves this param across the OAuth round-trip via the `state` blob (stored in Redis with PKCE)
+AND on successful login, the user is redirected to `returnTo` if it is a workspace-scoped path valid for the resolved active workspace
 
 WHEN a request with an `access_token` cookie (any value, presence-only check) hits `/workspace/acme`
 THEN the middleware passes it through without redirect
@@ -198,6 +201,11 @@ AND the login UI is NOT rendered (no flash)
 
 WHEN the `?error` param is not one of the recognized values (`oauth_failed`, `session_expired`, `invalid_state`, `cancelled`)
 THEN no error banner is shown (ignore unknown error params)
+
+### Workspace Picker Page (`src/app/workspace/select/page.tsx`)
+
+- [ ] [GREEN] Implement picker page: lists memberships from `GET /api/v1/workspaces/mine`, shows workspace name + user role, click selects and persists `last_chosen_workspace_id` via `POST /api/v1/workspaces/select`, redirects to `/workspace/<slug>/` (or `returnTo` if present)
+- [ ] [RED] Tests: renders list; selecting a workspace calls select endpoint + routes correctly; invalid `returnTo` across workspaces is ignored
 
 ### Workspace Redirect Page (`src/app/workspace/[slug]/page.tsx`)
 

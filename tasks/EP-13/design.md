@@ -1,41 +1,37 @@
-# Technical Design: EP-13 — Semantic Search + Puppet Integration
+# Technical Design: EP-13 — Puppet Integration (Search)
 
 **Epic**: EP-13
 **Stack**: Python 3.12 / FastAPI / SQLAlchemy async / PostgreSQL 16 / Celery + Redis / Next.js 14
-**Date**: 2026-04-13
-**Status**: Proposed
+
+> **Resolved 2026-04-14 (decisions_pending.md #4, #9, #24, #28)**: Puppet is the sole search backend for the product. No PG FTS, no Elasticsearch, no RRF hybrid fusion, no learned re-ranker, no per-workspace embeddings, no multi-language pipelines. Our backend calls Puppet directly; Dundun is **not** in the search path (Dundun uses Puppet for its own RAG via its own tool, not through us).
 
 ---
 
 ## 1. Architecture Overview
 
-EP-13 extends EP-09 search without replacing it. PG FTS remains the keyword engine; Puppet is additive. EP-10 integration pattern (Fernet credentials, `integration_configs`, capability guards) is reused directly.
-
 ```
 Browser
-  └── POST /api/v1/search
+  └── GET /api/v1/search
         └── SearchController
-              └── HybridSearchService
-                    ├── KeywordSearchService (EP-09 PG FTS)          [parallel]
-                    └── PuppetSearchAdapter → Puppet API             [parallel]
-                          └── RRFRanker.fuse(keyword_results, semantic_results)
-                                └── SearchResponse with provenance labels
+              └── SearchService
+                    └── PuppetClient.search(q, tags=[wm_<workspace_id>, ...], limit, cursor)
+                          ← returns ranked document IDs + snippets
+                    └── Hydrate rows from Postgres by ID → SearchResponse
 
-Work item mutation
-  └── WorkItemService
-        └── IndexingEventPublisher.enqueue(work_item_id, event)
-              └── Celery integrations queue
-                    └── puppet.index_work_item task
-                          └── PuppetIndexAdapter → Puppet API
-
-Celery beat
-  └── puppet.reconcile (daily 02:00 UTC)
-  └── puppet.health_check (per integration_config, every 10min)
+Domain write (work_item / comment / timeline_event / tag change)
+  └── Service publishes a domain event → outbox → Celery task on queue `puppet_sync`
+        └── PuppetClient.index_document({id, type, workspace_id, tags, fields})
+              OR PuppetClient.delete_document(id)
 ```
+
+- **Search path**: our BE → Puppet HTTP. No fan-out, no fusion.
+- **Indexing path**: domain event → Celery `puppet_sync` queue → Puppet upsert/delete. Target eventual consistency <3 s.
+- **Facet filters** are represented as Puppet tags: `wm_<workspace_id>`, `wm_type_<type>`, `wm_state_<state>`, `wm_project_<id>`, `wm_owner_<id>`, `wm_team_<id>`, `wm_tag_<slug>`.
+- **If Puppet is down**: the searchbar UI shows "unavailable"; CRUD and non-search listings continue via Postgres unaffected. The health check (below) emits a warning.
 
 ---
 
-## 2. Puppet Adapter — Domain Port + Infrastructure Implementation
+## 2. PuppetClient — Domain Port + Infrastructure Implementation
 
 ### Domain port (interface)
 
@@ -48,35 +44,41 @@ from dataclasses import dataclass
 @dataclass
 class PuppetSearchResult:
     id: str
+    document_type: str           # 'work_item' | 'comment' | 'timeline_event'
     title: str
     snippet: str
     score: float
-    result_type: str  # 'work_item' | 'doc'
     workspace_id: UUID | None
     url: str | None
 
 @dataclass
-class PuppetIndexPayload:
-    id: UUID
+class PuppetDocument:
+    id: str                      # e.g. "work_item:<uuid>", "comment:<uuid>", "timeline_event:<uuid>"
+    document_type: str
     workspace_id: UUID
     title: str
-    description: str
-    spec_content: str | None
-    aggregated_sections: str | None
-    tags: list[str]
-    owner_id: UUID | None
-    state: str
-    type: str
-    updated_at: str  # ISO8601
+    body: str                    # concatenated searchable text
+    tags: list[str]              # wm_<workspace_id>, wm_type_<type>, etc.
+    metadata: dict
 
 class IPuppetClient(Protocol):
     async def search(
         self,
-        q: str,
-        workspace_ids: list[UUID],
-        collection: str,  # 'work_items' | 'docs'
+        query: str,
+        tags: list[str],
         limit: int,
+        cursor: str | None = None,
+    ) -> tuple[list[PuppetSearchResult], str | None]: ...
+
+    async def search_prefix(
+        self, prefix: str, tags: list[str], limit: int = 8
     ) -> list[PuppetSearchResult]: ...
+
+    async def index_document(self, doc: PuppetDocument) -> None: ...
+
+    async def delete_document(self, id: str) -> None: ...
+
+    async def health(self) -> bool: ...
 
     async def upsert(self, payload: PuppetIndexPayload) -> None: ...
 
@@ -149,108 +151,29 @@ class PuppetClient:
 
 ---
 
-## 3. Hybrid Search Service — RRF Fusion
+## 3. SearchService — direct Puppet call
 
-### Algorithm
-
-Reciprocal Rank Fusion (Cormack et al., 2009):
-
-```
-score_rrf(item) = sum over engines e of: w_e / (k + rank_e(item))
-```
-
-Where:
-- `k = 60` (smoothing constant — configurable via `RRF_K` env var)
-- `w_keyword = 0.40` (configurable via `RRF_WEIGHT_KEYWORD`)
-- `w_semantic = 0.60` (configurable via `RRF_WEIGHT_SEMANTIC`)
-- `rank_e(item)` = 1-based rank in engine `e`'s result list (items not present get `rank = len(results) + 1`)
+No fusion, no hybrid, no RRF. The service is a thin wrapper that builds the tag array from the caller's facets and calls Puppet.
 
 ```python
-# application/services/hybrid_search_service.py
-import asyncio
-from dataclasses import dataclass
+# application/services/search_service.py
 
-@dataclass
-class SearchResult:
-    id: str
-    result_type: str
-    title: str
-    score: float
-    provenance: str   # 'keyword' | 'semantic' | 'both'
-    matched_by: list[str]
-    snippet: str
-    workspace_id: str
+class SearchService:
+    def __init__(self, puppet_client: IPuppetClient, work_item_repo: IWorkItemRepository): ...
 
-class HybridSearchService:
-    def __init__(
-        self,
-        keyword_service: KeywordSearchService,
-        puppet_client: IPuppetClient,
-        rrf_k: int = 60,
-        w_keyword: float = 0.40,
-        w_semantic: float = 0.60,
-    ): ...
+    async def search(self, query: str, workspace_id: UUID, facets: SearchFacets, limit: int, cursor: str | None):
+        tags = [f"wm_{workspace_id}"]
+        tags.extend(self._facets_to_tags(facets))
+        hits, next_cursor = await self._puppet.search(query, tags, limit, cursor)
+        rows = await self._work_item_repo.list_by_ids([h.id for h in hits if h.document_type == "work_item"])
+        return self._merge(hits, rows, next_cursor)
 
-    async def search(self, q: str, mode: str, scope: str, workspace_ids: list[UUID], limit: int) -> SearchResponse:
-        fallback_reason = None
-
-        if mode == "keyword":
-            kw_results = await self._keyword_service.search(q, workspace_ids, limit)
-            return self._build_response(kw_results, [], mode_used="keyword")
-
-        if mode == "semantic":
-            sem_results = await self._semantic_only(q, workspace_ids, scope, limit)
-            return self._build_response([], sem_results, mode_used="semantic")
-
-        # hybrid: parallel execution
-        kw_task = asyncio.create_task(self._keyword_service.search(q, workspace_ids, limit * 2))
-        sem_task = asyncio.create_task(self._semantic_safe(q, workspace_ids, scope, limit * 2))
-
-        kw_results, (sem_results, fallback_reason) = await asyncio.gather(kw_task, sem_task)
-
-        fused = self._rrf_fuse(kw_results, sem_results)[:limit]
-        return self._build_response(fused, mode_used="hybrid" if not fallback_reason else "keyword",
-                                    fallback_reason=fallback_reason)
-
-    async def _semantic_safe(self, q, workspace_ids, scope, limit):
-        try:
-            results = await asyncio.wait_for(
-                self._puppet.search(q, workspace_ids, self._scope_to_collection(scope), limit),
-                timeout=self._timeout_s,
-            )
-            return results, None
-        except Exception as e:
-            logger.warning("puppet_unavailable", error=str(e), integration="puppet")
-            return [], "puppet_unavailable"
-
-    def _rrf_fuse(self, kw: list, sem: list) -> list[SearchResult]:
-        scores: dict[str, float] = {}
-        provenance: dict[str, set] = {}
-        items: dict[str, SearchResult] = {}
-
-        for rank, r in enumerate(kw, start=1):
-            scores[r.id] = scores.get(r.id, 0) + self._w_kw / (self._k + rank)
-            provenance.setdefault(r.id, set()).add("keyword")
-            items[r.id] = r
-
-        for rank, r in enumerate(sem, start=1):
-            scores[r.id] = scores.get(r.id, 0) + self._w_sem / (self._k + rank)
-            provenance.setdefault(r.id, set()).add("semantic")
-            if r.id not in items:
-                items[r.id] = r
-
-        result = []
-        for item_id, score in sorted(scores.items(), key=lambda x: -x[1]):
-            item = items[item_id]
-            p = provenance[item_id]
-            prov_str = "both" if len(p) == 2 else next(iter(p))
-            result.append(SearchResult(
-                id=item_id, result_type=item.result_type, title=item.title,
-                score=score, provenance=prov_str, matched_by=list(p),
-                snippet=item.snippet, workspace_id=str(item.workspace_id)
-            ))
-        return result
+    async def suggest(self, prefix: str, workspace_id: UUID, limit: int = 8):
+        tags = [f"wm_{workspace_id}"]
+        return await self._puppet.search_prefix(prefix, tags, limit)
 ```
+
+Saved searches (table owned in EP-09) store raw query + facet params and replay them through this service.
 
 ---
 
@@ -586,7 +509,7 @@ infrastructure/
 | Decision | Chosen | Rejected | Reason |
 |----------|--------|----------|--------|
 | Search endpoint method | POST | GET (EP-09 pattern) | Request body for complex filter objects; GET with large query strings is brittle |
-| RRF vs learned fusion | RRF (static weights) | ML re-ranker | No training data at MVP; RRF is proven, parameter-free, easily tuneable |
+| RRF vs learned fusion | RRF (static weights) | ML re-ranker | No training data available; RRF is proven, parameter-free, easily tuneable ⚠️ originally MVP-scoped — see decisions_pending.md |
 | Puppet timeout | 2000ms hard timeout | No timeout | Unbounded Puppet calls would blow search P95 |
 | Doc content serving | Internal proxy + Redis cache | Direct Puppet URL from browser | Enforces access control; avoids CORS; enables caching |
 | Index payload | Snapshot on task execution | Event-carried state | Avoids stale payloads from delayed Celery execution; always indexes current state |
@@ -594,11 +517,13 @@ infrastructure/
 
 ---
 
-## 14. Out of Scope for MVP
+## 14. Out of Scope
+
+> ⚠️ Items below were originally MVP-scoped deferrals. Review each against full-product scope; log outcomes in decisions_pending.md.
 
 - Real-time index updates via WebSocket (indexing is eventually consistent — async Celery)
 - User-level search history or saved searches
 - Custom embedding model configuration per workspace
 - Faceted search filters on semantic results
 - Puppet index export / import
-- Multi-language search (EN only for MVP)
+- Multi-language search (EN only)

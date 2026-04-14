@@ -1,93 +1,103 @@
-# EP-00 Bootstrap Specs — Workspace Bootstrap
+# EP-00 Bootstrap Specs — First-login Flow & Workspace Resolution
 
 ## Context
 
-The workspace is the root container for all work in the system. Every user must belong to at least one workspace. Bootstrap ensures the first user to authenticate gets a functional workspace automatically, without requiring manual setup. Subsequent users may be invited (out of scope for EP-00) or self-provision (if allowed — out of scope for EP-00).
+The workspace is the root container for all work in the system. Multi-tenant — multiple workspaces share the deployment and each user can belong to N of them. Every authenticated request must resolve an active workspace; unknown users without membership are blocked, not auto-provisioned.
+
+> **Resolved 2026-04-14** (decisions_pending.md #14): No auto-create-personal-workspace. Workspace creation is a Superadmin-only action. First-login flow resolves against existing `workspace_memberships`.
 
 ---
 
-## First User: New System, No Workspace Exists
+## First Login Resolution Flow
 
-WHEN a user completes Google OAuth for the first time on a fresh system (no workspaces in DB)
-THEN the backend creates a default workspace with:
-  - `name`: derived from the user's email domain (e.g. `acme.com` → `Acme`) or `"My Workspace"` if domain is a public provider (gmail.com, outlook.com, etc.)
-  - `slug`: URL-safe version of the name, uniqueness enforced
-  - `created_by`: the authenticating user's ID
-  - `status`: `active`
-  - `created_at`, `updated_at`
-AND the backend creates a `workspace_memberships` record:
-  - `user_id`: the authenticating user
-  - `workspace_id`: the new workspace
-  - `role`: `admin`
-  - `joined_at`: now
-AND the user's JWT `workspace_id` claim is set to this new workspace
-AND the user lands on `/workspace/<slug>/` after login
-AND this bootstrap event is written to the audit log with `event_type: workspace_bootstrapped`
+WHEN a user completes Google OAuth and their `google_sub` resolves (either new or existing `users` row)
+THEN the backend queries `workspace_memberships` for all rows with `user_id = users.id` AND `state = 'active'`
 
-### Public Email Domain Detection
+### Case: 0 active memberships
 
-WHEN the user's email domain is in the public provider list (gmail.com, outlook.com, hotmail.com, yahoo.com, icloud.com)
-THEN the workspace name defaults to `"My Workspace"`
-AND the slug is generated as `my-workspace-<random 6 chars>` to avoid conflicts
+WHEN the user has zero active `workspace_memberships` rows
+THEN the backend does NOT create any workspace or membership
+AND the backend redirects to `/login?error=no_workspace` with a user-facing message: "Your account has no workspace assigned. Contact an administrator."
+AND an audit event `login_blocked_no_workspace` is written
+AND no JWT is issued, no session is created
 
----
+### Case: exactly 1 active membership
 
-## First User: System Has Existing Workspaces
+WHEN the user has exactly one active `workspace_memberships` row
+THEN the backend resolves that workspace as the active workspace
+AND sets `active_workspace_id` on the session
+AND redirects to `/workspace/<slug>/` (or `returnTo` deeplink if present)
 
-WHEN a user authenticates and their `google_sub` exists in `users` but they have NO `workspace_memberships` rows
-THEN the backend does NOT auto-create a workspace (they were previously unauthenticated without membership — edge case)
-AND the user is redirected to `/onboarding` or `/login?error=no_workspace` (exact UX TBD, see open questions)
-AND an audit entry is logged
+### Case: N active memberships (N >= 2)
 
-WHEN a user authenticates and they have an existing `workspace_memberships` row
-THEN the backend resolves the workspace normally (returning user flow below)
+WHEN the user has multiple active `workspace_memberships` rows
+THEN the backend looks up `session.last_chosen_workspace_id`
+AND IF a last-chosen value is present AND still belongs to an active membership
+THEN the backend routes to that workspace directly
+AND IF no last-chosen value OR it is no longer valid
+THEN the backend redirects to `/workspace/select` (workspace picker UI)
+
+WHEN the user selects a workspace on `/workspace/select`
+THEN the backend persists `last_chosen_workspace_id` on the session
+AND redirects to `/workspace/<slug>/` (or `returnTo` if present)
 
 ---
 
-## Returning User: Existing Workspace Membership
+## Workspace Creation (Superadmin only)
 
-WHEN a returning user completes Google OAuth
-THEN the backend resolves the user record (US-002 upsert)
-AND queries `workspace_memberships` for all active memberships of this user
-AND selects the workspace with `is_default = true` for this user, OR the first membership by `joined_at` ASC if no default is set
-AND sets `workspace_id` in the JWT claim
-AND redirects to `/workspace/<slug>/`
+WHEN a superadmin calls `POST /api/v1/admin/workspaces` with `{ name, slug, initial_admin_user_id }`
+THEN the backend creates the `workspaces` row (status=active, created_by=superadmin)
+AND creates the initial `workspace_memberships` row for the given user with the `Workspace Admin` profile
+AND writes an audit event `workspace_created` scoped to the new workspace
+AND returns the created workspace
 
-WHEN a returning user has multiple workspace memberships
-THEN the backend selects the default workspace (or first joined)
-AND the user can switch workspaces after login (workspace switcher — separate epic, out of scope here)
+WHEN a non-superadmin attempts `POST /api/v1/admin/workspaces`
+THEN the backend returns 403 `{ error: { code: "FORBIDDEN" } }`
 
 ---
 
-## Bootstrap Race Condition Guard
+## Deeplink Preservation (`returnTo`)
 
-WHEN two requests attempt to bootstrap the workspace for the same user simultaneously (e.g. double-click)
-THEN the DB transaction uses `SELECT ... FOR UPDATE` or equivalent optimistic locking on the user row
-AND exactly one workspace is created
-AND both requests complete with a valid session pointing to the same workspace
+WHEN an unauthenticated request hits a protected path `/workspace/<slug>/...`
+THEN the frontend captures the original path and redirects to `/login?returnTo=<encoded path>`
 
-WHEN two different users from the same organization log in at exactly the same time (concurrent first logins)
-THEN each gets their own workspace (no automatic org detection at this stage — deferred)
-AND workspace merging is not handled in EP-00
-
----
-
-## Workspace Slug Uniqueness
-
-WHEN a workspace is created and the derived slug already exists
-THEN the backend appends a 4-digit random suffix (e.g. `acme-7f3a`)
-AND retries up to 5 times before failing with 500 and alerting
+WHEN the user completes OAuth and is redirected to their active workspace
+THEN if a valid `returnTo` param is present AND resolves to the same workspace-scoped path
+THEN the backend redirects to `returnTo` instead of `/workspace/<slug>/`
+AND IF `returnTo` is invalid (cross-workspace, non-whitelisted, or malformed) THEN it is ignored
 
 ---
 
-## Open Questions (Requires Product Decision Before Implementation)
+## Bootstrap Race Condition Guard (User Upsert)
 
-1. What happens when a new user authenticates on a system that has existing workspaces but they have no membership? Options:
-   - A: Auto-create a new personal workspace (current default above for isolated MVP)
-   - B: Show an invitation-required screen
-   - C: Allow self-join if workspace is set to "open"
-   Recommendation: A for MVP (no invite system yet), escalate if multi-tenant from day 1 is required.
+WHEN two concurrent OAuth callbacks arrive for the same `google_sub`
+THEN the DB upsert (INSERT ... ON CONFLICT (google_sub) DO UPDATE) is atomic
+AND exactly one `users` row exists after both requests complete
 
-2. Should workspace name default to email domain for corporate emails? Confirm the public provider blocklist is sufficient.
+WHEN two concurrent workspace-creation requests use the same slug
+THEN UNIQUE constraint on `workspaces.slug` forces one to fail with 409
+AND the caller retries with a different slug (admin UI surfaces the collision)
 
-3. Is there a concept of "personal workspace" vs "team workspace" from day 1, or is every workspace the same type?
+---
+
+## Superadmin Bootstrap
+
+WHEN a user matching `SEED_SUPERADMIN_EMAILS` authenticates for the first time
+THEN the resulting `users` row is created with `is_superadmin = true` AND `google_sub` pinned
+AND an audit event `superadmin_seeded` is written with context `{ source: "env_seed" }`
+
+WHEN an already-provisioned superadmin calls `POST /api/v1/admin/users/:id/grant-superadmin`
+THEN the target user's `is_superadmin` flag is set to true
+AND an audit event `superadmin_granted` is written with `actor_id` and `entity_id=target_user.id`
+
+WHEN a non-superadmin attempts the same endpoint
+THEN 403 is returned, no flag is changed
+
+---
+
+## Out of scope (for EP-00)
+
+- Workspace invitation flows for non-superadmin admins (EP-10)
+- Workspace switcher UX beyond the initial picker (EP-09 / EP-10 admin surface)
+- Org auto-detection by email domain
+- Workspace merge / split

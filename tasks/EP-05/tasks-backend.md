@@ -486,7 +486,7 @@ AND the `breakdown` dimension result reflects the current task count
 
 ## Phase 8 — Integration Tests
 
-> **Concurrency note (per backend_review.md TC-2)**: `split()` and `merge()` shift sibling `display_order` values in the same transaction as the new node INSERTs. Under `READ COMMITTED` (SQLAlchemy async default), concurrent reads between INSERT and UPDATE can observe inconsistent `display_order`. This is acceptable at MVP. Do NOT cache `display_order` between mutation calls. If edit contention becomes an issue post-MVP, add `SELECT FOR UPDATE` on the parent node before any child reorder.
+> **Concurrency note (per backend_review.md TC-2)**: `split()` and `merge()` shift sibling `display_order` values in the same transaction as the new node INSERTs. Under `READ COMMITTED` (SQLAlchemy async default), concurrent reads between INSERT and UPDATE can observe inconsistent `display_order`. This is acceptable at current scale. Do NOT cache `display_order` between mutation calls. If edit contention becomes an issue, add `SELECT FOR UPDATE` on the parent node before any child reorder. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 - [ ] 8.1 E2E: `generate` → `GET /task-tree` → `split` → `GET /task-tree` — verify tree structure changes correctly
 - [ ] 8.2 E2E: `generate` → `add_dependency` → attempt cycle → verify 422 with `cycle_path`

@@ -95,7 +95,7 @@ CREATE TABLE work_item_validators (
 );
 ```
 
-No `workspace_validator_roles` table needed at MVP — roles are config-driven (YAML or env), not DB rows.
+**Validator rules live in DB, not YAML/env** (resolution #19, decisions_pending.md). See EP-06 `validation_requirements` — editable via the admin API/UI. EP-04 resolves applicable rules per work-item type via `ValidationRequirementsRepository.list_active(workspace_id, work_item_type)` and renders them in the Next-Step recommender.
 
 ---
 
@@ -174,7 +174,7 @@ class DimensionResult:
     dimension: str
     weight: float         # renormalized for this element type
     filled: bool
-    score: float          # 0.0 or 1.0 at MVP; allow partial in future
+    score: float          # currently 0.0 or 1.0; allow partial in future (originally MVP-scoped — see decisions_pending.md)
     message: str | None   # gap message if not filled
 
 def check_acceptance_criteria(
@@ -184,8 +184,7 @@ def check_acceptance_criteria(
 ) -> DimensionResult: ...
 ```
 
-Pure functions. No I/O. Trivially testable. Partial scoring (e.g. 0.5 for "defined but thin") is a
-post-MVP concern — keep the interface open to it by using `float` not `bool`.
+Pure functions. No I/O. Trivially testable. **Granular 0.0–1.0 partial scoring is in scope** (resolution #19). Each dimension checker may return any `score ∈ [0.0, 1.0]`. `filled` is retained as a convenience flag (`score >= 1.0 → filled`). Final `completeness_score` is 0–100, computed as a weighted sum of dimension scores multiplied by renormalized weights for the section/field set applicable to this work-item type.
 
 ### 3.3 Weight renormalization
 
@@ -247,12 +246,7 @@ GET /work-items/:id/next-step
 
 ### 4.2 ValidatorSuggestionEngine
 
-Workspace validator role configuration loaded from a YAML file at startup (or env-injected config).
-Mapping: `work_item_type -> list[{role, required}]`. The engine checks which roles have a user
-configured in the workspace and sets `configured: bool` accordingly.
-
-This is a read-only lookup — no DB call needed. Config is loaded once at startup via
-`infrastructure/config/validator_roles.py`.
+Reads active `validation_requirements` (EP-06 table, editable via admin API/UI) matching the work item's type via `applies_to`. The engine checks which rules have a resolvable reviewer in the workspace and sets `configured: bool` accordingly. No YAML/env config; rules live in the DB.
 
 ---
 
@@ -370,9 +364,13 @@ When a suggestion is accepted:
 The completeness cache is invalidated as a side effect of `SectionService.save()` — no special EP-03
 coupling required.
 
-The LLM prompt for specification generation (US-040) reuses the same LLM adapter introduced in EP-03.
-The prompt template for specification generation lives in `infrastructure/llm/prompts/specification_generation.py`
-and is versioned as a Python constant (not a DB row at MVP).
+Specification generation (US-040) is delegated to Dundun (resolution #19, #32). The controller `POST /api/v1/work-items/:id/specification/generate` enqueues a Celery task on queue `dundun`. The task calls `DundunClient.invoke_agent(agent="wm_spec_gen_agent", user_id=..., work_item_id=..., callback_url=<BE>/api/v1/dundun/callback, payload={ original_input, template_id })`. Dundun returns 202 + `request_id`; the callback handler persists the returned sections via `SectionService.save()` and emits `specification.generated` for SSE push. No LLM SDK or prompt template lives in our repo.
+
+---
+
+## 6.b Section-Version Archive Job
+
+Celery periodic task `archive_stale_section_versions` runs daily. For any `work_item_section_versions` row whose `created_at` is more than 90 days older than the current section version AND which has no references (no pending reverts, not referenced by `review_requests.version_id`), the row is moved to `work_item_section_versions_archive` (same schema, tagged `archived_at`). Keeps the hot table lean without losing audit history.
 
 ---
 
@@ -429,11 +427,11 @@ infrastructure/
 - Completeness is computed synchronously on GET — the query is cheap (sections + validators for one
   work item, typically < 20 rows). Redis cache absorbs repeated calls on the same element.
 - Bulk section PATCH is a single transaction — avoids N partial commits.
-- Section version table can grow large over time. Add a background job (post-MVP) to archive versions
-  older than 90 days beyond the 10 most recent per section.
+- Section version table can grow large over time. Add a background job (deferred) to archive versions
+  older than 90 days beyond the 10 most recent per section. ⚠️ originally MVP-scoped — see decisions_pending.md
 - No full-table scans in any EP-04 query. All queries are by `work_item_id` (indexed).
-- The LLM call in US-040 is the only slow path. It is synchronous at MVP (acceptable for a user-initiated
-  action). If P95 latency > 5s, move to a Celery task with a polling endpoint.
+- The LLM call in US-040 is the only slow path. It is synchronous currently (acceptable for a user-initiated
+  action). If P95 latency > 5s, move to a Celery task with a polling endpoint. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 

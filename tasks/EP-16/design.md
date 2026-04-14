@@ -1,5 +1,7 @@
 # EP-16 — Technical Design: Attachments + Media
 
+> **Resolved 2026-04-14 (decisions_pending.md #29)**: Simplified for internal/VPN deployment. Dropped: ClamAV scanner, `attachment_scan_status` state machine, SSE scan push, pending-scan-blocks-download gate, signed URLs, IAM session-tag revocation. Kept: PDF thumbnail generation, authenticated streaming endpoint, upload/download audit. Image inline paste/drag in comments supported. Object storage is S3-compatible (MinIO or AWS S3) with URL from env.
+
 ## 1. Database Schema
 
 ### `attachments` table
@@ -14,10 +16,9 @@ CREATE TABLE attachments (
     filename          TEXT NOT NULL CHECK (char_length(filename) BETWEEN 1 AND 255),
     mime_type         TEXT NOT NULL,
     size_bytes        BIGINT NOT NULL CHECK (size_bytes > 0),
-    storage_key       TEXT NOT NULL,                          -- S3 object key (never logged)
-    thumbnail_key     TEXT,                                   -- NULL until generated; NULL for PDFs
-    scan_status       VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | clean | quarantined
-    checksum_sha256   TEXT,                                   -- populated post-confirm via S3 ETag or separate hash
+    storage_key       TEXT NOT NULL,                          -- object storage key (never logged)
+    thumbnail_key     TEXT,                                   -- NULL until generated (PDFs: page 1 thumbnail)
+    checksum_sha256   TEXT,                                   -- populated post-confirm via storage ETag or separate hash
     soft_deleted_at   TIMESTAMPTZ,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -41,11 +42,6 @@ CREATE INDEX idx_attachments_work_item
 CREATE INDEX idx_attachments_comment
     ON attachments (comment_id)
     WHERE soft_deleted_at IS NULL AND comment_id IS NOT NULL;
-
--- Celery scan worker queue: find pending attachments
-CREATE INDEX idx_attachments_scan_pending
-    ON attachments (created_at ASC)
-    WHERE scan_status = 'pending' AND soft_deleted_at IS NULL;
 
 -- Cleanup job: find soft-deleted attachments older than threshold
 CREATE INDEX idx_attachments_cleanup
@@ -155,34 +151,30 @@ Same `S3Adapter` — MinIO exposes an S3-compatible API. Configured via environm
 
 ---
 
-## 3. Upload Flow
+## 3. Upload + Download Flow (authenticated stream, VPN)
 
 ```
-Client                          Backend                          S3 / Celery
+Client                          Backend                          Storage / Celery
   |                                |                                 |
-  |-- POST request-upload -------->|                                 |
+  |-- POST /attachments (multipart)|                                 |
   |                                |-- validate type/size/quota      |
-  |                                |-- INSERT attachment (pending)   |
-  |                                |-- generate presigned PUT URL -->|
-  |<-- { attachment_id, url } -----|                                 |
-  |                                |                                 |
-  |-- PUT file binary ------------------------------------------>   |
-  |<-- 200 OK --------------------------------------------------- S3|
-  |                                |                                 |
-  |-- POST confirm :id ----------->|                                 |
-  |                                |-- HEAD object_key ------------->|
-  |                                |<-- Content-Length --------------|
-  |                                |-- enqueue scan_attachment       |
+  |                                |-- INSERT attachment row         |
+  |                                |-- PUT object -----------------> |
+  |                                |   (stream through BE)           |
   |                                |-- enqueue generate_thumbnail    |
-  |<-- { scan_status: "pending" } -|                                 |
-  |                                |                          [Celery workers]
-  |                                |                          scan → clean/quarantined
+  |<-- { attachment_id, ... } -----|                                 |
+  |                                |                          [Celery]
   |                                |                          thumbnail → upload thumb
   |                                |                                 |
-  |-- GET attachments/:id -------->|                                 |
-  |                                |-- generate presigned GET URL -->|
-  |<-- { url, scan_status } -------|                                 |
+  |-- GET /attachments/:id/download|                                 |
+  |                                |-- verify JWT + membership       |
+  |                                |-- verify can_view_attachment    |
+  |                                |-- GET object -------------------|
+  |                                |-- stream response --------------|
+  |<-- 200 stream body ------------|                                 |
 ```
+
+No presigned URLs. The backend is a streaming proxy: it authenticates the caller, enforces workspace + capability checks, and streams the object body back with `Content-Type`, `Content-Disposition`, and ETag headers. Because the deployment is VPN-internal, this is safe; the tradeoff (more BE bandwidth for downloads) is acceptable at current scale.
 
 ### Storage Key Generation
 
@@ -194,33 +186,22 @@ Client                          Backend                          S3 / Celery
 
 ## 4. Celery Tasks
 
-### `scan_attachment(attachment_id: str)`
-
-`infrastructure/tasks/scan_attachment.py`
-
-1. Fetch attachment record. If not found or already `clean`/`quarantined`, return immediately (idempotent).
-2. Download S3 object to `tempfile.NamedTemporaryFile` via `IStorageAdapter.download_to_temp`.
-3. Call `clamd.ClamdUnixSocket().scan(tmp_path)` (or `ClamdNetworkSocket` if configured).
-4. Parse result:
-   - `{'stream': ('OK', None)}` → `scan_status = 'clean'`
-   - `{'stream': ('FOUND', 'Virus.Name')}` → `scan_status = 'quarantined'`, tag S3 object, send admin alert
-   - `clamd.ConnectionError` → `raise self.retry(countdown=60 * (2 ** self.request.retries), max_retries=3)`
-5. `os.unlink(tmp_path)` in `finally` block.
-6. Write `attachment_updated` timeline event.
-
 ### `generate_thumbnail(attachment_id: str)`
 
 `infrastructure/tasks/generate_thumbnail.py`
 
-1. Fetch attachment record. Skip if `mime_type` starts with `application/` (PDF — no thumbnail for MVP).
-2. Download S3 object via adapter.
-3. Open with `PIL.Image.open`. Verify format against expected MIME type (defense against polyglot files).
-4. Apply `image.thumbnail((256, 256), PIL.Image.LANCZOS)` — maintains aspect ratio within 256x256 bounding box.
-5. Save to in-memory `BytesIO` as JPEG (quality=85) regardless of input format.
-6. Upload to `thumbnail_key` via `IStorageAdapter.upload_from_bytes`.
-7. Update `thumbnail_key` on attachment record.
+Handles images AND PDFs (page 1 for PDFs via `pdf2image` + `Pillow`, resolution #29).
 
-Pillow security note: set `PIL.Image.MAX_IMAGE_PIXELS = 50_000_000` (50MP) to prevent decompression bomb attacks. Call `PIL.ImageFile.LOAD_TRUNCATED_IMAGES = False` (default) — do not silently accept corrupt images.
+1. Fetch attachment record.
+2. Download object via adapter.
+3. If MIME is `image/*`: open with `PIL.Image.open`. Verify format against expected MIME type (defense against polyglot files).
+4. If MIME is `application/pdf`: use `pdf2image.convert_from_path(path, first_page=1, last_page=1, dpi=72)` to rasterize page 1, then continue as an image.
+5. Apply `image.thumbnail((256, 256), PIL.Image.LANCZOS)` — maintains aspect ratio within 256x256 bounding box.
+6. Save to in-memory `BytesIO` as JPEG (quality=85) regardless of input format.
+7. Upload to `thumbnail_key` via `IStorageAdapter.upload_from_bytes`.
+8. Update `thumbnail_key` on attachment record.
+
+Pillow security: `PIL.Image.MAX_IMAGE_PIXELS = 50_000_000`. `PIL.ImageFile.LOAD_TRUNCATED_IMAGES = False`.
 
 ### `cleanup_soft_deleted()`
 
@@ -239,10 +220,12 @@ Pillow security note: set `PIL.Image.MAX_IMAGE_PIXELS = 50_000_000` (50MP) to pr
 
 | Method | Path | Handler | Notes |
 |--------|------|---------|-------|
-| POST | `/api/v1/work-items/:id/attachments/request-upload` | `AttachmentController.request_upload` | Auth + workspace scope |
-| POST | `/api/v1/attachments/:id/confirm` | `AttachmentController.confirm` | Uploader only |
-| GET | `/api/v1/attachments/:id` | `AttachmentController.get` | Returns signed URL if clean |
-| DELETE | `/api/v1/attachments/:id` | `AttachmentController.delete` | Uploader or workspace owner/admin |
+| POST | `/api/v1/work-items/:id/attachments` | `AttachmentController.upload` | Multipart upload; BE streams to storage |
+| POST | `/api/v1/comments/:id/attachments` | `AttachmentController.upload_inline` | Inline image paste/drag for comments |
+| GET | `/api/v1/attachments/:id` | `AttachmentController.get` | Metadata only (no URL) |
+| GET | `/api/v1/attachments/:id/download` | `AttachmentController.download` | Authenticated streaming endpoint — verifies JWT + workspace membership + `can_view_attachment`; streams body through BE. No presigned URL. |
+| GET | `/api/v1/attachments/:id/thumbnail` | `AttachmentController.thumbnail` | Same auth; streams thumbnail bytes. |
+| DELETE | `/api/v1/attachments/:id` | `AttachmentController.delete` | Uploader or workspace admin |
 | GET | `/api/v1/work-items/:id/attachments` | `AttachmentController.list` | Workspace-scoped |
 | GET | `/api/v1/admin/storage/usage` | `AdminStorageController.usage` | Platform or workspace admin |
 | PATCH | `/api/v1/admin/storage/workspaces/:id/quota` | `AdminStorageController.update_quota` | Platform admin only |
@@ -370,5 +353,5 @@ The check happens in `AttachmentService.request_upload` before any DB write.
 | Storage provider | AWS S3 prod, MinIO dev. Adapter pattern means Cloudflare R2 is a future option with zero code change. |
 | Max workspace total cap | 100GB default via `workspace_storage_configs`; platform admin can override per workspace. |
 | Retention after work item archive | Attachments follow work item lifecycle. Archived work items: attachments retained. Hard-deleted work items: attachments soft-deleted (30-day cleanup). |
-| PDF thumbnails | Deferred post-MVP. MVP shows document icon tile for PDFs. |
-| Real-time scan status push | MVP: client polling (5s). Post-MVP: WebSocket push via EP-15 or similar. |
+| PDF thumbnails | Deferred; currently shows document icon tile for PDFs. ⚠️ originally MVP-scoped — see decisions_pending.md |
+| Real-time scan status push | Current: client polling (5s). Deferred: WebSocket push via EP-15 or similar. ⚠️ originally MVP-scoped — see decisions_pending.md |

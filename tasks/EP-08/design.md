@@ -10,7 +10,7 @@ Team
   workspace_id: UUID (FK)
   name: str (unique within workspace)
   description: str | None
-  status: TeamStatus  # active | deleted
+  deleted_at: datetime | None  # soft delete (resolution #23); NULL = active
   can_receive_reviews: bool
   created_at: datetime
   updated_at: datetime
@@ -73,26 +73,28 @@ InboxItem (view/query result)
 ## DB Schema
 
 ```sql
--- teams
+-- teams (soft-delete via deleted_at; resolution #23)
 CREATE TABLE teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id),
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active',  -- active | deleted
     can_receive_reviews BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMPTZ,  -- NULL = active; non-NULL = soft-deleted, hidden from active queries
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID NOT NULL REFERENCES users(id),
-    UNIQUE (workspace_id, name)
+    created_by UUID NOT NULL REFERENCES users(id)
 );
-CREATE INDEX idx_teams_workspace_status ON teams(workspace_id, status);
+-- Unique active-name per workspace only (deleted teams can reuse the name).
+CREATE UNIQUE INDEX idx_teams_workspace_active_name
+    ON teams(workspace_id, name) WHERE deleted_at IS NULL;
+CREATE INDEX idx_teams_workspace_active ON teams(workspace_id) WHERE deleted_at IS NULL;
 
 -- team_memberships
 CREATE TABLE team_memberships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Per db_review.md DI-6: missing ON DELETE policy. CASCADE so deleting a team
-    -- cleans up its membership rows. Teams can be hard-deleted in MVP (no soft delete).
+    -- cleans up its membership rows. Teams can be hard-deleted (no soft delete). ⚠️ originally MVP-scoped — see decisions_pending.md
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL DEFAULT 'member',  -- member | lead
@@ -136,7 +138,7 @@ CREATE INDEX idx_notifications_unread_count
     WHERE state = 'unread';
 ```
 
-Note: InboxItem is not persisted. It is computed via UNION query across work_items and reviews tables filtered by user context. See Inbox Aggregation below.
+Note: InboxItem is not persisted. It is computed via UNION query across `work_items` and `review_requests`/`review_responses` tables filtered by user context. See Inbox Aggregation below.
 
 ---
 
@@ -173,10 +175,11 @@ sequenceDiagram
 
 ### Key design decisions
 
-- **In-process event bus** (simple list of handlers, not a broker) for synchronous dispatch. The event is enqueued to Celery immediately — no distributed message broker needed at MVP scale.
-- **Celery + Redis** for fan-out. This decouples notification latency from request latency. If a team has 50 members, we do not block the HTTP response on 50 INSERTs.
+- **`AbstractEventBus` interface** (resolution #23, decisions_pending.md). Default implementation: `InProcessEventBus` — simple list of handlers dispatched synchronously in-process. Swappable to a Redis pub/sub implementation via DI if load or cross-process fan-out is ever needed. No external broker required at current scale.
+- **Celery + Redis** for fan-out worker queue. Decouples notification latency from request latency; for a 50-member team we do not block the HTTP response on 50 INSERTs.
 - **Idempotency key** = `sha256(recipient_id + domain_event_id)`. Celery retries are safe.
-- **No email or push at MVP**. Internal only. WebSocket/SSE for real-time. Persistent DB for history.
+- **No email, no push.** In-app only: SSE stream for real-time delivery, `notifications` table for persistent history (resolution #8, #23).
+- **Teams soft-deleted** via `teams.deleted_at`. Historical references (past reviews, notifications) still resolve the team name for display. Workspace Admin can restore a soft-deleted team (audited) or purge entirely (audited).
 
 ---
 

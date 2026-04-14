@@ -12,7 +12,7 @@
 
 WHEN a user opens the global dashboard
 THEN the system returns aggregated metrics for all work items in the user's accessible scope
-AND the response is served from a Redis cache (TTL: 60 seconds)
+AND the response is served from a Redis cache (TTL: 120 seconds — owned by EP-12 caching policy)
 AND a `cache_age_seconds` field is included in the response metadata
 
 WHEN the Redis cache is cold (first load or after TTL expiry)
@@ -126,10 +126,10 @@ AND this is explicitly labeled "Maturation velocity (items reaching ready)"
 ### Caching for By-Person and By-Team
 
 WHEN a by-person dashboard is requested
-THEN the result is cached in Redis with key `dashboard:person:{user_id}` and TTL: 60 seconds
+THEN the result is cached in Redis with key `dashboard:person:{user_id}` and TTL: 120 seconds (EP-12)
 
 WHEN a by-team dashboard is requested
-THEN the result is cached in Redis with key `dashboard:team:{team_id}` and TTL: 60 seconds
+THEN the result is cached in Redis with key `dashboard:team:{team_id}` and TTL: 120 seconds (EP-12)
 
 WHEN any work item owned by a user changes state
 THEN the `dashboard:person:{user_id}` cache key is invalidated immediately

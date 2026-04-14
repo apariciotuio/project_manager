@@ -39,7 +39,7 @@ Maps workspace projects to Jira project keys, with field mappings.
 | `jira_config_id` | uuid | |
 | `workspace_project_id` | uuid | |
 | `jira_project_key` | string | e.g. `ACME` |
-| `element_type_mappings` | json | `{feature: "Story", bug: "Bug", spike: "Task", ...}` |
+| `work_item_type_mappings` | json | `{feature: "Story", bug: "Bug", spike: "Task", ...}` |
 | `active` | bool | |
 
 ### JiraSyncLog
@@ -50,7 +50,7 @@ One record per export attempt.
 |---|---|---|
 | `id` | uuid | |
 | `jira_config_id` | uuid | |
-| `element_id` | uuid | |
+| `work_item_id` | uuid | |
 | `jira_issue_key` | string or null | Populated on success |
 | `status` | enum | `pending`, `success`, `failed`, `retrying` |
 | `error_message` | string or null | |
@@ -129,13 +129,13 @@ One record per export attempt.
 
 ### Project Mappings
 
-**WHEN** a member with `configure_integration` capability submits `POST /api/v1/admin/integrations/jira/{config_id}/mappings` with `{workspace_project_id, jira_project_key, element_type_mappings}`
+**WHEN** a member with `configure_integration` capability submits `POST /api/v1/admin/integrations/jira/{config_id}/mappings` with `{workspace_project_id, jira_project_key, work_item_type_mappings}`
 **THEN** a project mapping is created
 **AND** the `jira_project_key` is validated against the configured Jira instance via a lightweight probe (GET `/rest/api/3/project/{key}`) before saving
 **AND** if the key does not exist in Jira, rejected with `422` and `error.code: jira_project_not_found`
 **AND** the audit log records `action: jira_mapping_created`
 
-**WHEN** `element_type_mappings` is not provided
+**WHEN** `work_item_type_mappings` is not provided
 **THEN** a sensible default is applied: `{feature: "Story", bug: "Bug", spike: "Task", initiative: "Epic", task: "Task"}`
 
 **WHEN** `GET /api/v1/admin/integrations/jira/{config_id}/mappings` is called
@@ -159,9 +159,9 @@ One record per export attempt.
 
 ### Export Sync Logs
 
-**WHEN** `GET /api/v1/admin/integrations/jira/{config_id}/sync-logs` is called with optional `?status=failed&element_id=`
+**WHEN** `GET /api/v1/admin/integrations/jira/{config_id}/sync-logs` is called with optional `?status=failed&work_item_id=`
 **THEN** paginated sync log entries are returned
-**AND** each entry includes `{element_id, jira_issue_key, status, error_message, attempt_count, last_attempt_at}`
+**AND** each entry includes `{work_item_id, jira_issue_key, status, error_message, attempt_count, last_attempt_at}`
 
 ---
 
@@ -171,7 +171,7 @@ One record per export attempt.
 **THEN** a new Celery export task is queued for the element
 **AND** `attempt_count` is incremented and `status` transitions to `retrying`
 **AND** `triggered_by` is set to the requesting member ID
-**AND** the audit log records `action: jira_export_retried`, `log_id`, `element_id`, `actor`
+**AND** the audit log records `action: jira_export_retried`, `log_id`, `work_item_id`, `actor`
 
 **WHEN** the sync log entry has `status: success`
 **THEN** rejected with `409 Conflict` and `error.code: already_synced`
@@ -199,7 +199,7 @@ One record per export attempt.
 - Credentials are NEVER returned in any API response (GET or PATCH).
 - GET `/api/v1/admin/integrations/jira/{config_id}` returns config metadata without `credentials_ref`.
 - Audit log entries for credential changes contain only `config_id` and actor — no token values.
-- The secrets store key rotation is out of scope for MVP but the `credentials_ref` field design supports it.
+- The secrets store key rotation is out of scope but the `credentials_ref` field design supports it. ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 

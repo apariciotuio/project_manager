@@ -2,7 +2,7 @@
 
 ## Business Need
 
-Product work requires visual context: screenshots of bugs, mockups of features, architectural diagrams, whiteboard photos, customer-provided documents. The current MVP explicitly excludes attachments (see `assumptions.md` Q8). Users are forced to paste links to external storage, breaking the "single source of truth" principle.
+Product work requires visual context: screenshots of bugs, mockups of features, architectural diagrams, whiteboard photos, customer-provided documents. The current scope explicitly excludes attachments (see `assumptions.md` Q8). Users are forced to paste links to external storage, breaking the "single source of truth" principle.
 
 Users need to attach:
 - **Images** (PNG, JPG, GIF, WebP) — mockups, bugs screenshots, diagrams

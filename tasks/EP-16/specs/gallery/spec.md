@@ -21,7 +21,7 @@ AND a "Show all (N)" link loads the full paginated list
 
 WHEN `thumbnail_key` is NULL (thumbnail not yet generated or non-image)
 THEN the tile renders a generic file-type icon instead of the thumbnail
-AND once the thumbnail Celery task completes, the tile updates on next page load (no real-time push for MVP)
+AND once the thumbnail Celery task completes, the tile updates on next page load (no real-time push) ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ### Thumbnail Click — Fullscreen Viewer (Images)
 

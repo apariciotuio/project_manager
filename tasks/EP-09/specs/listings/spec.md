@@ -14,7 +14,7 @@ WHEN a user opens the work items list
 THEN the system returns a paginated list of work items ordered by `updated_at` descending by default
 AND each item shows: id, title, type, state, owner display name, team name, project name, completeness percentage, updated_at, and blocked flag
 AND the list defaults to 25 items per page using cursor-based pagination
-AND a `next_cursor` and `total_count` are included in the response
+AND a `cursor`, `has_next`, and `total_count` are included in the `pagination` object (canonical EP-12 shape)
 
 WHEN the list loads
 THEN items in `BLOCKED` state display a visual indicator
@@ -25,8 +25,8 @@ AND items with `completeness < 30%` display an incomplete indicator
 
 WHEN a user applies a `state` filter (single or multi-value)
 THEN only items in the selected states are returned
-AND valid state values are: `DRAFT`, `CAPTURE`, `ENRICHMENT`, `VALIDATION`, `READY`, `BLOCKED`, `ARCHIVED`
-AND multiple states are OR-combined (e.g., `state=DRAFT&state=ENRICHMENT` returns items in either state)
+AND valid state values match EP-01's canonical FSM enum: `draft`, `in_clarification`, `in_review`, `changes_requested`, `partially_validated`, `ready`, `exported`; derived states `blocked` and `in_progress` may also be passed and are resolved server-side
+AND multiple states are OR-combined (e.g., `state=draft&state=in_clarification` returns items in either state)
 
 WHEN a user applies an invalid state value
 THEN the API returns HTTP 422 with a descriptive validation error
@@ -46,7 +46,7 @@ AND items owned by that user are returned
 
 WHEN a user applies a `type` filter (single or multi-value)
 THEN only items of the selected types are returned
-AND valid types are the 8 EP-01 types: `STORY`, `TASK`, `BUG`, `SPIKE`, `EPIC`, `INITIATIVE`, `RFC`, `ADR`
+AND valid types match EP-01's canonical `WorkItemType` enum: `idea`, `bug`, `mejora`, `tarea`, `iniciativa`, `spike`, `cambio`, `requisito`, `milestone`, `story`
 AND multiple types are OR-combined
 
 ### Filter: By Team
@@ -75,8 +75,8 @@ AND the response includes the `total_count` matching the filtered set
 
 WHEN no filters are applied
 THEN all items the authenticated user has read access to are returned
-AND archived items (`state=ARCHIVED`) are excluded by default
-AND a `include_archived=true` query param re-includes them
+AND soft-deleted items (`deleted_at IS NOT NULL`) are excluded by default
+AND an `include_archived=true` query param re-includes soft-deleted items
 
 ### Sorting
 
@@ -102,7 +102,7 @@ THEN the page size is set to that value
 AND if `limit > 100`, the API caps at 100 and returns a warning in the response
 
 WHEN there are no more items after the current page
-THEN `next_cursor` is `null` in the response
+THEN `has_next` is `false` and `cursor` is `null` in the response
 
 ### Quick View (Preview Panel)
 

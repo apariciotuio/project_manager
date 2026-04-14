@@ -1,0 +1,9 @@
+name: tuio-testing
+version: 1.0.0
+description: >
+  Testing standards: TDD methodology, fakes over mocks, triangulation,
+  test categories. Includes test-engineer agent.
+author: somostuio
+license: MIT
+target: all
+type: hybrid

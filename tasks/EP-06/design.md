@@ -120,12 +120,28 @@ CREATE TABLE review_responses (
 ```sql
 CREATE TABLE validation_requirements (
     rule_id             VARCHAR(100) PRIMARY KEY,
+    workspace_id        UUID REFERENCES workspaces(id) ON DELETE CASCADE,  -- NULL = built-in default, workspace-scoped when set
     label               VARCHAR(255) NOT NULL,
-    required            BOOLEAN NOT NULL DEFAULT true,
-    applies_to          TEXT[] NOT NULL DEFAULT '{}'  -- work item types
+    description         TEXT,
+    required            BOOLEAN NOT NULL DEFAULT true,            -- true = mandatory, false = recommended/optional
+    applies_to          TEXT[] NOT NULL DEFAULT '{}',             -- work item types
+    is_active           BOOLEAN NOT NULL DEFAULT true,
+    created_by          UUID REFERENCES users(id),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Seeded at deploy time; not editable via API in MVP.
+
+CREATE UNIQUE INDEX idx_validation_requirements_ws_rule
+    ON validation_requirements (workspace_id, rule_id)
+    WHERE workspace_id IS NOT NULL;
+-- Built-in defaults have workspace_id IS NULL and are code-owned. Workspace-level
+-- overrides/additions are editable via API (POST/PATCH/DELETE /api/v1/admin/validation-rules)
+-- and via the admin UI (resolution #21, decisions_pending.md).
 ```
+
+### Review-request rule selection
+
+At review request creation, the owner may attach **extra** rules beyond the baseline enforced by `applies_to`. Mandatory rules (those with `required=true` for the work-item type) cannot be removed from a review — they are always attached. Optional (`required=false`) rules can be added ad-hoc per request.
 
 ### validation_statuses
 
@@ -192,7 +208,7 @@ on_review_closed(review_request_id):
         emit event: VALIDATION_PASSED(work_item_id, rule_id)
 ```
 
-The linkage is set at review request creation time by the owner or a future rules engine. In MVP the owner selects the target validation rule when requesting a review (optional field).
+The linkage is set at review request creation time by the owner or a future rules engine. Currently the owner selects the target validation rule when requesting a review (optional field). ⚠️ originally MVP-scoped — see decisions_pending.md
 
 ---
 
@@ -312,11 +328,18 @@ Owner                    |                        |                        |    
 
 ## Cross-Epic Dependencies
 
-> **Note (per backend_review.md LV-2)**: `ReviewResponseService.submit()` calls `WorkItemService.transition_state()` from EP-01 directly when `decision=changes_requested` or `decision=rejected`. This is a cross-epic service call. The preferred approach for MVP (to avoid tight coupling) is:
-> - `ReviewResponseService` emits a `review.responded` domain event with `decision=changes_requested`
-> - An event handler in EP-01 subscribes and calls `WorkItemService.transition_state()`
-> If the direct call approach is used instead, it MUST be documented here as a known cross-epic dependency. Any refactor of `WorkItemService.transition_state()` signature (e.g. adding a `reason` field) will silently break EP-06.
-> **MVP decision**: direct call is acceptable for simplicity, but add a cross-epic integration test (phase 7) that will catch breakage on `WorkItemService` refactors.
+> **Resolved 2026-04-14 (decisions_pending.md #21)**: cross-epic fan-out uses the in-process event bus (EP-08). `ReviewResponseService.submit()` directly calls `WorkItemService.transition_state()` for the state change (simple, synchronous, same transaction), AND emits a `review.completed` domain event on the bus carrying `{work_item_id, review_request_id, decision, responder_id}` for observational consumers (notifications, dashboards, Puppet re-index). Subscribers listen via `AbstractEventBus`; see EP-08 for the bus contract. Direct call for state transition, event emission for fan-out.
+
+### Admin API for validation rules
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/admin/validation-rules` | workspace admin | List rules (built-in + workspace overrides). |
+| POST | `/api/v1/admin/validation-rules` | workspace admin | Create a workspace-scoped rule. |
+| PATCH | `/api/v1/admin/validation-rules/:rule_id` | workspace admin | Edit label/required/applies_to/is_active. |
+| DELETE | `/api/v1/admin/validation-rules/:rule_id` | workspace admin | Soft-disable workspace rule (sets `is_active=false`). |
+
+All mutations are audited (`validation_rule.created|updated|disabled`). Built-in (workspace_id IS NULL) rules cannot be deleted, only overridden per workspace.
 
 ---
 

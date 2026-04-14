@@ -42,7 +42,7 @@ Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.
 - [ ] **RED** — Write tests for `LockEventRepositoryImpl.write_event()`: verifies correct PG insert per event_type, verifies no update/delete methods exist
 - [ ] Implement `app/infrastructure/persistence/lock_event_repository_impl.py`
   - `write_event(event_type, work_item_id, actor_id, reason, metadata)` — async SQLAlchemy insert
-  - No read methods required for MVP (admin support tools in EP-10 reads directly)
+  - No read methods required (admin support tools in EP-10 reads directly) ⚠️ originally MVP-scoped — see decisions_pending.md
 - [ ] **GREEN** — Repository tests pass (use real async test DB session, not mocks)
 
 ---

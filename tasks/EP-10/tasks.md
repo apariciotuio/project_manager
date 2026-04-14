@@ -19,8 +19,7 @@
 - [ ] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields)
 - [ ] Migration: create `jira_project_mappings` table
 - [ ] Migration: create `jira_sync_logs` table with status index
-- [ ] Migration: create `audit_events` table (append-only, all fields, indexes on actor/entity/action)
-- [ ] Add PostgreSQL rules/triggers to prevent UPDATE and DELETE on `audit_events`
+- [ ] `audit_events` table is created in EP-00 (shared unified table, see EP-00 design.md §audit_events). EP-10 only writes with `category IN ('admin','domain')` — do NOT create the table or its PG RULEs here.
 - [ ] Verify all foreign keys, NOT NULL constraints, and enum constraints are in place
 
 ### Domain Models

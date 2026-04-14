@@ -1,5 +1,7 @@
 # Tasks: EP-09 — Listings, Dashboards, Search & Workspace
 
+> **Propagation note (2026-04-14)**: Search is delegated to Puppet — see `specs/search/spec.md`. Any `search_vector`/`tsvector`/FTS tasks below are obsolete. Re-plan in the TDD phase.
+
 **Status**: Not started
 **Last updated**: 2026-04-13
 
