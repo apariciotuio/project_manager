@@ -4,10 +4,33 @@ Blueprint for `develop-frontend`. Layered by component → hook → service → 
 
 **Stack**: Next.js 14 App Router · TypeScript strict · Tailwind · React Testing Library · MSW for API mocking · Playwright for E2E.
 
+**Design system & UX posture**: EP-18 does **not** decide styling, components, palette, typography or tone. Those belong to **EP-19 (Design System & Frontend Foundations)** and **EP-12 (layout primitives)**. EP-18 consumes what EP-19 ships.
+
+What EP-18 reuses from EP-19 / EP-12 (must exist before this epic ships):
+
+- shadcn/ui + Radix component library installed and customized
+- Semantic color tokens (`primary`, `destructive`, `success`, `warning`, etc.) — no raw `bg-blue-500`
+- Inter typography + size scale
+- `<PlaintextReveal>` component (copy + download + auto-clear) — shared with any future "show once" flow
+- `<ConfirmDialog>` with typed-name confirmation variant
+- `<StateBadge>`, `<EmptyState>`, `<DataTable>`, `<Sheet>`, `<Toast>` primitives
+- `<CommandPalette>` / shortcut cheat sheet
+- i18n base in ES-ES tuteo, verbs in infinitive, jerga-plana dictionary
+- `useAutoClearPlaintext` hook
+
+What EP-18 owns (MCP-specific):
+
+- Copy dictionary for MCP screens (see §0.3)
+- Screens `/admin/mcp-tokens`, `/admin/mcp-tokens/[id]/audit`, `/settings/mcp-tokens`
+- Wiring of EP-19's `<PlaintextReveal>` into the issue + rotate flows
+- Sparkline + invocation tables for the audit viewer
+
+If a pattern needed here is **not yet** in EP-19, the pattern is promoted to EP-19 first and consumed here — never built locally.
+
 **Scope** (see `tasks-frontend.md` for the high-level task list):
-- Item 1 — Admin Token Management (`/admin/mcp-tokens`)
-- Item 2 — Invocation Audit Viewer
-- Item 3 — Self-Service Token View (`/settings/mcp-tokens`)
+- Item 1 — Gestión de claves (admin) (`/admin/mcp-tokens`)
+- Item 2 — Visor de invocaciones (auditoría)
+- Item 3 — Mis claves (usuario) (`/settings/mcp-tokens`)
 
 **Legend**
 - `[S:<cap>/spec.md#scenarios]` → backend spec scenario (we test the UI obeys the contract)
@@ -66,12 +89,40 @@ All steps follow `RED → GREEN → REFACTOR`.
 
 - [ ] `apps/web/src/i18n/en/mcp-tokens.ts` with all user-facing strings; Spanish mirror stub for future.
 
-Key strings (English source of truth):
-- `issueTitle`: "Create MCP Token"
-- `plaintextWarning`: "This token will NEVER be shown again. Copy it now and store it somewhere safe."
-- `revokeConfirmTitle`: "Revoke MCP Token"
-- `revokeConfirmPrompt`: "Type the token name to confirm:"
-- `selfServiceIntro`: "MCP tokens let external agents (like Claude Code) read your work items on your behalf. They never allow writes. Revoke any token you don't recognize."
+i18n keys live under `apps/web/src/i18n/es/mcp.ts` (source of truth) with an EN mirror stub in `apps/web/src/i18n/en/mcp.ts` — **same file basename per locale** (Round-2 review SF-5 fix; previously the plan had `i18n/en/mcp-tokens.ts` vs `i18n/es/mcp.ts` which would cause runtime key-resolution failures).
+
+Key strings (Spanish, source of truth):
+
+- `pageTitleAdmin`: "Claves de acceso para agentes"
+- `pageSubtitleAdmin`: "Permiten que herramientas externas (como Claude Code) lean el workspace en nombre de un usuario. Nunca escriben."
+- `primaryActionAdmin`: "Crear clave"
+- `issueTitle`: "Nueva clave de acceso"
+- `issueUserLabel`: "Usuario"
+- `issueNameLabel`: "Nombre para identificarla"
+- `issueNameHelper`: "Por ejemplo: 'Claude Code en mi portátil'"
+- `issueAdvancedToggle`: "Opciones avanzadas"
+- `issueExpiryLabel`: "Caduca en"
+- `issueSubmit`: "Crear clave"
+- `plaintextTitle`: "Copia esta clave ahora"
+- `plaintextWarning`: "No la volveremos a mostrar. Cópiala ahora y guárdala en un sitio seguro (como tu gestor de contraseñas). Si la pierdes, crea otra."
+- `plaintextCopyButton`: "Copiar al portapapeles"
+- `plaintextCopiedFlash`: "Copiado — ya puedes pegarla en tu agente"
+- `plaintextDownloadButton`: "Descargar como archivo"
+- `plaintextCloseButton`: "Ya la he guardado, cerrar"
+- `revokeTitle`: "Revocar esta clave"
+- `revokeExplanation`: "La clave dejará de funcionar inmediatamente. Los agentes que la usen verán un error."
+- `revokeConfirmPrompt`: "Escribe el nombre de la clave para confirmar:"
+- `revokeSubmit`: "Revocar"
+- `rotateTitle`: "Rotar esta clave"
+- `rotateExplanation`: "La clave actual se revoca al momento y se crea una nueva con el mismo nombre y una caducidad nueva."
+- `rotateSubmit`: "Rotar ahora"
+- `selfServiceIntro`: "Estas son las claves que dejan que agentes externos lean tu trabajo. Nunca escriben. Revoca cualquiera que no reconozcas."
+- `emptyStateTitle`: "Aún no hay claves"
+- `emptyStateBody`: "Crea una para que un agente externo pueda leer este workspace."
+- `errorHumanized`:
+  - `TOKEN_LIMIT_REACHED` → "Este usuario ya tiene el máximo de claves activas (10). Revoca alguna antes de crear otra."
+  - `USER_NOT_IN_WORKSPACE` → "Ese usuario no pertenece a este workspace."
+  - `generic 5xx` → "Algo ha fallado en el servidor. Vuelve a intentarlo en unos segundos."
 
 ---
 
@@ -118,10 +169,20 @@ Actions (conditional):
 
 Two-step flow:
 
-**Step A — Form**
-- Fields: `user` (combobox of workspace members, required), `name` (text, 1–80 chars, required), `expires_in_days` (select: 7/14/30/60/90, default 30)
-- Submit button disabled until valid
-- Client-side validation mirrors server; on 400 map server error code to inline field error
+**Step A — Form (progressive disclosure)**
+
+Default visible fields (cover the 90% case):
+- `user` — combobox with type-ahead over workspace members; shows avatar + display_name; required
+- `name` — text field with helper text `issueNameHelper`; required; 1–80 chars; autofocus on dialog open
+
+Collapsed `issueAdvancedToggle` section reveals:
+- `expires_in_days` — select 7/14/30/60/90, default **30** pre-selected
+
+Form behavior:
+- Primary button `issueSubmit` — enabled as soon as both required fields are filled validly; does **not** gate keystrokes
+- On 400 with a known code → inline error under the relevant field using `errorHumanized` dictionary; `role="alert"` with `aria-live="polite"`
+- On 5xx → toast with `errorHumanized.generic` and a "Reintentar" action
+- Cancel → closes dialog, no network call, form state discarded
 
 [T:unit]
 - `test_issue_form_requires_user_and_name`
@@ -131,13 +192,27 @@ Two-step flow:
 - `test_issue_form_rejects_non_member_user_with_human_error` — `[S:#issuance]` (`USER_NOT_IN_WORKSPACE`)
 - `test_issue_form_shows_limit_reached_error_when_409` — `[S:#issuance]` (`TOKEN_LIMIT_REACHED`)
 
-**Step B — Plaintext reveal** (one-time)
-- Large warning banner (amber, `role="alert"`): `plaintextWarning`
-- Masked text field `<input type="text" readOnly value="••••••••…" aria-label="MCP token, hidden; reveal to copy">` with toggle to reveal
-- Copy button (clipboard API) with visual checkmark confirmation
-- Download-as-file button: `{name}.token` text file
-- **"I've saved it, close"** button — disabled for 3 seconds AND until reveal OR copy OR download has been interacted with (prevents accidental dismiss)
-- Closing the dialog purges plaintext from React state and from any refs; on close emit event `onIssued(newToken)` WITHOUT plaintext
+**Step B — Plaintext reveal** (one-time, friendly)
+
+Consumes `<PlaintextReveal>` from EP-19. Configuration for this use case:
+
+- `title`: `plaintextTitle`
+- `body`: `plaintextWarning`
+- `value`: the issued token plaintext
+- `copyLabel`: `plaintextCopyButton`
+- `copiedLabel`: `plaintextCopiedFlash`
+- `downloadFilename`: `{tokenName}.token`
+- `closeLabel`: `plaintextCloseButton`
+- `minInteractionGate: true` — the shared component already enforces: 3 s minimum delay AND user must reveal / copy / download before close
+- `autoClearMs: 5 * 60 * 1000`
+
+On close the component emits `onClose(tokenSummary)` with plaintext already purged from its state.
+
+EP-18 does NOT re-implement any of this. Tests here cover **only wiring** (config values passed through, callback handling, integration with issue/rotate mutations). Component-level behavior (gate timing, auto-clear, no-persistence, screen-reader contract per Round-2 L-M4) is tested in EP-19 Storybook + integration tests — **not duplicated here**.
+
+**Round-2 additions** (`tasks/reviews/round_2_specialist_reviews_summary.md` A-M7):
+- The `POST /api/v1/admin/mcp-tokens` and `.../rotate` responses MUST be fetched with a direct `fetch()` bypassing React Query / SWR / any service worker cache. The issuance response carries plaintext; it MUST NOT end up in any client-side query cache. Implemented in `api/mcp-tokens.ts` via a `no-cache` branch.
+- The response Cache-Control header (`no-store`) is enforced server-side; client test spies on `window.caches` + `performance.memory` asserting no copy survives `onClose`.
 
 [T:unit]
 - `test_step_b_shows_plaintext_only_after_reveal_toggle`
@@ -353,29 +428,27 @@ apps/web/src/
 │           └── page.tsx                      # self-service
 ├── components/mcp-tokens/
 │   ├── McpTokenRow.tsx
-│   ├── IssueTokenDialog.tsx
-│   ├── PlaintextReveal.tsx                   # shared by issue + rotate
+│   ├── IssueTokenDialog.tsx                  # composes EP-19 <PlaintextReveal>
 │   ├── RotateTokenButton.tsx
-│   ├── RotateTokenDialog.tsx
+│   ├── RotateTokenDialog.tsx                 # composes EP-19 <PlaintextReveal> (reuse)
 │   ├── RevokeTokenButton.tsx
-│   ├── RevokeTokenDialog.tsx
-│   ├── StateBadge.tsx
-│   ├── EmptyState.tsx
+│   ├── RevokeTokenDialog.tsx                 # composes EP-19 <TypedConfirmDialog>
+│   ├── EmptyState.tsx                        # composes EP-19 <EmptyStateWithCTA>
 │   └── MyTokenRow.tsx
 ├── components/mcp-audit/
 │   ├── PerTokenAuditHeader.tsx
-│   ├── Sparkline.tsx                         # simple SVG; no heavy dep
+│   ├── Sparkline.tsx                         # simple SVG; no heavy dep; includes sr-only <table> fallback
 │   ├── ToolBreakdownTable.tsx
 │   └── RecentInvocationsTable.tsx
 ├── api/
-│   ├── mcp-tokens.ts
+│   ├── mcp-tokens.ts                         # issuance/rotation responses bypass React Query cache (direct fetch)
 │   └── mcp-audit.ts
 ├── types/
 │   └── mcp.ts
-├── hooks/
-│   └── useAutoClearPlaintext.ts              # 5-min idle clear
-└── i18n/en/mcp-tokens.ts
+└── i18n/es/mcp.ts                            # ES tuteo; EN mirror stub in i18n/en/mcp.ts
 ```
+
+> **Not in this tree** — consumed from EP-19: `<PlaintextReveal>`, `<TypedConfirmDialog>`, `<StateBadge>`, `<CopyButton>`, `<HumanError>`, `<EmptyStateWithCTA>`, `useAutoClearPlaintext`, `useCopyToClipboard`. Per Round-2 review **F-M1** + **F-M3**: EP-18 never re-implements these; any missing pattern is promoted to EP-19 first.
 
 ---
 

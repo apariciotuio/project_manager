@@ -1,5 +1,7 @@
 # EP-16 Frontend Tasks
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TypedConfirmDialog` (delete confirmation), `HumanError` (upload failures, type/size rejection), `EmptyStateWithCTA` (gallery empty state), `CopyButton` (copy markdown reference). Upload drop-zone, progress UI, lightbox, and PDF viewer stay feature-specific. Semantic tokens and i18n `i18n/es/attachment.ts`. See `tasks/extensions.md#EP-19`.
+
 > **Scope (2026-04-14, decisions_pending.md #29)**: VPN-internal deployment. **Dropped**: scan-status polling (`useScanStatusPoller`), scan-status UI states (`pending`/`quarantined`), presigned URL handling, signed URL refresh on 403, two-phase `request-upload`+`confirm` flow. **Kept**: drag/drop + paste upload, progress UI, image gallery, PDF viewer (inline + download), inline comment images, admin quota dashboard, delete with confirmation. Below is rewritten — obsolete groups removed, not flagged.
 
 ---

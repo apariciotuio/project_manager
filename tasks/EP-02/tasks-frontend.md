@@ -1,8 +1,10 @@
 # EP-02 Frontend Tasks — Capture Form, Draft Auto-Save & Templates
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TypeBadge` shared icon map (remove local `TypeSelector` icon duplication), `HumanError` for save errors, semantic tokens, i18n `i18n/es/workitem.ts` + `i18n/es/common.ts`. `DraftResumeBanner` and auto-save debounce UX remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Branch: `feature/ep-02-frontend`
 Refs: EP-02
-Depends on: EP-00 frontend, EP-01 frontend (WorkItem types), EP-02 backend API
+Depends on: EP-00 frontend, EP-01 frontend (WorkItem types), EP-02 backend API, EP-19 catalog
 
 ---
 

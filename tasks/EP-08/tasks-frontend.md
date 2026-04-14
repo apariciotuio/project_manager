@@ -1,8 +1,10 @@
 # EP-08 Frontend Tasks — Teams, Assignments, Notifications & Inbox
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TierBadge` (inbox tiers 1..4), `SeverityBadge` for notification severity, `OwnerAvatar`/`UserAvatar`, `RelativeTime`, `HumanError`, semantic tokens, i18n `i18n/es/inbox.ts` + `i18n/es/notifications.ts` + `i18n/es/team.ts`. Bell badge 99+ cap, SSE integration, team detail pages remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Tech stack: Next.js 14+ App Router, TypeScript strict, Tailwind CSS
 
-Blocked by: EP-08 backend Groups A–D controllers complete. SSE stream endpoint must exist before Group 5.
+Blocked by: EP-08 backend Groups A–D controllers complete. SSE stream endpoint must exist before Group 5. EP-19 catalog available.
 
 ---
 

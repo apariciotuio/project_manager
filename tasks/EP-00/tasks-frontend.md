@@ -1,5 +1,7 @@
 # EP-00 Frontend Tasks — Access, Identity & Bootstrap
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Login, workspace picker, and session-expired screens use catalog components + semantic tokens, Inter typography, `HumanError` for API failures, and i18n `i18n/es/auth.ts`. No raw Tailwind colors, no English UI strings. See `tasks/extensions.md#EP-19`.
+
 Branch: `feature/ep-00-frontend`
 Refs: EP-00
 

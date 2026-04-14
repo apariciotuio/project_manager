@@ -8,3 +8,4 @@ apm_modules/
 .github/instructions
 .github/prompts
 .github/skills
+.agents-memory/

@@ -1,8 +1,10 @@
 # EP-05 Frontend Tasks — Breakdown, Hierarchy & Dependencies
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge` for task status (draft/in_progress/done), `SeverityBadge` warning for blocked tasks, `HumanError` for cycle-detection errors with readable task-title chain, semantic tokens, i18n `i18n/es/hierarchy.ts`. Tree virtualization, drag-to-reorder, split/merge dialogs remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Tech stack: Next.js 14+ App Router, TypeScript strict, Tailwind CSS
 
-Blocked by: All backend API endpoints for EP-05 must exist and be accessible.
+Blocked by: All backend API endpoints for EP-05 must exist and be accessible. EP-19 catalog available.
 
 ---
 

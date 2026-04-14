@@ -1,5 +1,10 @@
 # EP-18 · Capability 4 — Read Tools: Assistant, Semantic Search, Extras
 
+> **Addendum (Round-2 reviews, 2026-04-14)**:
+> - **[A-M4]** Puppet post-filter uses a **batched** permission check: `WorkItemReadService.can_read_many(actor_id, workspace_id, entity_ids: list[UUID]) -> set[UUID]` — single service call returns the readable subset. N-plus-one authz calls are a merge-blocker.
+> - **[S-M1]** `attachments.signedUrl` is **single-use mandatory MVP**. Signature payload: `attachment_id + token_id + expires_at + nonce`. Nonce is stored in Redis with the same TTL as the URL (≤ 300 s) under key `mcp:signed-url:nonce:<nonce>`. Redeem path `GET /attachments/signed/:payload` atomically DELs the nonce key; second redemption fails. Rotating a token does **not** invalidate outstanding signed URLs within their TTL (documented trade-off — alternative is re-sign on rotate, unacceptable complexity for MVP).
+> - **[S-M4]** Puppet category allowlist check uses **exact-segment match** (split on `:` then compare segments), never `startswith`. Valid shapes: `tuio-wmp:ws:<uuid>:workitem|section|comment` (exact 4 segments; segment 2 = `ws`; segment 3 = session workspace UUID), `tuio-docs:<corpus>` (exact 2 segments; corpus in env allowlist). Any other shape → drop. Prevents category-squatting (`tuio-wmp:ws:<ws>:xxx-attacker-owned`). The `tuio-docs:*` ingestion ACL (who can write to those categories in Puppet) lives outside our repo — documented in `docs/puppet-ingestion-acl.md` with owner: Tuio Platform team.
+
 ## Scope
 
 Read-only exposure of Dundun clarification threads, Puppet semantic search, tags, labels, attachments metadata, inbox, workspace dashboard, and Jira snapshot status.

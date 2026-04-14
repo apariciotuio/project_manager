@@ -1,5 +1,9 @@
 # EP-18 · Capability 5 — Resources & Live Subscriptions
 
+> **Addendum (Round-2 reviews, 2026-04-14)**:
+> - **[A-M3]** Per-(session, uri) authz cache with **5 s TTL**. Bridge checks cache before re-authorizing on emit. Invalidation triggers: `capability.changed`, `workspace_member.status_changed`, `workitem.visibility_changed`, `workitem.ownership_changed` — bridge subscribes to these events too and purges affected cache entries. Eliminates the N-authz-calls-per-event scaling issue at ≥ 1000 subs/pod.
+> - **[S-M5]** SSE sessions **periodically re-verify the bearer token** every 60 s using the cached-verify path (capability 1). On failed re-verify: emit `notifications/resources/unsubscribed` with `reason: "token_revoked"` for each subscription, then close the session. Revocation SLO for long-lived subs: `≤ 60 s + 5 s cache TTL`.
+
 ## Scope
 
 Expose long-lived aggregates as MCP resources (`resources/list`, `resources/read`, `resources/subscribe`, `resources/unsubscribe`). Wire subscriptions into the existing EP-12 SSE bus so agents receive `notifications/resources/updated` events within 2 s of platform changes.

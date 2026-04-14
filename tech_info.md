@@ -1,29 +1,30 @@
 # Technical Information — Work Maturation Platform
 
-Consolidated technical reference from all 13 epic designs. This is the single source of truth for cross-cutting architectural decisions.
+Consolidated technical reference from all 20 epic designs (EP-00 through EP-19). This is the single source of truth for cross-cutting architectural decisions.
 
 ---
 
 ## 1. System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Next.js Frontend                      │
-│  (App Router, TypeScript strict, Tailwind, SSE client)  │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTPS / REST
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                  FastAPI Backend                         │
-│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐    │
-│  │Controllers│→│ Services  │→│  Domain Models      │    │
-│  │(REST)     │  │(App layer)│  │(Business logic)    │    │
-│  └──────────┘  └──────────┘  └────────────────────┘    │
-│       │              │              ▲                    │
+┌─────────────────────────────────────────────────────────┐     ┌──────────────────────┐
+│                    Next.js Frontend                      │     │  External MCP clients │
+│  (App Router, TS strict, Tailwind + shadcn/ui, SSE)     │     │  (Claude Code, CLIs,  │
+│   Design system per EP-19 (tokens, i18n ES, a11y gate)  │     │   copilots…)          │
+└──────────────────────┬──────────────────────────────────┘     └──────────┬───────────┘
+                       │ HTTPS / REST                                       │ stdio / HTTP+SSE
+                       ▼                                                    ▼
+┌─────────────────────────────────────────────────────────┐     ┌──────────────────────┐
+│                  FastAPI Backend (REST)                  │     │   MCP Server (EP-18) │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐    │     │  (Python, same repo, │
+│  │Controllers│→│ Services  │→│  Domain Models      │    │     │   read-only MVP)     │
+│  │(REST)     │  │(App layer)│  │(Business logic)    │    │     └──────────┬───────────┘
+│  └──────────┘  └──────────┘  └────────────────────┘    │                │ in-process
+│       │              │              ▲                    │◀────────────────┘ service calls
 │       ▼              ▼              │                    │
 │  ┌──────────────────────────────────────┐               │
 │  │     Infrastructure Layer             │               │
-│  │  Repos │ Adapters │ LLM │ Jira      │               │
+│  │  Repos │ Adapters │ Dundun │ Puppet │ Jira │         │
 │  └──────────────────────────────────────┘               │
 └────────┬──────────────┬──────────────┬──────────────────┘
          │              │              │
@@ -32,6 +33,8 @@ Consolidated technical reference from all 13 epic designs. This is the single so
     │  16+     │   │   7+      │  │ Workers │
     └─────────┘   └───────────┘  └─────────┘
 ```
+
+**Transversal UI layer** (EP-12 + EP-19): EP-12 ships technical primitives (AppShell, BottomSheet, DataTable, EmptyState, SkeletonLoader, ErrorBoundary, SSE hook). EP-19 layers the design system on top: shadcn/ui on Radix, semantic tokens, Inter typography, shared domain components (`StateBadge`, `TypeBadge`, `PlaintextReveal`, `TypedConfirmDialog`, `CommandPalette`, …), ES-ES tuteo i18n, a11y gate (Lighthouse ≥ 95 + axe-playwright), `size-limit` perf budget. See `docs/ux-principles.md` and `tasks/EP-19/`.
 
 ## 2. Database Schema Overview
 
@@ -111,6 +114,14 @@ Consolidated technical reference from all 13 epic designs. This is the single so
 |-------|---------|-------------|
 | `integration_exports` | Export records | id, work_item_id, version_id, integration_config_id, snapshot_data(JSONB), jira_issue_key, jira_project_key, status(pending/success/failed), exported_by, exported_at, error_message |
 | `sync_logs` | Status sync history | id, export_id, jira_status, jira_status_category, internal_display_status, synced_at |
+
+### MCP access (EP-18)
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `mcp_tokens` | MCP bearer tokens for external agents | id, workspace_id, user_id, name, lookup_key(HMAC, unique), secret_hash(argon2id), scopes[], created_by, created_at, expires_at, last_used_at, last_used_ip, revoked_at |
+
+Indexes: `UNIQUE(lookup_key)`, `idx_mcp_tokens_ws_user_active` (partial on `revoked_at IS NULL`), `idx_mcp_tokens_expires_active` (partial). Single scope `mcp:read`. Single-workspace binding (no cross-workspace tokens). Verification caches in Redis 5 s (explicit DEL on revoke). New capability `mcp:issue` on workspace admins.
 
 ## 3. API Endpoint Inventory
 

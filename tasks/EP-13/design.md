@@ -5,6 +5,8 @@
 
 > **Resolved 2026-04-14 (decisions_pending.md #4, #9, #24, #28)**: Puppet is the sole search backend for the product. No PG FTS, no Elasticsearch, no RRF hybrid fusion, no learned re-ranker, no per-workspace embeddings, no multi-language pipelines. Our backend calls Puppet directly; Dundun is **not** in the search path (Dundun uses Puppet for its own RAG via its own tool, not through us).
 
+> **⚠️ SUPERSEDES (post-EP-18)**: real Puppet OpenAPI v0.1.1 — `POST /api/v1/retrieval/semantic/` with `QueryRequest { query, categories?, tags?, top_k? }` → `QueryResponse { sources: Source[] }`, where `Source = { page_id?, title?, content, category?, tags?, score? }` (raw text, no HTML). Workspace isolation uses **Puppet `category`** (convention `tuio-wmp:ws:<workspace_id>:workitem|section|comment`). Entity-type facets use **tags** (`state:<x>`, `type:<y>`, `owner:<uuid>`, `team:<uuid>`, `archived:<bool>`, `tag:<slug>` for user tags from EP-15). `page_id` convention at ingestion: `"<entity_kind>:<uuid>"`. Snippet highlighting is generated server-side by our backend. **Puppet platform-ingestion endpoints are not yet implemented upstream** — until they ship, workspace-content searches return empty; Tuio external docs (category `tuio-docs:*`, Puppet's existing Notion ingestion) already work. The authoritative contract is in `tasks/EP-18/specs/read-tools-assistant-search-extras/spec.md#semantic-search` and `tasks/EP-18/plan-backend.md#4.2`. Any `wm_<workspace_id>` references below are legacy prose; implementation follows the category/tag split above.
+
 ---
 
 ## 1. Architecture Overview

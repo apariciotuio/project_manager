@@ -1,8 +1,10 @@
 # EP-07 Frontend Tasks — Comments, Versioning, Diff & Timeline
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `DiffHunk` (added/removed/context), `VersionChip`, `RelativeTime` (wraps `<time datetime>`), `SeverityBadge` warning for orphaned-anchor chip, `HumanError`, semantic tokens, i18n `i18n/es/comment.ts` + `i18n/es/version.ts`. Text-range anchoring, timeline filters, comment thread UI remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Tech stack: Next.js 14+ App Router, TypeScript strict, Tailwind CSS
 
-Blocked by: EP-07 backend Phase 4 complete.
+Blocked by: EP-07 backend Phase 4 complete. EP-19 catalog available.
 
 ---
 

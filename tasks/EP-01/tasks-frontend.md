@@ -1,8 +1,10 @@
 # EP-01 Frontend Tasks — Work Item Lifecycle & State Machine
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge` (replaces local `StateChip`/`DerivedStateBadge`), `TypeBadge`, `TypedConfirmDialog` (replaces local force-ready modal; min-char logic moves out of UI into business validation), `HumanError`, semantic tokens, i18n `i18n/es/workitem.ts`. See `tasks/extensions.md#EP-19`.
+
 Branch: `feature/ep-01-frontend`
 Refs: EP-01
-Depends on: EP-00 frontend (AuthProvider, API client), EP-01 backend API
+Depends on: EP-00 frontend (AuthProvider, API client), EP-01 backend API, EP-19 catalog
 
 ---
 

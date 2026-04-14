@@ -1,5 +1,12 @@
 # EP-18 · Capability 2 — MCP Server Bootstrap
 
+> **Addendum (Round-2 reviews, 2026-04-14)**:
+> - **[S-M2]** `params_hash` uses **HMAC-SHA256** with a dedicated audit-pepper secret (`MCP_AUDIT_PEPPER`), not raw SHA-256. Canonical JSON (sorted keys, UTF-8) → HMAC. Plain SHA-256 is rainbow-tableable on low-entropy inputs like `workitem.get({id})` where the id space is enumerable.
+> - **[A-M5]** Audit queue backpressure policy:
+>   - `mcp_audit_queue_drops_total > 0` is an **error-level alert** (not a metric footnote); PagerDuty integration mandatory.
+>   - The synchronous structured-log line carries **every field** of the async audit event; downstream tooling can reconstruct audit from logs if Celery is down. Field parity asserted by test.
+>   - Add a **bounded local disk spool** (`/var/spool/mcp-audit/`, capped at 256 MB, fsync-optional) before the in-memory deque's drop-oldest kicks in. Spool is drained by a background worker when the queue recovers.
+
 ## Scope
 
 The MCP server process itself: transports (stdio + HTTP/SSE), initialization handshake, discovery (`tools/list`, `resources/list`), error mapping, rate limiting wiring, audit emission, health and metrics. No business tools yet — this capability provides the chassis on which capabilities 3/4/5 plug.

@@ -68,10 +68,10 @@ Assumptions made during the technical planning of the product. These need produc
 
 | Aspect | Detail |
 |--------|--------|
-| Client | `DundunClient` in our backend. HTTP REST + WebSocket. No LLM SDKs in our deps |
+| Client | `DundunClient` in our backend. **HTTP sync** (`POST /api/v1/dundun/chat`) for short turns, **HTTP async with callback** (`POST /api/v1/webhooks/dundun/chat` + our callback URL) for longer flows. **No WebSocket** to Dundun (earlier assumption corrected after reviewing Dundun's OpenAPI). No LLM SDKs in our deps |
 | Auth to Dundun | Service-to-service key (env var). Our BE sets `caller_role=employee` + `user_id` on every call. All our users are Tuio employees (VPN-only product) |
-| Search integration | **NOT via Dundun.** Our BE calls Puppet API directly with filter `wm_<workspace_id>`. Dundun stays out of search path |
-| Puppet ingestion | **Our BE pushes.** Celery sync pipeline on every write (work_item, section, comment, task) → Puppet with workspace tag. Eventual consistency <3s accepted |
+| Search integration | **NOT via Dundun.** Our BE calls Puppet `POST /api/v1/retrieval/semantic/` directly. Workspace isolation is enforced via **category naming convention** `tuio-wmp:ws:<workspace_id>:workitem|section|comment` (Puppet has no native workspace concept). External Tuio docs live under `tuio-docs:*`. Server-side post-filter re-checks platform permissions on every returned `Source` |
+| Puppet ingestion | **Our BE pushes.** Platform-content ingestion endpoints in Puppet are **pending** (tracked as a forthcoming deliverable on the Puppet side). Until they ship, MCP `semantic.search` and web-search over workspace content return empty for `source: workspace`; external Tuio docs already work via Puppet's Notion ingestion. Planned: Celery sync pipeline on every write (work_item, section, comment) → Puppet with category + `page_id = "<entity_kind>:<uuid>"` + tags. Eventual consistency <3s accepted |
 | Chat (sync interactive) | FE WS → Our BE WS proxy → Dundun `/ws/chat`. Our BE enforces auth + work_item membership before forwarding. Progress frames forwarded transparently |
 | AI async tasks (gap detection, spec gen, suggestion, breakdown) | Our BE Celery job: POST Dundun `/chat` with `callback_url`. Dundun returns 202, POSTs back to our `/api/v1/dundun/callback`. Job finalizes and updates work_item |
 | Conversation state | Dundun owns (Temporal workflows). We store `conversation_threads(dundun_conversation_id, ...)` as pointers + `last_message_preview` cache for listing UX |

@@ -1,5 +1,7 @@
 # EP-15 Frontend Tasks
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TagChip`/`TagChipList` from the shared catalog (luminance-based contrast text is shared, do not reimplement). The tag admin panel keeps its feature-specific combobox and color picker; destructive actions (archive, merge) use `TypedConfirmDialog`. Use semantic tokens and i18n `i18n/es/tag.ts`. See `tasks/extensions.md#EP-19`.
+
 TDD mandatory: RED → GREEN → REFACTOR. Write the failing test first.
 
 ---

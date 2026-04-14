@@ -5,6 +5,8 @@
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS
 **Note**: Layout primitives (Group 1) must be built before any other epic's frontend work begins. All other epics reuse these components.
 
+> **Relation to EP-19 (Design System & Frontend Foundations)**: this epic owns the **technical chassis** (AppShell, BottomSheet, DataTable, EmptyState, SkeletonLoader, ErrorBoundary, API client, SSE hook, Tailwind mobile-first base). EP-19 builds **on top** and owns the **design language** (shadcn/ui on Radix, semantic tokens, typography, shared domain components like `StateBadge`/`TypeBadge`/`PlaintextReveal`/`TypedConfirmDialog`/`CommandPalette`, ES-ES tuteo i18n, a11y gate). No retrofit needed here — EP-19 consumes these primitives, does not replace them.
+
 ---
 
 ## API Contract / Integration Points

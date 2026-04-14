@@ -1,8 +1,10 @@
 # EP-04 Frontend Tasks — Structured Specification & Quality Engine
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `LevelBadge` (low/medium/high/ready), `CompletenessBar`, `EmptyStateWithCTA` (no-spec placeholder), `HumanError`, semantic tokens, i18n `i18n/es/workitem.ts`. Section editor, dimension breakdown and next-step widget remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Branch: `feature/ep-04-frontend`
 Refs: EP-04
-Depends on: EP-01 frontend (WorkItem types), EP-03 frontend (QuickActionMenu), EP-04 backend API
+Depends on: EP-01 frontend (WorkItem types), EP-03 frontend (QuickActionMenu), EP-04 backend API, EP-19 catalog
 
 ---
 

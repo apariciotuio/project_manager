@@ -319,6 +319,7 @@ Each tool handler is ≤30 lines: validate → authorize (token-injected actor) 
 - **EP-11** — Jira export snapshots + divergence reads
 - **EP-12** — rate limiting, observability, SSE infra, audit pipeline
 - **EP-13 (Puppet)** — semantic search upstream
+- **EP-19 (Design System)** — shared frontend catalog (shadcn-based), semantic tokens, i18n ES tuteo, a11y gate — consumed by the MCP admin UI (token management, audit viewer, self-service)
 - **EP-14, EP-15, EP-16, EP-17** — hierarchy, tags, attachments, lock reads
 
 ## Complexity Assessment

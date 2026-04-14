@@ -1,5 +1,7 @@
 # EP-18 · Frontend Tasks
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Use catalog components from `components/system/*` (`PlaintextReveal`, `TypedConfirmDialog`, `StateBadge`, `CopyButton`, `HumanError`), semantic tokens (`bg-primary`, `bg-destructive`), i18n keys from `i18n/es/mcp.ts`, and shared hooks (`useAutoClearPlaintext`, `useCopyToClipboard`). Do not introduce local plaintext flows, raw Tailwind colors, or English strings. See `tasks/extensions.md#EP-19` for the full substitution table.
+
 Stack: **Next.js App Router + TypeScript strict + Tailwind**. Lives inside the existing admin surface (EP-10). Responsive; mobile target only for self-service token revoke.
 
 Rules:

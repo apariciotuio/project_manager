@@ -1,8 +1,10 @@
 # EP-06 Frontend Tasks — Reviews, Validations & Flow to Ready
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge` for review decisions (approved/rejected/changes_requested variants), `TypedConfirmDialog` for override-ready (min 10-char justification enforced in business logic, not UI), `HumanError`, semantic tokens, i18n `i18n/es/review.ts`. Validation checklist and review detail views remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Tech stack: Next.js 14+ App Router, TypeScript strict, Tailwind CSS
 
-Blocked by: EP-06 backend Phase 6 complete. EP-08 SSE infrastructure must exist for real-time review notifications.
+Blocked by: EP-06 backend Phase 6 complete. EP-08 SSE infrastructure must exist for real-time review notifications. EP-19 catalog available.
 
 ---
 

@@ -3,6 +3,8 @@
 **Date**: 2026-04-13
 **Status**: Proposed
 
+> **⚠️ SUPERSEDES (2026-04-14, post-EP-18)**: the Puppet contract described in §Search sections was drafted before Puppet's real OpenAPI was known. Workspace isolation on every Puppet call now uses `category: "tuio-wmp:ws:<workspace_id>:workitem|section|comment"` (NOT the `wm_<workspace_id>` tag). Entity facets (state, type, owner, team, archived, user-tag slugs) remain as `tags`. Authoritative definition in `tasks/EP-18/specs/read-tools-assistant-search-extras/spec.md#semantic-search` and `tasks/EP-13/design.md` supersede notice. All prose below that references `wm_<workspace_id>` is legacy; the implementation follows the category+tags split above.
+
 ---
 
 ## 1. List API Design

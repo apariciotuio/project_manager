@@ -4,7 +4,9 @@
 **Epic**: EP-09
 **Dependencies**: EP-01 (work_items), EP-07 (comments + timeline events), EP-13 (Puppet integration + push-on-write sync pipeline)
 
-> **Resolved 2026-04-14 (decisions_pending.md #4, #9, #24, #28)**: Search is fully delegated to Puppet RAG. PostgreSQL FTS, `tsvector` columns, `aggregated_*_text` denormalized columns, GIN search indexes, `phraseto_tsquery`/`plainto_tsquery` query routing, and Elasticsearch hybrid fusion are all out of scope. The backend calls `PuppetClient` (EP-13) with a workspace tag filter on every query.
+> **Resolved 2026-04-14 (decisions_pending.md #4, #9, #24, #28)**: Search is fully delegated to Puppet RAG. PostgreSQL FTS, `tsvector` columns, `aggregated_*_text` denormalized columns, GIN search indexes, `phraseto_tsquery`/`plainto_tsquery` query routing, and Elasticsearch hybrid fusion are all out of scope. The backend calls `PuppetClient` (EP-13) with workspace scoping on every query.
+
+> **⚠️ SUPERSEDES (post-EP-18)**: workspace scoping uses **Puppet `category`** (`tuio-wmp:ws:<workspace_id>:workitem|section|comment`), not the `wm_<workspace_id>` tag pattern previously described. Facet filters (state, type, owner, team, archived, user tag slugs) remain on `tags`. Authoritative: `tasks/EP-18/specs/read-tools-assistant-search-extras/spec.md#semantic-search`.
 
 ---
 

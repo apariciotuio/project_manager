@@ -1,8 +1,10 @@
 # EP-03 Frontend Tasks — Clarification, Conversation & Assisted Actions (Dundun proxy)
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `SeverityBadge` for gap severity (blocking/warning/info), `CopyButton` for copy-to-clipboard UX, `HumanError` for Dundun failures + WebSocket errors, semantic tokens, i18n `i18n/es/assistant.ts`. The split-view layout, chat stream rendering, and suggestion preview panel remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 Branch: `feature/ep-03-frontend`
 Refs: EP-03
-Depends on: EP-00 frontend, EP-01 frontend (WorkItem types), EP-03 backend API
+Depends on: EP-00 frontend, EP-01 frontend (WorkItem types), EP-03 backend API, EP-19 catalog
 
 > **Scope (2026-04-14, decisions_pending.md #17, #32)**: Chat transport is **WebSocket** (proxied through our BE to Dundun `/ws/chat`). No SSE stream for chat, no `LLM_TIMEOUT` payload, no token-count display. Message history fetched on demand via `GET /api/v1/threads/{id}/history` (delegated to Dundun). Keep: diff viewer, split-view, suggestion UI, quick actions, gap panel.
 

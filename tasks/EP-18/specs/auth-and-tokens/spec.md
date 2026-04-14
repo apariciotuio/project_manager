@@ -1,5 +1,10 @@
 # EP-18 · Capability 1 — Auth & Token Lifecycle
 
+> **Addendum (Round-2 reviews, 2026-04-14)** — binding rules layered on top of this spec:
+> - **[A-M1]** Verification cache is keyed by **`lookup_key`** (HMAC of plaintext), not `token_id`. Cache-hit path: HMAC → cache → done. Cache miss: DB lookup → argon2id verify → cache put. Populate cache **on issue** so first-use is a hit. Skips DB entirely when cached.
+> - **[A-M6]** Cache reads use `readFromPrimary` (or equivalent) for the `mcp:token:*` key prefix to eliminate Redis replica-lag windows from the 5 s revocation SLO. SLO is formally `min(5 s, cache TTL) + primary-read round-trip`.
+> - **[S-M3]** Audit retention policy: `mcp_token.*` events retained 365 days (compliance default). `last_used_ip` is pseudonymized at write time (`/24` for IPv4, `/48` for IPv6) unless the workspace has an `audit:full_ip` capability explicitly granted. Rotation does not cascade old events' PII — they're already pseudonymized. Token deletion on GDPR erasure request: admin tool (`/api/v1/admin/mcp-tokens/:id/scrub`) hard-deletes the row and tombstones `mcp_token.*` audit events for that `token_id` (event kept; PII fields nulled).
+
 ## Scope
 
 MCP-specific identity artifact on top of EP-00: a new token kind (`mcp_token`) with scope `mcp:read`, bound to a single workspace, issued/rotated/revoked by workspace admins, verified by the MCP server on every request. Includes an admin UI for lifecycle management and audit visibility.

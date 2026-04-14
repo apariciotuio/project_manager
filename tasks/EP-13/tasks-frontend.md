@@ -1,5 +1,7 @@
 # Frontend Tasks: EP-13 — Puppet Integration (Search + Sync)
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Top-bar search contributes results into `CommandPalette`. Adopt `StateBadge` for doc-source indexing status, `HumanError` code `upstream_unavailable` for Puppet outages (no silent fallback), `EmptyStateWithCTA` for no-results, semantic tokens, i18n `i18n/es/search.ts`. Snippet highlighting is generated on the platform (Puppet returns plain text) — shared sanitizer utility. See `tasks/extensions.md#EP-19`.
+
 **Epic**: EP-13
 **Date**: 2026-04-13 (rewritten 2026-04-14 per decisions #4/#9/#24/#28)
 **Status**: Draft

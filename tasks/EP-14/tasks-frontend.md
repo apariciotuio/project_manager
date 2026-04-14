@@ -1,5 +1,7 @@
 # EP-14 — Frontend Subtasks
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `RollupBadge` (0%/0-100%/100% with stale indicator), `TypeBadge` for milestone + story types from shared map, `HumanError`, semantic tokens, i18n `i18n/es/hierarchy.ts`. Tree virtualization, breadcrumb, parent-picker typeahead remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 TypeScript strict. All components fully typed. No `any`. TDD via Vitest + React Testing Library.
 
 TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean up.

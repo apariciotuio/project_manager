@@ -1,5 +1,7 @@
 # EP-17 Frontend Tasks
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `LockBadge`, `SeverityBadge` (for lock banners), `TypedConfirmDialog` (for force-release with reason composed in body), `HumanError` (for heartbeat failures + connection issues), semantic tokens, i18n `i18n/es/lock.ts`. Do not introduce local lock badges, raw color classes, or English strings. See `tasks/extensions.md#EP-19`.
+
 ## Progress Tracking
 
 Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.

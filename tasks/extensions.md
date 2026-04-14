@@ -156,3 +156,71 @@ After approving these extensions and the 5 new epic proposals (EP-13 through EP-
 4. Update `assumptions.md` — reverse Q8 (attachments ARE in scope now)
 5. Re-run consistency review across the expanded plan (16 epics total)
 6. Re-run specialist reviews if extensions change significant surface area
+
+---
+
+## EP-19 (Design System) — Global frontend retrofit
+
+**Triggered by**: EP-19 introduces shadcn/ui + semantic tokens + a shared domain catalog + ES tuteo i18n + a11y/size-limit gates. Every previously-planned frontend task file makes local decisions that must now defer to the catalog.
+
+**Applies to**: every epic with frontend scope except **EP-12** (EP-12 is the provider of technical primitives; EP-19 builds on top — see "Amendments NOT required" below). Concretely: EP-00, EP-01, EP-02, EP-03, EP-04, EP-05, EP-06, EP-07, EP-08, EP-09, EP-10, EP-11, EP-13, EP-14, EP-15, EP-16, EP-17, EP-18.
+
+### Common retrofit patches (apply to every listed epic's `tasks-frontend.md`)
+
+1. **Preamble** — add at the top of `tasks-frontend.md`:
+   > This epic follows **EP-19 (Design System & Frontend Foundations)**. Use catalog components from `components/system/*`, semantic tokens (`bg-state-*`, `bg-severity-*`, `bg-primary`, `bg-destructive`), i18n keys from `i18n/es/*`, and shared hooks. Do not introduce local badges, confirmation dialogs, plaintext reveals, command palettes, empty states, or raw Tailwind colors.
+
+2. **Component substitutions** — remove local definitions; consume from EP-19 catalog:
+
+| Epic | Local component → EP-19 replacement |
+|---|---|
+| EP-01 | `StateChip`/`DerivedStateBadge` → `StateBadge`; `TypeBadge` → `TypeBadge`; force-ready modal → `TypedConfirmDialog` (with min-char enforcement moved to business logic, not UI) |
+| EP-02 | `TypeSelector` icon map → `TypeBadge` icons (shared); `DraftResumeBanner` kept local (feature-specific) |
+| EP-03 | `GapPanel` severity colors → `SeverityBadge`; suggestion copy buttons → `CopyButton`; errors → `HumanError` |
+| EP-04 | `CompletenessPanel` level badge → `LevelBadge`; `CompletenessBar` → shared; empty state → `EmptyStateWithCTA` |
+| EP-05 | `TaskStatusBadge` → `StateBadge` (task variant in dictionary); `BlockedBadge` → `SeverityBadge` warning |
+| EP-06 | Decision chips (approved/rejected/changes_requested) → `StateBadge` variants; override dialog → `TypedConfirmDialog` |
+| EP-07 | Diff hunks → `DiffHunk`; version selector badge → `VersionChip`; timestamps → `RelativeTime`; image paste flow uses EP-16 integration (unchanged) |
+| EP-08 | Tier labels → `TierBadge`; notification severity → `SeverityBadge`; 99+ badge stays on the bell (feature-specific) |
+| EP-09 | Filter chips kept local (feature-specific); state colors → `StateBadge`; kanban badges → `StateBadge`/`TypeBadge`; search top bar uses `CommandPalette` |
+| EP-10 | Admin confirmation dialogs → `TypedConfirmDialog`; rule-state chips → `StateBadge`; errors → `HumanError` |
+| EP-11 | `JiraBadge` → shared; divergence banner uses `SeverityBadge` warning; export-row status → `StateBadge` |
+| EP-13 | Top-bar search → `CommandPalette` contributes search results; doc-source status → `StateBadge`; Puppet outage → `HumanError` code `upstream_unavailable` |
+| EP-14 | `RollupBadge` → shared; `TypeBadge` (milestone, story) from shared map; breadcrumb stays local (feature-specific) |
+| EP-15 | `TagChip`/`TagChipList` → shared (including contrast computation); tag combobox stays feature-specific |
+| EP-16 | Delete confirmation → `TypedConfirmDialog`; upload errors → `HumanError`; gallery empty state → `EmptyStateWithCTA` |
+| EP-17 | `LockBadge` → shared; lock banner uses `SeverityBadge` warning; force-release dialog → `TypedConfirmDialog` with reason field composed into body; unlock request uses `CheckboxConfirmDialog` optional |
+| EP-18 | MCP token plaintext reveal → `PlaintextReveal`; revoke confirmation → `TypedConfirmDialog`; rotate reuses `PlaintextReveal`; status chips → `StateBadge` |
+| EP-00 | Login/workspace-picker adopts new typography + tokens; errors → `HumanError` |
+
+3. **Tokens & typography** — replace every raw Tailwind color (`bg-blue-500`, `text-red-600`, etc.) with semantic tokens. Replace `text-3xl font-bold` and similar with `text-h1`/`text-display`. CI lint rules `no-raw-tailwind-color` and `no-raw-text-size` enforce.
+
+4. **Copy & tone** — move every user-visible string to `apps/web/src/i18n/es/*.ts`. Replace English placeholders ("Save", "Cancel", "Are you sure?") with Spanish tuteo dictionary entries. `no-literal-user-strings` and `tone-jargon` lints enforce.
+
+5. **Error UX** — replace ad-hoc error banners with `<HumanError code="..." correlationId={...} />`. Add any missing error codes to `i18n/es/errors.ts` in the same PR.
+
+6. **Delete local component tests** — move component-level tests to EP-19. Keep integration tests in the feature epic.
+
+7. **A11y + perf gates apply** — Lighthouse ≥ 95 and `size-limit` CI gates are now required on every PR under `apps/web/`.
+
+### Retrofit execution order
+
+Rolling PRs from smallest frontend surface to largest (matches EP-19 `tasks-frontend.md` Phase C):
+
+EP-18 → EP-17 → EP-15 → EP-16 → EP-14 → EP-13 → EP-11 → EP-10 → EP-09 → EP-08 → EP-07 → EP-06 → EP-04 → EP-05 → EP-03 → EP-02 → EP-01 → EP-00
+
+Each retrofit PR:
+- Carries the checkbox tick in `tasks/EP-19/tasks-frontend.md#Phase-C`
+- Updates the affected epic's `tasks-frontend.md` with adoption notes
+- Passes all CI gates (lints, a11y, size-limit, Storybook build)
+
+### Amendments NOT required
+
+- **EP-12**: already owns layout primitives. No retrofit — EP-19 depends on EP-12, consumes its primitives, adds domain/style layer on top.
+- **Backend-side of any epic**: EP-19 is frontend-only; backend tasks and design unaffected.
+
+### What to update in each epic's `tasks-frontend.md`
+
+Append this note (customized per epic) during the retrofit PR:
+
+> **[EP-19 adoption]** This task file has been retrofitted to consume the shared design system. Local badges/dialogs/plaintext flows have been removed; see `tasks/EP-19/tasks-frontend.md#Phase-C` for the adoption checklist and `tasks/extensions.md#EP-19` for the substitution table.

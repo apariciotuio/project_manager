@@ -1,7 +1,9 @@
 # EP-11 Frontend Subtasks — Export & Sync with Jira
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `JiraBadge` (shared), `StateBadge` for export status (pending/success/failed/retrying), `SeverityBadge` warning for divergence banner, `TypedConfirmDialog` for retry/re-export confirmation, `HumanError`, semantic tokens, i18n `i18n/es/jira.ts`. Import-from-Jira modal and credential form remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS, React Query
-**Depends on**: EP-09 (WorkItemDetail page where export UI lives), EP-10 frontend (Jira config/export history viewer from admin), EP-12 (API client, SkeletonLoader, ErrorBoundary)
+**Depends on**: EP-09 (WorkItemDetail page where export UI lives), EP-10 frontend (Jira config/export history viewer from admin), EP-12 (API client, SkeletonLoader, ErrorBoundary), EP-19 catalog
 
 > **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no automated sync. Export UI is upsert-by-key (re-export UPDATEs the same Jira issue). New user-initiated "Import from Jira" action added below.
 

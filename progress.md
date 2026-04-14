@@ -2,7 +2,7 @@
 
 Living document. Tracks where we are in the plan refinement process. Update after every completed step so we can resume without re-reading the whole conversation history.
 
-**Last updated:** 2026-04-14 (Final EP polish complete)
+**Last updated:** 2026-04-14 (EP-18 MCP + EP-19 Design System defined; Dundun/Puppet contracts aligned with real OpenAPIs)
 
 ---
 
@@ -21,9 +21,11 @@ Living document. Tracks where we are in the plan refinement process. Update afte
 - **Multi-tenant** en una única deployment. `workspace_id` en toda tabla de dominio + PostgreSQL RLS
 - **N workspaces por user** (workspace switcher + `session.active_workspace_id`)
 - **5 perfiles de workspace** como constantes en código (Member, Team Lead, Project Admin, Integration Admin, Workspace Admin) + **Superadmin** como flag plataforma (`users.is_superadmin`)
-- **Stack**: FastAPI + SQLAlchemy async + Postgres 16 · Next.js 14 App Router + Tailwind · Celery + Redis · SSE (no WebSocket salvo proxy a Dundun)
-- **IA delegada a Dundun** (sistema externo agéntico Tuio). Nuestro BE tiene `DundunClient` (HTTP+WS). Ninguna LLM SDK en nuestras deps. Dundun maneja prompts (LangSmith), modelo, cost tracking, evals
-- **Búsqueda delegada a Puppet** (RAG Tuio). Nuestro BE hace push-on-write a Puppet con tag `wm_<workspace_id>`. Search va directo de BE → Puppet (Dundun NO está en el path de búsqueda)
+- **Stack**: FastAPI + SQLAlchemy async + Postgres 16 · Next.js 14 App Router + Tailwind + **shadcn/ui** (design system EP-19) · Celery + Redis · SSE para push in-app
+- **IA delegada a Dundun** (sistema externo agéntico Tuio). Nuestro BE tiene `DundunClient` — **HTTP síncrono** (`/api/v1/dundun/chat`) para turnos cortos y **HTTP asíncrono con callback** (`/api/v1/webhooks/dundun/chat` + URL de callback nuestro) para flujos largos. **No hay WebSocket a Dundun** (asunción anterior corregida tras revisar su OpenAPI). Ninguna LLM SDK en nuestras deps. Dundun maneja prompts (LangSmith), modelo, cost tracking, evals. Dundun NO expone API de lectura de threads — la plataforma es dueña del hilo que ven UI y MCP
+- **Búsqueda delegada a Puppet** (RAG Tuio). Nuestro BE hace push-on-write a Puppet con **categoría `tuio-wmp:ws:<workspace_id>:workitem|section|comment`** (Puppet no conoce workspaces; aislamos por convención de categoría). Los endpoints de ingesta de contenido de plataforma en Puppet están pendientes; la búsqueda sobre docs externos Tuio ya funciona. Search va directo de BE → Puppet (Dundun NO está en el path de búsqueda). Snippets con resaltado se generan en nuestro lado (Puppet devuelve texto plano)
+- **Acceso programático de solo lectura vía MCP** (EP-18). Servidor Python en `apps/mcp-server/` — stdio + HTTP/SSE — que expone ~20 tools + 4 resources sobre la capa de aplicación existente. Tokens `mcp_token` emitidos por admin, vinculados a un único workspace, scope `mcp:read`. Auditoría compartida con REST. Sin mutaciones en MVP
+- **Sistema de diseño** (EP-19). shadcn/ui + Radix, semantic tokens, Inter, i18n ES-ES tuteo, gate a11y (Lighthouse ≥ 95 + axe) + perf (`size-limit` 200 KB/gzip). Catálogo de ~25 componentes compartidos (`StateBadge`, `TypeBadge`, `PlaintextReveal`, `TypedConfirmDialog`, `CommandPalette`, …). EP-00..EP-18 retrofitan vía `tasks/extensions.md#EP-19`
 - **Integración Jira**: upsert-by-key outbound (re-export UPDATEs mismo issue) + acción user-initiated "import from Jira" (crea work_item en Borrador desde un issue existente). Sin polling, sin webhooks, sin sync automático
 - **Colaboración**: base asíncrona + presencia tiempo real (indicadores, typing, "N viewing") + edit locks a nivel section. Sin co-edición simultánea (no CRDT/OT)
 - **Sin email**, sin push. Solo notificaciones in-app vía SSE
@@ -109,7 +111,7 @@ Living document. Tracks where we are in the plan refinement process. Update afte
 | 29 | Attachments | VPN internal → no ClamAV, no signed URLs, authenticated streaming endpoints. PDF thumbnails yes |
 | 30 | Edit locking | Section-level locks + presence service (shared SSE channel) |
 | 31 | Superadmin | Seed config (no CLI), `users.is_superadmin` flag, web/API panel (create workspace, list, grant, etc.) |
-| 32 | **Dundun integration** | `DundunClient` (HTTP+WS) for all AI. Chat proxied through our BE. Async via callback pattern |
+| 32 | **Dundun integration** | `DundunClient` HTTP sync (`/dundun/chat`) + HTTP async webhook with callback. No WebSocket. Platform owns thread store (Dundun has no read API) |
 
 Full detail in `decisions_pending.md`.
 

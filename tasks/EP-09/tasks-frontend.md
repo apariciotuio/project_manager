@@ -1,7 +1,9 @@
 # EP-09 Frontend Subtasks — Listings, Dashboards, Search & Workspace
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge`/`TypeBadge`/`OwnerAvatar`/`CompletenessBar`/`JiraBadge` uniformly in list rows and kanban cards. Top-bar search uses `CommandPalette`. `HumanError` for API errors, `EmptyStateWithCTA` for no-results. Semantic tokens, i18n `i18n/es/workspace.ts`. Kanban drag-drop, filters, pipeline board columns remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS, React Query (@tanstack/react-query)
-**Depends on**: EP-12 layout primitives (AppShell, SkeletonLoader, EmptyState, ErrorBoundary), EP-12 API client (correlation ID), EP-12 responsive patterns
+**Depends on**: EP-12 layout primitives (AppShell, SkeletonLoader, EmptyState, ErrorBoundary), EP-12 API client (correlation ID), EP-12 responsive patterns, EP-19 catalog
 
 ---
 

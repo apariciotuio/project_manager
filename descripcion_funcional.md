@@ -271,3 +271,24 @@ Los usuarios finales disponen además de una vista `/settings/mcp-tokens` para v
 **Transportes**. El servidor soporta `stdio` (para agentes locales como Claude Code) y HTTP/SSE (para clientes remotos). Ambos activos desde el primer día.
 
 **Para el usuario**, el MCP es simplemente "la forma de dejar que otros agentes lean lo que ya está en la plataforma, con las mismas reglas de permisos y trazabilidad, sin copiar datos a ningún sitio".
+
+### 3.17 Principios de experiencia de usuario
+
+La plataforma la usan perfiles muy distintos: Product Managers, Tech Leads, Founders, Negocio, QA, Team Leads, Admins. Cada uno tiene un nivel de fluidez técnica diferente. La interfaz tiene que **desaparecer**: rápida, obvia, cómoda. Nadie debería sentir que "hay que aprender la herramienta" antes de poder usarla.
+
+Principios rectores (fuente completa: `docs/ux-principles.md`):
+
+1. **Un camino por pantalla.** Una sola acción primaria obvia; el resto, secundario o escondido.
+2. **Revelación progresiva.** Nunca mostrar un campo que el 90% no usa. Sección "avanzado" colapsada. Los *defaults* funcionan.
+3. **Español plano, sin jerga.** "Clave de acceso para agentes" antes que "MCP token". "Listo para ejecutar" antes que "Ready". Los términos técnicos solo aparecen donde el usuario ya vive en ellos (Jira, Git).
+4. **Feedback inmediato y tranquilo.** Toasts breves, sin modales gratuitos, animaciones < 200 ms, mensajes humanos ("Guardando revisión…" en lugar de un spinner mudo).
+5. **Errores en humano.** Jamás un código HTTP ni una traza. "Ese nombre ya lo tiene otra clave — prueba con otro" en lugar de "422 Unprocessable Entity".
+6. **Teclado primero, móvil no es después.** Todo lo que se hace con ratón tiene atajo; `⌘K` abre el navegador de comandos; las pantallas críticas (inbox, notificaciones, confirmaciones) funcionan en móvil desde el primer día.
+7. **Sin ruido visual.** Base gris neutra. Color **solo** para estado (verde/ámbar/rojo) y para la acción primaria de la pantalla. Sin gradientes, sin sombras decorativas, sin ilustraciones que no informen.
+8. **Densidad cómoda.** Espaciado generoso suficiente para no agobiar, suficientemente compacto para no dar sensación de vacío.
+9. **Accesibilidad como suelo, no como techo.** Contraste AA, foco visible, navegación por teclado íntegra, lectores de pantalla primera clase, `prefers-reduced-motion` respetado. Lighthouse ≥ 95 bloquea merge.
+10. **Tono**: tuteo, frases cortas, verbo directo ("Crear clave" en vez de "Generación de una nueva clave").
+
+**Sistema de componentes**: shadcn/ui sobre Radix UI + Tailwind. Componentes viven en el repo (customizables, sin lock-in), accesibilidad correcta por defecto, estilos minimalistas coherentes con la postura de sobriedad visual. Tipografía Inter; paleta neutra con semánticos de estado; densidad base `space-y-4`.
+
+**Cuando haya dudas de diseño**: (a) quitar un campo, un botón o un color antes de añadir uno; (b) preguntarse si se puede hacer con el teclado; (c) probar en móvil y dejar que los problemas guíen el desktop. La simplicidad no es una decisión estética: es la *feature*.

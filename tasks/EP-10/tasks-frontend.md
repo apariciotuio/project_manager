@@ -1,7 +1,9 @@
 # EP-10 Frontend Subtasks — Configuration, Projects, Rules & Administration
 
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TypedConfirmDialog` for destructive admin actions (member delete/suspend, rule delete, preset delete), `StateBadge` for rule/integration health, `HumanError`, semantic tokens, i18n `i18n/es/admin.ts`. Capability matrix editor, routing rule form, storage-usage dashboard remain feature-specific. See `tasks/extensions.md#EP-19`.
+
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS, React Query
-**Depends on**: EP-12 layout primitives (AppShell, DataTable, EmptyState, SkeletonLoader, ErrorBoundary), EP-12 API client, EP-12 responsive patterns
+**Depends on**: EP-12 layout primitives (AppShell, DataTable, EmptyState, SkeletonLoader, ErrorBoundary), EP-12 API client, EP-12 responsive patterns, EP-19 catalog
 
 ---
 
