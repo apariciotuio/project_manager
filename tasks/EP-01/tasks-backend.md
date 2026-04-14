@@ -119,6 +119,16 @@ AND `work_item.blocked_reason` contains `"owner_suspended"`
 WHEN `work_item.state = EXPORTED`
 THEN `work_item.derived_state = None`
 
+### Acceptance Criteria — Hierarchy + Attachments (EP-14 / EP-16 extensions)
+
+WHEN a work item is created with `parent_work_item_id` set
+THEN `HierarchyValidator.validate_parent(child_type, parent_type)` is called before persistence (implementation in EP-14)
+AND if validation fails, `HierarchyValidationError` is raised and no work item is persisted
+
+WHEN `attachment_count` is read from a work item in a list response
+THEN no JOIN to the `attachments` table is required (value is denormalized)
+AND the count reflects the current number of non-soft-deleted attachments (maintained by EP-16's `AttachmentService`)
+
 ### 1.4 Domain Exceptions
 
 - [ ] [GREEN] Implement `domain/exceptions.py` with all typed exceptions:
@@ -136,7 +146,7 @@ THEN `work_item.derived_state = None`
 
 ### 2.1 Database Migrations
 
-- [ ] Write Alembic migration `create_work_items_table`: all columns from design.md schema, CHECK constraints for `type` and `state` enums, CHECK constraint for title length (3–255), CHECK constraint for `completeness_score` range (0–100), all 6 indexes
+- [ ] Write Alembic migration `create_work_items_table`: all columns from design.md schema, CHECK constraints for `type` and `state` enums, CHECK constraint for title length (3–255), CHECK constraint for `completeness_score` range (0–100), all indexes. Include `parent_work_item_id`, `materialized_path`, `attachment_count` columns and type enum extension (`milestone`, `story`). Add index `idx_work_items_parent` on `parent_work_item_id`.
 - [ ] Write Alembic migration `create_state_transitions_table`: all columns, index on `(work_item_id, triggered_at DESC)`
 - [ ] Write Alembic migration `create_ownership_history_table`: all columns, index on `(work_item_id, changed_at DESC)`
 - [ ] Run all 3 migrations in dev environment; verify schema with `psql \d work_items`

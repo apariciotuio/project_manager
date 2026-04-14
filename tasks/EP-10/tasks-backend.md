@@ -20,7 +20,8 @@ POST   /api/v1/admin/members/invitations/{id}/resend
 Member: { id, email, display_name, state, capabilities[], context_labels[], team_ids[], created_at }
 Capability enum: invite_members | deactivate_members | manage_teams |
                  configure_workspace_rules | configure_project | configure_integration |
-                 view_audit_log | view_admin_dashboard | reassign_owner | retry_exports
+                 view_audit_log | view_admin_dashboard | reassign_owner | retry_exports |
+                 force_unlock | manage_tags | merge_tags | manage_puppet_integration
 Errors: 403 (missing capability), 409 (duplicate active email), 422 (validation)
 ```
 
@@ -79,6 +80,26 @@ JiraConfig: { id, base_url, auth_type, state, last_health_check_status, created_
 NEVER return credentials in any response.
 ```
 
+### Puppet Integration
+```
+GET    /api/v1/admin/integrations/puppet
+POST   /api/v1/admin/integrations/puppet
+    Body: { api_endpoint, api_key, default_index_name, documentation_sources[] }
+    Response 201: { id, state } — api_key NOT returned
+GET    /api/v1/admin/integrations/puppet/{id}
+PATCH  /api/v1/admin/integrations/puppet/{id}
+    Body: { api_key? (re-encrypt), default_index_name?, documentation_sources? }
+POST   /api/v1/admin/integrations/puppet/{id}/test
+    Response 200: { status: ok|auth_failure|unreachable, last_sync_at }
+GET    /api/v1/admin/integrations/puppet/{id}/sources
+POST   /api/v1/admin/integrations/puppet/{id}/sources
+DELETE /api/v1/admin/integrations/puppet/{id}/sources/{source_id}
+PuppetConfig: { id, api_endpoint, default_index_name, documentation_sources[], state, last_health_check_status, last_health_check_at }
+NEVER return api_key in any response.
+Capability: manage_puppet_integration
+Note: endpoints delegate to EP-13's PuppetAdapter and PuppetConfigService; this epic owns the admin endpoint surface only.
+```
+
 ### Audit Log
 ```
 GET    /api/v1/admin/audit-log
@@ -97,6 +118,25 @@ Response: {
   process_health: { override_rate, most_skipped_validations[], exported_count, blocked_by_type[] },
   integration_health: { jira_configs: [{id, state, error_streak, export_counts}] }
 }
+```
+
+### Superadmin Operations
+```
+POST   /api/v1/admin/users
+    Body: { email, display_name, workspace_id, initial_capabilities[] }
+    Response 201: { id, email, display_name }
+    Auth: require_superadmin (403 for non-superadmin)
+    Note: creates user directly, bypassing OAuth invitation — for bootstrap before Google OAuth is configured
+
+GET    /api/v1/admin/audit/cross-workspace
+    ?actor_id=&action=&entity_type=&from=&to=&cursor=&limit=200 (max)
+    Response: { data: [AuditEvent], pagination }
+    Auth: require_superadmin — queries audit_events with NO workspace_id filter
+    Note: workspace-scoped audit log remains at GET /api/v1/admin/audit-log
+
+CLI: python -m app.cli create-superadmin --email=<email>
+    Sets is_superadmin=True on existing user (or creates user if not found).
+    No HTTP endpoint. Run on server or via deployment pipeline for first-time bootstrap.
 ```
 
 ### Support Tools
@@ -441,7 +481,96 @@ THEN results are grouped by blocking reason: `suspended_owner`, `deleted_team_in
 
 ---
 
-## Group 11 — Integration & Hardening
+## Group 11 — Superadmin Operations
+
+### Acceptance Criteria
+
+WHEN `POST /api/v1/admin/users` is called by a superadmin
+THEN a user row is created with the given email, display_name, and initial_capabilities[]
+AND a workspace membership is created in the specified workspace
+AND audit_events records `action: superadmin_user_created`
+
+WHEN `POST /api/v1/admin/users` is called by a non-superadmin
+THEN the API returns HTTP 403 with `error.code: superadmin_required` — the handler is never reached
+
+WHEN `GET /api/v1/admin/audit/cross-workspace` is called by a non-superadmin
+THEN the API returns HTTP 403
+
+WHEN `GET /api/v1/admin/audit/cross-workspace` is called by a superadmin
+THEN audit_events are returned with no workspace_id filter applied
+
+- [ ] `presentation/dependencies/auth.py` — add `require_superadmin` FastAPI dependency (checks `user.is_superadmin`; returns 403 on failure — not 401, not 404)
+- [ ] [RED] `test_require_superadmin_dependency` — superadmin passes, non-superadmin gets 403, unauthenticated gets 401
+- [ ] [RED] `test_superadmin_create_user` — success, non-superadmin gets 403, duplicate email gets 409
+- [ ] [RED] `test_cross_workspace_audit` — superadmin gets all workspaces, non-superadmin gets 403
+- [ ] [GREEN] `POST /api/v1/admin/users` handler — calls `UserAdminService.create_user_direct()`, audit emitted
+- [ ] [GREEN] `GET /api/v1/admin/audit/cross-workspace` handler — calls `AuditService.query_cross_workspace()`
+- [ ] [GREEN] `app/cli.py` — `create-superadmin --email=<email>` command using Click; upserts user row with `is_superadmin=True`; prints confirmation; no HTTP involved
+- [ ] [GREEN] Migration: add `is_superadmin BOOLEAN NOT NULL DEFAULT FALSE` to `users` table
+
+---
+
+## Group 12 — Tag Admin Integration
+
+> Tag CRUD endpoints are implemented in EP-15. This group adds capability enforcement and audit hooks.
+
+### Acceptance Criteria
+
+WHEN tag CRUD operations are performed by a member with `manage_tags` capability
+THEN audit_events records `action: tag_created | tag_renamed | tag_archived`
+
+WHEN a tag merge is performed by a member without `merge_tags` capability
+THEN the API returns HTTP 403
+
+WHEN a tag merge is performed by a member with `merge_tags` capability
+THEN audit_events records `action: tag_merged` with `before_value: {source_tag_id}` and `after_value: {target_tag_id}`
+
+- [ ] [RED] `test_tag_audit_hooks` — create, rename, archive, merge each produce correct audit_event
+- [ ] [RED] `test_merge_tags_capability_guard` — missing `merge_tags` gets 403, present passes
+- [ ] [GREEN] Wire `manage_tags` capability guard onto EP-15's tag CRUD endpoints (decorator or dependency injection)
+- [ ] [GREEN] Wire `merge_tags` capability guard onto EP-15's tag merge endpoint
+- [ ] [GREEN] Audit hooks: `AuditService.record()` called within tag mutation transactions for `tag_created`, `tag_renamed`, `tag_archived`, `tag_merged`
+
+---
+
+## Group 13 — Puppet Integration Config
+
+> Endpoints delegate to EP-13's `PuppetAdapter` and `PuppetConfigService`. This group owns the admin endpoint surface, capability enforcement, and audit trail.
+
+### Acceptance Criteria
+
+WHEN `POST /api/v1/admin/integrations/puppet` is called with valid data
+THEN response is 201, `api_key` is NOT in the response body
+AND credentials are Fernet-encrypted via `CredentialsStore` (same as Jira)
+AND audit_events records `action: puppet_config_created` (no key values in audit)
+AND a health check task is enqueued
+
+WHEN `POST /api/v1/admin/integrations/puppet/{id}/test` is called
+THEN it always returns HTTP 200 with `{ status: ok|auth_failure|unreachable, last_sync_at }`
+AND `last_health_check_at` and `last_health_check_status` are updated
+
+WHEN `GET /api/v1/admin/integrations/puppet/{id}` is called
+THEN the response body contains NO `api_key` or credential field
+
+WHEN a member without `manage_puppet_integration` capability calls any puppet endpoint
+THEN the API returns HTTP 403
+
+- [ ] [RED] `test_puppet_config_create` — success, credentials encrypted (not plaintext in DB), capability guard (403 without `manage_puppet_integration`), api_endpoint must be HTTPS
+- [ ] [RED] `test_puppet_config_update_credentials` — new api_key re-encrypted, health check re-queued
+- [ ] [RED] `test_puppet_connection_test` — ok, auth_failure, unreachable; always HTTP 200
+- [ ] [RED] `test_puppet_credentials_never_in_response` — GET returns no credential fields
+- [ ] [RED] `test_puppet_credentials_not_in_audit` — audit event for credential update has no key values
+- [ ] [RED] `test_puppet_sources_crud` — add source, remove source, list sources
+- [ ] [GREEN] `POST /api/v1/admin/integrations/puppet` handler
+- [ ] [GREEN] `GET/PATCH /api/v1/admin/integrations/puppet/{id}` handlers
+- [ ] [GREEN] `POST /api/v1/admin/integrations/puppet/{id}/test` handler — delegates to EP-13's `PuppetAdapter.probe()`
+- [ ] [GREEN] `GET/POST/DELETE /api/v1/admin/integrations/puppet/{id}/sources` handlers
+- [ ] [GREEN] Celery health check task for Puppet (mirrors Jira pattern: `check_puppet_health`)
+- [ ] [GREEN] Audit: all Puppet config mutations call `AuditService.record()` (no credentials in payload)
+
+---
+
+## Group 14 — Integration & Hardening (was Group 11)
 
 - [ ] Integration test: full member lifecycle — invite → accept → grant capability → suspend → orphan alert → reactivate
 - [ ] Integration test: rule config — create workspace rule → project override → resolve precedence → blocked_override → verify project superseded

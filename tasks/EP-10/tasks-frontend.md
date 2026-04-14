@@ -59,7 +59,8 @@ THEN the active nav item is highlighted and `aria-current="page"` is set
 
 - [ ] [RED] Test: admin routes are only reachable when `member.capabilities` contains at least one admin capability; redirect to `/` otherwise
 - [ ] [GREEN] Implement `app/admin/layout.tsx` — admin section layout with capability guard
-- [ ] [GREEN] Implement admin side navigation: Members, Rules, Projects, Integrations, Audit Log, Dashboard, Support Tools
+- [ ] [GREEN] Implement admin side navigation: Members, Rules, Projects, Integrations (Jira + Puppet), Tags, Audit Log, Dashboard, Support Tools
+- [ ] [GREEN] Superadmin-only sections (visible only when `user.is_superadmin = true` from `/auth/me`): User Management (create user form), Cross-Workspace Audit — hide menu items completely, do not disable them
 - [ ] [GREEN] Mobile: admin nav collapses to hamburger/drawer; side navigation on md+
 - [ ] [GREEN] Active nav item highlighted per current route
 
@@ -227,6 +228,62 @@ THEN the button is absent (not just disabled)
 - [ ] [RED] Test: log list with status filter, pagination, retry button on failed log (requires RETRY_EXPORTS capability)
 - [ ] [GREEN] Implement `JiraSyncLogTable` within config detail page
 - [ ] [GREEN] Retry button: disabled if user lacks `retry_exports` capability (check from current member context)
+
+---
+
+## Group 5b — Puppet Integration (`app/admin/integrations/puppet/page.tsx`)
+
+Admin nav entry: **Integrations** → sub-sections **Jira** and **Puppet**.
+
+### Acceptance Criteria
+
+WHEN a Puppet config is in `error` state
+THEN the config card shows a red badge
+
+WHEN `api_endpoint` is entered as HTTP (not HTTPS) in the create form
+THEN client-side validation shows inline error before submission
+
+WHEN the Puppet config form edit mode renders
+THEN the API key field is empty — never pre-populated (write-only field)
+
+WHEN "Test Connection" is clicked
+THEN the button shows a spinner and on result: `ok` shows green checkmark; `auth_failure`/`unreachable` shows red icon + message
+
+- [ ] [GREEN] Implement `lib/api/admin/puppet.ts` — `listPuppetConfigs`, `createPuppetConfig`, `updatePuppetConfig`, `testPuppetConnection`, `listSources`, `addSource`, `deleteSource`
+- [ ] [RED] Test: renders config list with state badge, test-connection flow, form validation (HTTPS required)
+- [ ] [GREEN] Implement Puppet integration list page
+- [ ] [GREEN] Implement `PuppetConfigForm` — API key field is write-only (never pre-filled on edit)
+- [ ] [GREEN] Documentation sources editor: add/remove URL entries inline
+- [ ] [GREEN] Test Connection button: same spinner/result pattern as Jira
+
+---
+
+## Group 5c — Superadmin Sections
+
+Visibility: render only when `user.is_superadmin = true` (from `/auth/me` response). Do not render disabled — omit entirely.
+
+### User Management (`app/admin/users/new/page.tsx`)
+
+- [ ] [RED] Test: form hidden when `is_superadmin = false`, visible when `true`
+- [ ] [RED] Test: form validation (email, display_name required), workspace picker, initial capabilities multi-select, submit creates user, 409 shows duplicate email error
+- [ ] [GREEN] Implement create-user form page (superadmin only)
+- [ ] [GREEN] Route guarded by `is_superadmin` check — redirect to `/admin` if not superadmin
+
+### Cross-Workspace Audit (`app/admin/audit/cross-workspace/page.tsx`)
+
+- [ ] [RED] Test: page hidden when `is_superadmin = false`, renders full audit table when `true`
+- [ ] [GREEN] Implement cross-workspace audit viewer — same filters as workspace audit log but no workspace scope constraint
+- [ ] [GREEN] Each row shows `workspace_id` / workspace name column (not present in workspace-scoped audit log)
+- [ ] [GREEN] Route guarded by `is_superadmin` check
+
+---
+
+## Group 5d — Tags Admin Entry Point
+
+Tag management is implemented in EP-15. This epic adds the left-nav entry point.
+
+- [ ] [GREEN] Admin left-nav entry: **Tags** → `/admin/tags` (route implemented in EP-15)
+- [ ] [GREEN] Entry visible to members with `manage_tags` or `merge_tags` capability (or superadmin)
 
 ---
 

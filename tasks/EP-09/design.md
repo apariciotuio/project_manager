@@ -375,7 +375,90 @@ All endpoints under `/api/v1/`. All require authentication (401 if missing, 403 
 
 ---
 
-## 9. Rejected Alternatives
+## 9. Kanban Board View
+
+Extension from: extensions.md (EP-09 / Req #6)
+
+### Endpoint
+
+```
+GET /api/v1/work-items/kanban
+    ?project_id={uuid}
+    &group_by=state|owner|tag|parent
+    &cursor_{column_key}={opaque_cursor}
+    &limit=25
+```
+
+### Response Shape
+
+```json
+{
+  "columns": [
+    {
+      "key": "draft",
+      "label": "Draft",
+      "total_count": 42,
+      "cards": [
+        {
+          "id": "...", "title": "...", "type": "story",
+          "state": "draft", "owner_id": "...",
+          "days_in_state": 3, "completeness": 0.6,
+          "tag_ids": ["uuid1", "uuid2"],
+          "attachment_count": 2
+        }
+      ],
+      "next_cursor": "base64string|null"
+    }
+  ],
+  "group_by": "state"
+}
+```
+
+Cards are cursor-paginated within each column (25 per column per page, independent `next_cursor` per column). The `limit` param applies per-column; max 25.
+
+### Group-by Modes
+
+| `group_by` | Column definition | Special columns |
+|------------|-------------------|-----------------|
+| `state` (default) | One column per FSM state; ARCHIVED excluded; columns ordered by FSM transition order | — |
+| `owner` | One column per distinct `owner_id` in project; sorted by owner display name | `key: "unowned"` for items without owner |
+| `tag` | One column per tag in project (EP-15 required); items with multiple tags appear in multiple columns | `key: "untagged"` for items with no tags |
+| `parent` | One column per distinct `parent_work_item_id` (EP-14 required) | `key: "no_parent"` for orphan items |
+
+`tag` and `parent` groupings are available as soon as EP-15 and EP-14 are implemented; the endpoint returns HTTP 422 with `error.code: dependency_not_available` if the required epic tables are absent at query time.
+
+### Drag-and-Drop Semantics
+
+The Kanban endpoint itself is **read-only**. State changes via card drag-drop use the existing EP-01 state transition endpoint:
+
+```
+POST /api/v1/work-items/{id}/transitions
+Body: { "to_state": "in_clarification" }
+```
+
+Transition validation gates (EP-01) apply. If a gate fails, the response is HTTP 422 with a validation message — the frontend reverts the card with an inline error toast and bounce animation.
+
+Drag-and-drop is only semantically meaningful for `group_by=state`. Other `group_by` modes render the board read-only (no transition called on drop).
+
+### Caching
+
+Redis cache key: `kanban:{project_id}:{group_by}:{sha256(sorted_filter_params)}`, TTL 30s.
+
+Cache is invalidated on any work item state change in the project (same broad invalidation strategy as pipeline cache — acceptable for a 30s TTL).
+
+### Frontend Library Choice
+
+`@dnd-kit/core` + `@dnd-kit/sortable` — lightweight, no HTML5 drag backend dependency, accessibility-first, works with touch events (mobile swipe does not trigger accidental drags, mobile tap navigates to detail page instead).
+
+Rejected: `react-dnd` — requires HTML5 backend, heavier, less accessible.
+
+### Mobile Behavior
+
+No drag-and-drop on mobile. Horizontal scroll between columns with `scroll-snap-type: x mandatory`. Tapping a card navigates to full detail page. Columns are min-width `85vw` to give clear snap boundaries.
+
+---
+
+## 10. Rejected Alternatives (pre-extension)
 
 | Decision | Rejected Alternative | Reason |
 |----------|---------------------|--------|

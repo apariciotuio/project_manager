@@ -1,9 +1,0 @@
-name: tuio-backend
-version: 1.0.0
-description: >
-  Backend development standards: DDD layered architecture, SOLID principles,
-  API design, error handling. Includes backend-developer and db-reviewer agents.
-author: somostuio
-license: MIT
-target: all
-type: hybrid

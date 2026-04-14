@@ -127,4 +127,5 @@ Assumptions made during the technical planning of the MVP. These need product/bu
 | 5 | Max elements per workspace (MVP scale target)? | 10K work items, 100K tasks | Affects index strategy, search, dashboard queries |
 | 6 | LLM provider preference? | Provider-agnostic via adapter | Affects prompt engineering, token counting lib |
 | 7 | Email notifications? | Not in MVP (internal notifications only) | No SMTP/SES infra needed |
-| 8 | File attachments on elements? | Not in MVP | No object storage needed |
+| 8 | File attachments on elements? | **Yes (EP-16).** Images + PDFs. S3-compatible storage. Virus-scanned via ClamAV. | Object storage required; ClamAV integration required |
+| 9 | Superadmin bootstrap? | Via CLI command only (`python -m app.cli create-superadmin`). Never via API. | No API endpoint for superadmin elevation — this is a security invariant |

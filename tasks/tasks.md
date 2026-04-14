@@ -17,6 +17,11 @@
 | EP-10 | Configuration, Projects, Rules & Admin | EP-00, EP-08 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
 | EP-11 | Export & Sync with Jira | EP-01, EP-04, EP-06, EP-10 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks |
 | EP-12 | Responsive, Security, Performance & Observability | Transversal | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks |
+| **EP-13** | **Semantic Search + Puppet Integration** | EP-09, EP-10, EP-12 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
+| **EP-14** | **Hierarchy: Milestones, Epics, Stories** | EP-01, EP-05, EP-09, EP-10 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
+| **EP-15** | **Tags + Labels** | EP-01, EP-09, EP-10 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
+| **EP-16** | **Attachments + Media** | EP-01, EP-07, EP-10, EP-12 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
+| **EP-17** | **Edit Locking + Collaboration Control** | EP-01, EP-08, EP-10, EP-12 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
 
 ## Implementation Order (Suggested)
 
@@ -53,6 +58,12 @@ EP-10 (Admin) can start after EP-08, in parallel with EP-04/EP-05.
 | OpenSpec Detail Pass | COMPLETED — ~150 acceptance criteria blocks added |
 | Specialist Reviews (arch→sec→front→back→DB) | COMPLETED — 5 reviews, see tasks/reviews/ |
 | Implementation | PENDING — address review findings first |
+| **NEW REQUIREMENTS** | **COMPLETED — EP-13..EP-17 planned + extensions applied** |
+| EP-13..EP-17 Specs + Design + Tasks | COMPLETED — specs/design/back+front for all 5 |
+| Existing epics extensions (EP-01, EP-03, EP-07, EP-09, EP-10) | COMPLETED — see extensions.md for change log |
+| Updated assumptions.md (Q8 attachments Yes, Q9 superadmin CLI) | COMPLETED |
+| Cross-epic consistency review on expanded plan (18 epics) | PENDING |
+| Specialist reviews round 2 on new epics | PENDING |
 
 ## User Stories Count
 

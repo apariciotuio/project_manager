@@ -1,9 +1,0 @@
-name: tuio-frontend
-version: 1.0.0
-description: >
-  Frontend development standards: component architecture, state management,
-  accessibility. Includes frontend-developer agent.
-author: somostuio
-license: MIT
-target: all
-type: hybrid

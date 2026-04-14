@@ -409,6 +409,104 @@ Update: `src/app/workspace/[slug]/work-items/[id]/page.tsx` (extends EP-01 detai
 
 ---
 
+## Group: Work Item Detail Split View Layout
+
+Extension from: extensions.md (EP-03 / Req #10)
+No backend changes required — existing EP-03 APIs support this.
+
+### API types (no new endpoints)
+
+```typescript
+// Re-uses ConversationThread + ConversationMessage from Phase 1
+// Re-uses SuggestionSet + SuggestionItem from Phase 1
+// Re-uses SpecificationPanel from EP-04 (import, do not redefine)
+// Re-uses task tree from EP-05 (import, do not redefine)
+```
+
+### WorkItemDetailLayout Component
+
+Component: `src/components/detail/work-item-detail-layout.tsx`
+
+Props:
+```typescript
+interface WorkItemDetailLayoutProps {
+  workItemId: string
+  threadId: string       // element thread for this work item
+  children: React.ReactNode  // content panel slot
+}
+```
+
+- [ ] [RED] Write component tests:
+  - Desktop (≥768px): renders both `ChatPanel` (left) and content panel (right) simultaneously
+  - Desktop: `ChatPanel` default width is 40% of container
+  - Desktop: resizable divider is rendered and draggable
+  - Desktop: after drag, new width is persisted to `localStorage` under key `split-view:chat-width`
+  - Desktop: on next render, persisted width is read from `localStorage` and applied
+  - Mobile (<768px): only tab switcher renders at top — no simultaneous panel display
+  - Mobile: default active tab is "Chat"; "Content" tab switches to content panel
+  - Mobile: `ChatPanel` is NOT rendered as a bottom sheet on mobile
+  - Mobile: no horizontal overflow at 375px viewport
+- [ ] [GREEN] Implement `WorkItemDetailLayout`:
+  - Desktop: flex layout, left = `ChatPanel` (default 40% width, min 280px, max 70%), right = content slot
+  - Desktop: draggable divider using `onMouseDown` + `document.addEventListener('mousemove')` — no drag library needed; persist final width in `localStorage`
+  - Mobile: render `Tabs` (Chat | Content), only one panel visible at a time; tab state in local `useState`
+  - Read persisted width from `localStorage` on mount; default to 40% if key absent
+- [ ] [GREEN] Implement `ResizableDivider` sub-component: vertical bar with `cursor: col-resize`, `aria-label="Resize panels"`, keyboard support (←/→ arrow keys adjust by 5%)
+
+### ChatPanel Integration
+
+- [ ] [GREEN] Implement `ChatPanel` wrapper in `src/components/detail/chat-panel.tsx`:
+  - Wraps existing `ConversationThread` (from Phase 5 of EP-03)
+  - Emits `onSuggestionEmitted(suggestionBatchId: string, sectionId: string)` when a `suggestion_card` message arrives via SSE
+  - Props: `{ threadId: string; workItemId: string; onSuggestionEmitted: (batchId: string, sectionId: string) => void }`
+- [ ] [RED] Write tests: `onSuggestionEmitted` fires when SSE delivers a `suggestion_card` message; `ConversationThread` rendered inside; no bottom sheet on mobile
+
+### Content Panel Sync
+
+- [ ] [GREEN] In `WorkItemDetailLayout`, wire `onSuggestionEmitted` → pass `highlightedSectionId` state to content panel children via React context (`SplitViewContext`)
+- [ ] [GREEN] Content panel consumers read `highlightedSectionId` from `SplitViewContext`; when non-null, scroll target section into view (`scrollIntoView({ behavior: 'smooth' })`) and apply `ring-2 ring-blue-400 animate-pulse` CSS classes for 3 seconds, then remove
+- [ ] [RED] Write tests:
+  - When `highlightedSectionId` changes THEN affected section receives pulse animation class
+  - After 3000ms THEN animation class is removed
+  - When `onSuggestionEmitted` fires THEN `highlightedSectionId` is set to the emitted `sectionId`
+- [ ] [GREEN] "Apply this change" button inside `suggestion_card` chat messages → calls `applySuggestions()` from existing EP-03 suggestion flow; on success, content panel re-fetches via `queryClient.invalidateQueries`
+- [ ] [RED] Write tests: "Apply this change" button click calls `applySuggestions()`; content panel invalidates cache on success
+
+### Integration: Work Item Detail Page
+
+Update: `src/app/workspace/[slug]/work-items/[id]/page.tsx`
+
+- [ ] [GREEN] Wrap existing detail page content in `WorkItemDetailLayout`, passing element `threadId` and `workItemId`
+- [ ] [GREEN] Move `SpecificationPanel` (EP-04) + task tree (EP-05) into the content slot
+- [ ] [GREEN] `ConversationThread` is rendered inside `ChatPanel` (left panel), not below main content as in Phase 8 baseline
+- [ ] [RED] Test: detail page on desktop renders `WorkItemDetailLayout` with both panels; on mobile renders tab switcher
+
+### Acceptance Criteria — WorkItemDetailLayout
+
+WHEN a user opens a work item detail page on a desktop viewport (≥768px)
+THEN `ChatPanel` is visible at the left side at 40% default width (or persisted width)
+AND the content panel (spec + tasks) is visible at the right side simultaneously
+
+WHEN the user drags the divider to a new position
+THEN the new width persists in `localStorage` under key `split-view:chat-width`
+AND on the next page load the divider starts at the saved position
+
+WHEN the viewport is <768px
+THEN a "Chat" tab and a "Content" tab are rendered at the top of the page
+AND only one panel is visible at a time
+AND no bottom sheet is used for the chat panel on mobile
+
+WHEN SSE delivers a `suggestion_card` message in the chat panel
+THEN the content panel scrolls to the affected section
+AND that section is highlighted with a blue pulse animation for 3 seconds
+
+WHEN the user clicks "Apply this change" in a chat suggestion card
+THEN `applySuggestions()` is called with the accepted suggestion IDs
+AND the content panel updates inline without a page reload
+AND the pulse animation resolves on the updated section
+
+---
+
 ## Definition of Done
 
 - [ ] All component tests pass

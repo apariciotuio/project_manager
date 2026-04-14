@@ -264,6 +264,14 @@ THEN `ValidationError(422)` — one level deep only
 WHEN `create_comment` or `soft_delete` is called
 THEN a `comment_added` or `comment_deleted` timeline event is appended in the same transaction
 
+WHEN a comment is soft-deleted and it has inline image attachments (`attachments.comment_id = comment.id`)
+THEN `AttachmentService.soft_delete_by_comment(comment_id)` is called in the same transaction
+AND all attachment rows with matching `comment_id` have `soft_deleted_at` set
+
+WHEN `GET /api/v1/work-items/{id}/comments` is called and a comment body contains inline image markdown (`![alt](attachment_id)`)
+THEN the API response substitutes each `attachment_id` reference with a signed URL from EP-16's attachment endpoint
+AND `scan_status != 'clean'` images are omitted from substitution (rendered as placeholder text)
+
 ### Acceptance Criteria — AnchorRecomputeTask
 
 See also: specs/comments/spec.md (SC-070-04, SC-070-05)
@@ -328,7 +336,7 @@ THEN only root comments appear as `comment_added` events (replies do not generat
 - [ ] 3.22 [RED] Test pagination: cursor-based, `has_more` accurate for page boundaries
 - [ ] 3.23 [RED] Test timeline events: `create_comment` appends `comment_added` to `timeline_events`; `soft_delete` appends `comment_deleted`
 - [ ] 3.23a [RED] Test transaction atomicity: WHEN `timeline_events` INSERT raises (e.g. `summary` truncated at 255 chars) THEN comment INSERT is also rolled back — timeline INSERT must NOT be in a separate try/except or fire-and-forget (Fixed per backend_review.md TC-4)
-- [ ] 3.24 [GREEN] Implement `application/services/comment_service.py` — timeline INSERT must be in the same DB transaction as comment INSERT; never wrap timeline write in a separate try/except
+- [ ] 3.24 [GREEN] Implement `application/services/comment_service.py` — timeline INSERT must be in the same DB transaction as comment INSERT; never wrap timeline write in a separate try/except; on soft-delete, call `AttachmentService.soft_delete_by_comment(comment_id)` in the same transaction before committing
 
 ### AnchorRecomputeTask (Celery async)
 

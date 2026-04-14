@@ -1,9 +1,0 @@
-name: tuio-qa-playwright
-version: 1.0.0
-description: >
-  QA automation standards: Playwright E2E testing, page object model,
-  test data management. Includes qa-automation-engineer agent.
-author: somostuio
-license: MIT
-target: all
-type: hybrid

@@ -1,9 +1,0 @@
-name: tuio-swarm
-version: 1.0.0
-description: >
-  Multi-agent swarm coordination protocol for parallel execution
-  using Swarm tools.
-author: somostuio
-license: MIT
-target: all
-type: instructions

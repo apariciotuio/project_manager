@@ -25,6 +25,8 @@ class WorkItemType(str, Enum):
     SPIKE = "spike"
     BUSINESS_CHANGE = "business_change"
     REQUIREMENT = "requirement"
+    MILESTONE = "milestone"   # added by EP-14 extension
+    STORY = "story"           # added by EP-14 extension
 
 class DerivedState(str, Enum):
     IN_PROGRESS = "in_progress"
@@ -46,6 +48,9 @@ class WorkItem:
     due_date: date | None
     tags: list[str]
     completeness_score: int            # 0–100, computed
+    parent_work_item_id: UUID | None   # EP-14: hierarchy parent; None = root node
+    materialized_path: str             # EP-14: "" for root nodes; managed by MaterializedPathService
+    attachment_count: int              # EP-16: denormalized; updated by AttachmentService
     has_override: bool
     override_justification: str | None
     owner_suspended_flag: bool
@@ -191,6 +196,9 @@ CREATE TABLE work_items (
     team_id                 UUID REFERENCES teams(id),
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    parent_work_item_id     UUID REFERENCES work_items(id) ON DELETE RESTRICT,
+    materialized_path       TEXT NOT NULL DEFAULT '',
+    attachment_count        INTEGER NOT NULL DEFAULT 0,
     deleted_at              TIMESTAMPTZ,
     exported_at             TIMESTAMPTZ,
     export_reference        VARCHAR(255),
@@ -198,7 +206,8 @@ CREATE TABLE work_items (
     CONSTRAINT work_items_title_length CHECK (char_length(title) BETWEEN 3 AND 255),
     CONSTRAINT work_items_completeness_range CHECK (completeness_score BETWEEN 0 AND 100),
     CONSTRAINT work_items_type_valid CHECK (type IN (
-        'idea','bug','enhancement','task','initiative','spike','business_change','requirement'
+        'idea','bug','enhancement','task','initiative','spike','business_change','requirement',
+        'milestone','story'
     )),
     CONSTRAINT work_items_state_valid CHECK (state IN (
         'draft','in_clarification','in_review','changes_requested',
@@ -213,6 +222,7 @@ CREATE INDEX idx_work_items_has_override ON work_items(has_override) WHERE has_o
 CREATE INDEX idx_work_items_team ON work_items(team_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_work_items_state_entered ON work_items(state_entered_at) WHERE deleted_at IS NULL;
 CREATE INDEX idx_work_items_workspace_state ON work_items(workspace_id, state) WHERE deleted_at IS NULL;
+CREATE INDEX idx_work_items_parent ON work_items(parent_work_item_id) WHERE parent_work_item_id IS NOT NULL AND deleted_at IS NULL;
 
 -- Per db_review.md IDX-1: primary workspace-scoped listing index. Every list query
 -- filters by workspace_id + state and orders by updated_at DESC. Partial on
@@ -318,6 +328,9 @@ notifications) co-located in the application service layer.
 | `current_version_id` | EP-07 versioning service | Whenever a new `work_item_version` is created; points to the latest version snapshot |
 | `override_by` / `override_at` | FSM service (`force_ready`) | Set atomically with `has_override = TRUE` on force-ready |
 | `team_id` | WorkItemService (`create_work_item`, `update_work_item`) | Set at creation or on explicit team assignment |
+| `parent_work_item_id` | WorkItemService (`create_work_item`, `update_work_item`) | Validated by EP-14's `HierarchyValidator.validate_parent()` before persistence; type-compatibility rules enforced before any DB write |
+| `materialized_path` | EP-14's `MaterializedPathService` | Computed on create; subtree-updated via recursive CTE on reparent. Empty string for root nodes. |
+| `attachment_count` | EP-16's `AttachmentService` | Denormalized count incremented/decremented on attach/detach/soft-delete. Used by list view to show paperclip icon without join. |
 
 ---
 

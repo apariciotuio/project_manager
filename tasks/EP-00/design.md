@@ -49,20 +49,27 @@
 
 ```sql
 CREATE TABLE users (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    google_sub  VARCHAR(255) UNIQUE NOT NULL,
-    email       VARCHAR(255) UNIQUE NOT NULL,
-    full_name   VARCHAR(255) NOT NULL,
-    avatar_url  TEXT,
-    status      VARCHAR(50) NOT NULL DEFAULT 'active', -- active | suspended | deleted
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    google_sub     VARCHAR(255) UNIQUE NOT NULL,
+    email          VARCHAR(255) UNIQUE NOT NULL,
+    full_name      VARCHAR(255) NOT NULL,
+    avatar_url     TEXT,
+    status         VARCHAR(50) NOT NULL DEFAULT 'active', -- active | suspended | deleted
+    is_superadmin  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Per db_review.md IDX-10: the UNIQUE constraints on google_sub and email already
 -- create implicit unique B-tree indexes. Redundant explicit indexes were removed.
 -- Lookups by google_sub (OAuth callback) and email (admin tools) use the UNIQUE index.
 ```
+
+> **Security invariant**: `is_superadmin` is a global flag that crosses workspace boundaries.
+> It is NOT a workspace capability — it lives on `users`, not `workspace_memberships`.
+> Set only via CLI command (`python -m app.cli create-superadmin`) or environment bootstrap.
+> There is NO API endpoint that sets `is_superadmin = true`. Exposing such an endpoint would
+> make privilege escalation trivially exploitable via IDOR or logic bugs. This is non-negotiable.
 
 ### `sessions`
 
@@ -189,7 +196,8 @@ CREATE RULE no_delete_audit AS ON DELETE TO audit_events DO INSTEAD NOTHING;
     "full_name": "User Name",
     "avatar_url": "https://lh3.googleusercontent.com/...",
     "workspace_id": "uuid",
-    "workspace_slug": "acme"
+    "workspace_slug": "acme",
+    "is_superadmin": false
   }
 }
 ```

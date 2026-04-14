@@ -75,6 +75,98 @@ WHEN the user scrolls to "Load more" and clicks it
 THEN the next page of items is appended below the existing list (not replaced)
 AND the cursor from the previous response is used for the next request
 
+### Quick Filter Chips
+
+Extension from: extensions.md (EP-09 / Req #1)
+
+Add quick-access filter chips above (or integrated into) the `FilterBar` for common mine-filter combinations.
+
+Chips: **All** | **My items** | **Owned by me** | **Created by me** | **Pending my review**
+
+Chip behavior:
+- "All" → clears `mine` param from URL
+- "My items" → sets `?mine=true&mine_type=any`
+- "Owned by me" → sets `?mine=true&mine_type=owner`
+- "Created by me" → sets `?mine=true&mine_type=creator`
+- "Pending my review" → sets `?mine=true&mine_type=reviewer`
+
+Active chip is visually highlighted. Mutually exclusive — selecting one deselects others. Chips do not affect other filter params (state, type, etc.) — they stack with them.
+
+- [ ] [RED] Write component tests for `QuickFilterChips`:
+  - Renders all 5 chips
+  - "All" chip is active by default when no `mine` param in URL
+  - Clicking "My items" sets `?mine=true&mine_type=any` in URL params
+  - Clicking "Owned by me" sets `?mine=true&mine_type=owner` in URL params
+  - Clicking "Created by me" sets `?mine=true&mine_type=creator` in URL params
+  - Clicking "Pending my review" sets `?mine=true&mine_type=reviewer` in URL params
+  - Clicking the active chip deactivates it (sets "All")
+  - Only one chip active at a time
+  - Chip state persists via URL params (bookmarkable)
+- [ ] [GREEN] Implement `QuickFilterChips` in `components/work-items/QuickFilterChips.tsx` using `useSearchParams` + `useRouter`
+- [ ] [GREEN] Integrate `QuickFilterChips` into `FilterBar` (render above or beside existing filter controls)
+- [ ] [GREEN] Update `useWorkItemList` hook to pass `mine` and `mine_type` params from URL to `getWorkItems()`
+- [ ] [RED] Test: `useWorkItemList` includes `mine` and `mine_type` in query params when set in URL
+
+### Acceptance Criteria — Quick Filter Chips
+
+WHEN the list view loads with no URL filter params
+THEN the "All" chip is highlighted and all items are shown
+
+WHEN the user clicks "My items"
+THEN the URL updates to include `?mine=true&mine_type=any`
+AND the list refetches showing only items where the current user is owner, creator, or reviewer
+AND the "My items" chip is highlighted; other chips are not
+
+WHEN the user clicks "Pending my review"
+THEN the URL updates to `?mine=true&mine_type=reviewer`
+AND only items with pending review requests for the current user are shown
+
+WHEN the user clicks an already-active chip
+THEN the chip deactivates and `mine` param is removed from URL
+AND the list shows all items (equivalent to "All")
+
+WHEN a chip is active and the user also changes a state filter
+THEN both filters are applied (mine filter AND state filter)
+AND the URL contains both params
+
+### Saved Filter Presets UI
+
+New component: `components/work-items/SavedFilterPresets.tsx`
+
+Depends on: `GET/POST/DELETE /api/v1/users/me/saved-filters` (EP-09 backend)
+
+- [ ] [RED] Write component tests for `SavedFilterPresets`:
+  - Renders list of saved filter names
+  - Clicking a preset applies its `filter_json` to URL params
+  - "Save current filter" button opens a name input modal
+  - Submitting the modal calls `POST /api/v1/users/me/saved-filters` with current URL filter params
+  - Delete button on a preset calls `DELETE /api/v1/users/me/saved-filters/:id` and removes it from list
+  - Empty state: "No saved filters yet" when list is empty
+  - Error on save: inline error message
+  - Limit exceeded (422): shows "You've reached the maximum number of saved filters (50)"
+- [ ] [GREEN] Implement `SavedFilterPresets` component
+- [ ] [GREEN] Implement `useSavedFilters()` hook (`src/hooks/use-saved-filters.ts`): wraps `GET/POST/DELETE` saved filter API calls via React Query
+- [ ] [GREEN] Integrate `SavedFilterPresets` into `FilterBar` (collapsible section or dropdown)
+- [ ] [GREEN] Implement `applyFilterPreset(filterJson)` utility that serializes `filter_json` keys to URL params (re-uses existing URL param logic from `FilterBar`)
+
+### Acceptance Criteria — Saved Filter Presets
+
+WHEN the user clicks "Save current filter" with state="draft" and mine_type="owner" active
+THEN a modal appears with a name input
+AND on submit the current filter combination is saved via `POST /api/v1/users/me/saved-filters`
+AND the new preset appears in the list immediately (optimistic update)
+
+WHEN the user clicks a saved preset name
+THEN the current URL filter params are replaced with the preset's `filter_json` params
+AND the list refetches with the preset filters applied
+
+WHEN the user deletes a preset
+THEN `DELETE /api/v1/users/me/saved-filters/:id` is called
+AND the preset is removed from the list (optimistic remove, reverts on error)
+
+WHEN the user has 50 presets and tries to save a new one
+THEN the API returns 422 and the UI shows "You've reached the maximum number of saved filters (50)"
+
 ### FilterBar Component (`components/work-items/FilterBar.tsx`)
 - [ ] [RED] Write component tests: each filter control (state multi-select, type multi-select, owner, team, project) updates URL search params; no page navigation
 - [ ] [GREEN] Implement `FilterBar` client component — URL params as source of truth (`useSearchParams` + `useRouter`)
@@ -233,6 +325,165 @@ THEN the column header (state name + count) remains visible
 - [ ] [GREEN] Implement filter controls at top of pipeline (reuse `FilterBar` components, URL params)
 - [ ] [RED] Test: pipeline renders without horizontal overflow on 375px viewport (vertical column stack on mobile)
 - [ ] [GREEN] Mobile: stack columns vertically, each collapsible
+
+---
+
+## Group 4b — Kanban Board View
+
+Extension from: extensions.md (EP-09 / Req #6)
+Depends on: `GET /api/v1/work-items/kanban` (EP-09 backend Group 4b), EP-01 transition endpoint, EP-15 tags (for `tag_ids`), EP-16 (for `attachment_count`)
+
+Route: `app/work-items/kanban/page.tsx` (or accessible via view toggle on list page)
+
+### API client
+
+- [ ] [RED] Write tests for `getKanbanBoard(projectId, groupBy, columnCursors, limit)`:
+  - Serializes `group_by` param, per-column cursor params (`cursor_{key}`)
+  - Returns typed `KanbanBoard` response
+  - Attaches `X-Correlation-ID` header
+- [ ] [GREEN] Implement `getKanbanBoard()` in `lib/api/work-items.ts`
+- [ ] [GREEN] Add TypeScript types in `src/types/kanban.ts`:
+  ```typescript
+  type KanbanGroupBy = 'state' | 'owner' | 'tag' | 'parent'
+  interface KanbanCard extends WorkItemCard {
+    tag_ids: string[]
+    attachment_count: number
+  }
+  interface KanbanColumn {
+    key: string
+    label: string
+    total_count: number
+    cards: KanbanCard[]
+    next_cursor: string | null
+  }
+  interface KanbanBoard {
+    columns: KanbanColumn[]
+    group_by: KanbanGroupBy
+  }
+  ```
+
+### KanbanBoard Component
+
+Component: `components/kanban/KanbanBoard.tsx`
+Drag-drop library: `@dnd-kit/core` + `@dnd-kit/sortable` (lighter than react-dnd; no HTML5 backend required)
+
+- [ ] [RED] Write component tests for `KanbanBoard`:
+  - Renders one `KanbanColumn` per column in response
+  - For `group_by=state`, columns appear in FSM order
+  - Each column header shows label and `total_count`
+  - Cards render within their column
+  - "Load more" button at bottom of column fetches next page (appends cards, does not replace)
+  - Drag start: source card is visually ghosted (`opacity: 0.4`)
+  - Drop on same column: no-op (no API call)
+  - Drop on different column: `POST /api/v1/work-items/{id}/transitions` called (EP-01); card moves optimistically before API response
+  - Drop succeeds: optimistic state confirmed; no revert
+  - Drop fails (transition validation error): card reverts to original column with a toast error showing the server's error message
+  - Drop fails (network error): card reverts, generic error toast shown
+  - Mobile (<768px): no drag; horizontal scroll between columns; tapping a card opens detail page
+  - `group_by` control (state | owner | tag | parent) in toolbar updates URL param and refetches board
+- [ ] [GREEN] Implement `KanbanBoard` using `@dnd-kit/core` `DndContext`:
+  - Wrap in `DndContext` with `onDragEnd` handler
+  - Optimistic update: move card in local state before API call; revert if API returns error
+  - Mobile detection: `useMediaQuery('(max-width: 767px)')` — disable `useDraggable` on mobile
+  - URL param `group_by` drives board data; default `state`
+- [ ] [GREEN] Implement `useKanbanBoard(projectId, groupBy)` hook: wraps React Query, exposes `loadMoreColumn(columnKey, cursor)` function for per-column pagination
+
+### KanbanColumn Component
+
+Component: `components/kanban/KanbanColumn.tsx`
+
+Props:
+```typescript
+interface KanbanColumnProps {
+  column: KanbanColumn
+  onLoadMore: () => void
+  isLoadingMore: boolean
+}
+```
+
+- [ ] [RED] Write tests:
+  - Renders column header with label and count badge
+  - Renders `KanbanCard` for each card in `column.cards`
+  - "Load more" button visible when `next_cursor` is non-null
+  - "Load more" shows spinner when `isLoadingMore`
+  - Mobile: column is a horizontally scrollable container; no vertical overflow
+- [ ] [GREEN] Implement `KanbanColumn` as `SortableContext` container (for `@dnd-kit`)
+
+### KanbanCard Component
+
+Component: `components/kanban/KanbanCard.tsx`
+
+Props:
+```typescript
+interface KanbanCardProps {
+  card: KanbanCard
+  isDragging?: boolean
+}
+```
+
+- [ ] [RED] Write tests:
+  - Renders work item title
+  - Renders type badge
+  - Renders tags (from `tag_ids` — resolve tag names via `useTags()` from EP-15 if available, else show tag_id pill)
+  - Shows attachment icon when `attachment_count > 0`; shows count when > 1
+  - When `isDragging=true`: `opacity: 0.4` applied
+  - Mobile: card click navigates to `/work-items/[id]`; no drag handle rendered
+- [ ] [GREEN] Implement `KanbanCard` using `useDraggable` from `@dnd-kit/core`; mobile: plain anchor/button
+
+### Drop → State Transition Wiring
+
+- [ ] [GREEN] In `onDragEnd` handler: extract `active.id` (card id) and `over.id` (target column key)
+  - If `group_by=state` and target column key is a valid FSM state: call `POST /api/v1/work-items/{id}/transitions` with `{ to_state: columnKey }`
+  - If `group_by != state`: drop is a no-op (visual only, no API call — other groupings do not map to transitions); show tooltip "Drag and drop only supported for state grouping"
+  - Other `group_by` modes: card click → detail page
+- [ ] [RED] Write tests for `onDragEnd`:
+  - `group_by=state`: calls transition endpoint with correct `to_state`
+  - `group_by=owner`: no API call on drop
+  - Drop on same column: no API call
+  - Transition error: card reverts to original column, error toast rendered
+  - Transition success: card stays in target column
+
+### Revert Animation
+
+- [ ] [GREEN] On transition error: apply `animate-bounce` class to the reverted card for 600ms (via `setTimeout` + class removal), then render toast via existing toast system (EP-12)
+- [ ] [RED] Test: on error, reverted card receives `animate-bounce` class; class removed after 600ms; toast rendered with server error message
+
+### Mobile Kanban
+
+- [ ] [GREEN] On mobile (<768px):
+  - Board renders as horizontal scroll container (`overflow-x: auto`, `scroll-snap-type: x mandatory`)
+  - Each column is `scroll-snap-align: start`, min-width `85vw`
+  - No drag handles rendered; `useDraggable` not attached
+  - Card tap → `router.push('/work-items/[id]')`
+- [ ] [RED] Test: on 375px viewport, no drag handles rendered; card click triggers navigation; no horizontal page overflow
+
+### Acceptance Criteria — KanbanBoard
+
+WHEN the Kanban board renders with `group_by=state`
+THEN columns appear in FSM order: draft → in_clarification → in_review → partially_validated → ready
+AND each column header shows the state label and total item count
+AND cards include tags and attachment icon where applicable
+
+WHEN a card is dragged from one state column to another
+THEN the card moves optimistically to the target column immediately
+AND `POST /api/v1/work-items/{id}/transitions` is called with `to_state` equal to the target column key
+
+WHEN the transition endpoint returns a validation error (e.g., missing required fields)
+THEN the card reverts to its original column with a bounce animation
+AND a toast message shows the server's error message
+
+WHEN viewed on a mobile viewport (<768px)
+THEN columns are horizontally scrollable with snap behavior
+AND no drag handles are rendered
+AND tapping a card navigates to the full detail page
+
+WHEN "Load more" is clicked in a column
+THEN the next 25 cards are appended below existing cards in that column
+AND the "Load more" button is replaced by a spinner during fetch
+
+WHEN `group_by` is changed in the toolbar (e.g., to "owner")
+THEN the board refetches with the new grouping
+AND drag-and-drop drops are no-ops (toast explains state grouping required)
 
 ---
 

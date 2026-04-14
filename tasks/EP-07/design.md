@@ -69,6 +69,12 @@ Version number is assigned via `SELECT COALESCE(MAX(version_number), 0) + 1 FROM
 
 ## 2. Comment Model
 
+> **EP-16 Integration — Inline Images**: Comments support inline images via EP-16's `attachments` table. When an image is pasted or dragged into the comment editor, an attachment row is created with `comment_id` set to the comment's `id`. Comment rendering parses markdown image syntax (`![alt](attachment_id)`) and substitutes signed URLs from EP-16's attachment endpoint at read time.
+>
+> When a comment is soft-deleted, its inline attachments are also soft-deleted via `CommentService` calling `AttachmentService.soft_delete_by_comment(comment_id)` in the same transaction. This is an application-layer cascade, not a DB cascade, to preserve the full audit trail of attachment metadata.
+>
+> No new tables are added to EP-07. EP-16's `attachments` table is reused with `comment_id` FK.
+
 ```sql
 CREATE TABLE comments (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -180,6 +180,92 @@ AND the resolved UUID is echoed in `applied_filters.owner_id` in the response
 - [ ] [RED] Write tests for `owner_id=me` and `team_id=mine` resolution to actual UUIDs
 - [ ] [GREEN] Implement `WorkItemListQueryBuilder` in `application/services/work_item_list_service.py`
 
+### My Items Filter Extension
+
+Support `?mine=true&mine_type=owner|creator|reviewer|any` query params on `GET /api/v1/work-items`.
+
+Behavior when `mine=true`:
+- `mine_type=owner` → `owner_id = current_user.id`
+- `mine_type=creator` → `created_by = current_user.id`
+- `mine_type=reviewer` → item has a pending `review_request` where `reviewer_id = current_user.id` OR `reviewer_type = 'team'` AND current user is a member of that team
+- `mine_type=any` (default) → OR of all three conditions above
+
+`mine=false` (default) → filter has no effect; all existing filters apply normally.
+
+- [ ] [RED] Write unit tests for `WorkItemListQueryBuilder` mine filter variants:
+  - `mine=true&mine_type=owner` → SQL `owner_id = :user_id`
+  - `mine=true&mine_type=creator` → SQL `created_by = :user_id`
+  - `mine=true&mine_type=reviewer` → subquery on `review_requests` where `reviewer_id = :user_id OR (reviewer_type='team' AND team has current user)`
+  - `mine=true&mine_type=any` → OR combination of all three
+  - `mine=false` → no mine condition appended; existing filters unchanged
+  - `mine=true` without `mine_type` → defaults to `any`
+  - `mine=true&mine_type=invalid` → HTTP 422
+- [ ] [GREEN] Extend `WorkItemListFilters` Pydantic model: add `mine: bool = False`, `mine_type: Literal['owner', 'creator', 'reviewer', 'any'] = 'any'`
+- [ ] [GREEN] Implement mine filter resolution in `WorkItemListQueryBuilder._apply_mine_filter()`; reviewer subquery uses `review_requests` table joined to `team_memberships` for team-type reviews
+- [ ] [REFACTOR] Extract `MineFilterBuilder` pure function; test independently
+
+### Saved Filter Presets
+
+New endpoints:
+```
+GET    /api/v1/users/me/saved-filters
+POST   /api/v1/users/me/saved-filters         body: { name: str, filter_json: dict }
+DELETE /api/v1/users/me/saved-filters/:id
+```
+
+New table:
+```sql
+CREATE TABLE saved_filters (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name         VARCHAR(255) NOT NULL,
+  filter_json  JSONB NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_saved_filters_user_workspace ON saved_filters (user_id, workspace_id);
+```
+
+Constraints: max 50 saved filters per user per workspace (enforce in service layer, return HTTP 422 with `error.code: saved_filter_limit_exceeded` if exceeded).
+
+`filter_json` validated against `WorkItemListFilters` schema on write; reject invalid payloads with HTTP 422.
+
+### Acceptance Criteria — My Items Filter
+
+WHEN `GET /api/v1/work-items?mine=true&mine_type=owner` is called
+THEN only items where `owner_id = current_user.id` are returned
+AND `applied_filters` in the response includes `mine: { type: "owner", user_id: "<resolved_uuid>" }`
+
+WHEN `GET /api/v1/work-items?mine=true&mine_type=reviewer` is called
+THEN items are returned where the current user is a direct reviewer OR is a member of a team-type reviewer
+AND items where the user is not a reviewer are excluded
+
+WHEN `GET /api/v1/work-items?mine=true` is called (no mine_type)
+THEN defaults to `mine_type=any` and returns items matching any ownership condition
+
+WHEN `GET /api/v1/work-items?mine=true&mine_type=invalid` is called
+THEN HTTP 422 is returned
+
+WHEN `POST /api/v1/users/me/saved-filters` is called with valid `{ name, filter_json }`
+THEN a new saved filter record is created and returned with its `id` and `created_at`
+
+WHEN `POST /api/v1/users/me/saved-filters` is called and user already has 50 filters in the workspace
+THEN HTTP 422 is returned with `error.code: saved_filter_limit_exceeded`
+
+WHEN `POST /api/v1/users/me/saved-filters` is called with `filter_json` that fails `WorkItemListFilters` validation
+THEN HTTP 422 is returned with validation details
+
+WHEN `DELETE /api/v1/users/me/saved-filters/:id` is called for a filter owned by a different user
+THEN HTTP 403 is returned
+
+- [ ] [RED] Write migration test: `saved_filters` table exists with all columns; index `idx_saved_filters_user_workspace` exists
+- [ ] [GREEN] Migration: create `saved_filters` table and index
+- [ ] [RED] Write service tests for `SavedFilterService.list()`, `.create()`, `.delete()` including limit enforcement and ownership check
+- [ ] [GREEN] Implement `SavedFilterService` in `application/services/saved_filter_service.py`
+- [ ] [GREEN] Implement `SavedFilterRepository` in `infrastructure/persistence/saved_filter_repository.py`
+- [ ] [RED] Write integration tests for `GET/POST/DELETE /api/v1/users/me/saved-filters`
+- [ ] [GREEN] Implement saved filter controllers and routes
+
 ### Acceptance Criteria — WorkItemDetailService
 
 WHEN `GET /api/v1/work-items/{id}` is called by an authenticated, authorized user
@@ -322,6 +408,101 @@ THEN the API returns HTTP 422
 - [ ] [RED] Write tests: all states returned, counts correct, items capped at 20 per column, aging indicators (amber >7d, red >14d), blocked lane with pre-block state, filter params, Redis cache with filter_hash key
 - [ ] [GREEN] Implement `PipelineQueryService.get_pipeline(filters)` using grouped query with `json_agg` and `ROW_NUMBER() OVER PARTITION BY state`
 - [ ] [GREEN] Implement `filter_hash` generation (deterministic SHA-256 of sorted filter params) for Redis key `pipeline:{filter_hash}` (TTL 30s)
+
+---
+
+## Group 4b — Kanban Endpoint
+
+Extension from: extensions.md (EP-09 / Req #6)
+
+### API Contract
+
+```
+GET /api/v1/work-items/kanban
+    ?project_id={uuid}
+    &group_by=state|owner|tag|parent
+    &cursor_{column_key}={opaque_cursor}   -- per-column cursor for pagination
+    &limit=25                              -- cards per column per page (max 25)
+
+Response 200:
+{
+  "columns": [
+    {
+      "key": "draft",
+      "label": "Draft",
+      "total_count": 42,
+      "cards": [WorkItemCard],
+      "next_cursor": "base64|null"
+    }
+  ],
+  "group_by": "state"
+}
+WorkItemCard includes: id, title, type, state, owner_id, days_in_state, completeness,
+                       tag_ids (from EP-15), attachment_count (from EP-16 denormalized column)
+Errors: 401, 403, 422 (invalid group_by or limit)
+```
+
+Column ordering:
+- `group_by=state`: columns in FSM order (draft → in_clarification → in_review → partially_validated → ready); ARCHIVED excluded
+- `group_by=owner`: one column per distinct `owner_id` present in the project; sorted by owner display name
+- `group_by=tag`: one column per tag in the project (requires EP-15); items with no tags → "Untagged" column
+- `group_by=parent`: one column per distinct `parent_work_item_id` (requires EP-14 hierarchy); orphans → "No parent" column
+
+Cards are cursor-paginated within each column (25 per column initially, independent `next_cursor` per column).
+
+State transitions from Kanban drag-drop use the existing EP-01 transition endpoint (`POST /api/v1/work-items/{id}/transitions`). The Kanban endpoint itself is read-only.
+
+### Acceptance Criteria — KanbanService
+
+WHEN `GET /api/v1/work-items/kanban?group_by=state` is called
+THEN columns are returned in FSM order (draft, in_clarification, in_review, partially_validated, ready)
+AND ARCHIVED state is absent
+AND each column includes `total_count` and up to 25 cards ordered by `updated_at DESC`
+AND each card includes `tag_ids` and `attachment_count`
+
+WHEN `GET /api/v1/work-items/kanban?group_by=owner` is called
+THEN one column per distinct `owner_id` is returned, sorted by owner display name
+AND items without an owner are grouped in a column with `key: "unowned"`, `label: "Unowned"`
+
+WHEN `GET /api/v1/work-items/kanban?group_by=tag` is called
+THEN one column per tag in the project is returned
+AND items with no tags appear in a column with `key: "untagged"`, `label: "Untagged"`
+AND items with multiple tags appear in multiple columns (duplicated — not deduplicated)
+
+WHEN `GET /api/v1/work-items/kanban?group_by=parent` is called
+THEN one column per distinct parent work item ID is returned
+AND orphan items (no parent) appear in a column with `key: "no_parent"`, `label: "No parent"`
+
+WHEN `limit=26` is supplied
+THEN HTTP 422 is returned (`limit` max is 25 for Kanban)
+
+WHEN the same request is made within 30 seconds (cache window)
+THEN the response is served from Redis; no DB query executes
+AND cache key is `kanban:{project_id}:{group_by}:{sorted_filter_hash}`
+
+WHEN `group_by=invalid` is supplied
+THEN HTTP 422 is returned with valid group_by options listed
+
+- [ ] [RED] Write unit tests for `KanbanService.get_board(project_id, group_by, cursors, limit, user)`:
+  - `group_by=state`: columns in FSM order, no archived, cards capped at 25, `total_count` accurate
+  - `group_by=owner`: one column per owner, unowned column present, sorted by name
+  - `group_by=tag`: tag columns present, items in multiple tag columns, untagged column
+  - `group_by=parent`: parent columns, no-parent column
+  - per-column cursor pagination: second page returns correct next 25 cards
+  - `tag_ids` and `attachment_count` present on every card
+  - Redis cache hit/miss; cache TTL 30s; key includes group_by and filter hash
+  - `limit > 25` → 422
+  - `group_by=invalid` → 422
+  - access scope: user cannot see items outside their workspace
+- [ ] [GREEN] Implement `KanbanService` in `application/services/kanban_service.py`
+  - `group_by=state`: single grouped query using `ROW_NUMBER() OVER (PARTITION BY state ORDER BY updated_at DESC)`, filter `rn <= limit + 1` for cursor detection, FSM order applied in Python
+  - `group_by=owner|tag|parent`: separate query strategies; tag uses JOIN to `work_item_tags` (EP-15); parent uses `parent_work_item_id` (EP-14)
+  - Per-column cursor: encode `(updated_at, id)` per column key; same `PaginationCursor` utility from Group 3
+  - Redis cache: key `kanban:{project_id}:{group_by}:{sha256(sorted_params)}`, TTL 30s
+- [ ] [GREEN] Implement `KanbanRepository` in `infrastructure/persistence/kanban_repository.py`
+- [ ] [RED] Write integration tests for `GET /api/v1/work-items/kanban` (all group_by modes, pagination, auth, 422 variants)
+- [ ] [GREEN] Implement `GET /api/v1/work-items/kanban` controller and route
+- [ ] [REFACTOR] Ensure `group_by` strategy is a clean dispatch (dict or enum-keyed functions), not a single monolithic if/elif chain
 
 ---
 

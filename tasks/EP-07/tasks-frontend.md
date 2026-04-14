@@ -271,6 +271,14 @@ THEN submit button is disabled; Cmd/Ctrl+Enter does nothing
 WHEN anchor data is provided (section_id, start, end, snapshot_text)
 THEN it is passed to `onSubmit` as the second argument
 
+WHEN an image is pasted into the comment editor
+THEN the EP-16 upload flow starts immediately, a `![Uploading…]()` placeholder is inserted at cursor
+AND on upload success the placeholder is replaced with `![filename](attachment_id)` markdown syntax
+AND on upload failure the placeholder is removed and an inline error is shown
+
+WHEN an image is dragged and dropped onto the comment editor
+THEN the same upload flow triggers as paste (identical behavior)
+
 **AnchoredCommentMarker**
 
 WHEN an anchored comment's `anchor_status = 'orphaned'`
@@ -306,7 +314,8 @@ interface CommentInputProps {
 ```
 
 - [ ] 4.3 [RED] Test: textarea; submit on Cmd/Ctrl+Enter or button; empty body disabled; anchor data passed when provided
-- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx`
+- [ ] 4.3a [RED] Test: paste image from clipboard → upload starts via EP-16 upload flow, placeholder `![Uploading…]()` inserted at cursor, replaced with `![filename](attachment_id)` on upload success; drag-drop image onto editor same flow; failed upload shows inline error and removes placeholder
+- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx` — support paste-from-clipboard (`paste` event on `ClipboardData.files`) and drag-drop (`drop` event) for images; each image triggers EP-16 `request-upload` → PUT to presigned URL → `confirm` flow; markdown image syntax inserted at cursor position on success
 
 ### CommentFeed component
 

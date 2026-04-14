@@ -1,9 +1,0 @@
-name: tuio-security
-version: 1.0.0
-description: >
-  Security by Design standards: OWASP Top 10, input validation, secrets management,
-  authentication, authorization.
-author: somostuio
-license: MIT
-target: all
-type: instructions

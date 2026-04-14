@@ -1,9 +1,0 @@
-name: tuio-temporal
-version: 1.0.0
-description: >
-  Temporal workflow standards: determinism, activity creation, worker registration,
-  signals/updates/queries, runner factories, sandbox constraints.
-author: somostuio
-license: MIT
-target: all
-type: instructions

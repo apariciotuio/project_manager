@@ -42,6 +42,26 @@ class Capability(str, Enum):
     VIEW_ADMIN_DASHBOARD = "view_admin_dashboard"
     REASSIGN_OWNER = "reassign_owner"
     RETRY_EXPORTS = "retry_exports"
+    FORCE_UNLOCK = "force_unlock"            # workspace admin + superadmin; delegates to EP-17
+    MANAGE_TAGS = "manage_tags"              # tag CRUD (EP-15 implementation)
+    MERGE_TAGS = "merge_tags"               # tag merge — higher bar, workspace admins only
+    MANAGE_PUPPET_INTEGRATION = "manage_puppet_integration"  # workspace admin
+```
+
+### Superadmin Short-Circuit
+
+`is_superadmin` on `users` is a platform-level flag — it crosses workspace boundaries. Superadmin bypasses all capability checks. The `require_capabilities` dependency short-circuits immediately if `user.is_superadmin = true`. Workspace membership state check is still applied (a superadmin whose membership is suspended still gets blocked by `WorkspaceMemberMiddleware` for in-workspace actions, but cross-workspace endpoints use `require_superadmin` instead).
+
+```python
+async def check(member: WorkspaceMember = Depends(get_current_member)):
+    if member.user.is_superadmin:
+        return member          # bypasses all capability checks
+    if member.state != MemberState.ACTIVE:
+        raise InactiveMemberError()
+    missing = set(caps) - set(member.capabilities)
+    if missing:
+        raise CapabilityRequiredError(missing)
+    return member
 ```
 
 ### Capability Check Middleware
@@ -475,7 +495,69 @@ infrastructure/
 
 ---
 
-## 11. Out of Scope for MVP
+## 11. Superadmin Powers
+
+Superadmin is a global flag (`users.is_superadmin`) — NOT a workspace capability. It exists outside workspace scope by design.
+
+**Powers granted to superadmin**:
+
+| Power | Detail |
+|-------|--------|
+| Create users directly | Bypass OAuth invitation — useful for onboarding before Google OAuth is configured |
+| Force-unlock any work item | Delegates to EP-17's lock service; uses `FORCE_UNLOCK` capability path |
+| Reset OAuth state for any user | Clear `google_sub` binding and session tokens for a given user |
+| View cross-workspace audit log | Query `audit_events` across all workspaces (no `workspace_id` filter applied) |
+| Suspend entire workspaces | Set `workspaces.status = 'suspended'` — blocks all members |
+
+**Bootstrap**: `python -m app.cli create-superadmin --email=<email>` only. No API endpoint. See EP-00 security invariant note.
+
+**Capability `force_unlock`** is granted to workspace admins (via normal capability grant flow) and automatically to superadmin (via short-circuit). It is the only lock-related capability scoped to EP-10's admin surface.
+
+---
+
+## 12. Tag Admin Integration (EP-15)
+
+Tag CRUD is implemented in EP-15. This epic owns the admin layout entry point and capability enforcement.
+
+- Admin left-nav entry: **Tags** → `/admin/tags` (route implemented in EP-15)
+- Capability `manage_tags`: CRUD operations on workspace tags — create, rename, archive
+- Capability `merge_tags`: merge one tag into another (higher bar — workspace admins only; destructive, can't be undone)
+- Audit events for all tag operations: `tag_created`, `tag_renamed`, `tag_archived`, `tag_merged` — follow `AuditEventPayload` pattern with `category='admin'`, `entity_type='tag'`
+- EP-10 adds capability enforcement wrappers and audit hooks around EP-15's tag service calls
+
+---
+
+## 13. Puppet Integration
+
+Reuses `integration_configs` table with `provider='puppet'`.
+
+**Config fields** (stored in `integration_configs`):
+
+| Field | Detail |
+|-------|--------|
+| `api_endpoint` | Puppet API base URL (must be HTTPS) |
+| `api_key` | Fernet-encrypted (same `CredentialsStore` as Jira) |
+| `default_index_name` | Default Puppet knowledge base index |
+| `documentation_sources` | `text[]` — list of external URLs/paths to index |
+
+**Admin capability**: `manage_puppet_integration` (workspace admin).
+
+**Health check**: delegates to EP-13's `PuppetAdapter.probe()`. Returns `{ status: ok|auth_failure|unreachable, last_sync_at }`.
+
+**API surface** (admin endpoints, owned by this epic):
+
+```
+/api/v1/admin/integrations/puppet/   GET, POST
+/api/v1/admin/integrations/puppet/{id}/  GET, PATCH
+/api/v1/admin/integrations/puppet/{id}/test  POST
+/api/v1/admin/integrations/puppet/{id}/sources/  GET, POST, DELETE {source_id}
+```
+
+**Credentials policy**: same as Jira — never returned in any GET response, never logged, Fernet-encrypted at rest.
+
+---
+
+## 14. Out of Scope for MVP
 
 - Multi-workspace capability delegation chains
 - Role templates (predefined capability bundles — users assemble manually)

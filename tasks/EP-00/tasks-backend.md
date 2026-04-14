@@ -13,7 +13,7 @@ Refs: EP-00
 | GET | `/api/v1/auth/google/callback` | No | `?code=X&state=Y` | 302 → `/workspace/{slug}` + Set-Cookie |
 | POST | `/api/v1/auth/refresh` | Refresh cookie | — | 200 + Set-Cookie (new access_token) |
 | POST | `/api/v1/auth/logout` | Access cookie | — | 204 + clear cookies |
-| GET | `/api/v1/auth/me` | Access cookie | — | `{ data: { id, email, full_name, avatar_url, workspace_id, workspace_slug } }` |
+| GET | `/api/v1/auth/me` | Access cookie | — | `{ data: { id, email, full_name, avatar_url, workspace_id, workspace_slug, is_superadmin: boolean } }` |
 
 Error envelope: `{ error: { code: string, message: string, details: {} } }`
 
@@ -293,7 +293,7 @@ AND `sessions.revoked_at` is set in DB
 **GET /api/v1/auth/me**
 WHEN called with valid `access_token`
 THEN response is HTTP 200
-AND body matches `{ "data": { "id", "email", "full_name", "avatar_url", "workspace_id", "workspace_slug" } }`
+AND body matches `{ "data": { "id", "email", "full_name", "avatar_url", "workspace_id", "workspace_slug", "is_superadmin" } }`
 
 WHEN called without `access_token`
 THEN response is HTTP 401 with `{ "error": { "code": "MISSING_TOKEN" } }`
