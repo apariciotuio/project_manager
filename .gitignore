@@ -4,3 +4,7 @@ apm_modules/
 .opencode/
 .claude/
 .cursor/
+.github/agents
+.github/instructions
+.github/prompts
+.github/skills
