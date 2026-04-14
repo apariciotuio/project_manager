@@ -213,6 +213,8 @@ La plataforma delega en **Dundun** —capa interna de inteligencia— las tareas
 
 Para el usuario, Dundun es simplemente "el asistente": una presencia integrada en clarificación, chat general y propuestas contextuales. El usuario no configura modelos ni parámetros. Todas las propuestas son **previsibles, aceptables por tramos y reversibles**: nada se aplica sin acción explícita, y toda aceptación genera versión con autor diferenciable en el timeline.
 
+**Mecánica de integración**. La plataforma invoca a Dundun mensaje a mensaje: síncronamente contra `POST /api/v1/dundun/chat` para turnos cortos, o asíncronamente vía webhook `POST /api/v1/webhooks/dundun/chat` con `callback_url` para flujos que requieren procesamiento más largo. Cada conversación tiene un `conversation_id` estable; Dundun mantiene **su propio historial interno** por ese identificador para contextualizar las respuestas, pero **no expone una API de lectura de threads**. La plataforma es, por tanto, la fuente de verdad del hilo que el usuario (y los agentes MCP) ven: cada intercambio se persiste localmente en el almacén de conversaciones. Una señal `conversation_ended` en la respuesta indica cuándo una conversación ha terminado; la plataforma puede además cerrarla explícitamente con `POST /api/v1/webhooks/dundun/end-conversation`. Este desacoplamiento asegura que lo que se muestra en la UI, lo que se expone por MCP y lo que se audita coincide siempre, independientemente del estado interno de Dundun.
+
 ### 3.15 Búsqueda semántica (Puppet)
 
 La búsqueda se apoya en **Puppet**, plataforma interna Tuio de búsqueda semántica. Desde la perspectiva del usuario:
@@ -226,6 +228,14 @@ La búsqueda se apoya en **Puppet**, plataforma interna Tuio de búsqueda semán
 - Aislamiento estricto por workspace: un usuario no ve resultados de otro.
 
 El indexado es asíncrono con lag asumido de hasta ~3 segundos. Si Puppet está caído, la búsqueda devuelve error explícito en lugar de fallback silencioso.
+
+**Mecánica de integración**. Puppet expone dos modos de retrieval: semántico (`POST /api/v1/retrieval/semantic/`, con ranking por similitud) y determinista (`POST /api/v1/retrieval/deterministic/`, filtro exacto por categoría+tag, hasta 1000 resultados, sin coste semántico). La plataforma usa el modo semántico para la barra principal; el determinista queda reservado para listados exactos internos.
+
+Puppet **no conoce el concepto de workspace**: la aislación de tenants se hace mediante una **convención de categorías** que la plataforma impone al ingestar y al consultar. El contenido del workspace se indexa bajo `tuio-wmp:ws:<workspace_id>:workitem|section|comment`; la documentación externa bajo `tuio-docs:*`. Cada consulta fija la lista de categorías permitidas al workspace de sesión, y los resultados se post-filtran contra los permisos reales del usuario en la plataforma antes de devolverlos (protección frente a cualquier desalineación entre ingesta y permisos vivos).
+
+Puppet hoy ingesta desde Notion (`POST /api/v1/ingestion/notion/upsert-page` y `.../upsert-database`, más un webhook). La ingesta de contenido del workspace de la plataforma está pendiente y se añadirá en una iteración próxima; hasta entonces la búsqueda sobre contenido interno del workspace devuelve vacío —intencionalmente, sin fallback— mientras la búsqueda sobre documentación externa Tuio ya funciona. Cuando la ingesta interna se active, ningún cliente necesita cambios: los resultados empiezan a aparecer automáticamente.
+
+Los *snippets* con resaltado que ve el usuario no vienen de Puppet (que devuelve contenido en texto plano): los genera la plataforma en el servidor a partir del `content` crudo, marcando coincidencias y saneando HTML.
 
 ### 3.16 Acceso programático (MCP)
 

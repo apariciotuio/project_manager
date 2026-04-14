@@ -484,18 +484,53 @@ Target spec: `specs/read-tools-assistant-search-extras/spec.md`
 
 ### 4.2 Puppet proxy
 
-`SemanticSearchService.search()`:
-1. Apply workspace scope to Puppet client (non-negotiable)
-2. Call Puppet with 3 s timeout
-3. On timeout/5xx → `UpstreamUnavailableError(upstream="puppet")`
-4. **Post-filter**: for every returned result, re-check read permission via existing service; drop unreadable results silently (never leak existence) → `[S:extras/semantic-search:security]`
-5. Sanitize `snippet_html`: allowlist `<em>,<strong>,<br>`; escape everything else via `bleach`
-6. Return results + facets
+**Upstream contract** (from Puppet OpenAPI v0.1.1):
+
+- `POST /api/v1/retrieval/semantic/` — body `QueryRequest { query, categories?: str[], tags?: str[], top_k?: int = 5 }` → `QueryResponse { query, sources: Source[], metadata }`
+- `Source { page_id?, title?, content, category?, tags?, score? }` — **no HTML, no highlighting**; content is raw text
+- Puppet has **no workspace concept**. Isolation is the platform's responsibility via category conventions.
+
+**Category naming convention** (platform-owned, enforced both at ingestion and at query):
+- Workspace content: `tuio-wmp:ws:<workspace_uuid>:workitem`, `:section`, `:comment`
+- External Tuio docs: `tuio-docs:*`
+- Any `Source` outside those prefixes is dropped defensively.
+
+`SemanticSearchService.search(query, include_external, limit, filters)`:
+
+1. Build `categories` list:
+   - Always include `tuio-wmp:ws:<session.workspace_id>:workitem`, `:section`, `:comment`
+   - If `include_external` → append `tuio-docs:work-items`, `tuio-docs:adr`, etc. (configurable allowlist)
+2. Map caller filters to Puppet `tags` (platform tag_id string form) — unknown/foreign tag ids → `ForbiddenError`
+3. `top_k = min(limit, 50)` — Puppet default is 5; we override per request
+4. Call Puppet with 3 s timeout → on timeout/5xx → `UpstreamUnavailableError("puppet")`
+5. **Category defensive filter**: drop any `Source` whose `category` does not match the requested allowlist (protects against misconfigured ingestion / category-regex bypass)
+6. **Authz re-check (critical)**: for every `Source` with a workspace category, resolve `page_id → platform entity id` and call the existing platform read-check; drop on forbidden. For `tuio-docs:*` sources, no entity check (content is intentionally public within Tuio).
+7. **Generate `snippet_html` server-side** from `Source.content`:
+   - Extract the span around the first query-term match (120 chars)
+   - Wrap matches in `<em>`; HTML-escape everything else via `bleach` allowlist `{em, strong, br}`
+8. Build `results[]` and `facets{}` from the surviving sources (facet aggregation over surviving set, not raw Puppet response)
+
+**Entity ID mapping**. Requires `page_id` to encode platform entity identity for workspace sources. Convention (established at ingestion side, tracked in EP-13 ingestion work): `page_id = "<entity_kind>:<uuid>"` e.g. `workitem:9e7f...`, `section:ab12...`, `comment:c0de...`. Unknown format → drop defensively.
 
 [T:integration]
-- `test_semantic_search_drops_unreadable_results_from_puppet`
-- `test_semantic_search_sanitizes_html`
+- `test_semantic_search_scopes_categories_to_session_workspace`
+- `test_semantic_search_include_external_adds_tuio_docs_categories`
+- `test_semantic_search_drops_sources_with_unknown_category_prefix`
+- `test_semantic_search_drops_sources_for_unreadable_platform_entities`
+- `test_semantic_search_generates_snippet_from_raw_content_with_em_wrapping`
+- `test_semantic_search_sanitizes_snippet_against_xss`
 - `test_semantic_search_timeout_returns_minus32010`
+- `test_semantic_search_foreign_tag_returns_minus32003`
+- `test_semantic_search_on_ws_with_no_ingestion_returns_empty_workspace_results_but_docs_still_work` — **acceptance of the pre-ingestion state**
+
+### 4.2.1 Known limitation during rollout
+
+Puppet's platform-ingestion endpoints are **not yet implemented** (tracked outside EP-18). Until they ship and the platform fans its work items / sections / comments into Puppet under `tuio-wmp:ws:<uuid>:*`:
+
+- `semantic.search` with `include_external: false` (default) returns `results: []` on workspace content — behavior is correct, just empty
+- `semantic.search` with `include_external: true` returns useful Tuio-docs results
+- Tool description and user-facing docs MUST state this explicitly so agents don't misinterpret empty results as "nothing matches"
+- No client changes are required when ingestion goes live — the same tool starts returning workspace content automatically
 
 ### 4.3 Signed URL for attachments
 

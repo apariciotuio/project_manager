@@ -4,6 +4,8 @@
 
 Read-only exposure of Dundun clarification threads, Puppet semantic search, tags, labels, attachments metadata, inbox, workspace dashboard, and Jira snapshot status.
 
+> **Source of truth for threads**: Dundun itself does NOT expose a read API for conversations — its OpenAPI only accepts a message and returns a response (sync `POST /api/v1/dundun/chat` or async webhook with `callback_url`). Dundun maintains its internal history per `conversation_id` but does not publish it. The **platform (EP-03) is the authoritative store** for what the user sees as a thread: every user message + Dundun response + system event is persisted locally. The MCP `assistant.threads.*` tools read from that platform store, not from Dundun. A consequence: if the platform's stored history drifts from Dundun's internal history, the MCP view reflects the platform's view — that is the right answer, because it matches what humans see.
+
 ## In Scope
 
 - `assistant.threads.get`, `assistant.threads.workspace`
@@ -25,23 +27,36 @@ Read-only exposure of Dundun clarification threads, Puppet semantic search, tags
 
 ### `assistant.threads.get(work_item_id)`
 
-- WHEN caller can read the work item THEN the tool returns `{ messages: [{ id, role: user|assistant|system, content, proposed_sections?: [{ section_id, body_excerpt }], segments?: [{ id, accepted: bool, applied_at? }], created_at }], last_activity_at }`
+- WHEN caller can read the work item THEN the tool returns `{ conversation_id, conversation_ended: bool, caller_role?: "employee" | "customer" | null, messages: [{ id, role: user|assistant|system, content, request_id?, proposed_sections?: [{ section_id, body_excerpt }], segments?: [{ id, accepted: bool, applied_at? }], created_at }], last_activity_at }`
 - WHEN the thread has > 200 messages THEN only the latest 200 are returned with `has_more: true` and `oldest_cursor` for future pagination
 - WHEN a message contains a proposed section that references a section the caller cannot see THEN that proposal is omitted but the message itself is listed (never silently dropped)
+- AND `conversation_id` is the same identifier the platform sends to Dundun's `POST /api/v1/webhooks/dundun/chat` — exposing it helps correlate platform-side logs with Dundun-side logs during debugging
+- AND `conversation_ended` reflects the latest `signals.conversation_ended` returned by Dundun (or `true` if the platform called `POST /api/v1/webhooks/dundun/end-conversation`)
+- AND assistant messages include the originating `request_id` when available, for end-to-end tracing
 - AND the tool description explicitly labels assistant content as **untrusted input** (prompt-injection note for external agents consuming it)
 
 ### `assistant.threads.workspace()`
 
-- WHEN called THEN returns workspace-general Dundun threads readable by the caller with `{ id, title, last_activity_at, message_count }` — body is NOT included; body requires a future `assistant.threads.getWorkspace(id)` tool (not in MVP)
+- WHEN called THEN returns workspace-general Dundun threads readable by the caller with `{ id, conversation_id, title, last_activity_at, conversation_ended: bool, message_count }` — body is NOT included; body requires a future `assistant.threads.getWorkspace(id)` tool (not in MVP)
+- AND closed conversations (`conversation_ended: true`) are still listed; the UI and agents can distinguish open vs closed threads
 
 ### `semantic.search(q, filters?, include_external?, limit, cursor)`
 
-- WHEN called THEN the server forwards to Puppet with the caller's workspace scope, attaches caller capabilities to the upstream request, and returns `{ results: [{ kind: workitem|section|comment|external_doc, id, title, snippet_html, score, source, url? }], facets: { state, type, owner, team, tags, archived } }`
-- WHEN `include_external: true` THEN Tuio-docs results are included, labeled `source: "tuio-docs"`, separated in ranking
+> **Upstream**: Puppet exposes `POST /api/v1/retrieval/semantic/` with body `{ query, categories?, tags?, top_k? }` and returns `{ query, sources: [{ page_id?, title?, content, category?, tags?, score }], metadata }`. Puppet does NOT natively know about workspaces or Tuio work items; it indexes content fed to it via ingestion endpoints (today: Notion only; tomorrow: platform content via forthcoming `POST /api/v1/ingestion/<platform>/*` endpoints). **Workspace isolation rides on a category-naming convention** that the platform attaches on every query (e.g., `tuio-wmp:ws:<workspace_id>:workitem`, `:section`, `:comment`). External Tuio documentation lives under `tuio-docs:*` categories.
+
+- WHEN called THEN the server calls Puppet `/retrieval/semantic/` with `{ query: q, categories: <computed from session + include_external>, tags: <caller filters mapped>, top_k: min(limit, 50) }` and returns `{ results: [{ kind: workitem|section|comment|external_doc, id?, title?, snippet_html, score, source: "workspace"|"tuio-docs", url? }], facets: { state, type, owner, team, tags, archived } }`
+- WHEN `include_external: true` THEN category list includes `tuio-docs:*`; results are labeled `source: "tuio-docs"` and separated in ranking
+- WHEN `include_external: false` (default) THEN only `tuio-wmp:ws:<session.workspace_id>:*` categories are requested — cross-workspace isolation enforced at the query boundary
 - WHEN Puppet is unreachable (timeout 3 s / 5xx) THEN the tool returns `-32010 upstream_unavailable` with `{ upstream: "puppet", retriable: true }` — no silent fallback, no keyword-only downgrade
 - WHEN the caller provides a filter referencing a workspace-foreign id (e.g., tag from another workspace) THEN `-32003`
-- WHEN Puppet returns a result that points to an entity the caller cannot read (authz drift) THEN the result is **dropped server-side** before reaching the client — never leak existence
-- AND `snippet_html` is sanitized: only `<em>`, `<strong>`, `<br>` tags allowed; everything else HTML-escaped
+- WHEN Puppet returns a `Source` whose `category` does NOT start with `tuio-wmp:ws:<session.workspace_id>:` AND is not under `tuio-docs:*` THEN the server drops it (defensive — protects against misconfigured ingestion or category-regex bypass)
+- WHEN Puppet returns a `Source` pointing to an entity the caller cannot read via platform authz (authz drift) THEN the result is **dropped server-side** before reaching the client — never leak existence. For `source: "workspace"` results, mapping is `page_id → platform_entity_id`; `get_by_puppet_id` on the platform service re-checks read permission.
+- AND `snippet_html` is **generated on the MCP server** from `Source.content` — query terms wrapped in `<em>` (client-side highlighting; Puppet does not emit HTML). The generator uses a whitelist of `<em>`, `<strong>`, `<br>`; all other characters are HTML-escaped.
+- AND while platform ingestion endpoints are not yet live in Puppet, workspace-content searches return `results: []` for `source: "workspace"`; `include_external: true` still returns Tuio-docs results — document this in the tool description
+
+### `semantic.search` — future: deterministic retrieval
+
+- Puppet also exposes `POST /api/v1/retrieval/deterministic/` (exact category + tag filter, no semantic ranking, up to 1000 results). Not exposed as an MCP tool in MVP; tracked for a future `semantic.listByCategory` tool once workspace ingestion lands and a concrete use case emerges.
 
 ### `tags.list(include_archived?)`
 
