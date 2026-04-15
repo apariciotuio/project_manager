@@ -1,0 +1,20 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["security"],
+  "rules": {
+    "security/detect-object-injection": "warn",
+    "security/detect-non-literal-fs-filename": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.tsx", "**/*.jsx"],
+      "plugins": ["local-rules"],
+      "rules": {
+        "local-rules/no-raw-tailwind-color": "error",
+        "local-rules/no-raw-text-size": "error",
+        "local-rules/no-literal-user-strings": "warn",
+        "local-rules/tone-jargon": "warn"
+      }
+    }
+  ]
+}

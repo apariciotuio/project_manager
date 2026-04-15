@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   SEMANTIC DESIGN TOKENS — light mode
+   Every token must also appear in .dark block below (parity CI)
+   ============================================================ */
+:root {
+  /* --- Base --- */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+
+  /* --- Card --- */
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+
+  /* --- Popover --- */
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+
+  /* --- Primary --- */
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 0 0% 100%;
+
+  /* --- Secondary --- */
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+
+  /* --- Muted --- */
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+
+  /* --- Accent --- */
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+
+  /* --- Destructive --- */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* --- Success --- */
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 0 0% 100%;
+
+  /* --- Warning --- */
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 0%;
+
+  /* --- Info --- */
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 100%;
+
+  /* --- Border / Input / Ring --- */
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 221.2 83.2% 53.3%;
+
+  /* --- Radius --- */
+  --radius: 0.5rem;
+
+  /* --- Domain: State colors --- */
+  --state-draft: 240 4.8% 95.9%;
+  --state-draft-foreground: 240 3.8% 46.1%;
+  --state-in-review: 199 89% 48%;
+  --state-in-review-foreground: 0 0% 100%;
+  --state-ready: 142.1 76.2% 36.3%;
+  --state-ready-foreground: 0 0% 100%;
+  --state-blocked: 0 84.2% 60.2%;
+  --state-blocked-foreground: 0 0% 100%;
+  --state-archived: 240 3.8% 46.1%;
+  --state-archived-foreground: 0 0% 100%;
+  --state-exported: 221.2 83.2% 53.3%;
+  --state-exported-foreground: 0 0% 100%;
+
+  /* --- Domain: Severity --- */
+  --severity-blocking: 0 84.2% 60.2%;
+  --severity-blocking-foreground: 0 0% 100%;
+  --severity-warning: 38 92% 50%;
+  --severity-warning-foreground: 0 0% 0%;
+  --severity-info: 199 89% 48%;
+  --severity-info-foreground: 0 0% 100%;
+
+  /* --- Domain: Tier (inbox priority) --- */
+  --tier-1: 0 84.2% 60.2%;
+  --tier-1-foreground: 0 0% 100%;
+  --tier-2: 38 92% 50%;
+  --tier-2-foreground: 0 0% 0%;
+  --tier-3: 199 89% 48%;
+  --tier-3-foreground: 0 0% 100%;
+  --tier-4: 240 4.8% 95.9%;
+  --tier-4-foreground: 240 3.8% 46.1%;
+
+  /* --- Domain: Level (completeness) --- */
+  --level-low: 0 84.2% 60.2%;
+  --level-low-foreground: 0 0% 100%;
+  --level-medium: 38 92% 50%;
+  --level-medium-foreground: 0 0% 0%;
+  --level-high: 199 89% 48%;
+  --level-high-foreground: 0 0% 100%;
+  --level-ready: 142.1 76.2% 36.3%;
+  --level-ready-foreground: 0 0% 100%;
+}
+
+/* ============================================================
+   SEMANTIC DESIGN TOKENS — dark mode
+   Mirror of every token above (parity enforced by test)
+   ============================================================ */
+.dark {
+  /* --- Base --- */
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+
+  /* --- Card --- */
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+
+  /* --- Popover --- */
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+
+  /* --- Primary --- */
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  /* --- Secondary --- */
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+
+  /* --- Muted --- */
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  /* --- Accent --- */
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+
+  /* --- Destructive --- */
+  --destructive: 0 72.2% 50.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* --- Success --- */
+  --success: 142.1 70.6% 45.3%;
+  --success-foreground: 0 0% 98%;
+
+  /* --- Warning --- */
+  --warning: 38 92% 60%;
+  --warning-foreground: 0 0% 0%;
+
+  /* --- Info --- */
+  --info: 199 89% 55%;
+  --info-foreground: 0 0% 100%;
+
+  /* --- Border / Input / Ring --- */
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 217.2 91.2% 59.8%;
+
+  /* --- Domain: State colors --- */
+  --state-draft: 240 3.7% 15.9%;
+  --state-draft-foreground: 240 5% 64.9%;
+  --state-in-review: 199 89% 55%;
+  --state-in-review-foreground: 0 0% 100%;
+  --state-ready: 142.1 70.6% 45.3%;
+  --state-ready-foreground: 0 0% 98%;
+  --state-blocked: 0 72.2% 50.6%;
+  --state-blocked-foreground: 0 0% 98%;
+  --state-archived: 240 5% 64.9%;
+  --state-archived-foreground: 0 0% 0%;
+  --state-exported: 217.2 91.2% 59.8%;
+  --state-exported-foreground: 222.2 47.4% 11.2%;
+
+  /* --- Domain: Severity --- */
+  --severity-blocking: 0 72.2% 50.6%;
+  --severity-blocking-foreground: 0 0% 98%;
+  --severity-warning: 38 92% 60%;
+  --severity-warning-foreground: 0 0% 0%;
+  --severity-info: 199 89% 55%;
+  --severity-info-foreground: 0 0% 100%;
+
+  /* --- Domain: Tier --- */
+  --tier-1: 0 72.2% 50.6%;
+  --tier-1-foreground: 0 0% 98%;
+  --tier-2: 38 92% 60%;
+  --tier-2-foreground: 0 0% 0%;
+  --tier-3: 199 89% 55%;
+  --tier-3-foreground: 0 0% 100%;
+  --tier-4: 240 3.7% 15.9%;
+  --tier-4-foreground: 240 5% 64.9%;
+
+  /* --- Domain: Level --- */
+  --level-low: 0 72.2% 50.6%;
+  --level-low-foreground: 0 0% 98%;
+  --level-medium: 38 92% 60%;
+  --level-medium-foreground: 0 0% 0%;
+  --level-high: 199 89% 55%;
+  --level-high-foreground: 0 0% 100%;
+  --level-ready: 142.1 70.6% 45.3%;
+  --level-ready-foreground: 0 0% 98%;
+}
+
+/* ============================================================
+   BASE LAYER — typography utilities
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* ============================================================
+   SEMANTIC TYPOGRAPHY CLASSES
+   Never use raw text-3xl/font-bold in feature code — use these.
+   ============================================================ */
+@layer utilities {
+  .text-display {
+    @apply text-5xl font-bold leading-tight tracking-tight;
+  }
+
+  .text-h1 {
+    @apply text-3xl font-semibold leading-snug tracking-tight;
+  }
+
+  .text-h2 {
+    @apply text-2xl font-semibold leading-snug;
+  }
+
+  .text-h3 {
+    @apply text-xl font-medium leading-snug;
+  }
+
+  .text-body {
+    @apply text-base font-normal leading-relaxed;
+  }
+
+  .text-body-sm {
+    @apply text-sm font-normal leading-relaxed;
+  }
+
+  .text-caption {
+    @apply text-xs font-normal leading-normal text-muted-foreground;
+  }
+
+  .text-code {
+    @apply font-mono text-sm;
+  }
+}

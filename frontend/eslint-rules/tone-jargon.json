@@ -1,0 +1,31 @@
+{
+  "forbidden": [
+    "submit",
+    "Submit",
+    "click here",
+    "Click here",
+    "Click Here",
+    "Are you sure",
+    "are you sure",
+    "Ready",
+    "Draft",
+    "token",
+    "Token",
+    "usted",
+    "Usted",
+    "API",
+    "endpoint",
+    "Endpoint",
+    "database",
+    "Database",
+    "null",
+    "undefined",
+    "error code",
+    "Error code",
+    "stacktrace",
+    "stack trace",
+    "Force Ready",
+    "force ready",
+    "Lorem ipsum"
+  ]
+}
