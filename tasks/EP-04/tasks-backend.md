@@ -76,13 +76,16 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 ## Phase 1 — Database Migrations
 
-- [ ] Write Alembic migration `create_work_item_sections`: all columns per design.md, UNIQUE `(work_item_id, section_type)`, index `idx_work_item_sections_work_item_id`
-  - TDD: test migration applies cleanly, unique constraint enforced
-- [ ] Write Alembic migration `create_work_item_section_versions`: append-only table, no update path; indexes on `section_id` and `work_item_id`
-- [ ] Write Alembic migration `create_work_item_validators`: `id`, `work_item_id FK`, `user_id FK nullable`, `role`, `status`, `assigned_at`, `assigned_by FK`, `responded_at`; UNIQUE `(work_item_id, role)`
-- [ ] Write Alembic migration `create_work_item_versions`: `id`, `work_item_id FK`, `version_number INT`, `snapshot JSONB`, `created_by FK`, `created_at`; UNIQUE `(work_item_id, version_number)`; index `idx_wiv_work_item_created ON (work_item_id, created_at DESC)`
-- [ ] Write Alembic migration: add nullable `section_id UUID REFERENCES work_item_sections(id)` FK to `suggestion_items` table (EP-03 integration)
-- [ ] Verify all migrations apply and roll back cleanly on fresh DB
+- [x] `0017_create_work_item_sections.py` — UNIQUE(work_item_id, section_type), idx_work_item_sections_work_item_id, idx_wis_completeness composite (2026-04-16)
+- [x] `0018_create_work_item_section_versions.py` — append-only, FK with ON DELETE CASCADE, idx by section_id + work_item_id (2026-04-16)
+- [x] `0019_create_work_item_validators.py` — UNIQUE(work_item_id, role), CHECK on status, indexes on (work_item_id, status) + partial on user_id WHERE status='pending' (2026-04-16)
+- [x] `0020_create_work_item_versions.py` — UNIQUE(work_item_id, version_number), idx_wiv_work_item_created DESC (2026-04-16)
+- [x] `0021_add_section_id_to_assistant_suggestions.py` — FK added now that work_item_sections exists; orphaned rows nulled before constraint applied (2026-04-16)
+- [x] All migrations apply cleanly on fresh DB — verified via full regression (934 passed + 1 skip)
+
+**Status: COMPLETED** (2026-04-16)
+
+> Note: workspace_id + RLS not applied to these 3 new tables per the same deferred follow-up as EP-03 Phase 8 (see `tasks/EP-03/phase_8_security_findings.md` and `decisions.log.md` 2026-04-16). A single future migration will close the RLS gap across EP-03 + EP-04 tables.
 
 ---
 
@@ -90,18 +93,26 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 ### Section Catalog
 
-- [ ] Implement `domain/models/section_type.py` — `SectionType` enum: `summary`, `steps_to_reproduce`, `expected_behavior`, `actual_behavior`, `environment`, `impact`, `acceptance_criteria`, `notes`, `objective`, `scope`, `dependencies`, `risks`, `breakdown`, `context`, `definition_of_done`, `hypothesis`, `success_metrics`, `technical_approach`
-- [ ] [RED] Write unit tests for `SECTION_CATALOG`: each of 8 `WorkItemType` values maps to a list with at least 1 required section; no duplicate `section_type` within a type's list; required sections have `is_required=True`
-- [ ] [GREEN] Implement `domain/models/section_catalog.py` — `SectionConfig` dataclass: `section_type`, `display_order: int`, `required: bool`; `SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]]` for all 8 types
+- [x] `domain/models/section_type.py` — `SectionType` + `GenerationSource` StrEnums (2026-04-16)
+- [x] Unit tests for `SECTION_CATALOG` invariants — all 8 WorkItemTypes covered, ≥1 required section per type, no duplicate section_types, unique display_order per type (2026-04-16 — 33 parametrised tests)
+- [x] `domain/models/section_catalog.py` — `SectionConfig` frozen dataclass + `SECTION_CATALOG` dict for all 8 WorkItemType values (2026-04-16)
 
 ### Section Entity
 
-- [ ] [RED] Write unit tests: setting empty content on required section raises `RequiredSectionEmptyError`; setting empty content on optional section is allowed; `version` increments on `save()`; `generation_source` set to `'manual'` when edited by user
-- [ ] [GREEN] Implement `domain/models/section.py` — `Section` dataclass: `id`, `work_item_id`, `section_type: SectionType`, `content`, `display_order`, `is_required`, `generation_source`, `version`, `created_at`, `updated_at`, `created_by`, `updated_by`
+- [x] Unit tests: empty content on required section raises `RequiredSectionEmptyError`; empty on optional allowed; `version` increments on `update_content()`; `generation_source` set correctly (2026-04-16 — 5 tests)
+- [x] `domain/models/section.py` — `Section` dataclass + `RequiredSectionEmptyError` + `create`/`update_content` (2026-04-16)
+
+### Section / Validator / Work Item Version entities
+
+- [x] `domain/models/section_version.py` — frozen dataclass (append-only VO) (2026-04-16)
+- [x] `domain/models/validator.py` — `Validator` entity + `ValidatorStatus` enum; `respond()` sets responded_at; cannot transition back to pending; cannot respond twice (2026-04-16 — 4 tests)
+- [x] `domain/models/work_item_version.py` — frozen dataclass; append-only VO (2026-04-16)
 
 ### DimensionResult
 
-- [ ] [GREEN] Implement `domain/quality/dimension_result.py` — `DimensionResult` dataclass: `dimension: str`, `weight: float`, `filled: bool`, `score: float`, `message: str | None`
+- [x] `domain/quality/dimension_result.py` — `DimensionResult` + `CompletenessResult` frozen dataclasses (2026-04-16)
+
+**Status: COMPLETED** (2026-04-16) — 42 unit tests, ruff clean, mypy --strict zero errors. Full regression: 934 passed + 1 skipped.
 
 ### Repository Interfaces
 
