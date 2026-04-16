@@ -109,25 +109,35 @@ Frames are forwarded verbatim; our BE does NOT interpret content, only enforces 
 
 ## Phase 3 — Dundun Integration
 
-- [ ] [RED] Write unit tests for `DundunClient.invoke_agent(agent, user_id, conversation_id, work_item_id, callback_url, payload)`: happy path 202 returns `{request_id}`; 4xx/5xx raise typed errors; request headers carry `caller_role=employee`, `user_id`, bearer service key; `callback_url` included in payload
-- [ ] [RED] Write unit tests for `DundunClient.chat_ws(conversation_id, user_id, work_item_id)`: opens WS to Dundun `/ws/chat` with correct headers; async iterator yields frames; propagates close
-- [ ] [RED] Write unit tests for `DundunClient.get_history(conversation_id)`: returns ordered list; 404 raises `DundunNotFoundError`
-- [ ] [GREEN] Implement `infrastructure/dundun/dundun_client.py` (httpx AsyncClient for HTTP, `websockets` library for WS; timeouts from env)
-- [ ] [GREEN] Implement `tests/fakes/fake_dundun_client.py` — records calls; configurable responses; used in all service/controller tests as the only fake at the Dundun boundary
-- [ ] [RED] Write unit tests for HMAC signature verification on `/api/v1/dundun/callback` (invalid signature → 401; valid + unknown `request_id` → 404; valid + known → 200 and result persisted)
-- [ ] [GREEN] Implement `infrastructure/dundun/callback_verifier.py` (HMAC-SHA256 over raw body + shared secret from `DUNDUN_CALLBACK_SECRET`)
+- [x] [RED] Write unit tests for `DundunClient.invoke_agent(agent, user_id, conversation_id, work_item_id, callback_url, payload)`: happy path 202 returns `{request_id}`; 4xx/5xx raise typed errors; request headers carry `caller_role=employee`, `user_id`, bearer service key; `callback_url` included in payload (2026-04-16 — 21 tests in test_dundun_http_client.py)
+- [x] [RED] Write unit tests for `DundunClient.chat_ws(conversation_id, user_id, work_item_id)`: opens WS to Dundun `/ws/chat` with correct headers; async iterator yields frames; propagates close (2026-04-16 — 3 tests)
+- [x] [RED] Write unit tests for `DundunClient.get_history(conversation_id)`: returns empty list (Dundun has no read API per reference_dundun_api.md; deviation documented in port) (2026-04-16 — 2 tests)
+- [x] [GREEN] Implement `infrastructure/adapters/dundun_http_client.py` (httpx AsyncClient for HTTP, `websockets` library for WS; timeouts from env; `get_history` returns [] with TODO — no Dundun read API) (2026-04-16)
+- [x] [GREEN] Implement `tests/fakes/fake_dundun_client.py` — records calls in `invocations`; configurable `chat_frames`; `history_by_conversation`; `next_error` injection; used in all service/controller tests as the only fake at the Dundun boundary (2026-04-16 — 15 tests in test_fake_dundun_client.py)
+- [x] [RED] Write unit tests for HMAC signature verification: valid → True; wrong body → False; wrong secret → False; empty/malformed → False; never raises (2026-04-16 — 10 tests in test_dundun_callback_verifier.py)
+- [x] [GREEN] Implement `infrastructure/adapters/dundun_callback_verifier.py` (HMAC-SHA256 over raw body + shared secret; constant-time `hmac.compare_digest`; case-insensitive hex) (2026-04-16)
 - [ ] [GREEN] Implement `presentation/controllers/dundun_callback_controller.py` — routes by `agent` + `request_id`, persists result (`assistant_suggestions`, `gap_findings`, `task_proposals`, etc.), emits in-process domain event for SSE push to FE
-- [ ] [REFACTOR] No `anthropic`/`openai`/`litellm`/`tiktoken` in `pyproject.toml`; no prompt YAMLs; no `LLMProvider` protocol; no `ResponseParser`
+- [x] [REFACTOR] No `anthropic`/`openai`/`litellm`/`tiktoken` in `pyproject.toml`; no prompt YAMLs; no `LLMProvider` protocol; no `ResponseParser` — confirmed clean (2026-04-16)
+
+> **Note**: Callback controller deferred to Phase 3b pending Phase 4 repos. Total Phase 3 (partial): 45 new tests; ruff clean; mypy --strict zero errors.
+
+**Deviation from design.md §2.1**: `get_history` returns `[]` — Dundun v0.1.1 has no read API (reference_dundun_api.md). Platform must persist turns locally. Documented in `app/domain/ports/dundun.py`.
+**Deviation from design.md §2.1**: Invoke endpoint is `POST /api/v1/webhooks/dundun/chat` (not `/api/v1/agents/<agent>/invoke`). Body maps `agent → source_workflow_id`, `user_id → customer_id` per Dundun's actual contract.
+**Deviation from design.md §2.3 (adapter path)**: Implementation placed in `infrastructure/adapters/` (consistent with existing adapter pattern) rather than `infrastructure/dundun/` as design suggested.
 
 ---
 
 ## Phase 4 — Repository Layer
 
-- [ ] [RED] Write integration tests for `ConversationThreadRepository`: CRUD, UNIQUE `(user_id, work_item_id)` enforced, `get_by_user_and_work_item`, `get_by_dundun_conversation_id`
-- [ ] [RED] Write integration tests for `AssistantSuggestionRepository`: CRUD, `get_by_dundun_request_id`, `list_pending_for_work_item`, `update_status`
-- [ ] [RED] Write integration tests for `GapFindingRepository`: insert, invalidate by `work_item_id`, get active (non-invalidated) findings
-- [ ] [GREEN] Implement all 3 repository implementations with SQLAlchemy async. No `ConversationMessageRepository` (no table).
-- [ ] [REFACTOR] All queries use indexed columns
+- [x] [RED] Write integration tests for `ConversationThreadRepository`: CRUD, UNIQUE `(user_id, work_item_id)` enforced, `get_by_user_and_work_item`, `get_by_dundun_conversation_id` (2026-04-16 — 14 tests in test_conversation_thread_repository.py)
+- [x] [RED] Write integration tests for `AssistantSuggestionRepository`: CRUD, `get_by_dundun_request_id`, `list_pending_for_work_item`, `update_status` (2026-04-16 — 14 tests in test_assistant_suggestion_repository.py)
+- [x] [RED] Write integration tests for `GapFindingRepository`: insert, invalidate by `work_item_id`, get active (non-invalidated) findings (2026-04-16 — 12 tests in test_gap_finding_repository.py)
+- [x] [GREEN] Implement all 3 repository implementations with SQLAlchemy async. No `ConversationMessageRepository` (no table). ORM models added to `orm.py`, mappers in `mappers/`, ABCs in `domain/repositories/`, impls in `infrastructure/persistence/`. `conftest.py` TRUNCATE updated to include new tables. (2026-04-16 — 40 new tests all green; 791 total passing)
+- [x] [REFACTOR] All queries use indexed columns: `idx_conversation_threads_user`, `idx_conversation_threads_work_item` (partial), `idx_as_work_item_batch` + `idx_as_dundun_request` (partial), `idx_gap_findings_active` (partial) — confirmed against migrations 0014/0015/0016 (2026-04-16)
+
+**Deviation from design.md §3**: `GapFinding` remains a pure transient value object (used by rule engine). Added `StoredGapFinding` as the persisted entity — keeps rule layer clean while satisfying the repo interface.
+
+**Status: COMPLETED** (2026-04-16)
 
 ---
 

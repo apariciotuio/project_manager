@@ -392,6 +392,132 @@ class TemplateORM(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# EP-03 — Conversation Threads, Assistant Suggestions, Gap Findings
+# ---------------------------------------------------------------------------
+
+
+class ConversationThreadORM(Base):
+    __tablename__ = "conversation_threads"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "work_item_id", name="conversation_threads_unique_user_work_item"
+        ),
+        Index("idx_conversation_threads_user", "user_id"),
+        Index(
+            "idx_conversation_threads_work_item",
+            "work_item_id",
+            postgresql_where=sa.text("work_item_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("work_items.id", ondelete="SET NULL"), nullable=True
+    )
+    dundun_conversation_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    last_message_preview: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_message_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+_SUGGESTION_STATUSES = "'pending','accepted','rejected','expired'"
+
+
+class AssistantSuggestionORM(Base):
+    __tablename__ = "assistant_suggestions"
+    __table_args__ = (
+        CheckConstraint(
+            f"status IN ({_SUGGESTION_STATUSES})",
+            name="assistant_suggestions_status_valid",
+        ),
+        Index("idx_as_work_item_batch", "work_item_id", "batch_id", "status"),
+        Index(
+            "idx_as_work_item_created",
+            "work_item_id",
+            sa.text("created_at DESC"),
+        ),
+        Index("idx_as_batch", "batch_id"),
+        Index(
+            "idx_as_dundun_request",
+            "dundun_request_id",
+            postgresql_where=sa.text("dundun_request_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    thread_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("conversation_threads.id", ondelete="SET NULL"), nullable=True
+    )
+    section_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    proposed_content: Mapped[str] = mapped_column(Text, nullable=False)
+    current_content: Mapped[str] = mapped_column(Text, nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="pending"
+    )
+    version_number_target: Mapped[int] = mapped_column(Integer, nullable=False)
+    batch_id: Mapped[UUID] = mapped_column(nullable=False)
+    dundun_request_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class GapFindingORM(Base):
+    __tablename__ = "gap_findings"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('rule', 'dundun')",
+            name="gap_findings_source_valid",
+        ),
+        CheckConstraint(
+            "severity IN ('blocking', 'warning', 'info')",
+            name="gap_findings_severity_valid",
+        ),
+        Index("idx_gap_findings_work_item", "work_item_id", "source", "severity"),
+        Index(
+            "idx_gap_findings_active",
+            "work_item_id",
+            postgresql_where=sa.text("invalidated_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    dimension: Mapped[str] = mapped_column(String(100), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    dundun_request_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class StateTransitionORM(Base):
     __tablename__ = "state_transitions"
     __table_args__ = (

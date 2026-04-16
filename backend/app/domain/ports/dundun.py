@@ -13,7 +13,8 @@ Deviation from design.md §2.1:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import UUID
 
 if TYPE_CHECKING:

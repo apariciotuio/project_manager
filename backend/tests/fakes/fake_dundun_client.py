@@ -25,10 +25,9 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 from uuid import UUID, uuid4
-
-from app.domain.ports.dundun import DundunClientError
 
 
 class FakeDundunClient:
@@ -61,15 +60,17 @@ class FakeDundunClient:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         self._check_error()
-        self.invocations.append((agent, user_id, conversation_id, work_item_id, callback_url, payload))
+        self.invocations.append(
+            (agent, user_id, conversation_id, work_item_id, callback_url, payload)
+        )
         return {"request_id": f"fake-{uuid4()}"}
 
     async def chat_ws(
         self,
         *,
-        conversation_id: str,
-        user_id: UUID,
-        work_item_id: UUID | None,
+        conversation_id: str,  # noqa: ARG002
+        user_id: UUID,  # noqa: ARG002
+        work_item_id: UUID | None,  # noqa: ARG002
     ) -> AsyncIterator[dict[str, Any]]:
         self._check_error()
         frames = list(self.chat_frames)

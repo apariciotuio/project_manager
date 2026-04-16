@@ -137,6 +137,7 @@ async def db_session(migrated_database):
         await conn.execute(
             text(
                 "TRUNCATE TABLE "
+                "gap_findings, assistant_suggestions, conversation_threads, "
                 "ownership_history, state_transitions, work_item_drafts, "
                 "work_items, templates, workspace_memberships, sessions, "
                 "oauth_states, workspaces, users "
