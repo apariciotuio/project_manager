@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from app.application.services.draft_service import DraftService
     from app.application.services.template_service import TemplateService
     from app.domain.ports.cache import ICache
+    from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
+        AssistantSuggestionRepositoryImpl,
+    )
+    from app.infrastructure.persistence.gap_finding_repository_impl import (
+        GapFindingRepositoryImpl,
+    )
 from app.application.services.audit_service import AuditService
 from app.application.services.auth_service import AuthService
 from app.application.services.membership_resolver_service import (
@@ -260,3 +266,39 @@ def get_membership_for_current_user(
     )
 
     return _MR(session)  # type: ignore[return-value]
+
+
+async def get_callback_session() -> AsyncGenerator[AsyncSession]:
+    """Unscoped (no RLS) session for the Dundun callback endpoint.
+
+    The callback is authenticated via HMAC — there is no workspace context, so
+    we cannot apply SET LOCAL app.current_workspace_id here.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+def get_assistant_suggestion_repo(
+    session: AsyncSession = Depends(get_callback_session),
+) -> AssistantSuggestionRepositoryImpl:
+    from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
+        AssistantSuggestionRepositoryImpl,
+    )
+
+    return AssistantSuggestionRepositoryImpl(session)
+
+
+def get_gap_finding_repo(
+    session: AsyncSession = Depends(get_callback_session),
+) -> GapFindingRepositoryImpl:
+    from app.infrastructure.persistence.gap_finding_repository_impl import (
+        GapFindingRepositoryImpl,
+    )
+
+    return GapFindingRepositoryImpl(session)

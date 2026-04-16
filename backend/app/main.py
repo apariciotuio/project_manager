@@ -5,6 +5,9 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
 from app.presentation.controllers.auth import router as auth_router
+from app.presentation.controllers.dundun_callback_controller import (
+    router as dundun_callback_router,
+)
 from app.presentation.controllers.health import router as health_router
 from app.presentation.controllers.template_controller import router as template_router
 from app.presentation.controllers.work_item_controller import router as work_item_router
@@ -73,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(work_item_router, prefix="/api/v1")
     app.include_router(work_item_draft_router, prefix="/api/v1")
     app.include_router(template_router, prefix="/api/v1")
+    app.include_router(dundun_callback_router, prefix="/api/v1")
 
     return app
 

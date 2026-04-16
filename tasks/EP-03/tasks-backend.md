@@ -116,10 +116,11 @@ Frames are forwarded verbatim; our BE does NOT interpret content, only enforces 
 - [x] [GREEN] Implement `tests/fakes/fake_dundun_client.py` — records calls in `invocations`; configurable `chat_frames`; `history_by_conversation`; `next_error` injection; used in all service/controller tests as the only fake at the Dundun boundary (2026-04-16 — 15 tests in test_fake_dundun_client.py)
 - [x] [RED] Write unit tests for HMAC signature verification: valid → True; wrong body → False; wrong secret → False; empty/malformed → False; never raises (2026-04-16 — 10 tests in test_dundun_callback_verifier.py)
 - [x] [GREEN] Implement `infrastructure/adapters/dundun_callback_verifier.py` (HMAC-SHA256 over raw body + shared secret; constant-time `hmac.compare_digest`; case-insensitive hex) (2026-04-16)
-- [ ] [GREEN] Implement `presentation/controllers/dundun_callback_controller.py` — routes by `agent` + `request_id`, persists result (`assistant_suggestions`, `gap_findings`, `task_proposals`, etc.), emits in-process domain event for SSE push to FE
+- [x] [GREEN] Implement `presentation/controllers/dundun_callback_controller.py` — routes by `agent` + `request_id`, persists result (`assistant_suggestions`, `gap_findings`); idempotency via `dundun_request_id` dedup; `wm_quick_action_agent` returns 501 (EP-04); `status=error` logs and returns 200; HMAC checked before Pydantic parse; 8 integration tests all green (2026-04-16)
 - [x] [REFACTOR] No `anthropic`/`openai`/`litellm`/`tiktoken` in `pyproject.toml`; no prompt YAMLs; no `LLMProvider` protocol; no `ResponseParser` — confirmed clean (2026-04-16)
 
 > **Note**: Callback controller deferred to Phase 3b pending Phase 4 repos. Total Phase 3 (partial): 45 new tests; ruff clean; mypy --strict zero errors.
+> **Phase 3b COMPLETED (2026-04-16)**: 8 integration tests in `test_dundun_callback_controller.py`; ruff clean (new files); mypy --strict zero errors on new files; 845 total passing.
 
 **Deviation from design.md §2.1**: `get_history` returns `[]` — Dundun v0.1.1 has no read API (reference_dundun_api.md). Platform must persist turns locally. Documented in `app/domain/ports/dundun.py`.
 **Deviation from design.md §2.1**: Invoke endpoint is `POST /api/v1/webhooks/dundun/chat` (not `/api/v1/agents/<agent>/invoke`). Body maps `agent → source_workflow_id`, `user_id → customer_id` per Dundun's actual contract.
