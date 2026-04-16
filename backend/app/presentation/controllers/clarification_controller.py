@@ -43,7 +43,13 @@ async def get_gap_questions(
 
         raise HTTPException(
             status_code=401,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {
+                    "code": "NO_WORKSPACE",
+                    "message": "no workspace in token",
+                    "details": {},
+                }
+            },
         )
 
     questions = await service.get_next_questions(work_item_id, current_user.workspace_id)

@@ -396,8 +396,12 @@ def get_clarification_service(
     )
 
 
-async def get_thread_repo_for_ws() -> ConversationThreadRepositoryImpl:
-    """Unscoped thread repo for WS handshake (no RLS needed — ownership checked by user_id)."""
+async def get_thread_repo_for_ws() -> AsyncGenerator[ConversationThreadRepositoryImpl]:
+    """Yield an unscoped thread repo for WS handshake.
+
+    RLS is not applied — ownership is enforced by `user_id` match in the controller.
+    Async generator so the session stays open for the duration of the lookup.
+    """
     from app.infrastructure.persistence.conversation_thread_repository_impl import (
         ConversationThreadRepositoryImpl,
     )
@@ -405,7 +409,7 @@ async def get_thread_repo_for_ws() -> ConversationThreadRepositoryImpl:
 
     factory = get_session_factory()
     async with factory() as session:
-        return ConversationThreadRepositoryImpl(session)
+        yield ConversationThreadRepositoryImpl(session)
 
 
 async def get_conversation_service_for_ws(user: object) -> ConversationService:  # noqa: ARG001

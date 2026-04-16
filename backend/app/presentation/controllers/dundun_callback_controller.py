@@ -12,7 +12,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 
@@ -139,9 +139,27 @@ async def _handle_suggestion(
     if not items:
         return _ok(payload.agent, 0, "no suggestions in payload")
 
-    work_item_id: UUID = payload.work_item_id or uuid4()  # fallback — should always be set
-    batch_id: UUID = payload.batch_id or uuid4()
-    created_by: UUID = payload.user_id or uuid4()
+    if payload.work_item_id is None or payload.user_id is None or payload.batch_id is None:
+        logger.warning(
+            "dundun_callback: suggestion missing required ids request_id=%s wi=%s batch=%s user=%s",
+            payload.request_id,
+            payload.work_item_id,
+            payload.batch_id,
+            payload.user_id,
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "MISSING_IDS",
+                    "message": "work_item_id, batch_id and user_id are required for suggestions",
+                    "details": {},
+                }
+            },
+        )
+    work_item_id: UUID = payload.work_item_id
+    batch_id: UUID = payload.batch_id
+    created_by: UUID = payload.user_id
     now = datetime.now(UTC)
     expires_at = now + timedelta(hours=_SUGGESTION_EXPIRES_HOURS)
 
@@ -182,7 +200,22 @@ async def _handle_gap(
     repo: GapFindingRepositoryImpl,
 ) -> JSONResponse:
     """Persist gap findings for wm_gap_agent callbacks."""
-    work_item_id: UUID = payload.work_item_id or uuid4()
+    if payload.work_item_id is None:
+        logger.warning(
+            "dundun_callback: gap missing work_item_id request_id=%s",
+            payload.request_id,
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "MISSING_IDS",
+                    "message": "work_item_id is required for gap findings",
+                    "details": {},
+                }
+            },
+        )
+    work_item_id: UUID = payload.work_item_id
     now = datetime.now(UTC)
 
     # Idempotency: check if this request_id was already processed

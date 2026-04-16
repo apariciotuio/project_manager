@@ -40,7 +40,11 @@ def override_settings(postgres_container):
 
     test_settings.app = AppSettings(env="test", debug=False, log_level="WARNING")
     test_settings.database = DatabaseSettings(url=pg_url)
-    test_settings.celery = CelerySettings(task_always_eager=True)
+    test_settings.celery = CelerySettings(
+        task_always_eager=True,
+        broker_url="memory://",
+        result_backend="cache+memory://",
+    )
     test_settings.auth = AuthSettings()
     test_settings.dundun = DundunSettings(use_fake=True)
     test_settings.puppet = PuppetSettings(use_fake=True)

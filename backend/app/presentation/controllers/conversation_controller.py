@@ -11,15 +11,28 @@ Routes:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi import status as http_status
+from fastapi.responses import JSONResponse
 
 from app.application.services.conversation_service import ConversationService
-from app.presentation.dependencies import get_conversation_service, get_current_user
+from app.config.settings import get_settings
+from app.infrastructure.adapters.jwt_adapter import (
+    JwtAdapter,
+    TokenExpiredError,
+    TokenInvalidError,
+)
+from app.presentation.dependencies import (
+    get_conversation_service,
+    get_current_user,
+    get_dundun_client,
+    get_thread_repo_for_ws,
+)
 from app.presentation.middleware.auth_middleware import CurrentUser
 from app.presentation.schemas.thread_schemas import CreateThreadRequest, ThreadResponse
 
@@ -66,13 +79,9 @@ async def get_or_create_thread(
     body: CreateThreadRequest,
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
-) -> dict[str, Any]:
-    from fastapi.responses import JSONResponse
-
+) -> JSONResponse:
     thread = await service.get_or_create_thread(current_user.id, body.work_item_id)
     data = ThreadResponse.from_domain(thread).model_dump(mode="json")
-    # Spec: 201 on create, 200 on existing. Service doesn't expose was_created.
-    # Return 201 conservatively — callers treat 2xx the same.
     return JSONResponse(
         status_code=http_status.HTTP_201_CREATED,
         content=_ok(data, "thread"),
@@ -85,7 +94,7 @@ async def get_thread(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
-    thread = await service._thread_repo.get_by_id(thread_id)  # type: ignore[attr-defined]
+    thread = await service._thread_repo.get_by_id(thread_id)
     if thread is None:
         raise _not_found()
     if thread.user_id != current_user.id:
@@ -100,7 +109,7 @@ async def get_thread_history(
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
     # IDOR: check ownership before fetching history
-    thread = await service._thread_repo.get_by_id(thread_id)  # type: ignore[attr-defined]
+    thread = await service._thread_repo.get_by_id(thread_id)
     if thread is None:
         raise _not_found()
     if thread.user_id != current_user.id:
@@ -117,7 +126,7 @@ async def archive_thread(
     service: ConversationService = Depends(get_conversation_service),
 ) -> None:
     # IDOR: check ownership before archiving
-    thread = await service._thread_repo.get_by_id(thread_id)  # type: ignore[attr-defined]
+    thread = await service._thread_repo.get_by_id(thread_id)
     if thread is None:
         raise _not_found()
     if thread.user_id != current_user.id:
@@ -135,14 +144,6 @@ async def _authenticate_ws(token: str | None) -> CurrentUser | None:
     """Validate JWT from WS query param. Returns CurrentUser or None."""
     if not token:
         return None
-    from uuid import UUID as _UUID
-
-    from app.infrastructure.adapters.jwt_adapter import (
-        JwtAdapter,
-        TokenExpiredError,
-        TokenInvalidError,
-    )
-    from app.config.settings import get_settings
 
     try:
         settings = get_settings()
@@ -154,10 +155,10 @@ async def _authenticate_ws(token: str | None) -> CurrentUser | None:
         )
         claims = jwt_adapter.decode(token)
         workspace_id = (
-            _UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
+            UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
         )
         return CurrentUser(
-            id=_UUID(claims["sub"]),
+            id=UUID(claims["sub"]),
             email=claims["email"],
             workspace_id=workspace_id,
             is_superadmin=bool(claims.get("is_superadmin", False)),
@@ -180,34 +181,29 @@ async def conversation_ws(
         return
 
     # 2. Resolve thread and verify IDOR
-    from app.presentation.dependencies import get_thread_repo_for_ws
+    async for thread_repo in get_thread_repo_for_ws():
+        thread = await thread_repo.get_by_id(thread_id)
+        if thread is None or thread.user_id != user.id:
+            await websocket.close(code=4403)
+            return
 
-    thread_repo = await get_thread_repo_for_ws()
-    thread = await thread_repo.get_by_id(thread_id)
-    if thread is None or thread.user_id != user.id:
-        await websocket.close(code=4403)
-        return
+        # 3. Accept the upgrade
+        await websocket.accept()
 
-    # 3. Accept the upgrade
-    await websocket.accept()
-
-    # 4. Open upstream to Dundun and pump frames bidirectionally
-    from app.presentation.dependencies import get_dundun_client
-
-    dundun = get_dundun_client()
-    try:
-        async with _UpstreamWS(
-            dundun, thread.dundun_conversation_id, user.id, thread.work_item_id
-        ) as upstream:
-            await _pump(websocket, upstream)
-    except WebSocketDisconnect:
-        logger.debug("ws_proxy: client disconnected thread=%s", thread_id)
-    except Exception:
-        logger.exception("ws_proxy: unexpected error thread=%s", thread_id)
+        # 4. Open upstream to Dundun and pump frames bidirectionally
+        dundun = get_dundun_client()
         try:
-            await websocket.close(code=1011)
+            async with _UpstreamWS(
+                dundun, thread.dundun_conversation_id, user.id, thread.work_item_id
+            ) as upstream:
+                await _pump(websocket, upstream)
+        except WebSocketDisconnect:
+            logger.debug("ws_proxy: client disconnected thread=%s", thread_id)
         except Exception:
-            pass
+            logger.exception("ws_proxy: unexpected error thread=%s", thread_id)
+            with contextlib.suppress(Exception):
+                await websocket.close(code=1011)
+        return
 
 
 class _UpstreamWS:
@@ -240,15 +236,14 @@ class _UpstreamWS:
 
     async def __aexit__(self, *args: object) -> None:
         if self._gen is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self._gen.aclose()
-            except Exception:
-                pass
 
     async def receive(self) -> dict[str, Any] | None:
         """Get next frame from upstream; returns None on exhaustion."""
         try:
-            return await self._gen.__anext__()
+            frame: dict[str, Any] = await self._gen.__anext__()
+            return frame
         except StopAsyncIteration:
             return None
 
