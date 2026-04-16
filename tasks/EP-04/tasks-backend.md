@@ -126,22 +126,16 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 ## Phase 3 — Repository Implementations
 
-- [ ] Implement SQLAlchemy ORM models: `SectionORM`, `SectionVersionORM`, `ValidatorORM`, `WorkItemVersionORM`
-- [ ] [RED] Write integration tests for `SectionRepositoryImpl`:
-  - `get_by_work_item` returns sections ordered by `display_order`
-  - `save` appends a version row to `work_item_section_versions` before overwriting section content
-  - `bulk_save` is atomic (if one section fails validation, no sections are saved)
-  - UNIQUE constraint enforced: second save of same `(work_item_id, section_type)` updates existing row
-- [ ] [GREEN] Implement `infrastructure/persistence/section_repository_impl.py`
-- [ ] [RED] Write integration tests for `SectionVersionRepositoryImpl`:
-  - Append-only: no UPDATE path in implementation
-  - `get_history` returns versions ordered descending by `version` number
-- [ ] [GREEN] Implement `infrastructure/persistence/section_version_repository_impl.py`
-- [ ] [RED] Write integration tests for `ValidatorRepositoryImpl`:
-  - UNIQUE `(work_item_id, role)` enforced
-  - `update_status` sets `responded_at` when status changes from `pending`
-- [ ] [GREEN] Implement `infrastructure/persistence/validator_repository_impl.py`
-- [ ] [GREEN] Implement `infrastructure/persistence/work_item_version_repository_impl.py` — append-only inserts only
+- [x] ORM: `WorkItemSectionORM`, `WorkItemSectionVersionORM`, `WorkItemValidatorORM`, `WorkItemVersionORM` in `app/infrastructure/persistence/models/orm.py` (2026-04-16)
+- [x] Mappers: `section_mapper.py` covers all 4 domain ↔ ORM conversions (2026-04-16)
+- [x] Repository interfaces: `ISectionRepository`, `ISectionVersionRepository`, `IValidatorRepository`, `IWorkItemVersionRepository` in `app/domain/repositories/` (2026-04-16)
+- [x] Implementations grouped in `infrastructure/persistence/section_repository_impl.py` (SectionRepositoryImpl + SectionVersionRepositoryImpl + ValidatorRepositoryImpl + WorkItemVersionRepositoryImpl) (2026-04-16)
+- [x] Integration tests: 6 tests in `tests/integration/infrastructure/test_section_repository.py` — bulk_insert + ordering, save upsert, section version history descending, validator assign+respond, UNIQUE(work_item_id, role) enforcement, WorkItemVersion auto-increment (2026-04-16)
+- [x] `WorkItemVersionRepositoryImpl.append` uses SELECT-MAX-then-INSERT under the UNIQUE(work_item_id, version_number) constraint so concurrent writers surface `IntegrityError` for the caller (typically EP-07 VersioningService) to translate into `VersionConflictError`
+
+**Status: COMPLETED** (2026-04-16) — 940 passed, 1 skipped. ORM-only change (no new migration); ruff clean on new files.
+
+> Note: `SectionRepositoryImpl.save` does NOT automatically append to `work_item_section_versions`. That responsibility belongs to the calling service (Phase 7 SectionService). The repos are thin CRUD; business rules live in the application layer.
 
 ---
 

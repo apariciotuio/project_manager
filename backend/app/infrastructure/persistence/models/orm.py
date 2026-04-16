@@ -586,3 +586,131 @@ class OwnershipHistoryORM(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-04 — Sections, Validators, Versions
+# ---------------------------------------------------------------------------
+
+
+class WorkItemSectionORM(Base):
+    __tablename__ = "work_item_sections"
+    __table_args__ = (
+        CheckConstraint(
+            "generation_source IN ('llm', 'manual', 'revert')",
+            name="work_item_sections_generation_source_valid",
+        ),
+        UniqueConstraint(
+            "work_item_id", "section_type", name="uq_work_item_section_type"
+        ),
+        Index("idx_work_item_sections_work_item_id", "work_item_id"),
+        Index(
+            "idx_wis_completeness",
+            "work_item_id",
+            "is_required",
+            "section_type",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    section_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    display_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    generation_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="llm"
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class WorkItemSectionVersionORM(Base):
+    __tablename__ = "work_item_section_versions"
+    __table_args__ = (
+        CheckConstraint(
+            "generation_source IN ('llm', 'manual', 'revert')",
+            name="work_item_section_versions_generation_source_valid",
+        ),
+        Index("idx_section_versions_section_id", "section_id"),
+        Index("idx_section_versions_work_item_id", "work_item_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    section_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_item_sections.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID] = mapped_column(nullable=False)
+    section_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    generation_source: Mapped[str] = mapped_column(String(16), nullable=False)
+    revert_from_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class WorkItemValidatorORM(Base):
+    __tablename__ = "work_item_validators"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'changes_requested', 'declined')",
+            name="work_item_validators_status_valid",
+        ),
+        UniqueConstraint("work_item_id", "role", name="uq_work_item_validator"),
+        Index("idx_work_item_validators_work_item", "work_item_id", "status"),
+        Index(
+            "idx_work_item_validators_user_pending",
+            "user_id",
+            postgresql_where=sa.text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="pending")
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    assigned_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    responded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class WorkItemVersionORM(Base):
+    __tablename__ = "work_item_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "work_item_id", "version_number", name="uq_work_item_version"
+        ),
+        Index("idx_wiv_work_item_created", "work_item_id", sa.text("created_at DESC")),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
