@@ -9,10 +9,10 @@ THEN the backend responds 401 and the frontend redirects to `/login`
 
 WHEN the user clicks "Sign in with Google" on `/login`
 THEN the frontend redirects to `GET /api/v1/auth/google` with a `redirect_uri` pointing to the frontend callback route
-AND the backend generates a PKCE code verifier + challenge, stores the verifier in Redis under a short-lived key (5 min TTL), and redirects to Google's OAuth authorization endpoint with `response_type=code`, `scope=openid email profile`, `state` (CSRF token bound to the Redis key), and the PKCE challenge
+AND the backend generates a PKCE code verifier + challenge, inserts a row into `oauth_states(state, verifier, expires_at = now() + 5 min)`, and redirects to Google's OAuth authorization endpoint with `response_type=code`, `scope=openid email profile`, `state` (CSRF token, primary key of the row), and the PKCE challenge
 
 WHEN Google redirects back to `/api/v1/auth/google/callback?code=<code>&state=<state>`
-THEN the backend validates the `state` parameter against the Redis entry (must match and not be expired)
+THEN the backend atomically consumes the `oauth_states` row via `DELETE FROM oauth_states WHERE state = :state AND expires_at > now() RETURNING verifier` (single-use; must return exactly one row)
 AND the backend exchanges the authorization code for tokens via Google's token endpoint using PKCE verifier
 AND the backend extracts `sub`, `email`, `name`, `picture` from the ID token
 AND the backend upserts the user record (see US-002)
@@ -25,12 +25,13 @@ WHEN Google OAuth returns `error=access_denied` (user cancelled)
 THEN the backend redirects to `/login?error=cancelled`
 AND no session is created
 
-WHEN the `state` parameter is missing or does not match the Redis entry
+WHEN the `state` parameter is missing or the DELETE RETURNING returns zero rows (no matching row, or row already consumed)
 THEN the backend responds 400 and redirects to `/login?error=invalid_state`
 AND the event is logged at WARN level with IP and timestamp
 
-WHEN the `state` key has expired in Redis (>5 min)
+WHEN the `oauth_states` row's `expires_at` has passed before callback (DELETE RETURNING yields zero rows)
 THEN the backend responds 400 and redirects to `/login?error=state_expired`
+AND a sweep job removes expired rows on its next tick
 
 WHEN Google's token exchange fails (network error, invalid code)
 THEN the backend responds 502 and redirects to `/login?error=provider_error`
@@ -42,7 +43,7 @@ THEN the backend responds 401 and redirects to `/login?error=token_invalid`
 ### Edge Cases
 
 WHEN the user initiates OAuth but closes the browser tab before completing
-THEN the Redis state key expires naturally after 5 min
+THEN the `oauth_states` row expires naturally after 5 min and is removed by the next sweep tick
 AND no session or user record is created
 
 WHEN the same Google account signs in from two browser tabs simultaneously

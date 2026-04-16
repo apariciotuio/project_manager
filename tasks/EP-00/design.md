@@ -6,13 +6,13 @@
 
 **Decision**: Stateless JWT access token (15 min) + opaque refresh token stored server-side (30 days).
 
-**Rationale**: Pure server-side sessions require Redis lookups on every request — fine, but it ties every auth check to Redis availability. Pure stateless JWTs can't be revoked without a denylist. The hybrid approach gives us:
-- Short-lived JWT for low-latency auth checks (no Redis hit on every request)
+**Rationale**: Pure server-side sessions require a DB lookup on every request — possible, but ties auth latency to the sessions table hot path. Pure stateless JWTs can't be revoked without a denylist. The hybrid approach gives us:
+- Short-lived JWT for low-latency auth checks (no session lookup on every request)
 - Server-stored refresh token for revocation capability (logout, account suspension)
-- Redis-backed denylist only needed for emergency token invalidation, not routine checks
+- DB-backed denylist only needed for emergency token invalidation, not routine checks
 
 **Rejected alternatives**:
-- Pure server-side sessions: every request hits Redis; not worth the coupling for auth checks
+- Pure server-side sessions: every request hits `sessions`; hot-path pressure not worth it
 - Long-lived JWTs (hours/days): irrevocable — one leaked token is a problem for the full TTL
 
 ### AD-02: Cookie Strategy — HTTP-only, Secure, SameSite=Lax
@@ -25,9 +25,22 @@
 
 ### AD-03: PKCE for OAuth Flow
 
-**Decision**: Implement PKCE (code_challenge_method=S256). State parameter for CSRF. Both stored in Redis with 5-min TTL.
+**Decision**: Implement PKCE (code_challenge_method=S256). State parameter for CSRF. Both stored in a Postgres `oauth_states(state PK, verifier, expires_at)` table with a 5-min TTL enforced at read-time and a periodic cleanup job.
 
-**Rationale**: PKCE prevents authorization code interception attacks. Required for public clients (browser-initiated flows) by OAuth 2.1 draft. Not optional.
+**Rationale**: PKCE prevents authorization code interception attacks. Required for public clients (browser-initiated flows) by OAuth 2.1 draft. Not optional. Storage choice: Redis was descoped in M0 (cache/broker → Postgres); short-lived OAuth state fits trivially in a Postgres table with one `expires_at` index. Volume is bounded by login concurrency; not a hot path.
+
+**Storage shape**:
+```sql
+oauth_states (
+  state         TEXT PRIMARY KEY,         -- URL-safe random, ≥32 bytes of entropy
+  verifier      TEXT NOT NULL,            -- PKCE code_verifier (kept server-side)
+  expires_at    TIMESTAMPTZ NOT NULL,     -- now() + 5 min
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+)
+CREATE INDEX idx_oauth_states_expires_at ON oauth_states(expires_at);
+```
+
+Reads validate `expires_at > now()` and single-use DELETE the row atomically (`DELETE ... RETURNING`). Expired rows are swept by a Celery periodic task.
 
 ### AD-04: User Resolution — Google `sub` as Primary External Key
 
@@ -243,21 +256,20 @@ sequenceDiagram
     actor User
     participant FE as Frontend (Next.js)
     participant BE as Backend (FastAPI)
-    participant Redis
     participant Google
     participant DB as PostgreSQL
 
     User->>FE: Click "Sign in with Google"
     FE->>BE: GET /api/v1/auth/google
     BE->>BE: Generate state (CSRF token) + PKCE verifier/challenge
-    BE->>Redis: SET oauth:{state} {verifier} EX 300
+    BE->>DB: INSERT oauth_states(state, verifier, expires_at = now()+5min)
     BE-->>FE: 302 Redirect to Google (with state + PKCE challenge)
     FE->>Google: Authorization request
     User->>Google: Consent
     Google-->>FE: 302 Redirect to /api/v1/auth/google/callback?code=X&state=Y
     FE->>BE: GET /api/v1/auth/google/callback?code=X&state=Y
-    BE->>Redis: GET oauth:{state}
-    Redis-->>BE: verifier (or nil if expired)
+    BE->>DB: DELETE FROM oauth_states WHERE state=Y AND expires_at > now() RETURNING verifier
+    DB-->>BE: verifier (or 0 rows if expired/missing)
     BE->>BE: Validate state, expiry check
     BE->>Google: POST /token (code + verifier)
     Google-->>BE: {id_token, access_token, ...}
@@ -277,7 +289,6 @@ sequenceDiagram
     BE->>BE: Generate opaque refresh token
     BE->>DB: INSERT sessions (token_hash, expires_at)
     BE->>DB: INSERT audit_events (category='auth', action='login_success')
-    BE->>Redis: DEL oauth:{state}
     alt N memberships + no last-chosen
         BE-->>FE: 302 /workspace/select + Set-Cookie
     else
@@ -332,13 +343,15 @@ sequenceDiagram
 
 1. **Token storage**: Cookies only. Never localStorage or sessionStorage. HTTP-only prevents JS access entirely.
 
-2. **PKCE + state**: Both required. State goes to Redis (not cookie) to avoid state-in-cookie attacks. PKCE verifier also in Redis, never sent to client.
+2. **PKCE + state**: Both required. State and PKCE verifier are stored in the Postgres `oauth_states` table (not cookie) to avoid state-in-cookie attacks. Verifier never leaves the backend. Row is DELETE-RETURNING on callback (single-use) and otherwise swept on expiry.
 
 3. **Refresh token hashing**: Store SHA-256 hash of refresh token in DB. Never plaintext. Compromised DB does not expose valid tokens.
 
-4. **Rate limiting**: Apply to `/api/v1/auth/google` and `/api/v1/auth/google/callback` — max 10 requests/minute per IP. Prevents OAuth loop abuse.
+4. **Rate limiting**: Apply to `/api/v1/auth/google` and `/api/v1/auth/google/callback` — max 10 requests/minute per IP. Prevents OAuth loop abuse. Implementation uses `slowapi` with the in-memory backend for M1 (single backend replica). When the deployment scales to multiple replicas, migrate to a Postgres-counter backend or reintroduce a shared store — tracked separately from EP-00.
 
-5. **Session cleanup**: Celery periodic task to DELETE sessions WHERE expires_at < NOW() AND revoked_at IS NOT NULL. Keeps `sessions` table lean.
+5. **Session cleanup**: Celery periodic task `cleanup_expired_sessions` — DELETE sessions WHERE expires_at < NOW() AND revoked_at IS NOT NULL. Keeps `sessions` table lean.
+
+5b. **OAuth state cleanup**: Celery periodic task `cleanup_expired_oauth_states` — DELETE FROM oauth_states WHERE expires_at < NOW(). Runs every 10 min.
 
 6. **Audit log is append-only**: No DELETE or UPDATE on `audit_events` (enforced by PG RULEs, per db_review.md SD-3). Service account running the app has INSERT-only on this table.
 
@@ -355,7 +368,9 @@ sequenceDiagram
 | Option | Verdict |
 |--------|---------|
 | NextAuth.js for the entire auth flow | Rejected — couples auth logic to the frontend, no backend session control, harder to audit |
-| Server-side sessions in Redis only | Rejected — Redis becomes a hard dependency for every authenticated request; token revocation is simpler but latency cost on hot paths |
+| Server-side sessions in a shared cache only | Rejected — extra infra dep for every authenticated request; token revocation is simpler but latency cost on hot paths |
+| Redis for oauth_state + rate limit | Rejected (M0 decision) — Redis was descoped from M0; no infra cost justified. `oauth_states` table + in-memory slowapi cover M1. |
+| State/PKCE verifier in a signed short-lived cookie | Rejected — pushes crypto key management (Fernet + rotation) into EP-00 for no storage win. Postgres row is simpler and audit-friendly. |
 | Long-lived JWT (24h, no refresh) | Rejected — irrevocable; leaked token valid for full day |
 | Store refresh token in localStorage | Hard no. XSS game over. |
 | RS256 for JWT signing | Rejected (resolved 2026-04-14). HS256 with 256-bit secret in env + documented rotation. Single BE + single FE consumer — RS256 adds key management overhead with zero benefit. Migration to RS256 is mechanical if a second service ever consumes tokens. |
@@ -376,10 +391,12 @@ domain/
     session.py               # Session entity
     workspace.py             # Workspace entity
     workspace_membership.py  # Membership entity
+    oauth_state.py           # OAuthState value object (state, verifier, expires_at)
   repositories/
     user_repository.py       # Interface
     session_repository.py    # Interface
     workspace_repository.py  # Interface
+    oauth_state_repository.py # Interface: create, consume (DELETE RETURNING), cleanup_expired
 application/
   services/
     auth_service.py          # OAuth flow, token generation, session management
@@ -389,8 +406,8 @@ infrastructure/
     user_repo_impl.py        # SQLAlchemy impl
     session_repo_impl.py
     workspace_repo_impl.py
+    oauth_state_repo_impl.py # SQLAlchemy impl of oauth_states
   adapters/
     google_oauth_adapter.py  # Wraps httpx calls to Google OAuth/token endpoints
     jwt_adapter.py           # Wraps PyJWT
-    redis_adapter.py         # Wraps aioredis for state/PKCE storage
 ```

@@ -54,35 +54,32 @@ Refs: EP-02
 
 ## Phase 5 — API Controllers
 
-- [ ] [RED] Write integration tests for `POST /api/v1/work-item-drafts`: upsert, 409 on version conflict, response includes draft_id + local_version
-- [ ] [RED] Write integration tests for `GET /api/v1/work-item-drafts`: returns current draft or null
-- [ ] [RED] Write integration tests for `DELETE /api/v1/work-item-drafts/{id}`: deletes, 403 if not owner
-- [ ] [GREEN] Implement `presentation/controllers/work_item_draft_controller.py` + routes
-- [ ] [RED] Write integration tests for `PATCH /api/v1/work-items/{id}/draft`: valid Draft state saves, 409 if non-Draft, 401 if unauthenticated, 403 if not owner
-- [ ] [GREEN] Implement PATCH `/work-items/{id}/draft` route (add to work item controller)
-- [ ] [RED] Write integration tests for `GET /api/v1/templates`: returns workspace override or system default, 401 unauthenticated
-- [ ] [RED] Write integration tests for `POST /api/v1/templates`: admin creates, non-admin 403, duplicate type 409, content too long 422
-- [ ] [RED] Write integration tests for `PATCH /api/v1/templates/{id}`: admin updates, system template 403, non-admin 403
-- [ ] [RED] Write integration tests for `DELETE /api/v1/templates/{id}`: admin deletes, system template 403
-- [ ] [GREEN] Implement `presentation/controllers/template_controller.py` + routes
-- [ ] Verify `POST /api/v1/work-items` passes `template_id` through to service (extend EP-01 controller)
-- [ ] [REFACTOR] Audit all new endpoints: auth check, authz check, input validation at boundary
+- [x] All controllers + integration tests — see `tasks-backend.md` Phase 6 for the full per-route breakdown (13 draft + 10 template integration tests, all green 2026-04-16)
+- [x] `POST /api/v1/work-items` accepts optional `template_id` (stored via `CreateWorkItemCommand`)
+- [x] [REFACTOR] Private `_repo` access + inline `HTTPException` for mapped exceptions removed; all domain exceptions bubble to global `error_middleware.py`
+- [x] Test infra: `get_cache_adapter` dep extracted; `FakeCache` override in `conftest.py` + `test_template_controller.py::app` fixture
+
+**Status: COMPLETED** (2026-04-16)
 
 ---
 
 ## Phase 6 — Background Job
 
-- [ ] [RED] Write tests for draft expiry Celery task: selects drafts where expires_at < now(), soft-deletes them
-- [ ] [GREEN] Implement `infrastructure/jobs/expire_drafts_task.py`
-- [ ] Register task in Celery beat schedule (daily at 02:00 UTC)
+- [x] [RED] 4 unit tests + 3 integration tests for `expire_work_item_drafts` — see `tests/unit/infrastructure/jobs/test_expire_drafts.py` + `tests/integration/test_expire_drafts_job.py`
+- [x] [GREEN] `infrastructure/jobs/expire_drafts_task.py` + `DraftService.expire_pre_creation_drafts`
+- [x] Registered in Celery Beat: `expire-work-item-drafts-daily` at `crontab(hour=2, minute=0)` in `app/config/celery_app.py`
+
+**Status: COMPLETED** (2026-04-16)
 
 ---
 
 ## Phase 7 — Redis Caching
 
-- [ ] Add cache layer to `TemplateService.get_template_for_type`: key `template:{workspace_id}:{type}` / `template:system:{type}`, TTL 5 minutes
-- [ ] Invalidate cache on `create_template`, `update_template`, `delete_template`
-- [ ] [RED] Write tests verifying cache hit avoids DB call, cache miss falls through to DB
+- [x] Cache layer in `TemplateService.get_template_for_type` — 2026-04-15 (keys `template:{workspace_id}:{type}` / `template:system:{type}`, TTL 300s)
+- [x] Invalidation on `create_template`, `update_template`, `delete_template`
+- [x] [RED] Unit tests verifying cache hit avoids DB call, miss falls through — 2026-04-15
+
+**Status: COMPLETED** (2026-04-15, reinforced 2026-04-16 with DI cleanup)
 
 ---
 
@@ -133,4 +130,5 @@ Refs: EP-02
 - `[~]` — in progress
 - `[!]` — blocked (add reason)
 
-**Status: NOT STARTED**
+**Backend Status: COMPLETED** (2026-04-16) — Phases 1-7 green, 557 tests pass, 93% coverage
+**Frontend Status: NOT STARTED** — Phases 8-11 pending

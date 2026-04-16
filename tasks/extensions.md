@@ -224,3 +224,27 @@ Each retrofit PR:
 Append this note (customized per epic) during the retrofit PR:
 
 > **[EP-19 adoption]** This task file has been retrofitted to consume the shared design system. Local badges/dialogs/plaintext flows have been removed; see `tasks/EP-19/tasks-frontend.md#Phase-C` for the adoption checklist and `tasks/extensions.md#EP-19` for the substitution table.
+
+---
+
+## EP-00 (Auth) — OAuth state in Postgres, not Redis
+
+**Triggered by**: M0 infra descope (Redis and MinIO removed 2026-04-15; cache/broker collapsed onto Postgres).
+
+**Date**: 2026-04-15
+
+**Changes**:
+- New table `oauth_states(state PK, verifier, expires_at, created_at)` with index on `expires_at`. Alembic migration `006_create_oauth_states`.
+- New domain interface `IOAuthStateRepository` (`create`, `consume`, `cleanup_expired`) and SQLAlchemy impl `OAuthStateRepositoryImpl`. Single-use consumption via `DELETE ... RETURNING verifier`.
+- `redis_adapter.py` removed from the design. `redis[asyncio]` and `REDIS_URL` dropped from EP-00 deps and env list.
+- Rate limiting uses `slowapi` with its in-memory backend for M1 (single BE replica). Scale-out will migrate to a shared store outside EP-00.
+- New Celery periodic task `cleanup_expired_oauth_states` on a 10-minute schedule.
+
+**Affected files**:
+- `tasks/EP-00/design.md` — AD-01 rationale, AD-03 rewritten, sequence diagram, Security §2/§4/§5b, Alternatives, Layer Mapping.
+- `tasks/EP-00/specs/auth/spec.md` — US-001 happy path, error cases, edge cases.
+- `tasks/EP-00/tasks-backend.md` — Phases 0, 2, 3, 4, 5, 7, 8, 9 updated; adapter task replaced by repository task.
+- `tasks/EP-00/tasks-frontend.md` — US-001 edge-case wording.
+- `tasks/EP-00/tasks.md` — legacy pre-split file flagged superseded + realigned.
+
+**No changes to**: AD-02 cookies, AD-04 user resolution, AD-05 first-login routing, AD-06 multi-workspace, AD-07 superadmin bootstrap. None depend on the state-storage medium.

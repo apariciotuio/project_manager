@@ -7,11 +7,17 @@ Each request gets its own AsyncSession; services built on top of it are request-
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.events.event_bus import EventBus
+
+if TYPE_CHECKING:
+    from app.application.services.draft_service import DraftService
+    from app.application.services.template_service import TemplateService
+    from app.domain.ports.cache import ICache
 from app.application.services.audit_service import AuditService
 from app.application.services.auth_service import AuthService
 from app.application.services.membership_resolver_service import (
@@ -177,3 +183,80 @@ def get_work_item_service(
         audit=audit,
         events=EventBus(),
     )
+
+
+def get_draft_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> DraftService:
+    from app.application.services.draft_service import DraftService
+    from app.infrastructure.persistence.work_item_draft_repository_impl import (
+        WorkItemDraftRepositoryImpl,
+    )
+
+    return DraftService(
+        draft_repo=WorkItemDraftRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+    )
+
+
+def get_draft_service_unscoped(
+    session: AsyncSession = Depends(get_db_session),
+) -> DraftService:
+    """DraftService without RLS scope (for pre-creation drafts — no workspace context needed)."""
+    from app.application.services.draft_service import DraftService
+    from app.infrastructure.persistence.work_item_draft_repository_impl import (
+        WorkItemDraftRepositoryImpl,
+    )
+
+    return DraftService(
+        draft_repo=WorkItemDraftRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+    )
+
+
+async def get_cache_adapter() -> AsyncGenerator[ICache]:
+    """Yield a cache adapter scoped to the request; close the Redis client afterwards.
+
+    Tests override this dep with an in-memory FakeCache so they don't need a Redis
+    container. See tests/conftest.py::client.
+    """
+    from app.infrastructure.adapters.redis_cache_adapter import RedisCacheAdapter
+
+    settings = get_settings()
+    cache = RedisCacheAdapter(url=settings.redis.url)
+    try:
+        yield cache
+    finally:
+        await cache.close()
+
+
+def get_template_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
+) -> TemplateService:
+    from app.application.services.template_service import TemplateService
+    from app.infrastructure.persistence.template_repository_impl import TemplateRepositoryImpl
+
+    return TemplateService(
+        template_repo=TemplateRepositoryImpl(session),
+        cache=cache,
+    )
+
+
+def get_membership_repo_scoped(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> WorkspaceMembershipRepositoryImpl:
+    """Membership repo bound to the workspace-scoped (RLS-applied) session."""
+    return WorkspaceMembershipRepositoryImpl(session)
+
+
+def get_membership_for_current_user(
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_scoped_session),
+) -> GetMembershipDep:
+    """Return a callable that resolves the current user's membership in their workspace."""
+    from app.infrastructure.persistence.workspace_membership_repository_impl import (
+        WorkspaceMembershipRepositoryImpl as _MR,
+    )
+
+    return _MR(session)  # type: ignore[return-value]

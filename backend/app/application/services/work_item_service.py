@@ -115,6 +115,9 @@ class WorkItemService:
             due_date=cmd.due_date,
             tags=list(cmd.tags),
         )
+        # EP-02: set template_id (audit reference — immutable after set)
+        if cmd.template_id is not None:
+            item.template_id = cmd.template_id
         item.completeness_score = compute_completeness(item)
 
         saved = await self._work_items.save(item, cmd.workspace_id)

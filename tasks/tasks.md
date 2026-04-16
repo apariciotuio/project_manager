@@ -43,6 +43,10 @@ EP-13, EP-14, EP-15, EP-16, EP-17, EP-18 ─────────────
 
 **Transversal track**: EP-12 (technical primitives) → EP-19 (design system). Both unblock every epic with frontend scope. Existing epics retrofit via `extensions.md` once EP-19's catalog lands.
 
+## Pending side-tasks (non-epic)
+
+- [ ] **Dev seed script** — populate `workspaces/users/memberships/work_items/work_item_drafts/templates` with dummies for manual QA. Build after EP-02 backend lands. Location TBD: `backend/app/infrastructure/seed/dev.py` or `backend/scripts/seed_dev.py`. Idempotent, gated behind `APP_ENV != "production"`, seeded superadmin email must match `AUTH_SEED_SUPERADMIN_EMAILS`.
+
 ## Critical Path
 
 EP-00 -> EP-01 -> EP-02 -> EP-03 -> EP-04 -> EP-05 -> EP-06 -> EP-07

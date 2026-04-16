@@ -28,11 +28,17 @@ from app.domain.exceptions import (
     CannotDeleteNonDraftError,
     ConfirmationRequiredError,
     CreatorNotMemberError,
+    DraftForbiddenError,
+    DuplicateTemplateError,
     InvalidTransitionError,
     MandatoryValidationsPendingError,
     NotOwnerError,
     OwnerSuspendedError,
     TargetUserSuspendedError,
+    TemplateForbiddenError,
+    TemplateNotFoundError,
+    WorkItemDraftNotFoundError,
+    WorkItemInvalidStateError,
     WorkItemNotFoundError,
 )
 from app.domain.repositories.oauth_state_repository import OAuthStateCollisionError
@@ -207,6 +213,71 @@ async def _creator_not_member_handler(
     )
 
 
+# ---------------------------------------------------------------------------
+# EP-02 domain exception handlers
+# ---------------------------------------------------------------------------
+
+
+async def _work_item_invalid_state_handler(
+    _: Request, exc: WorkItemInvalidStateError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content=_envelope(
+            "INVALID_STATE",
+            str(exc),
+            {"expected_state": exc.expected_state, "actual_state": exc.actual_state},
+        ),
+    )
+
+
+async def _duplicate_template_handler(
+    _: Request, exc: DuplicateTemplateError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content=_envelope(
+            "DUPLICATE_TEMPLATE",
+            str(exc),
+            {"type": exc.type_},
+        ),
+    )
+
+
+async def _template_forbidden_handler(
+    _: Request, exc: TemplateForbiddenError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content=_envelope("FORBIDDEN", str(exc)),
+    )
+
+
+async def _template_not_found_handler(
+    _: Request, exc: TemplateNotFoundError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content=_envelope("TEMPLATE_NOT_FOUND", str(exc)),
+    )
+
+
+async def _draft_forbidden_handler(_: Request, exc: DraftForbiddenError) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content=_envelope("FORBIDDEN", str(exc) or "you do not own this draft"),
+    )
+
+
+async def _work_item_draft_not_found_handler(
+    _: Request, exc: WorkItemDraftNotFoundError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content=_envelope("DRAFT_NOT_FOUND", str(exc)),
+    )
+
+
 async def _http_exception_handler(
     _: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
@@ -257,6 +328,13 @@ def register_error_handlers(app: FastAPI) -> None:
     _register(app, WorkItemNotFoundError, _work_item_not_found_handler)
     _register(app, CannotDeleteNonDraftError, _cannot_delete_non_draft_handler)
     _register(app, CreatorNotMemberError, _creator_not_member_handler)
+    # EP-02 domain exceptions
+    _register(app, WorkItemInvalidStateError, _work_item_invalid_state_handler)
+    _register(app, DuplicateTemplateError, _duplicate_template_handler)
+    _register(app, TemplateForbiddenError, _template_forbidden_handler)
+    _register(app, TemplateNotFoundError, _template_not_found_handler)
+    _register(app, DraftForbiddenError, _draft_forbidden_handler)
+    _register(app, WorkItemDraftNotFoundError, _work_item_draft_not_found_handler)
     _register(app, RequestValidationError, _validation_error_handler)
     _register(app, StarletteHTTPException, _http_exception_handler)
     app.add_exception_handler(Exception, _internal_error_handler)

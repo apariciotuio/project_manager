@@ -19,12 +19,12 @@ class WorkItemState(str, Enum):
 class WorkItemType(str, Enum):
     IDEA = "idea"
     BUG = "bug"
-    MEJORA = "mejora"
-    TAREA = "tarea"
-    INICIATIVA = "iniciativa"
+    ENHANCEMENT = "enhancement"
+    TASK = "task"
+    INITIATIVE = "initiative"
     SPIKE = "spike"
-    CAMBIO = "cambio"
-    REQUISITO = "requisito"
+    BUSINESS_CHANGE = "business_change"
+    REQUIREMENT = "requirement"
     MILESTONE = "milestone"   # EP-14 hierarchy
     STORY = "story"           # EP-14 hierarchy
 
@@ -181,7 +181,7 @@ CREATE TABLE work_items (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id            UUID NOT NULL REFERENCES workspaces(id),              -- multi-tenant RLS
     project_id              UUID,                                                 -- FK added by EP-10 (see note)
-    type                    TEXT NOT NULL,                                        -- idea|bug|mejora|tarea|iniciativa|spike|cambio|requisito|milestone|story
+    type                    TEXT NOT NULL,                                        -- idea|bug|enhancement|task|initiative|spike|business_change|requirement|milestone|story
     title                   VARCHAR(255) NOT NULL,
     description             TEXT,
     original_input          TEXT,                                                 -- verbatim capture, preserved
@@ -218,7 +218,7 @@ CREATE TABLE work_items (
     CONSTRAINT work_items_title_length CHECK (char_length(title) BETWEEN 3 AND 255),
     CONSTRAINT work_items_completeness_range CHECK (completeness_score BETWEEN 0 AND 100),
     CONSTRAINT work_items_type_valid CHECK (type IN (
-        'idea','bug','mejora','tarea','iniciativa','spike','cambio','requisito',
+        'idea','bug','enhancement','task','initiative','spike','business_change','requirement',
         'milestone','story'
     )),
     CONSTRAINT work_items_state_valid CHECK (state IN (

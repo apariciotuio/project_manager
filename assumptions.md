@@ -3,6 +3,8 @@
 Assumptions made during the technical planning of the product. These need product/business confirmation before implementation begins. Grouped by area.
 
 > ⚠️ **Pending re-decisions**: several rows below were originally scoped as "MVP-only" shortcuts. The project is no longer framed as an MVP, so those shortcuts need to be re-decided. See `decisions_pending.md` for the consolidated list. Rows still marked ⚠️ below have NOT been re-decided yet — treat the stated value as provisional, not final.
+>
+> 🔄 **2026-04-15 — Redis removed, MinIO deferred.** Decided during M0 bootstrap: Redis is replaced by Postgres for all stateful needs (session/state, cache, Celery broker/backend, rate limiting, OAuth state). Object storage (MinIO/S3) deferred to EP-16 kick-off and dropped from M0 compose. Downstream: dashboard cache (60s TTL) → in-process LRU+TTL; SSE state → Postgres LISTEN/NOTIFY; Celery broker → `sqla+postgresql+psycopg://...` with `TASK_ALWAYS_EAGER=true` default until M2 confirms broker choice. See `decisions.log.md`.
 
 ---
 

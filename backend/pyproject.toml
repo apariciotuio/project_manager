@@ -21,6 +21,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3",
     "slowapi>=0.1.9",
     "orjson>=3.10",
+    "redis[asyncio]>=5.0",
 ]
 
 [project.optional-dependencies]

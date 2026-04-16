@@ -20,12 +20,18 @@ from app.application.commands.force_ready_command import ForceReadyCommand
 from app.application.commands.reassign_owner_command import ReassignOwnerCommand
 from app.application.commands.transition_state_command import TransitionStateCommand
 from app.application.commands.update_work_item_command import UpdateWorkItemCommand
+from app.application.services.draft_service import DraftService
 from app.application.services.work_item_service import WorkItemService
 from app.domain.queries.work_item_filters import WorkItemFilters
 from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
-from app.presentation.dependencies import get_current_user, get_work_item_service
+from app.presentation.dependencies import (
+    get_current_user,
+    get_draft_service,
+    get_work_item_service,
+)
 from app.presentation.middleware.auth_middleware import CurrentUser
+from app.presentation.schemas.draft_schemas import SaveCommittedDraftRequest
 from app.presentation.schemas.work_item_schemas import (
     ForceReadyRequest,
     PagedWorkItemResponse,
@@ -75,6 +81,7 @@ async def create_work_item(
         priority=body.priority,
         due_date=body.due_date,
         tags=tuple(body.tags),
+        template_id=body.template_id,
     )
     item = await service.create(cmd)
     return _ok(_response(item, current_user.workspace_id), "Work item created")
@@ -278,6 +285,33 @@ async def get_ownership_history(
 # ---------------------------------------------------------------------------
 # GET /projects/{project_id}/work-items
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# PATCH /work-items/{id}/draft  (EP-02)
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/work-items/{item_id}/draft")
+async def save_committed_draft(
+    item_id: UUID,
+    body: SaveCommittedDraftRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    draft_service: DraftService = Depends(get_draft_service),
+) -> dict[str, Any]:
+    from datetime import UTC, datetime
+
+    assert current_user.workspace_id is not None
+    await draft_service.save_committed_draft(
+        item_id=item_id,
+        workspace_id=current_user.workspace_id,
+        actor_id=current_user.id,
+        draft_data=body.draft_data,
+    )
+    return _ok(
+        {"id": str(item_id), "draft_saved_at": datetime.now(UTC).isoformat()},
+        "Draft saved",
+    )
 
 
 @router.get("/projects/{project_id}/work-items")

@@ -40,6 +40,8 @@ class WorkItemCreateRequest(BaseModel):
     priority: Priority | None = None
     due_date: date | None = None
     tags: list[str] = Field(default_factory=list, max_length=50)
+    # EP-02 additions
+    template_id: UUID | None = None  # audit reference; validated server-side
 
 
 class WorkItemUpdateRequest(BaseModel):

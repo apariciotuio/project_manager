@@ -10,8 +10,10 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 ## Phase 0 — Setup
 
 - [ ] Create `backend/` directory structure per DDD layout (presentation, application, domain, infrastructure)
-- [ ] Add Python dependencies: `fastapi`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `python-jose[cryptography]`, `httpx`, `redis[asyncio]`, `python-multipart`, `pydantic-settings`
-- [ ] Configure environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `JWT_SECRET`, `JWT_ALGORITHM=HS256`, `ACCESS_TOKEN_TTL=900`, `REFRESH_TOKEN_TTL=2592000`, `REDIS_URL`, `DATABASE_URL`
+> **Note (2026-04-15):** superseded by `tasks-backend.md` / `tasks-frontend.md`. Kept for historical reference. Redis references below have been removed per M0 descope — OAuth state now lives in Postgres `oauth_states` table.
+
+- [ ] Add Python dependencies (on top of M0): `python-jose[cryptography]`, `python-multipart`, `slowapi`. M0 already provides `fastapi`, `sqlalchemy[asyncio]`, `alembic`, `httpx`, `pydantic-settings`, `celery`. **No `redis[asyncio]`.**
+- [ ] Configure environment variables: `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GOOGLE_REDIRECT_URI`, `AUTH_JWT_SECRET`, `AUTH_JWT_ALGORITHM=HS256`, `AUTH_ACCESS_TOKEN_TTL=900`, `AUTH_REFRESH_TOKEN_TTL=2592000`. `DATABASE_URL` already wired in M0. **No `REDIS_URL`.**
 - [ ] Configure `alembic.ini` and `env.py` for async SQLAlchemy
 - [ ] Scaffold `frontend/` Next.js 14 App Router project with TypeScript
 - [ ] Add frontend dependencies: `axios` (or `ky`), `zustand` (or `jotai`) for auth state
@@ -69,13 +71,13 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 - [ ] Implement `backend/infrastructure/adapters/jwt_adapter.py` — `encode(payload) -> str`, `decode(token) -> dict` (raises on invalid/expired)
 - [ ] **[RED]** Write unit tests for `JwtAdapter`: encode/decode round trip, expired token raises, tampered token raises
 - [ ] **[GREEN]** Implement `JwtAdapter`
-- [ ] Implement `backend/infrastructure/adapters/redis_adapter.py` — `set_oauth_state(state, verifier, ttl)`, `get_oauth_state(state) -> str | None`, `delete_oauth_state(state)`
+- [ ] Implement `backend/infrastructure/persistence/oauth_state_repo_impl.py` — `create(state, verifier, ttl)`, `consume(state) -> str | None` (DELETE RETURNING), `cleanup_expired() -> int`
 
 ---
 
 ## Phase 5 — Application Services (Backend)
 
-- [ ] **[RED]** Write unit tests for `AuthService.initiate_oauth()`: returns valid redirect URL, state stored in Redis, PKCE challenge correct
+- [ ] **[RED]** Write unit tests for `AuthService.initiate_oauth()`: returns valid redirect URL, row persisted in `oauth_states` with 5-min expiry, PKCE challenge correct
 - [ ] **[RED]** Write unit tests for `AuthService.handle_callback()`: happy path; state mismatch 400; state expired 400; Google exchange fails 502; 0 memberships → `NoWorkspaceAccessError`; 1 membership → routes directly; N memberships → picker; `returnTo` deeplink preserved when valid
 - [ ] **[RED]** Write unit tests for `AuthService.refresh_token()`: valid refresh returns new access token, expired refresh raises, revoked refresh raises
 - [ ] **[RED]** Write unit tests for `AuthService.logout()`: session revoked, audit log written
@@ -99,7 +101,7 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 
 ## Phase 7 — Controllers (Backend)
 
-- [ ] **[RED]** Write integration tests for `GET /api/v1/auth/google`: returns 302, Location header contains Google OAuth URL, state cookie/Redis key set
+- [ ] **[RED]** Write integration tests for `GET /api/v1/auth/google`: returns 302, Location header contains Google OAuth URL, `oauth_states` row written for the generated `state`
 - [ ] **[RED]** Write integration tests for `GET /api/v1/auth/google/callback`: happy path (mock Google, DB), state mismatch, state expired, first login bootstrap, returning user
 - [ ] **[RED]** Write integration tests for `POST /api/v1/auth/refresh`: valid refresh token, expired token, revoked token
 - [ ] **[RED]** Write integration tests for `POST /api/v1/auth/logout`: session revoked, cookies cleared, 204 returned
@@ -112,7 +114,7 @@ Branch: `feature/ep-00-auth-identity-bootstrap`
 
 ## Phase 8 — Rate Limiting (Backend)
 
-- [ ] Add rate limiting middleware using `slowapi` or custom Redis counter: 10 req/min per IP on `/api/v1/auth/*` endpoints
+- [ ] Add rate limiting middleware using `slowapi` (in-memory backend): 10 req/min per IP on `/api/v1/auth/*` endpoints
 - [ ] **[RED]** Write test for rate limit enforcement: 11th request in 1 min returns 429
 - [ ] **[GREEN]** Implement rate limiter
 
