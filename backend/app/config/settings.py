@@ -69,8 +69,11 @@ class DundunSettings(BaseSettings):
 
     base_url: str = "http://localhost:17006"
     api_key: str = "dev-fake-key"
+    service_key: str = "dev-service-key"
     use_fake: bool = True
     callback_url: str = "http://localhost:17004/api/v1/dundun/callback"
+    callback_secret: str = "dev-callback-secret"
+    http_timeout: float = 30.0
 
 
 class PuppetSettings(BaseSettings):

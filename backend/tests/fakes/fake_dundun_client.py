@@ -1,58 +1,82 @@
-import hashlib
-import json
-from typing import Any
+"""In-memory deterministic fake implementing the DundunClient protocol.
+
+Used in all service and controller tests as the only fake at the Dundun boundary.
+No real HTTP or WebSocket connections are made.
+
+Usage:
+    fake = FakeDundunClient()
+
+    # Inspect recorded invocations
+    await fake.invoke_agent(agent="wm_suggestion_agent", user_id=..., ...)
+    assert fake.invocations[0][0] == "wm_suggestion_agent"
+
+    # Configure WS frames
+    fake.chat_frames = [{"type": "progress", "content": "thinking"}]
+    async for frame in fake.chat_ws(...):
+        ...  # yields configured frames
+
+    # Configure history
+    fake.history_by_conversation["conv-1"] = [{"role": "user", "content": "hello"}]
+
+    # Inject errors
+    fake.next_error = DundunAuthError("test error")
+    await fake.invoke_agent(...)  # raises DundunAuthError
+"""
+
+from __future__ import annotations
+
+from typing import Any, AsyncIterator
+from uuid import UUID, uuid4
 
 from app.domain.ports.dundun import DundunClientError
 
 
 class FakeDundunClient:
-    """In-memory fake implementing DundunClient protocol.
-
-    Usage:
-        fake = FakeDundunClient()
-        fake.register_response("my_agent", {"key": "val"}, {"result": "ok"})
-        result = await fake.invoke_agent("my_agent", {"key": "val"})
-    """
+    """Deterministic in-memory fake for DundunClient."""
 
     def __init__(self) -> None:
-        self._responses: dict[str, dict[str, Any]] = {}
-        self._sent_messages: list[dict[str, Any]] = []
+        # Records of (agent, user_id, conversation_id, work_item_id, callback_url, payload)
+        self.invocations: list[tuple[str, UUID, str | None, UUID | None, str, dict[str, Any]]] = []
+        # Frames to yield from chat_ws; cleared after each iteration
+        self.chat_frames: list[dict[str, Any]] = []
+        # Synthetic history store per conversation_id
+        self.history_by_conversation: dict[str, list[dict[str, Any]]] = {}
+        # Set to raise on the next call (any method); cleared after raising
+        self.next_error: Exception | None = None
 
-    def _payload_key(self, agent_name: str, payload: dict[str, Any]) -> str:
-        payload_hash = hashlib.sha256(
-            json.dumps(payload, sort_keys=True).encode()
-        ).hexdigest()
-        return f"{agent_name}:{payload_hash}"
-
-    def register_response(
-        self,
-        agent_name: str,
-        payload: dict[str, Any],
-        response: dict[str, Any],
-    ) -> None:
-        key = self._payload_key(agent_name, payload)
-        self._responses[key] = response
+    def _check_error(self) -> None:
+        if self.next_error is not None:
+            err = self.next_error
+            self.next_error = None
+            raise err
 
     async def invoke_agent(
-        self, agent_name: str, payload: dict[str, Any]
+        self,
+        *,
+        agent: str,
+        user_id: UUID,
+        conversation_id: str | None,
+        work_item_id: UUID | None,
+        callback_url: str,
+        payload: dict[str, Any],
     ) -> dict[str, Any]:
-        key = self._payload_key(agent_name, payload)
-        if key not in self._responses:
-            raise DundunClientError(
-                f"No canned response for agent '{agent_name}' with payload {payload!r}. "
-                "Register one via register_response()."
-            )
-        return self._responses[key]
+        self._check_error()
+        self.invocations.append((agent, user_id, conversation_id, work_item_id, callback_url, payload))
+        return {"request_id": f"fake-{uuid4()}"}
 
-    async def send_message(self, thread_id: str, content: str) -> dict[str, Any]:
-        message: dict[str, Any] = {
-            "thread_id": thread_id,
-            "content": content,
-            "status": "sent",
-        }
-        self._sent_messages.append(message)
-        return message
+    async def chat_ws(
+        self,
+        *,
+        conversation_id: str,
+        user_id: UUID,
+        work_item_id: UUID | None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        self._check_error()
+        frames = list(self.chat_frames)
+        self.chat_frames = []
+        for frame in frames:
+            yield frame
 
-    @property
-    def sent_messages(self) -> list[dict[str, Any]]:
-        return list(self._sent_messages)
+    async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
+        self._check_error()
+        return list(self.history_by_conversation.get(conversation_id, []))
