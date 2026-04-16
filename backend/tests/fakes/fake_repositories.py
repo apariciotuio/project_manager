@@ -393,6 +393,149 @@ class FakeWorkItemDraftRepository:
         return len(expired_keys)
 
 
+# ---------------------------------------------------------------------------
+# EP-03 fakes
+# ---------------------------------------------------------------------------
+
+
+class FakeGapFindingRepository:
+    """In-memory IGapFindingRepository for unit tests."""
+
+    def __init__(self) -> None:
+        from app.domain.models.gap_finding import StoredGapFinding
+
+        self._rows: list[StoredGapFinding] = []
+
+    async def insert_many(self, findings: list) -> list:
+        self._rows.extend(findings)
+        return list(findings)
+
+    async def get_active_for_work_item(
+        self, work_item_id: UUID, source: str | None = None
+    ) -> list:
+        result = [
+            f for f in self._rows
+            if f.work_item_id == work_item_id and f.invalidated_at is None
+        ]
+        if source is not None:
+            result = [f for f in result if f.source == source]
+        return result
+
+    async def invalidate_for_work_item(
+        self, work_item_id: UUID, now: datetime, source: str | None = None
+    ) -> int:
+        import dataclasses
+
+        count = 0
+        for i, f in enumerate(self._rows):
+            if f.work_item_id == work_item_id and f.invalidated_at is None:
+                if source is None or f.source == source:
+                    self._rows[i] = dataclasses.replace(f, invalidated_at=now)
+                    count += 1
+        return count
+
+
+class FakeConversationThreadRepository:
+    """In-memory IConversationThreadRepository for unit tests."""
+
+    def __init__(self) -> None:
+        from app.domain.models.conversation_thread import ConversationThread
+
+        self._by_id: dict[UUID, ConversationThread] = {}
+
+    async def create(self, thread: object) -> object:
+        from app.domain.models.conversation_thread import ConversationThread
+
+        assert isinstance(thread, ConversationThread)
+        self._by_id[thread.id] = thread
+        return thread
+
+    async def get_by_id(self, thread_id: UUID) -> object:
+        return self._by_id.get(thread_id)
+
+    async def get_by_user_and_work_item(
+        self, user_id: UUID, work_item_id: UUID | None
+    ) -> object:
+        for t in self._by_id.values():
+            if t.user_id == user_id and t.work_item_id == work_item_id:
+                return t
+        return None
+
+    async def get_by_dundun_conversation_id(self, dundun_conversation_id: str) -> object:
+        return next(
+            (t for t in self._by_id.values() if t.dundun_conversation_id == dundun_conversation_id),
+            None,
+        )
+
+    async def list_for_user(
+        self,
+        user_id: UUID,
+        work_item_id: UUID | None = None,
+        include_archived: bool = False,
+    ) -> list:
+        rows = [t for t in self._by_id.values() if t.user_id == user_id]
+        if work_item_id is not None:
+            rows = [t for t in rows if t.work_item_id == work_item_id]
+        if not include_archived:
+            rows = [t for t in rows if t.deleted_at is None]
+        return rows
+
+    async def update(self, thread: object) -> object:
+        from app.domain.models.conversation_thread import ConversationThread
+
+        assert isinstance(thread, ConversationThread)
+        self._by_id[thread.id] = thread
+        return thread
+
+
+class FakeAssistantSuggestionRepository:
+    """In-memory IAssistantSuggestionRepository for unit tests."""
+
+    def __init__(self) -> None:
+        from app.domain.models.assistant_suggestion import AssistantSuggestion
+
+        self._by_id: dict[UUID, AssistantSuggestion] = {}
+
+    async def create_batch(self, suggestions: list) -> list:
+        for s in suggestions:
+            self._by_id[s.id] = s
+        return list(suggestions)
+
+    async def get_by_id(self, suggestion_id: UUID) -> object:
+        return self._by_id.get(suggestion_id)
+
+    async def get_by_batch_id(self, batch_id: UUID) -> list:
+        return [s for s in self._by_id.values() if s.batch_id == batch_id]
+
+    async def get_by_dundun_request_id(self, dundun_request_id: str) -> list:
+        return [s for s in self._by_id.values() if s.dundun_request_id == dundun_request_id]
+
+    async def list_pending_for_work_item(self, work_item_id: UUID) -> list:
+        from app.domain.models.assistant_suggestion import SuggestionStatus
+        from datetime import UTC, datetime
+
+        now = datetime.now(UTC)
+        return [
+            s for s in self._by_id.values()
+            if s.work_item_id == work_item_id
+            and s.status == SuggestionStatus.PENDING
+            and s.expires_at > now
+        ]
+
+    async def update_status(
+        self, ids: list, status: object, now: datetime
+    ) -> int:
+        import dataclasses
+
+        count = 0
+        for sid in ids:
+            s = self._by_id.get(sid)
+            if s is not None:
+                self._by_id[sid] = dataclasses.replace(s, status=status, updated_at=now)
+                count += 1
+        return count
+
+
 class FakeTemplateRepository:
     """In-memory ITemplateRepository for unit tests."""
 

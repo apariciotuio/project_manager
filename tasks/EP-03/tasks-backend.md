@@ -145,12 +145,13 @@ Frames are forwarded verbatim; our BE does NOT interpret content, only enforces 
 
 ### ClarificationService
 
-- [ ] [RED] Write unit tests using fake repo + fake LLM:
+- [x] [RED] Write unit tests using fake repo + fake LLM:
   - `get_gap_report(work_item_id)`: rule-based only, cached result served from Redis (fake cache hit → fake repo not called)
   - `trigger_ai_review(work_item_id)`: dispatches Celery task invoking `wm_gap_agent` via Dundun; returns `request_id`; does not block
   - `get_next_questions(work_item_id)`: returns top 3 `blocking` findings as formatted questions
-- [ ] [GREEN] Implement `application/services/clarification_service.py`
-- [ ] Redis cache key: `gap:{work_item_id}:{version}`, TTL 5 minutes; invalidated on `work_item.updated_at` change
+- [x] [GREEN] Implement `application/services/clarification_service.py`
+- [x] Redis cache key: `gap:{work_item_id}:{version}`, TTL 5 minutes; invalidated on `work_item.updated_at` change
+  — **COMPLETED** (2026-04-16): 14 tests, all green. Cache key embeds updated_at (auto-invalidation). Celery dispatch deferred to Phase 6 — service calls Dundun directly; Phase 6 wraps in task.
 
 ### Acceptance Criteria — ClarificationService
 
@@ -176,11 +177,12 @@ AND each question is phrased as human-readable text (not the raw `dimension` fie
 
 ### ConversationService
 
-- [ ] [RED] Write unit tests:
+- [x] [RED] Write unit tests:
   - `get_or_create_thread(user_id, work_item_id=None)`: idempotent on `(user_id, work_item_id)`; creates local row + calls `DundunClient.create_conversation(user_id, work_item_id)`, storing `dundun_conversation_id`
   - `get_history(thread_id)`: delegates to `DundunClient.get_history`; refreshes `last_message_preview` and `last_message_at`
   - `archive_thread(thread_id)`: archives local pointer (sets `deleted_at`) without deleting Dundun history
-- [ ] [GREEN] Implement `application/services/conversation_service.py` (pointer lifecycle only — no message persistence, no context building, no token counting, no summarization)
+- [x] [GREEN] Implement `application/services/conversation_service.py` (pointer lifecycle only — no message persistence, no context building, no token counting, no summarization)
+  — **COMPLETED** (2026-04-16): 16 tests, all green. Dundun v0.1.1 has no create-conversation endpoint — local UUID used; platform adopts Dundun id on first chat response. Archived threads resurrected via update (no duplicate rows).
 
 ### Acceptance Criteria — ConversationService
 
@@ -201,14 +203,16 @@ AND NO call is made to Dundun (history preserved externally)
 
 ### SuggestionService
 
-- [ ] [RED] Write unit tests:
-  - `generate(work_item_id, user_id)`: creates pending `assistant_suggestions` batch, enqueues Celery task that invokes `DundunClient.invoke_agent(agent="wm_suggestion_agent", callback_url=...)` on queue `dundun`; returns `batch_id`; does not block
-  - `apply_partial(batch_id, accepted_suggestion_ids)`: happy path applies accepted suggestions (patches `work_item_sections` rows), calls `VersioningService.create_version(trigger='ai_suggestion')`, all in single transaction
-  - `apply_partial`: version conflict (work item changed since generation) raises `VersionConflictError`
-  - `apply_partial`: any suggestion in batch has `expires_at < now()` → raises `SuggestionExpiredError`
-  - `apply_partial`: remaining batch suggestions marked `rejected`; applied ones marked `accepted`
-  - `apply_partial` concurrent (Fixed per backend_review.md TC-1): WHEN two concurrent `apply_partial()` calls run for the same work_item THEN one succeeds and the other raises `VersionConflictError`; implementation MUST use `SELECT FOR UPDATE` on the work_item row to serialize concurrent applies
-- [ ] [GREEN] Implement `application/services/suggestion_service.py` with transactional apply (design.md section 3.1)
+- [x] [RED] Write unit tests for `generate` + `list_pending_for_work_item` + `update_single_status`:
+  - `generate(work_item_id, user_id)`: dispatches Dundun wm_suggestion_agent, returns batch_id, no DB rows created (16 tests)
+  - `list_pending_for_work_item`: returns pending non-expired rows, excludes accepted/expired
+  - `update_single_status`: accept/reject with expired and invalid-state guard
+- [x] [GREEN] Implement `application/services/suggestion_service.py` — generate, list_pending, update_single_status
+  — **COMPLETED** (2026-04-16): 16 tests, all green.
+- [ ] [DEFERRED] `apply_partial(batch_id, accepted_suggestion_ids)`:
+  - Requires `work_item_sections` table (EP-04) and `VersioningService.create_version` (EP-07)
+  - TC-1 SELECT FOR UPDATE concurrency guard also deferred
+  - Module docstring contains TODO: EP-04+EP-07 marker
 
 ### Acceptance Criteria — SuggestionService
 
@@ -245,13 +249,15 @@ AND no partial section updates are applied from the losing call
 
 ### QuickActionService
 
-- [ ] [RED] Write unit tests:
-  - `execute(work_item_id, section, action)`: each of 5 action types (`rewrite`/`concretize`/`expand`/`shorten`/`generate_ac`) maps to a Dundun agent invocation via Celery + callback
-  - `execute`: empty section content raises validation error (before enqueuing)
-  - `execute`: Dundun timeout/error marks action as failed in callback; action status visible to FE
-  - `undo(work_item_id, action_id)`: within 10s window reverts section content, marks version as reverted
-  - `undo`: outside 10s window raises `UndoWindowExpiredError`
-- [ ] [GREEN] Implement `application/services/quick_action_service.py` with undo TTL via Redis key `undo:{action_id}` TTL 10s
+- [ ] [SKIPPED — Phase 6+] `QuickActionService` — not in Phase 5 scope. Lines 247+ belong to Phase 6. No implementation in this phase.
+  - `execute` / `undo` deferred; requires `work_item_sections` (EP-04) and undo TTL infra
+
+**Status: PARTIALLY COMPLETED** (2026-04-16)
+— ClarificationService: DONE (14 tests)
+— ConversationService: DONE (16 tests)
+— SuggestionService.generate + list_pending + update_single_status: DONE (16 tests)
+— SuggestionService.apply_partial: DEFERRED (needs EP-04 work_item_sections + EP-07 VersioningService)
+— QuickActionService: DEFERRED (Phase 6+, needs EP-04)
 
 ---
 
