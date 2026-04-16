@@ -714,3 +714,582 @@ class WorkItemVersionORM(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    # EP-07 additive columns
+    snapshot_schema_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="1"
+    )
+    trigger: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="content_edit"
+    )
+    actor_type: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="human"
+    )
+    actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    commit_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    archived: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-05 — Task nodes, dependencies
+# ---------------------------------------------------------------------------
+
+
+class TaskNodeORM(Base):
+    __tablename__ = "task_nodes"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'in_progress', 'done')",
+            name="task_nodes_status_valid",
+        ),
+        Index("idx_task_nodes_work_item_id", "work_item_id"),
+        Index("idx_task_nodes_parent_id", "parent_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    parent_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("task_nodes.id", ondelete="CASCADE"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    display_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="draft")
+    generation_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="llm"
+    )
+    materialized_path: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class TaskDependencyORM(Base):
+    __tablename__ = "task_dependencies"
+    __table_args__ = (
+        UniqueConstraint("source_id", "target_id", name="uq_task_dependency"),
+        CheckConstraint("source_id != target_id", name="no_self_dependency"),
+        Index("idx_task_dep_source", "source_id"),
+        Index("idx_task_dep_target", "target_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    source_id: Mapped[UUID] = mapped_column(
+        ForeignKey("task_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    target_id: Mapped[UUID] = mapped_column(
+        ForeignKey("task_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-06 — Reviews, Validation
+# ---------------------------------------------------------------------------
+
+
+class ValidationRequirementORM(Base):
+    __tablename__ = "validation_requirements"
+
+    rule_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    applies_to: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+
+
+class ReviewRequestORM(Base):
+    __tablename__ = "review_requests"
+    __table_args__ = (
+        Index("idx_review_requests_work_item", "work_item_id"),
+        Index("idx_review_requests_status", "work_item_id", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    version_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_item_versions.id"), nullable=False
+    )
+    reviewer_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    reviewer_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    team_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    validation_rule_id: Mapped[str | None] = mapped_column(
+        ForeignKey("validation_requirements.rule_id"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(15), nullable=False, server_default="pending")
+    requested_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class ReviewResponseORM(Base):
+    __tablename__ = "review_responses"
+    __table_args__ = (
+        Index("idx_review_responses_request", "review_request_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    review_request_id: Mapped[UUID] = mapped_column(
+        ForeignKey("review_requests.id", ondelete="CASCADE"), nullable=False
+    )
+    responder_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    decision: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ValidationStatusORM(Base):
+    __tablename__ = "validation_status"
+    __table_args__ = (
+        UniqueConstraint("work_item_id", "rule_id", name="uq_validation_status"),
+        Index("idx_validation_status_work_item", "work_item_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("validation_requirements.rule_id"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(15), nullable=False, server_default="pending")
+    passed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    passed_by_review_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("review_requests.id"), nullable=True
+    )
+    waived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    waived_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    waive_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-07 — Comments, Timeline
+# ---------------------------------------------------------------------------
+
+
+class CommentORM(Base):
+    __tablename__ = "comments"
+    __table_args__ = (
+        Index("idx_comments_work_item", "work_item_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    parent_comment_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("comments.id", ondelete="SET NULL"), nullable=True
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_type: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    anchor_section_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("work_item_sections.id", ondelete="SET NULL"), nullable=True
+    )
+    anchor_start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    anchor_end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    anchor_snapshot_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anchor_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active")
+    is_edited: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class TimelineEventORM(Base):
+    __tablename__ = "timeline_events"
+    __table_args__ = (
+        Index("idx_timeline_work_item", "work_item_id", sa.text("occurred_at DESC")),
+        Index("idx_timeline_workspace_occurred", "workspace_id", sa.text("occurred_at DESC")),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="RESTRICT"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_type: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    actor_display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    source_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    source_table: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-08 — Teams, Notifications
+# ---------------------------------------------------------------------------
+
+
+class TeamORM(Base):
+    __tablename__ = "teams"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    can_receive_reviews: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class TeamMembershipORM(Base):
+    __tablename__ = "team_memberships"
+    __table_args__ = (
+        UniqueConstraint("team_id", "user_id", name="uq_team_membership_active"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    team_id: Mapped[UUID] = mapped_column(
+        ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False, server_default="member")
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class NotificationORM(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    recipient_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, server_default="unread")
+    actor_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[UUID] = mapped_column(nullable=False)
+    deeplink: Mapped[str] = mapped_column(Text, nullable=False)
+    quick_action: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    extra: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    idempotency_key: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    actioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-09 — Saved Searches
+# ---------------------------------------------------------------------------
+
+
+class SavedSearchORM(Base):
+    __tablename__ = "saved_searches"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    query_params: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-10 — Projects, Routing Rules, Integration Configs
+# ---------------------------------------------------------------------------
+
+
+class ProjectORM(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class RoutingRuleORM(Base):
+    __tablename__ = "routing_rules"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    work_item_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    suggested_team_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    suggested_owner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    suggested_validators: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+    )
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class IntegrationConfigORM(Base):
+    __tablename__ = "integration_configs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
+    )
+    integration_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    encrypted_credentials: Mapped[str] = mapped_column(Text, nullable=False)
+    mapping: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-11 — Integration Exports
+# ---------------------------------------------------------------------------
+
+
+class IntegrationExportORM(Base):
+    __tablename__ = "integration_exports"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    integration_config_id: Mapped[UUID] = mapped_column(
+        ForeignKey("integration_configs.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    external_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    direction: Mapped[str] = mapped_column(String(16), nullable=False)
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    exported_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-13 — Puppet Sync Outbox
+# ---------------------------------------------------------------------------
+
+
+class PuppetSyncOutboxORM(Base):
+    __tablename__ = "puppet_sync_outbox"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    operation: Mapped[str] = mapped_column(String(16), nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enqueued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-15 — Tags
+# ---------------------------------------------------------------------------
+
+
+class TagORM(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class WorkItemTagORM(Base):
+    __tablename__ = "work_item_tags"
+    __table_args__ = (
+        UniqueConstraint("work_item_id", "tag_id", name="uq_work_item_tag"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    tag_id: Mapped[UUID] = mapped_column(
+        ForeignKey("tags.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-16 — Attachments
+# ---------------------------------------------------------------------------
+
+
+class AttachmentORM(Base):
+    __tablename__ = "attachments"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=True
+    )
+    comment_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("comments.id", ondelete="CASCADE"), nullable=True
+    )
+    filename: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    thumbnail_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checksum_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    uploaded_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-17 — Section Locks
+# ---------------------------------------------------------------------------
+
+
+class SectionLockORM(Base):
+    __tablename__ = "section_locks"
+    __table_args__ = (
+        UniqueConstraint("section_id", name="uq_section_lock_active"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    section_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_item_sections.id", ondelete="CASCADE"), nullable=False
+    )
+    work_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    held_by: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    heartbeat_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    force_released_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    force_released_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
