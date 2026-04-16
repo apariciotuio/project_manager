@@ -52,7 +52,7 @@ def _create_celery() -> Celery:
         },
     )
 
-    app.autodiscover_tasks(["app.infrastructure.jobs"])
+    app.autodiscover_tasks(["app.infrastructure.jobs", "app.infrastructure.tasks"])
     return app
 
 

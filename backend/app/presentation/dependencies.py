@@ -1,4 +1,4 @@
-"""FastAPI dependency wiring for EP-00 and EP-01 controllers.
+"""FastAPI dependency wiring for EP-00, EP-01, EP-02, EP-03 controllers.
 
 Kept centralised so repos, services, and adapters share a single construction path.
 Each request gets its own AsyncSession; services built on top of it are request-scoped.
@@ -15,11 +15,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.events.event_bus import EventBus
 
 if TYPE_CHECKING:
+    from app.application.services.clarification_service import ClarificationService
+    from app.application.services.conversation_service import ConversationService
     from app.application.services.draft_service import DraftService
+    from app.application.services.suggestion_service import SuggestionService
     from app.application.services.template_service import TemplateService
     from app.domain.ports.cache import ICache
+    from app.domain.ports.dundun import DundunClient
     from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
         AssistantSuggestionRepositoryImpl,
+    )
+    from app.infrastructure.persistence.conversation_thread_repository_impl import (
+        ConversationThreadRepositoryImpl,
     )
     from app.infrastructure.persistence.gap_finding_repository_impl import (
         GapFindingRepositoryImpl,
@@ -302,3 +309,117 @@ def get_gap_finding_repo(
     )
 
     return GapFindingRepositoryImpl(session)
+
+
+# ---------------------------------------------------------------------------
+# EP-03 — Dundun client, Conversation, Suggestion, Clarification
+# ---------------------------------------------------------------------------
+
+
+def get_dundun_client() -> DundunClient:
+    """Construct the Dundun client from settings.
+
+    Tests override this dep via app.dependency_overrides to inject FakeDundunClient.
+    When settings.dundun.use_fake is True the test conftest override takes precedence.
+    """
+    from app.config.settings import get_settings
+    from app.infrastructure.adapters.dundun_http_client import DundunHTTPClient
+
+    s = get_settings()
+    return DundunHTTPClient(  # type: ignore[return-value]
+        base_url=s.dundun.base_url,
+        service_key=s.dundun.service_key,
+        http_timeout=s.dundun.http_timeout,
+    )
+
+
+def get_conversation_thread_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ConversationThreadRepositoryImpl:
+    from app.infrastructure.persistence.conversation_thread_repository_impl import (
+        ConversationThreadRepositoryImpl,
+    )
+
+    return ConversationThreadRepositoryImpl(session)
+
+
+def get_conversation_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    dundun: DundunClient = Depends(get_dundun_client),
+) -> ConversationService:
+    from app.application.services.conversation_service import ConversationService
+    from app.infrastructure.persistence.conversation_thread_repository_impl import (
+        ConversationThreadRepositoryImpl,
+    )
+
+    return ConversationService(
+        thread_repo=ConversationThreadRepositoryImpl(session),
+        dundun_client=dundun,
+    )
+
+
+def get_suggestion_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    dundun: DundunClient = Depends(get_dundun_client),
+) -> SuggestionService:
+    from app.application.services.suggestion_service import SuggestionService
+    from app.config.settings import get_settings
+    from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
+        AssistantSuggestionRepositoryImpl,
+    )
+
+    s = get_settings()
+    return SuggestionService(
+        suggestion_repo=AssistantSuggestionRepositoryImpl(session),
+        dundun_client=dundun,
+        callback_url=s.dundun.callback_url,
+    )
+
+
+def get_clarification_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
+    dundun: DundunClient = Depends(get_dundun_client),
+) -> ClarificationService:
+    from app.application.services.clarification_service import ClarificationService
+    from app.config.settings import get_settings
+    from app.domain.gap_detection.gap_detector import GapDetector
+    from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
+
+    s = get_settings()
+    return ClarificationService(
+        gap_detector=GapDetector(),
+        work_item_repo=WorkItemRepositoryImpl(session),
+        dundun_client=dundun,
+        cache=cache,
+        callback_url=s.dundun.callback_url,
+    )
+
+
+async def get_thread_repo_for_ws() -> ConversationThreadRepositoryImpl:
+    """Unscoped thread repo for WS handshake (no RLS needed — ownership checked by user_id)."""
+    from app.infrastructure.persistence.conversation_thread_repository_impl import (
+        ConversationThreadRepositoryImpl,
+    )
+    from app.infrastructure.persistence.database import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as session:
+        return ConversationThreadRepositoryImpl(session)
+
+
+async def get_conversation_service_for_ws(user: object) -> ConversationService:  # noqa: ARG001
+    """Build ConversationService for the WS path (no FastAPI DI available there)."""
+    from app.application.services.conversation_service import ConversationService
+    from app.infrastructure.persistence.conversation_thread_repository_impl import (
+        ConversationThreadRepositoryImpl,
+    )
+    from app.infrastructure.persistence.database import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as session:
+        dundun = get_dundun_client()
+        return ConversationService(
+            thread_repo=ConversationThreadRepositoryImpl(session),
+            dundun_client=dundun,
+        )

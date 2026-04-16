@@ -30,10 +30,12 @@ from app.domain.exceptions import (
     CreatorNotMemberError,
     DraftForbiddenError,
     DuplicateTemplateError,
+    InvalidSuggestionStateError,
     InvalidTransitionError,
     MandatoryValidationsPendingError,
     NotOwnerError,
     OwnerSuspendedError,
+    SuggestionExpiredError,
     TargetUserSuspendedError,
     TemplateForbiddenError,
     TemplateNotFoundError,
@@ -278,6 +280,29 @@ async def _work_item_draft_not_found_handler(
     )
 
 
+# ---------------------------------------------------------------------------
+# EP-03 domain exception handlers
+# ---------------------------------------------------------------------------
+
+
+async def _suggestion_expired_handler(
+    _: Request, exc: SuggestionExpiredError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content=_envelope("SUGGESTION_EXPIRED", str(exc), {"suggestion_id": str(exc.suggestion_id)}),
+    )
+
+
+async def _invalid_suggestion_state_handler(
+    _: Request, exc: InvalidSuggestionStateError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content=_envelope("INVALID_SUGGESTION_STATE", str(exc)),
+    )
+
+
 async def _http_exception_handler(
     _: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
@@ -335,6 +360,9 @@ def register_error_handlers(app: FastAPI) -> None:
     _register(app, TemplateNotFoundError, _template_not_found_handler)
     _register(app, DraftForbiddenError, _draft_forbidden_handler)
     _register(app, WorkItemDraftNotFoundError, _work_item_draft_not_found_handler)
+    # EP-03 domain exceptions
+    _register(app, SuggestionExpiredError, _suggestion_expired_handler)
+    _register(app, InvalidSuggestionStateError, _invalid_suggestion_state_handler)
     _register(app, RequestValidationError, _validation_error_handler)
     _register(app, StarletteHTTPException, _http_exception_handler)
     app.add_exception_handler(Exception, _internal_error_handler)
