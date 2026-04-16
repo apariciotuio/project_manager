@@ -4,6 +4,30 @@ Tech stack: Python 3.12+, FastAPI, SQLAlchemy async, PostgreSQL 16+, Celery + Re
 
 ---
 
+## EP-05 baseline progress (2026-04-16)
+
+- [x] Migration 0022 — `task_nodes` (adjacency list + materialised_path + pg_trgm index), `task_node_section_links` (M:N bridge), `task_dependencies` (with UNIQUE + CHECK no_self_dependency). Full regression 963 passed + 1 skip.
+- [x] Domain: `TaskNode` entity + `TaskStatus` FSM (draft -> in_progress -> done) + `PredecessorNotDoneError` + explicit `reopen()` (no reverse FSM per resolution #20)
+- [x] Domain: `TaskDependency` VO rejecting self-dependency
+- [x] Pure DFS cycle detection `has_cycle_after_add(edges, new_edge)` in `domain/quality/cycle_detection.py` — O(V+E), handles direct, indirect, self-edge cases
+- [x] 9 unit tests on TaskNode FSM + cycle detection
+
+Remaining within EP-05:
+- [ ] ORM models + repositories (TaskNodeRepository, TaskDependencyRepository, TaskNodeSectionLinkRepository) + mappers
+- [ ] TaskService (split/merge/reorder, materialised_path maintenance) + DependencyService (cycle check before insert)
+- [ ] Tree API: `GET /work-items/:id/task-tree` via WITH RECURSIVE CTE
+- [ ] Task CRUD + dependency add/remove endpoints
+- [ ] Unmark-done endpoint + `task.reopened` event
+- [ ] Dundun `wm_breakdown_agent` dispatch via Celery + callback
+
+---
+
+## Original checklist below (untouched)
+
+
+
+---
+
 ## API Contract (interface with frontend)
 
 ### Task node response shape
