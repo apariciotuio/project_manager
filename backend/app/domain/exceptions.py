@@ -134,7 +134,7 @@ class TemplateNotFoundError(Exception):
 
 
 class TemplateForbiddenError(Exception):
-    """Raised when non-admin tries to create/update/delete a template, or system template is mutated."""
+    """Raised when non-admin tries to create/update/delete a template, or system template is mutated."""  # noqa: E501
 
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
@@ -148,3 +148,31 @@ class DuplicateTemplateError(Exception):
         super().__init__(f"Workspace {workspace_id} already has a template for type {type_!r}")
         self.workspace_id = workspace_id
         self.type_ = type_
+
+
+# ---------------------------------------------------------------------------
+# EP-03 domain exceptions
+# ---------------------------------------------------------------------------
+
+
+class SuggestionExpiredError(Exception):
+    """Raised when accept() is called on an expired suggestion."""
+
+    def __init__(self, suggestion_id: UUID) -> None:
+        super().__init__(f"Suggestion {suggestion_id} has expired")
+        self.suggestion_id = suggestion_id
+
+
+class InvalidSuggestionStateError(Exception):
+    """Raised when accept()/reject() is called on a non-pending suggestion."""
+
+    def __init__(
+        self, suggestion_id: UUID, current_status: object, attempted_transition: str
+    ) -> None:
+        super().__init__(
+            f"Cannot {attempted_transition} suggestion {suggestion_id} "
+            f"in state {current_status!r}"
+        )
+        self.suggestion_id = suggestion_id
+        self.current_status = current_status
+        self.attempted_transition = attempted_transition

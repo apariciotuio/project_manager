@@ -201,3 +201,509 @@ async def test_oauth_states_has_return_to_column(engine) -> None:
             )
         ).one()
         assert row[0] == "/workspace/foo"
+
+
+# ---------------------------------------------------------------------------
+# EP-03 Phase 1 — conversation_threads / assistant_suggestions / gap_findings
+# ---------------------------------------------------------------------------
+
+
+async def test_ep03_tables_exist(engine) -> None:
+    """0014/0015/0016 migrations create three new tables."""
+    expected = {"conversation_threads", "assistant_suggestions", "gap_findings"}
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        )
+        present = {row[0] for row in result}
+    missing = expected - present
+    assert not missing, f"missing EP-03 tables: {missing}"
+
+
+# --- conversation_threads ---
+
+
+async def test_conversation_threads_columns(engine) -> None:
+    """All required columns exist with correct nullability."""
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT column_name, is_nullable "
+                "FROM information_schema.columns "
+                "WHERE table_name = 'conversation_threads' AND table_schema = 'public'"
+            )
+        )
+        cols = {row[0]: row[1] for row in result}
+
+    assert "id" in cols
+    assert "user_id" in cols
+    assert "work_item_id" in cols
+    assert cols["work_item_id"] == "YES", "work_item_id must be NULLABLE"
+    assert "dundun_conversation_id" in cols
+    assert "last_message_preview" in cols
+    assert "last_message_at" in cols
+    assert "created_at" in cols
+    assert cols["created_at"] == "NO", "created_at must be NOT NULL"
+    assert "deleted_at" in cols
+
+
+async def test_conversation_threads_dundun_unique(engine) -> None:
+    """dundun_conversation_id has a UNIQUE constraint."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-ct1', 'ct1@tuio.com', 'CT1')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO conversation_threads "
+                "(user_id, dundun_conversation_id) "
+                "SELECT id, 'dun-unique-1' FROM users WHERE email='ct1@tuio.com'"
+            )
+        )
+        with pytest.raises(Exception, match="unique|duplicate"):
+            await conn.execute(
+                text(
+                    "INSERT INTO conversation_threads "
+                    "(user_id, dundun_conversation_id) "
+                    "SELECT id, 'dun-unique-1' FROM users WHERE email='ct1@tuio.com'"
+                )
+            )
+
+
+async def test_conversation_threads_unique_user_work_item(engine) -> None:
+    """At most one thread per (user_id, work_item_id) pair."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-ct2', 'ct2@tuio.com', 'CT2')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'CT-WS', 'ct-ws', id "
+                "FROM users WHERE email='ct2@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'CT Item' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='ct2@tuio.com' AND w.slug='ct-ws'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO conversation_threads "
+                "(user_id, work_item_id, dundun_conversation_id) "
+                "SELECT u.id, wi.id, 'dun-pair-1' "
+                "FROM users u, work_items wi "
+                "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item'"
+            )
+        )
+        with pytest.raises(Exception, match="unique|duplicate"):
+            await conn.execute(
+                text(
+                    "INSERT INTO conversation_threads "
+                    "(user_id, work_item_id, dundun_conversation_id) "
+                    "SELECT u.id, wi.id, 'dun-pair-2' "
+                    "FROM users u, work_items wi "
+                    "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item'"
+                )
+            )
+
+
+async def test_conversation_threads_work_item_fk_set_null(engine) -> None:
+    """Deleting a work_item sets conversation_threads.work_item_id to NULL."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-ct3', 'ct3@tuio.com', 'CT3')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'CT-WS3', 'ct-ws3', id "
+                "FROM users WHERE email='ct3@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'CT Item3' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='ct3@tuio.com' AND w.slug='ct-ws3'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO conversation_threads "
+                "(user_id, work_item_id, dundun_conversation_id) "
+                "SELECT u.id, wi.id, 'dun-setnull' "
+                "FROM users u, work_items wi "
+                "WHERE u.email='ct3@tuio.com' AND wi.title='CT Item3'"
+            )
+        )
+        await conn.execute(
+            text("DELETE FROM work_items WHERE title='CT Item3'")
+        )
+        row = (
+            await conn.execute(
+                text(
+                    "SELECT work_item_id FROM conversation_threads "
+                    "WHERE dundun_conversation_id='dun-setnull'"
+                )
+            )
+        ).one()
+        assert row[0] is None, "work_item_id should be NULL after work_item delete"
+
+
+# --- assistant_suggestions ---
+
+
+async def test_assistant_suggestions_columns(engine) -> None:
+    """All required columns exist with correct nullability."""
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT column_name, is_nullable "
+                "FROM information_schema.columns "
+                "WHERE table_name = 'assistant_suggestions' AND table_schema = 'public'"
+            )
+        )
+        cols = {row[0]: row[1] for row in result}
+
+    required_not_null = {
+        "id", "work_item_id", "proposed_content", "current_content",
+        "status", "version_number_target", "batch_id", "created_by",
+        "created_at", "updated_at", "expires_at",
+    }
+    for col in required_not_null:
+        assert col in cols, f"column {col} missing from assistant_suggestions"
+        assert cols[col] == "NO", f"{col} must be NOT NULL"
+
+    nullable_cols = {"thread_id", "section_id", "rationale", "dundun_request_id"}
+    for col in nullable_cols:
+        assert col in cols, f"nullable column {col} missing from assistant_suggestions"
+        assert cols[col] == "YES", f"{col} must be NULLABLE"
+
+
+async def test_assistant_suggestions_status_check(engine) -> None:
+    """status column rejects values outside the allowed set."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-as1', 'as1@tuio.com', 'AS1')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'AS-WS', 'as-ws', id "
+                "FROM users WHERE email='as1@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'AS Item' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='as1@tuio.com' AND w.slug='as-ws'"
+            )
+        )
+        with pytest.raises(Exception, match="check|constraint"):
+            await conn.execute(
+                text(
+                    "INSERT INTO assistant_suggestions "
+                    "(work_item_id, proposed_content, current_content, status, "
+                    " version_number_target, batch_id, created_by, expires_at) "
+                    "SELECT wi.id, 'p', 'c', 'invalid', 1, gen_random_uuid(), u.id, "
+                    "       now() + interval '1 day' "
+                    "FROM work_items wi, users u "
+                    "WHERE u.email='as1@tuio.com' AND wi.title='AS Item'"
+                )
+            )
+
+
+async def test_assistant_suggestions_status_default_pending(engine) -> None:
+    """status defaults to 'pending' when not specified."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-as2', 'as2@tuio.com', 'AS2')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'AS-WS2', 'as-ws2', id "
+                "FROM users WHERE email='as2@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'AS Item2' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='as2@tuio.com' AND w.slug='as-ws2'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO assistant_suggestions "
+                "(work_item_id, proposed_content, current_content, "
+                " version_number_target, batch_id, created_by, expires_at) "
+                "SELECT wi.id, 'prop', 'curr', 1, gen_random_uuid(), u.id, "
+                "       now() + interval '1 day' "
+                "FROM work_items wi, users u "
+                "WHERE u.email='as2@tuio.com' AND wi.title='AS Item2'"
+            )
+        )
+        row = (
+            await conn.execute(
+                text(
+                    "SELECT status FROM assistant_suggestions "
+                    "WHERE work_item_id = ("
+                    "  SELECT wi.id FROM work_items wi WHERE wi.title='AS Item2'"
+                    ")"
+                )
+            )
+        ).one()
+        assert row[0] == "pending"
+
+
+async def test_assistant_suggestions_indexes_exist(engine) -> None:
+    """Required indexes on assistant_suggestions are present."""
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT indexname FROM pg_indexes "
+                "WHERE tablename = 'assistant_suggestions' AND schemaname = 'public'"
+            )
+        )
+        indexes = {row[0] for row in result}
+
+    for expected in (
+        "idx_as_work_item_batch",
+        "idx_as_work_item_created",
+        "idx_as_batch",
+        "idx_as_dundun_request",
+    ):
+        assert expected in indexes, f"missing index: {expected}"
+
+
+async def test_assistant_suggestions_work_item_fk_cascade(engine) -> None:
+    """Deleting a work_item cascades to assistant_suggestions."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-as3', 'as3@tuio.com', 'AS3')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'AS-WS3', 'as-ws3', id "
+                "FROM users WHERE email='as3@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'AS Item3' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='as3@tuio.com' AND w.slug='as-ws3'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO assistant_suggestions "
+                "(work_item_id, proposed_content, current_content, "
+                " version_number_target, batch_id, created_by, expires_at) "
+                "SELECT wi.id, 'p3', 'c3', 1, gen_random_uuid(), u.id, "
+                "       now() + interval '1 day' "
+                "FROM work_items wi, users u "
+                "WHERE u.email='as3@tuio.com' AND wi.title='AS Item3'"
+            )
+        )
+        await conn.execute(
+            text("DELETE FROM work_items WHERE title='AS Item3'")
+        )
+        count = (
+            await conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM assistant_suggestions "
+                    "WHERE proposed_content='p3'"
+                )
+            )
+        ).scalar()
+        assert count == 0, "cascade delete from work_items to assistant_suggestions failed"
+
+
+# --- gap_findings ---
+
+
+async def test_gap_findings_columns(engine) -> None:
+    """All required columns exist with correct nullability."""
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT column_name, is_nullable "
+                "FROM information_schema.columns "
+                "WHERE table_name = 'gap_findings' AND table_schema = 'public'"
+            )
+        )
+        cols = {row[0]: row[1] for row in result}
+
+    required_not_null = {
+        "id", "work_item_id", "source", "severity", "dimension", "message", "created_at",
+    }
+    for col in required_not_null:
+        assert col in cols, f"column {col} missing from gap_findings"
+        assert cols[col] == "NO", f"{col} must be NOT NULL"
+
+    nullable_cols = {"dundun_request_id", "invalidated_at"}
+    for col in nullable_cols:
+        assert col in cols, f"nullable column {col} missing from gap_findings"
+        assert cols[col] == "YES", f"{col} must be NULLABLE"
+
+
+async def test_gap_findings_source_check(engine) -> None:
+    """source column rejects values outside (rule, dundun)."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-gf1', 'gf1@tuio.com', 'GF1')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'GF-WS', 'gf-ws', id "
+                "FROM users WHERE email='gf1@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'GF Item' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='gf1@tuio.com' AND w.slug='gf-ws'"
+            )
+        )
+        with pytest.raises(Exception, match="check|constraint"):
+            await conn.execute(
+                text(
+                    "INSERT INTO gap_findings "
+                    "(work_item_id, source, severity, dimension, message) "
+                    "SELECT wi.id, 'invalid', 'warning', 'dim', 'msg' "
+                    "FROM work_items wi WHERE wi.title='GF Item'"
+                )
+            )
+
+
+async def test_gap_findings_severity_check(engine) -> None:
+    """severity column rejects values outside (blocking, warning, info)."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-gf2', 'gf2@tuio.com', 'GF2')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'GF-WS2', 'gf-ws2', id "
+                "FROM users WHERE email='gf2@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'GF Item2' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='gf2@tuio.com' AND w.slug='gf-ws2'"
+            )
+        )
+        with pytest.raises(Exception, match="check|constraint"):
+            await conn.execute(
+                text(
+                    "INSERT INTO gap_findings "
+                    "(work_item_id, source, severity, dimension, message) "
+                    "SELECT wi.id, 'rule', 'critical', 'dim', 'msg' "
+                    "FROM work_items wi WHERE wi.title='GF Item2'"
+                )
+            )
+
+
+async def test_gap_findings_indexes_exist(engine) -> None:
+    """Required indexes on gap_findings are present."""
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT indexname FROM pg_indexes "
+                "WHERE tablename = 'gap_findings' AND schemaname = 'public'"
+            )
+        )
+        indexes = {row[0] for row in result}
+
+    assert "idx_gap_findings_work_item" in indexes, "missing idx_gap_findings_work_item"
+    assert "idx_gap_findings_active" in indexes, "missing idx_gap_findings_active"
+
+
+async def test_gap_findings_work_item_fk_cascade(engine) -> None:
+    """Deleting a work_item cascades to gap_findings."""
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (id, google_sub, email, full_name) "
+                "VALUES (gen_random_uuid(), 'sub-gf3', 'gf3@tuio.com', 'GF3')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'GF-WS3', 'gf-ws3', id "
+                "FROM users WHERE email='gf3@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO work_items (id, workspace_id, project_id, creator_id, owner_id, type, state, title) "
+                "SELECT gen_random_uuid(), w.id, gen_random_uuid(), u.id, u.id, 'task', 'draft', 'GF Item3' "
+                "FROM workspaces w, users u "
+                "WHERE u.email='gf3@tuio.com' AND w.slug='gf-ws3'"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO gap_findings "
+                "(work_item_id, source, severity, dimension, message) "
+                "SELECT wi.id, 'rule', 'warning', 'dim', 'msg' "
+                "FROM work_items wi WHERE wi.title='GF Item3'"
+            )
+        )
+        await conn.execute(
+            text("DELETE FROM work_items WHERE title='GF Item3'")
+        )
+        count = (
+            await conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM gap_findings WHERE dimension='dim' AND message='msg' "
+                    "AND work_item_id NOT IN (SELECT id FROM work_items)"
+                )
+            )
+        ).scalar()
+        assert count == 0, "cascade delete from work_items to gap_findings failed"

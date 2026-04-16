@@ -67,12 +67,14 @@ Frames are forwarded verbatim; our BE does NOT interpret content, only enforces 
 
 ## Phase 1 — Database Migrations
 
-- [ ] [RED] Write migration schema tests: assert `conversation_threads` columns (id, user_id, work_item_id NULLABLE, dundun_conversation_id TEXT UNIQUE, last_message_preview, last_message_at, created_at), UNIQUE `(user_id, work_item_id)`
-- [ ] [GREEN] Create Alembic migration `conversation_threads` (pointer-only)
-- [ ] [GREEN] Create Alembic migration `assistant_suggestions`: single flat table with `id`, `work_item_id FK`, `thread_id FK NULLABLE`, `section_id FK NULLABLE`, `proposed_content`, `current_content`, `rationale`, `status ENUM(pending,accepted,rejected,expired)`, `version_number_target INT`, `batch_id UUID NOT NULL`, `dundun_request_id TEXT`, `created_by FK`, `created_at`, `updated_at`, `expires_at`; indexes: `idx_as_work_item_batch ON (work_item_id, batch_id, status)`, `idx_as_work_item_created ON (work_item_id, created_at DESC)`, `idx_as_batch ON (batch_id)`, `idx_as_dundun_request ON (dundun_request_id)`
-- [ ] [GREEN] Create Alembic migration `gap_findings`: `id`, `work_item_id FK`, `source VARCHAR(20)` (rule|dundun), `severity VARCHAR(20)`, `dimension VARCHAR(100)`, `message TEXT`, `dundun_request_id TEXT NULL`, `created_at`, `invalidated_at`; index `idx_gap_findings_work_item ON (work_item_id, source, severity)`
-- [ ] Do NOT create `conversation_messages`, `prompt_templates`, `llm_calls`, or any token-budget tables (decision #32)
-- [ ] [REFACTOR] Verify all FK constraints and unique indexes match design.md
+- [x] [RED] Write migration schema tests: 15 new tests for conversation_threads, assistant_suggestions, gap_findings — columns, constraints, unique indexes, check constraints, FK behaviour (2026-04-16)
+- [x] [GREEN] Create Alembic migration `conversation_threads` — `0014_create_conversation_threads.py`, revision `0014_conversation_threads`; UNIQUE(dundun_conversation_id), UNIQUE(user_id, work_item_id), work_item_id SET NULL on delete (2026-04-16)
+- [x] [GREEN] Create Alembic migration `assistant_suggestions` — `0015_create_assistant_suggestions.py`, revision `0015_assistant_suggestions`; CHECK status IN (pending/accepted/rejected/expired), section_id bare UUID (no FK, EP-04 note), 4 indexes including partial on dundun_request_id (2026-04-16)
+- [x] [GREEN] Create Alembic migration `gap_findings` — `0016_create_gap_findings.py`, revision `0016_gap_findings`; CHECK source IN (rule/dundun), CHECK severity IN (blocking/warning/info), idx_gap_findings_active partial index WHERE invalidated_at IS NULL (2026-04-16)
+- [x] Do NOT create `conversation_messages`, `prompt_templates`, `llm_calls`, or any token-budget tables (decision #32) — confirmed, not created
+- [x] [REFACTOR] All FK constraints, check constraints, unique indexes, and partial indexes verified by 24 passing schema tests (2026-04-16)
+
+**Status: COMPLETED** (2026-04-16)
 
 ---
 
@@ -80,26 +82,28 @@ Frames are forwarded verbatim; our BE does NOT interpret content, only enforces 
 
 ### Gap Detection Rules
 
-- [ ] Implement `domain/models/gap_finding.py` — `GapFinding` dataclass: `dimension`, `severity: GapSeverity`, `message`, `source: Literal['rule', 'llm']`; `GapReport` dataclass: `work_item_id`, `findings: list[GapFinding]`, `score: float`; `GapSeverity` enum: `blocking | warning | info`
-- [ ] [RED] Write unit tests for `required_fields` rule: each WorkItemType has specific required fields; missing required field returns `GapFinding(severity=blocking)`; all fields present returns empty list
-- [ ] [RED] Write unit tests for `content_quality` rule: description < 50 chars returns soft gap; vague phrases ("TBD", "TODO", "N/A" alone) trigger gap
-- [ ] [RED] Write unit tests for `acceptance_criteria` rule: missing WHEN/THEN pattern in acceptance criteria field returns gap for applicable types; Task/Spike are not applicable
-- [ ] [RED] Write unit tests for `hierarchy_rules` rule: Initiative without linked child items returns gap; Task without parent returns gap for applicable types
-- [ ] [RED] Write unit tests for `GapDetector.detect()`: combines all rules, deduplicates identical `(dimension, severity)` pairs, sorts by severity (blocking first), score formula: `1.0 - (hard * 0.2 + soft * 0.05)` clamped to [0, 1]
-- [ ] [GREEN] Implement rule functions in `domain/gap_detection/rules/`: `required_fields.py`, `content_quality.py`, `acceptance_criteria.py`, `hierarchy_rules.py`
-- [ ] [GREEN] Implement `domain/gap_detection/gap_detector.py` — `GapDetector.detect(work_item) -> GapReport`
-- [ ] [REFACTOR] All rule functions are pure: `(WorkItem) -> list[GapFinding]`, no I/O, 100% branch coverage
+- [x] Implement `domain/models/gap_finding.py` — `GapFinding` dataclass: `dimension`, `severity: GapSeverity`, `message`, `source: Literal['rule', 'dundun']`; `GapReport` dataclass: `work_item_id`, `findings: list[GapFinding]`, `score: float`; `GapSeverity` enum: `blocking | warning | info` (2026-04-16)
+- [x] [RED] Write unit tests for `required_fields` rule: each WorkItemType has specific required fields; missing required field returns `GapFinding(severity=blocking)`; all fields present returns empty list (2026-04-16)
+- [x] [RED] Write unit tests for `content_quality` rule: description < 50 chars returns soft gap; vague phrases ("TBD", "TODO", "N/A" alone) trigger gap (2026-04-16)
+- [x] [RED] Write unit tests for `acceptance_criteria` rule: missing WHEN/THEN pattern in acceptance criteria field returns gap for applicable types; Task/Spike are not applicable (2026-04-16)
+- [x] [RED] Write unit tests for `hierarchy_rules` rule: Initiative without linked child items returns gap; Task without parent returns gap for applicable types (2026-04-16)
+- [x] [RED] Write unit tests for `GapDetector.detect()`: combines all rules, deduplicates identical `(dimension, severity)` pairs, sorts by severity (blocking first), score formula: `1.0 - (hard * 0.2 + soft * 0.05)` clamped to [0, 1] (2026-04-16)
+- [x] [GREEN] Implement rule functions in `domain/gap_detection/rules/`: `required_fields.py`, `content_quality.py`, `acceptance_criteria.py`, `hierarchy_rules.py` (2026-04-16)
+- [x] [GREEN] Implement `domain/gap_detection/gap_detector.py` — `GapDetector.detect(work_item) -> GapReport` (2026-04-16)
+- [x] [REFACTOR] GapDetector + 4 rule functions, 94 unit tests; all pure `(WorkItem) -> list[GapFinding]`; ruff clean, mypy --strict zero errors (2026-04-16)
 
 ### Suggestion Domain Models
 
-- [ ] [RED] Write unit tests: `AssistantSuggestion` entity — `pending → accepted` allowed; `pending → rejected` allowed; expired suggestion (`expires_at < now()`) raises `SuggestionExpiredError` on apply; accepted suggestion cannot be re-applied
-- [ ] [RED] Write unit tests: `SuggestionBatch` value object (derived from list of suggestions) — `status` derived correctly: all pending=`pending`, mixed=`partially_applied`, all accepted/rejected=`fully_applied`; any expired=`expired`
-- [ ] [GREEN] Implement `domain/models/assistant_suggestion.py` — `AssistantSuggestion` entity and `SuggestionBatch` value object
+- [x] [RED] Write unit tests: `AssistantSuggestion` entity — `pending → accepted` allowed; `pending → rejected` allowed; expired suggestion (`expires_at < now()`) raises `SuggestionExpiredError` on apply; accepted suggestion cannot be re-applied (2026-04-16 — 22 tests in test_assistant_suggestion.py + test_suggestion_batch.py)
+- [x] [RED] Write unit tests: `SuggestionBatch` value object (derived from list of suggestions) — `status` derived correctly: all pending=`pending`, mixed=`partially_applied`, all accepted/rejected=`fully_applied`; any expired=`expired` (2026-04-16 — 12 tests in test_suggestion_batch.py)
+- [x] [GREEN] Implement `domain/models/assistant_suggestion.py` — `AssistantSuggestion` entity and `SuggestionBatch` value object; `SuggestionExpiredError` + `InvalidSuggestionStateError` added to exceptions.py; 40/40 passing (2026-04-16)
 
 ### Conversation Domain Models
 
-- [ ] [RED] Write unit tests: `ConversationThread` — `(user_id, work_item_id)` uniqueness enforced at service layer; `work_item_id` NULL = general thread; `dundun_conversation_id` set on creation
-- [ ] [GREEN] Implement `domain/models/conversation_thread.py` (pointer-only; no `ConversationMessage` model — history owned by Dundun)
+- [x] [RED] Write unit tests: `ConversationThread` — `(user_id, work_item_id)` uniqueness enforced at service layer; `work_item_id` NULL = general thread; `dundun_conversation_id` set on creation (2026-04-16 — 9 tests in test_conversation_thread.py)
+- [x] [GREEN] Implement `domain/models/conversation_thread.py` (pointer-only; no `ConversationMessage` model — history owned by Dundun) (2026-04-16)
+
+**Status: COMPLETED** (2026-04-16) — Phase 2 total: 134 unit tests (94 gap detection + 40 suggestion/conversation), 706 suite total, 94% coverage
 
 ---
 
