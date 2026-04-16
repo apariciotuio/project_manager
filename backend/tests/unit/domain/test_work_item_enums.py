@@ -52,17 +52,17 @@ class TestWorkItemType:
 
         assert WorkItemType(value).value == value
 
-    def test_exactly_eight_values(self) -> None:
+    def test_exactly_ten_values(self) -> None:
         from app.domain.value_objects.work_item_type import WorkItemType
 
-        assert len(WorkItemType) == 8
+        assert len(WorkItemType) == 10
 
-    def test_no_milestone_or_story(self) -> None:
+    def test_milestone_and_story_present(self) -> None:
         from app.domain.value_objects.work_item_type import WorkItemType
 
         values = {t.value for t in WorkItemType}
-        assert "milestone" not in values
-        assert "story" not in values
+        assert "milestone" in values
+        assert "story" in values
 
     def test_is_str_subclass(self) -> None:
         from app.domain.value_objects.work_item_type import WorkItemType

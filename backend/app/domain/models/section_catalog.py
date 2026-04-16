@@ -93,6 +93,23 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.DEPENDENCIES, 6, False),
         SectionConfig(SectionType.RISKS, 7, False),
     ],
+    # EP-14 hierarchy types
+    WorkItemType.MILESTONE: [
+        SectionConfig(SectionType.SUMMARY, 1, True),
+        SectionConfig(SectionType.OBJECTIVE, 2, True),
+        SectionConfig(SectionType.SCOPE, 3, True),
+        SectionConfig(SectionType.BREAKDOWN, 4, True),
+        SectionConfig(SectionType.SUCCESS_METRICS, 5, False),
+        SectionConfig(SectionType.RISKS, 6, False),
+    ],
+    WorkItemType.STORY: [
+        SectionConfig(SectionType.SUMMARY, 1, True),
+        SectionConfig(SectionType.CONTEXT, 2, True),
+        SectionConfig(SectionType.ACCEPTANCE_CRITERIA, 3, True),
+        SectionConfig(SectionType.DEFINITION_OF_DONE, 4, False),
+        SectionConfig(SectionType.DEPENDENCIES, 5, False),
+        SectionConfig(SectionType.NOTES, 6, False),
+    ],
 }
 
 

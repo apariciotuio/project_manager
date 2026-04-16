@@ -16,25 +16,47 @@ from app.application.events.event_bus import EventBus
 
 if TYPE_CHECKING:
     from app.application.services.clarification_service import ClarificationService
+    from app.application.services.comment_service import CommentService
     from app.application.services.completeness_service import (
         CompletenessService,
         GapService,
     )
     from app.application.services.conversation_service import ConversationService
+    from app.application.services.dependency_service import DependencyService
     from app.application.services.draft_service import DraftService
+    from app.application.services.integration_service import IntegrationService
+    from app.application.services.project_service import ProjectService
+    from app.application.services.puppet_sync_service import PuppetSyncService
+    from app.application.services.review_service import ReviewService
     from app.application.services.section_service import SectionService
     from app.application.services.suggestion_service import SuggestionService
+    from app.application.services.task_service import TaskService
+    from app.application.services.team_service import NotificationService, TeamService
     from app.application.services.template_service import TemplateService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
+    from app.domain.repositories.timeline_repository import ITimelineEventRepository
     from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
         AssistantSuggestionRepositoryImpl,
+    )
+    from app.infrastructure.persistence.attachment_repository_impl import (
+        AttachmentRepositoryImpl,
     )
     from app.infrastructure.persistence.conversation_thread_repository_impl import (
         ConversationThreadRepositoryImpl,
     )
     from app.infrastructure.persistence.gap_finding_repository_impl import (
         GapFindingRepositoryImpl,
+    )
+    from app.infrastructure.persistence.lock_repository_impl import (
+        SectionLockRepositoryImpl,
+    )
+    from app.infrastructure.persistence.saved_search_repository_impl import (
+        SavedSearchRepositoryImpl,
+    )
+    from app.infrastructure.persistence.tag_repository_impl import (
+        TagRepositoryImpl,
+        WorkItemTagRepositoryImpl,
     )
 from app.application.services.audit_service import AuditService
 from app.application.services.auth_service import AuthService
@@ -464,6 +486,87 @@ async def get_thread_repo_for_ws() -> AsyncGenerator[ConversationThreadRepositor
         yield ConversationThreadRepositoryImpl(session)
 
 
+# ---------------------------------------------------------------------------
+# EP-05 — Task hierarchy + dependencies
+# ---------------------------------------------------------------------------
+
+
+def get_task_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> TaskService:
+    from app.application.services.task_service import TaskService
+    from app.infrastructure.persistence.task_node_repository_impl import (
+        TaskDependencyRepositoryImpl,
+        TaskNodeRepositoryImpl,
+    )
+
+    return TaskService(
+        node_repo=TaskNodeRepositoryImpl(session),
+        dep_repo=TaskDependencyRepositoryImpl(session),
+    )
+
+
+def get_dependency_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> DependencyService:
+    from app.application.services.dependency_service import DependencyService
+    from app.infrastructure.persistence.task_node_repository_impl import (
+        TaskDependencyRepositoryImpl,
+        TaskNodeRepositoryImpl,
+    )
+
+    return DependencyService(
+        node_repo=TaskNodeRepositoryImpl(session),
+        dep_repo=TaskDependencyRepositoryImpl(session),
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-06 — Reviews + Validation
+# ---------------------------------------------------------------------------
+
+
+def get_review_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ReviewService:
+    from app.application.services.review_service import ReviewService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ReviewRequestRepositoryImpl,
+        ReviewResponseRepositoryImpl,
+    )
+
+    return ReviewService(
+        review_request_repo=ReviewRequestRepositoryImpl(session),
+        review_response_repo=ReviewResponseRepositoryImpl(session),
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-07 — Comments + Timeline
+# ---------------------------------------------------------------------------
+
+
+def get_comment_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> CommentService:
+    from app.application.services.comment_service import CommentService
+    from app.infrastructure.persistence.comment_repository_impl import (
+        CommentRepositoryImpl,
+    )
+
+    return CommentService(comment_repo=CommentRepositoryImpl(session))
+
+
+def get_timeline_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ITimelineEventRepository:
+    from app.infrastructure.persistence.timeline_repository_impl import (
+        TimelineEventRepositoryImpl,
+    )
+
+    return TimelineEventRepositoryImpl(session)
+
+
 async def get_conversation_service_for_ws(user: object) -> ConversationService:  # noqa: ARG001
     """Build ConversationService for the WS path (no FastAPI DI available there)."""
     from app.application.services.conversation_service import ConversationService
@@ -479,3 +582,156 @@ async def get_conversation_service_for_ws(user: object) -> ConversationService: 
             thread_repo=ConversationThreadRepositoryImpl(session),
             dundun_client=dundun,
         )
+
+
+# ---------------------------------------------------------------------------
+# EP-13 — Puppet sync
+# ---------------------------------------------------------------------------
+
+
+def get_puppet_sync_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> PuppetSyncService:
+    from app.application.services.puppet_sync_service import PuppetSyncService
+    from app.infrastructure.persistence.puppet_outbox_repository_impl import (
+        PuppetOutboxRepositoryImpl,
+    )
+
+    return PuppetSyncService(outbox_repo=PuppetOutboxRepositoryImpl(session))
+
+
+# ---------------------------------------------------------------------------
+# EP-15 — Tags
+# ---------------------------------------------------------------------------
+
+
+def get_tag_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> TagRepositoryImpl:
+    from app.infrastructure.persistence.tag_repository_impl import TagRepositoryImpl
+
+    return TagRepositoryImpl(session)
+
+
+def get_work_item_tag_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> WorkItemTagRepositoryImpl:
+    from app.infrastructure.persistence.tag_repository_impl import WorkItemTagRepositoryImpl
+
+    return WorkItemTagRepositoryImpl(session)
+
+
+# ---------------------------------------------------------------------------
+# EP-16 — Attachments
+# ---------------------------------------------------------------------------
+
+
+def get_attachment_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> AttachmentRepositoryImpl:
+    from app.infrastructure.persistence.attachment_repository_impl import (
+        AttachmentRepositoryImpl,
+    )
+
+    return AttachmentRepositoryImpl(session)
+
+
+# ---------------------------------------------------------------------------
+# EP-17 — Section locks
+# ---------------------------------------------------------------------------
+
+
+def get_lock_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> SectionLockRepositoryImpl:
+    from app.infrastructure.persistence.lock_repository_impl import SectionLockRepositoryImpl
+
+    return SectionLockRepositoryImpl(session)
+
+
+# ---------------------------------------------------------------------------
+# EP-08 — Teams + Notifications
+# ---------------------------------------------------------------------------
+
+
+def get_team_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> TeamService:
+    from app.application.services.team_service import TeamService
+    from app.infrastructure.persistence.team_repository_impl import (
+        TeamMembershipRepositoryImpl,
+        TeamRepositoryImpl,
+    )
+
+    return TeamService(
+        team_repo=TeamRepositoryImpl(session),
+        membership_repo=TeamMembershipRepositoryImpl(session),
+    )
+
+
+def get_notification_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> NotificationService:
+    from app.application.services.team_service import NotificationService
+    from app.infrastructure.persistence.team_repository_impl import (
+        NotificationRepositoryImpl,
+    )
+
+    return NotificationService(
+        notification_repo=NotificationRepositoryImpl(session),
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-09 — Saved Searches
+# ---------------------------------------------------------------------------
+
+
+def get_saved_search_repo(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> SavedSearchRepositoryImpl:
+    from app.infrastructure.persistence.saved_search_repository_impl import (
+        SavedSearchRepositoryImpl,
+    )
+
+    return SavedSearchRepositoryImpl(session)
+
+
+# ---------------------------------------------------------------------------
+# EP-10 — Projects + Routing Rules
+# ---------------------------------------------------------------------------
+
+
+def get_project_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ProjectService:
+    from app.application.services.project_service import ProjectService
+    from app.infrastructure.persistence.project_repository_impl import (
+        ProjectRepositoryImpl,
+        RoutingRuleRepositoryImpl,
+    )
+
+    return ProjectService(
+        project_repo=ProjectRepositoryImpl(session),
+        routing_rule_repo=RoutingRuleRepositoryImpl(session),
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-11 — Integrations
+# ---------------------------------------------------------------------------
+
+
+def get_integration_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> IntegrationService:
+    from app.application.services.integration_service import IntegrationService
+    from app.infrastructure.persistence.integration_repository_impl import (
+        IntegrationConfigRepositoryImpl,
+        IntegrationExportRepositoryImpl,
+    )
+
+    return IntegrationService(
+        config_repo=IntegrationConfigRepositoryImpl(session),
+        export_repo=IntegrationExportRepositoryImpl(session),
+    )

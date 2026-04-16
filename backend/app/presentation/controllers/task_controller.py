@@ -1,0 +1,292 @@
+"""EP-05 — Task hierarchy + dependency controller.
+
+Routes:
+  GET    /api/v1/work-items/{id}/task-tree
+  POST   /api/v1/work-items/{id}/tasks
+  PATCH  /api/v1/tasks/{id}
+  DELETE /api/v1/tasks/{id}
+  POST   /api/v1/tasks/{id}/start
+  POST   /api/v1/tasks/{id}/mark-done
+  POST   /api/v1/tasks/{id}/reopen
+  POST   /api/v1/tasks/{id}/dependencies
+  DELETE /api/v1/dependencies/{id}
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import status as http_status
+from pydantic import BaseModel
+
+from app.application.services.dependency_service import (
+    DependencyCycleError,
+    DependencyService,
+)
+from app.application.services.task_service import (
+    TaskNodeNotFoundError,
+    TaskService,
+)
+from app.domain.models.task_node import PredecessorNotDoneError, TaskNode
+from app.presentation.dependencies import get_current_user, get_dependency_service, get_task_service
+from app.presentation.middleware.auth_middleware import CurrentUser
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["tasks"])
+
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    parent_id: UUID | None = None
+    display_order: int = 0
+    description: str = ""
+
+
+class UpdateTaskRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+
+
+class MoveTaskRequest(BaseModel):
+    new_parent_id: UUID | None = None
+    new_order: int = 0
+
+
+class AddDependencyRequest(BaseModel):
+    target_id: UUID
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _ok(data: object, message: str = "ok") -> dict[str, Any]:
+    return {"data": data, "message": message}
+
+
+def _node_payload(node: TaskNode) -> dict[str, Any]:
+    return {
+        "id": str(node.id),
+        "work_item_id": str(node.work_item_id),
+        "parent_id": str(node.parent_id) if node.parent_id else None,
+        "title": node.title,
+        "description": node.description,
+        "display_order": node.display_order,
+        "status": node.status.value,
+        "generation_source": node.generation_source.value,
+        "materialized_path": node.materialized_path,
+        "created_at": node.created_at.isoformat(),
+        "updated_at": node.updated_at.isoformat(),
+        "created_by": str(node.created_by),
+        "updated_by": str(node.updated_by),
+    }
+
+
+def _build_tree(nodes: list[TaskNode]) -> list[dict[str, Any]]:
+    """Convert flat list (ordered by materialized_path) into nested structure."""
+    children_map: dict[UUID | None, list[TaskNode]] = {}
+    for node in nodes:
+        children_map.setdefault(node.parent_id, []).append(node)
+
+    def _nest(parent_id: UUID | None) -> list[dict[str, Any]]:
+        result = []
+        for n in children_map.get(parent_id, []):
+            payload = _node_payload(n)
+            payload["children"] = _nest(n.id)
+            result.append(payload)
+        return result
+
+    return _nest(None)
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+
+@router.get("/work-items/{work_item_id}/task-tree")
+async def get_task_tree(
+    work_item_id: UUID,
+    _: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    nodes = await service.get_tree(work_item_id)
+    return _ok({"work_item_id": str(work_item_id), "tree": _build_tree(nodes)})
+
+
+@router.post("/work-items/{work_item_id}/tasks", status_code=http_status.HTTP_201_CREATED)
+async def create_task(
+    work_item_id: UUID,
+    body: CreateTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        node = await service.create_node(
+            work_item_id=work_item_id,
+            parent_id=body.parent_id,
+            title=body.title,
+            display_order=body.display_order,
+            actor_id=current_user.id,
+            description=body.description,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.patch("/tasks/{node_id}")
+async def update_task(
+    node_id: UUID,
+    body: UpdateTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        node = await service.update_node(
+            node_id=node_id,
+            title=body.title,
+            description=body.description,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.delete("/tasks/{node_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    node_id: UUID,
+    _: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> None:
+    try:
+        await service.delete_node(node_id)
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+
+
+@router.post("/tasks/{node_id}/start")
+async def start_task(
+    node_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        node = await service.start(node_id=node_id, actor_id=current_user.id)
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.post("/tasks/{node_id}/mark-done")
+async def mark_done_task(
+    node_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        node = await service.mark_done(node_id=node_id, actor_id=current_user.id)
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except PredecessorNotDoneError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "PREDECESSOR_NOT_DONE",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.post("/tasks/{node_id}/reopen")
+async def reopen_task(
+    node_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        node = await service.reopen(node_id=node_id, actor_id=current_user.id)
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.post("/tasks/{node_id}/dependencies", status_code=http_status.HTTP_201_CREATED)
+async def add_dependency(
+    node_id: UUID,
+    body: AddDependencyRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    dep_service: DependencyService = Depends(get_dependency_service),
+) -> dict[str, Any]:
+    try:
+        dep = await dep_service.add(
+            source_id=node_id,
+            target_id=body.target_id,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except DependencyCycleError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "CYCLE_DETECTED",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
+        ) from exc
+    return _ok(
+        {
+            "id": str(dep.id),
+            "source_id": str(dep.source_id),
+            "target_id": str(dep.target_id),
+            "created_at": dep.created_at.isoformat(),
+            "created_by": str(dep.created_by),
+        }
+    )
+
+
+@router.delete("/dependencies/{dep_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def remove_dependency(
+    dep_id: UUID,
+    _: CurrentUser = Depends(get_current_user),
+    dep_service: DependencyService = Depends(get_dependency_service),
+) -> None:
+    await dep_service.remove(dep_id)

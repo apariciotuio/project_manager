@@ -4,10 +4,13 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
+from app.presentation.controllers.admin_controller import router as admin_router
+from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
     router as clarification_router,
 )
+from app.presentation.controllers.comment_controller import router as comment_router
 from app.presentation.controllers.completeness_controller import (
     router as completeness_router,
 )
@@ -18,11 +21,21 @@ from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
 from app.presentation.controllers.health import router as health_router
+from app.presentation.controllers.integration_controller import router as integration_router
+from app.presentation.controllers.lock_controller import router as lock_router
+from app.presentation.controllers.notification_controller import router as notification_router
+from app.presentation.controllers.project_controller import router as project_router
+from app.presentation.controllers.review_controller import router as review_router
+from app.presentation.controllers.saved_search_controller import router as saved_search_router
 from app.presentation.controllers.specification_controller import (
     router as specification_router,
 )
 from app.presentation.controllers.suggestion_controller import router as suggestion_router
+from app.presentation.controllers.tag_controller import router as tag_router
+from app.presentation.controllers.task_controller import router as task_router
+from app.presentation.controllers.team_controller import router as team_router
 from app.presentation.controllers.template_controller import router as template_router
+from app.presentation.controllers.timeline_controller import router as timeline_router
 from app.presentation.controllers.work_item_controller import router as work_item_router
 from app.presentation.controllers.work_item_draft_controller import (
     router as work_item_draft_router,
@@ -99,6 +112,29 @@ def create_app() -> FastAPI:
     # EP-04 Phase 8 — specification + completeness
     app.include_router(specification_router, prefix="/api/v1")
     app.include_router(completeness_router, prefix="/api/v1")
+    # EP-05 — task hierarchy + dependencies
+    app.include_router(task_router, prefix="/api/v1")
+    # EP-06 — reviews + validation
+    app.include_router(review_router, prefix="/api/v1")
+    # EP-07 — comments + timeline
+    app.include_router(comment_router, prefix="/api/v1")
+    app.include_router(timeline_router, prefix="/api/v1")
+    # EP-15 — tags
+    app.include_router(tag_router, prefix="/api/v1")
+    # EP-16 — attachments
+    app.include_router(attachment_router, prefix="/api/v1")
+    # EP-17 — section locks
+    app.include_router(lock_router, prefix="/api/v1")
+    # EP-08 — teams + notifications
+    app.include_router(team_router, prefix="/api/v1")
+    app.include_router(notification_router, prefix="/api/v1")
+    # EP-09 — saved searches
+    app.include_router(saved_search_router, prefix="/api/v1")
+    # EP-10 — projects + admin
+    app.include_router(project_router, prefix="/api/v1")
+    app.include_router(admin_router, prefix="/api/v1")
+    # EP-11 — integrations
+    app.include_router(integration_router, prefix="/api/v1")
 
     return app
 

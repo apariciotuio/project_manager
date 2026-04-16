@@ -141,6 +141,14 @@ async def db_session(migrated_database):
         await conn.execute(
             text(
                 "TRUNCATE TABLE "
+                "section_locks, attachments, work_item_tags, tags, "
+                "puppet_sync_outbox, integration_exports, integration_configs, "
+                "routing_rules, projects, saved_searches, notifications, "
+                "team_memberships, teams, timeline_events, comments, "
+                "review_responses, validation_status, review_requests, "
+                "validation_requirements, task_dependencies, task_node_section_links, "
+                "task_nodes, work_item_versions, work_item_validators, "
+                "work_item_section_versions, work_item_sections, "
                 "gap_findings, assistant_suggestions, conversation_threads, "
                 "ownership_history, state_transitions, work_item_drafts, "
                 "work_items, templates, workspace_memberships, sessions, "
