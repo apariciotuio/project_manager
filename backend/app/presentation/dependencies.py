@@ -16,8 +16,13 @@ from app.application.events.event_bus import EventBus
 
 if TYPE_CHECKING:
     from app.application.services.clarification_service import ClarificationService
+    from app.application.services.completeness_service import (
+        CompletenessService,
+        GapService,
+    )
     from app.application.services.conversation_service import ConversationService
     from app.application.services.draft_service import DraftService
+    from app.application.services.section_service import SectionService
     from app.application.services.suggestion_service import SuggestionService
     from app.application.services.template_service import TemplateService
     from app.domain.ports.cache import ICache
@@ -394,6 +399,53 @@ def get_clarification_service(
         cache=cache,
         callback_url=s.dundun.callback_url,
     )
+
+
+# ---------------------------------------------------------------------------
+# EP-04 — Section, Completeness, Gaps
+# ---------------------------------------------------------------------------
+
+
+def get_section_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> SectionService:
+    from app.application.services.section_service import SectionService
+    from app.infrastructure.persistence.section_repository_impl import (
+        SectionRepositoryImpl,
+        SectionVersionRepositoryImpl,
+    )
+
+    return SectionService(
+        section_repo=SectionRepositoryImpl(session),
+        section_version_repo=SectionVersionRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+    )
+
+
+def get_completeness_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
+) -> CompletenessService:
+    from app.application.services.completeness_service import CompletenessService
+    from app.infrastructure.persistence.section_repository_impl import (
+        SectionRepositoryImpl,
+        ValidatorRepositoryImpl,
+    )
+
+    return CompletenessService(
+        work_item_repo=WorkItemRepositoryImpl(session),
+        section_repo=SectionRepositoryImpl(session),
+        validator_repo=ValidatorRepositoryImpl(session),
+        cache=cache,
+    )
+
+
+def get_gap_service(
+    completeness: CompletenessService = Depends(get_completeness_service),
+) -> GapService:
+    from app.application.services.completeness_service import GapService
+
+    return GapService(completeness)
 
 
 async def get_thread_repo_for_ws() -> AsyncGenerator[ConversationThreadRepositoryImpl]:

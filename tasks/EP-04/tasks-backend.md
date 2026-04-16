@@ -139,6 +139,30 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 ---
 
+## Phases 4 + 5 + partial 7 + partial 8 — quality engine + controllers
+
+**Status: BASE IMPLEMENTATION LANDED** (2026-04-16) — 14 new unit tests on the quality engine; full regression 954 passed + 1 skip; ruff + mypy --strict clean on new files.
+
+What shipped:
+- `domain/quality/dimension_checkers.py` — 9 pure-function checkers (problem_clarity, objective, scope, acceptance_criteria, dependencies, risks, breakdown, ownership, validations) + `DIMENSION_WEIGHTS` table + `check_all()` orchestrator
+- `domain/quality/score_calculator.py` — weight renormalisation, 0-100 score, level band mapping, ALG-4 guard against ZeroDivisionError when every dimension is marked inapplicable
+- `application/services/completeness_service.py` — `CompletenessService` orchestrating repos + checkers + 60s Redis cache; `GapService` turning the result into a blocking/warning list
+- `application/services/section_service.py` — `SectionService.list_for_work_item`, `update_section`, `bootstrap_from_catalog` (append SectionVersion on every update, IDOR + ownership checks inside the service)
+- `presentation/controllers/specification_controller.py` — GET `/work-items/{id}/specification`, PATCH `/work-items/{id}/sections/{section_id}`
+- `presentation/controllers/completeness_controller.py` — GET `/work-items/{id}/completeness`, GET `/work-items/{id}/gaps`
+- `presentation/dependencies.py` — `get_section_service`, `get_completeness_service`, `get_gap_service`
+- `main.py` — routers wired under `/api/v1`
+
+What is NOT yet done (deferred within EP-04 — still to be picked up):
+- POST `/work-items/{id}/specification/generate` (Dundun `wm_spec_gen_agent` dispatch) — needs the same Celery + callback plumbing used by EP-03 suggestions
+- PATCH `/work-items/{id}/sections` bulk endpoint
+- GET `/work-items/{id}/sections/{section_id}/versions` history endpoint
+- `NextStepService` + GET `/work-items/{id}/next-step`
+- `ValidatorSuggestionEngine`
+- Cache invalidation hooks in `SectionService.update_section`, `WorkItemService.transition_state`, `ValidatorService.update_status` (currently `CompletenessService.invalidate` exists but is not called from other services)
+- Full CRUD on validators (assign/revoke/respond endpoints)
+- Wiring SectionVersion-per-edit into `VersioningService.create_version` (EP-07's VersioningService is not implemented yet — when it lands, `SectionService.update_section` must call it so the `work_item_versions` snapshot is written)
+
 ## Phase 4 — Quality Engine: Dimension Checkers
 
 All dimension checkers are pure functions: `(WorkItem, list[Section], list[Validator]) -> DimensionResult`. No I/O.

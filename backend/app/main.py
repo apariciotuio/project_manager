@@ -8,6 +8,9 @@ from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
     router as clarification_router,
 )
+from app.presentation.controllers.completeness_controller import (
+    router as completeness_router,
+)
 from app.presentation.controllers.conversation_controller import (
     router as conversation_router,
 )
@@ -15,6 +18,9 @@ from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
 from app.presentation.controllers.health import router as health_router
+from app.presentation.controllers.specification_controller import (
+    router as specification_router,
+)
 from app.presentation.controllers.suggestion_controller import router as suggestion_router
 from app.presentation.controllers.template_controller import router as template_router
 from app.presentation.controllers.work_item_controller import router as work_item_router
@@ -90,6 +96,9 @@ def create_app() -> FastAPI:
     app.include_router(conversation_router, prefix="/api/v1")
     app.include_router(suggestion_router, prefix="/api/v1")
     app.include_router(clarification_router, prefix="/api/v1")
+    # EP-04 Phase 8 — specification + completeness
+    app.include_router(specification_router, prefix="/api/v1")
+    app.include_router(completeness_router, prefix="/api/v1")
 
     return app
 
