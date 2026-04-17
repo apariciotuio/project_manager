@@ -11,19 +11,26 @@ describe('useAuditEvents', () => {
     server.use(
       http.get('http://localhost/api/v1/admin/audit-events', () =>
         HttpResponse.json({
-          data: [
-            {
-              id: 'e1',
-              actor_id: 'u1',
-              actor_name: 'Ada',
-              action: 'create',
-              resource_type: 'work_item',
-              resource_id: 'wi1',
-              metadata: null,
-              created_at: '2026-04-16T10:00:00Z',
-            },
-          ],
-          total: 1,
+          data: {
+            items: [
+              {
+                id: 'e1',
+                category: 'work_item',
+                action: 'create',
+                actor_id: 'u1',
+                actor_display: 'Ada',
+                entity_type: 'work_item',
+                entity_id: 'wi1',
+                before_value: null,
+                after_value: null,
+                context: null,
+                created_at: '2026-04-16T10:00:00Z',
+              },
+            ],
+            total: 1,
+            page: 1,
+            page_size: 50,
+          },
         })
       )
     );
@@ -53,15 +60,15 @@ describe('useAuditEvents', () => {
 // ─── Health ────────────────────────────────────────────────────────────────────
 
 describe('useHealth', () => {
-  it('returns health data on success', async () => {
+  it('returns workspace state summary on success', async () => {
     server.use(
       http.get('http://localhost/api/v1/admin/health', () =>
         HttpResponse.json({
-          status: 'ok',
-          checks: [
-            { name: 'db', status: 'ok', latency_ms: 5, message: null },
-          ],
-          version: '1.0.0',
+          data: {
+            workspace_id: 'ws1',
+            work_items_by_state: { draft: 3, in_review: 2 },
+            total_active: 5,
+          },
         })
       )
     );
@@ -69,19 +76,19 @@ describe('useHealth', () => {
     const { result } = renderHook(() => useHealth());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.health?.status).toBe('ok');
-    expect(result.current.health?.checks).toHaveLength(1);
+    expect(result.current.health?.total_active).toBe(5);
+    expect(result.current.health?.work_items_by_state.draft).toBe(3);
   });
 
-  it('handles degraded status', async () => {
+  it('handles empty workspace', async () => {
     server.use(
       http.get('http://localhost/api/v1/admin/health', () =>
         HttpResponse.json({
-          status: 'degraded',
-          checks: [
-            { name: 'cache', status: 'degraded', latency_ms: 500, message: 'slow' },
-          ],
-          version: null,
+          data: {
+            workspace_id: 'ws1',
+            work_items_by_state: {},
+            total_active: 0,
+          },
         })
       )
     );
@@ -89,7 +96,7 @@ describe('useHealth', () => {
     const { result } = renderHook(() => useHealth());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.health?.status).toBe('degraded');
+    expect(result.current.health?.total_active).toBe(0);
   });
 });
 
@@ -180,7 +187,9 @@ describe('useTags', () => {
     expect(result.current.tags[0]!.name).toBe('new');
   });
 
-  it('archiveTag sets archived=true', async () => {
+  it('archiveTag uses DELETE (not PATCH) and filters the tag from local state', async () => {
+    let deleteCalled = false;
+    let patchCalled = false;
     server.use(
       http.get('http://localhost/api/v1/tags', () =>
         HttpResponse.json({
@@ -189,9 +198,14 @@ describe('useTags', () => {
           ],
         })
       ),
-      http.patch('http://localhost/api/v1/tags/tag1', () =>
-        HttpResponse.json({})
-      )
+      http.delete('http://localhost/api/v1/tags/tag1', () => {
+        deleteCalled = true;
+        return HttpResponse.json({});
+      }),
+      http.patch('http://localhost/api/v1/tags/tag1', () => {
+        patchCalled = true;
+        return HttpResponse.json({});
+      })
     );
 
     const { result } = renderHook(() => useTags());
@@ -201,6 +215,9 @@ describe('useTags', () => {
       await result.current.archiveTag('tag1');
     });
 
-    expect(result.current.tags[0]!.archived).toBe(true);
+    expect(deleteCalled).toBe(true);
+    expect(patchCalled).toBe(false);
+    // Tag is filtered out of local state on delete
+    expect(result.current.tags).toHaveLength(0);
   });
 });

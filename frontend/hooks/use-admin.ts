@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiPatch } from '@/lib/api-client';
+import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
 import type {
   AuditEvent,
   AuditEventsResponse,
@@ -214,8 +214,8 @@ export function useTags(): UseTagsResult {
   }, []);
 
   const archiveTag = useCallback(async (id: string): Promise<void> => {
-    await apiPatch(`/api/v1/tags/${id}`, { archived: true });
-    setTags((prev) => prev.map((t) => (t.id === id ? { ...t, archived: true } : t)));
+    await apiDelete(`/api/v1/tags/${id}`);
+    setTags((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const replaceTag = useCallback((updated: Tag): void => {

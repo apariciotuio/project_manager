@@ -134,6 +134,38 @@ describe('TagEditModal', () => {
     }, { timeout: 500 });
   });
 
+  it('PATCHes color when only color changes', async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    let patchBody: unknown;
+
+    const UPDATED = { ...BASE_TAG, color: '#00ff00' };
+    server.use(
+      http.patch('http://localhost/api/v1/tags/tag-1', async ({ request }) => {
+        patchBody = await request.json();
+        return HttpResponse.json({ data: UPDATED });
+      })
+    );
+
+    renderModal({ onSaved });
+    const hexInput = screen.getByPlaceholderText('#rrggbb');
+    await user.clear(hexInput);
+    await user.type(hexInput, '#00ff00');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /guardar/i })).not.toBeDisabled();
+    }, { timeout: 500 });
+
+    await user.click(screen.getByRole('button', { name: /guardar/i }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledWith(UPDATED);
+    });
+    // color must be in the patch body
+    expect(patchBody).toMatchObject({ color: '#00ff00' });
+    expect((patchBody as Record<string, unknown>)['name']).toBeUndefined();
+  });
+
   it('does not render when open=false', () => {
     renderModal({ open: false });
     expect(screen.queryByRole('dialog')).toBeNull();
