@@ -198,6 +198,31 @@ Test delta: +16 tests (22 → 38) across 6 test files.
 
 ---
 
+## Deferred Phase: DnD Reparenting
+
+### FE-14-DND-01: DndContext + SortableTree integration
+- [x] RED: 8 tests written in `__tests__/components/work-item/task-tree-dnd.test.tsx` — drag handle aria-label, data-drag-id presence, drag handle count, data-testid="drag-handle", cycle error display, aria-disabled when pending, tabIndex=0 on handles
+- [x] GREEN: `task-tree.tsx` wrapped in `DndContext` (PointerSensor + KeyboardSensor). `task-tree-node.tsx` uses `useDraggable` + `useDroppable`. `onDragEnd` does optimistic reparent → rollback on error. Client-side cycle guard (isAncestorOf) before API call.
+- [x] i18n: added `workspace.itemDetail.tasks.dnd.*` keys to `en.json` + `es.json` (dragHandle, dragging, dragInstructions, cycleError, genericError)
+- [x] @dnd-kit/core@6.3.1 + @dnd-kit/sortable@10.0.0 installed
+- [x] Commit: `7c62b60` — feat(tasks): dnd-kit drag-and-drop reparent with keyboard access (EP-14)
+- Notes: Position-based reorder within same parent deferred (BE has no position PATCH endpoint yet — TODO in commit)
+
+### FE-14-DND-02: Visual polish + error handling
+- [x] REFACTOR: removed redundant `isDropTarget` prop from `TaskTreeNode` — each node's own `useDroppable.isOver` handles highlight state
+- [x] GripVertical icon (lucide-react) with `data-testid="drag-handle"` per node
+- [x] Drop indicator: `data-drop-target="true"` + `bg-primary/10 ring-1 ring-primary/40` on `isOver`
+- [x] Cycle error: `CYCLE_DETECTED` from BE (or client-side detect) → `role="alert" aria-live="assertive"` inline error
+- [x] `aria-describedby` on row announces drag state to screen readers
+- [x] `tsc --noEmit` green, 133 test files / 919 tests all passing
+- [x] Commit: `b70b266` — feat(tasks): dnd polish + cycle error handling (EP-14)
+
+**Status: COMPLETED** (2026-04-18)
+Test delta (DnD phase): +8 tests (911 → 919 total). Files: 133. Zero regressions.
+@dnd-kit/core@6.3.1, @dnd-kit/sortable@10.0.0 (React 18 compat — peer dep satisfied).
+
+---
+
 ## Completion Checklist
 
 - [ ] `tsc --noEmit` passes (strict mode, no `any`)
