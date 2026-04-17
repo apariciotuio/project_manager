@@ -1,3 +1,8 @@
+/**
+ * Sheet — local build on top of @radix-ui/react-dialog.
+ * shadcn/ui does not ship a Sheet primitive; this file implements the
+ * slide-in panel pattern using Radix Dialog directly.
+ */
 'use client';
 
 import * as React from 'react';
