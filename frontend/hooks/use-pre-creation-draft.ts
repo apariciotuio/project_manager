@@ -127,7 +127,7 @@ export function usePreCreationDraft(
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         void doSave(data, localVersion);
-      }, 2000);
+      }, 3000);
     },
     [doSave],
   );

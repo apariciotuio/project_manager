@@ -460,14 +460,14 @@ describe('NewItemPage', () => {
     const titleInput = await screen.findByPlaceholderText(/título/i);
     await userEvent.type(titleInput, 'X');
 
-    // Wait for 2s debounce + buffer
+    // Wait for 3s debounce + buffer
     await waitFor(
       () => {
         expect(draftSaveCalls.length).toBeGreaterThan(0);
       },
-      { timeout: 6000 },
+      { timeout: 7000 },
     );
-  }, 8000);
+  }, 10000);
 
   // ─── Submit ───────────────────────────────────────────────────────────────────
 
