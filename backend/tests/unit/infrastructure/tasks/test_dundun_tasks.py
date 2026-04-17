@@ -331,3 +331,38 @@ def test_tasks_registered_on_dundun_queue() -> None:
 
     for task in (invoke_suggestion_agent, invoke_gap_agent, invoke_quick_action_agent):
         assert task.queue == "dundun", f"{task.name} not on dundun queue"
+
+
+# ---------------------------------------------------------------------------
+# SF-7 — Production guard: FakeDundunClient refused in production
+# ---------------------------------------------------------------------------
+
+
+def test_build_deps_raises_in_production_with_fake_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_build_deps raises RuntimeError when use_fake=True and app.env=production."""
+    import asyncio
+
+    import app.infrastructure.tasks.dundun_tasks as tasks_module
+
+    # Build a settings stub with use_fake=True + env=production
+    class _FakeDundunSettings:
+        use_fake = True
+
+    class _FakeAppSettings:
+        env = "production"
+
+    class _FakeSettings:
+        dundun = _FakeDundunSettings()
+        app = _FakeAppSettings()
+
+    monkeypatch.setattr(
+        "app.infrastructure.tasks.dundun_tasks._build_deps",
+        tasks_module._build_deps,  # restore original so we exercise the real guard
+    )
+
+    # Patch get_settings inside the module scope
+    import app.config.settings as settings_module
+    monkeypatch.setattr(settings_module, "get_settings", lambda: _FakeSettings())
+
+    with pytest.raises(RuntimeError, match="FakeDundunClient not allowed in production"):
+        asyncio.run(tasks_module._build_deps())

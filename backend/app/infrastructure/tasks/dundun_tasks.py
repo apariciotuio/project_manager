@@ -55,6 +55,12 @@ async def _build_deps() -> dict[str, Any]:
     settings = get_settings()
 
     if settings.dundun.use_fake:
+        if settings.app.env == "production":
+            logger.error(
+                "FakeDundunClient requested but APP_ENV=production — refusing to start fake client. "
+                "Set DUNDUN_USE_FAKE=false in production."
+            )
+            raise RuntimeError("FakeDundunClient not allowed in production")
         from app.infrastructure.fakes.fake_dundun_client import FakeDundunClient
 
         dundun_client: Any = FakeDundunClient()
