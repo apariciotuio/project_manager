@@ -1,9 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/__tests__/msw/server';
 import { RequestReviewDialog } from '@/components/work-item/request-review-dialog';
+
+// Guarantee a clean handler slate at the start of each test in this file,
+// regardless of execution order in the full suite (onUnhandledRequest:'error').
+beforeEach(() => server.resetHandlers());
 
 vi.mock('next-intl', () => ({
   useTranslations: (ns: string) => (key: string, params?: Record<string, unknown>) => {
