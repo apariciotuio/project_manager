@@ -48,12 +48,13 @@ export async function getWorkItem(id: string): Promise<WorkItemResponse> {
 }
 
 export async function listWorkItems(
-  projectId: string,
+  _projectId: string | null,
   filters: WorkItemFilters,
 ): Promise<PagedWorkItemResponse<WorkItemResponse>> {
   const qs = buildQuery(filters);
+  // Use workspace-scoped endpoint (no project_id needed — RLS scopes by workspace)
   const res = await apiGet<Envelope<PagedWorkItemResponse<WorkItemResponse>>>(
-    `/api/v1/projects/${projectId}/work-items${qs}`,
+    `/api/v1/work-items${qs}`,
   );
   return res.data;
 }

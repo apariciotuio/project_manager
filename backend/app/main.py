@@ -40,6 +40,9 @@ from app.presentation.controllers.work_item_controller import router as work_ite
 from app.presentation.controllers.work_item_draft_controller import (
     router as work_item_draft_router,
 )
+from app.presentation.controllers.workspace_controller import (
+    router as workspace_router,
+)
 from app.presentation.middleware.correlation_id import CorrelationIDMiddleware
 from app.presentation.middleware.error_middleware import register_error_handlers
 from app.presentation.rate_limit import build_limiter
@@ -99,6 +102,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(workspace_router, prefix="/api/v1")
     app.include_router(work_item_router, prefix="/api/v1")
     app.include_router(work_item_draft_router, prefix="/api/v1")
     app.include_router(template_router, prefix="/api/v1")

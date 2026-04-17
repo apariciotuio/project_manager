@@ -42,6 +42,8 @@ export default function WorkspaceSelectPage() {
   async function handleSelect(workspace: Workspace) {
     try {
       await apiPost('/api/v1/workspaces/select', { workspace_id: workspace.id });
+      // Refresh the JWT so it includes workspace_id — needed for RLS-scoped endpoints
+      await apiPost('/api/v1/auth/refresh', {});
     } catch {
       // Redirect anyway — server state is source of truth
     }
@@ -50,7 +52,7 @@ export default function WorkspaceSelectPage() {
     if (returnTo && returnTo.startsWith(`/workspace/${workspace.slug}`)) {
       router.replace(returnTo);
     } else {
-      router.replace(`/workspace/${workspace.slug}`);
+      router.replace(`/workspace/${workspace.slug}/items`);
     }
   }
 

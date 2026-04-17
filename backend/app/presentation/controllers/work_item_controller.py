@@ -348,3 +348,68 @@ async def list_work_items(
         page_size=page_size,
     )
     return _ok(paged.model_dump(mode="json"))
+
+
+@router.get("/work-items")
+async def list_all_work_items(
+    state: WorkItemState | None = None,
+    type: WorkItemType | None = None,
+    owner_id: UUID | None = None,
+    has_override: bool | None = None,
+    include_deleted: bool = False,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    service: WorkItemService = Depends(get_work_item_service),
+) -> dict[str, Any]:
+    """List all work items in the current workspace (all projects).
+
+    RLS ensures only workspace-scoped items are returned.
+    """
+    assert current_user.workspace_id is not None
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.infrastructure.persistence.database import get_session_factory
+    from app.infrastructure.persistence.models.orm import WorkItemORM
+    from app.infrastructure.persistence.session_context import with_workspace
+
+    factory = get_session_factory()
+    async with factory() as session:
+        await with_workspace(session, current_user.workspace_id)
+        stmt = select(WorkItemORM).where(
+            WorkItemORM.workspace_id == current_user.workspace_id
+        )
+        if state:
+            stmt = stmt.where(WorkItemORM.state == state.value)
+        if type:
+            stmt = stmt.where(WorkItemORM.type == type.value)
+        if owner_id:
+            stmt = stmt.where(WorkItemORM.owner_id == owner_id)
+        if not include_deleted:
+            stmt = stmt.where(WorkItemORM.deleted_at.is_(None))
+        stmt = stmt.order_by(WorkItemORM.updated_at.desc())
+
+        from sqlalchemy import func as sa_func
+
+        total_stmt = select(sa_func.count()).select_from(stmt.subquery())
+        total = (await session.execute(total_stmt)).scalar_one()
+
+        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+        rows = (await session.execute(stmt)).scalars().all()
+
+        from app.infrastructure.persistence.mappers.work_item_mapper import to_domain
+
+        items = [to_domain(row) for row in rows]
+
+    paged = PagedWorkItemResponse(
+        items=[
+            WorkItemResponse.from_domain(item, current_user.workspace_id)
+            for item in items
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+    return _ok(paged.model_dump(mode="json"))

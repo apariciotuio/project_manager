@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
@@ -12,10 +13,16 @@ interface ThemeToggleProps {
 export function ThemeToggle({ className }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const t = useTranslations('theme');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   function toggle() {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   }
+
+  // Avoid hydration mismatch — resolvedTheme is undefined on server
+  const Icon = mounted && resolvedTheme === 'dark' ? Sun : Moon;
 
   return (
     <button
@@ -29,11 +36,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         className
       )}
     >
-      {resolvedTheme === 'dark' ? (
-        <Sun className="h-4 w-4" aria-hidden />
-      ) : (
-        <Moon className="h-4 w-4" aria-hidden />
-      )}
+      <Icon className="h-4 w-4" aria-hidden />
       {t('toggle')}
     </button>
   );
