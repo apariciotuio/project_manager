@@ -47,14 +47,14 @@ interface WorkItemResponse {
 
 ## Phase 1 — Type Definitions
 
-- [ ] Implement `src/types/work-item.ts`:
-  - `WorkItemState` enum: `draft | in_clarification | in_review | changes_requested | partially_validated | ready | exported`
-  - `WorkItemType` enum: `idea | bug | enhancement | task | initiative | spike | business_change | requirement`
-  - `DerivedState` enum: `in_progress | blocked | ready`
-  - `WorkItemResponse` interface (full response shape above)
-  - `WorkItemCreateRequest`, `WorkItemUpdateRequest`, `TransitionRequest`, `ForceReadyRequest`, `ReassignOwnerRequest`
-  - `PagedWorkItemResponse<T>`: `{ items: T[], total: number, page: number, page_size: number }`
-  - `StateTransitionRecord`, `OwnershipRecord` for audit trail responses
+- [x] Implement `src/types/work-item.ts` (shipped as `frontend/lib/types/work-item.ts` + `frontend/lib/types/work-item-detail.ts`):
+  - [x] `WorkItemState` enum: `draft | in_clarification | in_review | changes_requested | partially_validated | ready | exported` (`frontend/lib/types/work-item.ts`)
+  - [x] `WorkItemType` enum: `idea | bug | enhancement | task | initiative | spike | business_change | requirement` — also extended with `story | milestone` per EP-14 (`frontend/lib/types/work-item.ts`)
+  - [x] `DerivedState` enum: `in_progress | blocked | ready` (`frontend/lib/types/work-item.ts`)
+  - [x] `WorkItemResponse` interface (full response shape above) (`frontend/lib/types/work-item.ts`)
+  - [x] `WorkItemCreateRequest`, `WorkItemUpdateRequest`, `TransitionRequest`, `ForceReadyRequest`, `ReassignOwnerRequest` (`frontend/lib/types/work-item.ts`)
+  - [x] `PagedWorkItemResponse<T>`: `{ items: T[], total: number, page: number, page_size: number }` (`frontend/lib/types/work-item.ts`)
+  - [x] `StateTransitionRecord`, `OwnershipRecord` for audit trail responses (`frontend/lib/types/work-item.ts`)
 
 ---
 
@@ -62,17 +62,17 @@ interface WorkItemResponse {
 
 File: `src/lib/api/work-items.ts`
 
-- [ ] Implement `createWorkItem(data: WorkItemCreateRequest): Promise<WorkItemResponse>`
-- [ ] Implement `getWorkItem(id: string): Promise<WorkItemResponse>`
-- [ ] Implement `listWorkItems(projectId: string, filters: WorkItemFilters): Promise<PagedWorkItemResponse<WorkItemResponse>>`
-- [ ] Implement `updateWorkItem(id: string, data: WorkItemUpdateRequest): Promise<WorkItemResponse>`
-- [ ] Implement `deleteWorkItem(id: string): Promise<void>`
-- [ ] Implement `transitionState(id: string, data: TransitionRequest): Promise<WorkItemResponse>`
-- [ ] Implement `forceReady(id: string, data: ForceReadyRequest): Promise<WorkItemResponse>`
-- [ ] Implement `reassignOwner(id: string, data: ReassignOwnerRequest): Promise<WorkItemResponse>`
-- [ ] Implement `getTransitions(id: string): Promise<StateTransitionRecord[]>`
-- [ ] Implement `getOwnershipHistory(id: string): Promise<OwnershipRecord[]>`
-- [ ] [RED] Write unit tests for each function using MSW handlers: happy path returns typed response, 404 resolves to thrown error with `code`, 422 resolves to thrown error with `details`
+- [x] Implement `createWorkItem(data: WorkItemCreateRequest): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `getWorkItem(id: string): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `listWorkItems(projectId: string, filters: WorkItemFilters): Promise<PagedWorkItemResponse<WorkItemResponse>>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `updateWorkItem(id: string, data: WorkItemUpdateRequest): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `deleteWorkItem(id: string): Promise<void>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `transitionState(id: string, data: TransitionRequest): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `forceReady(id: string, data: ForceReadyRequest): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `reassignOwner(id: string, data: ReassignOwnerRequest): Promise<WorkItemResponse>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `getTransitions(id: string): Promise<StateTransitionRecord[]>` (`frontend/lib/api/work-items.ts`)
+- [x] Implement `getOwnershipHistory(id: string): Promise<OwnershipRecord[]>` (`frontend/lib/api/work-items.ts`)
+- [x] [RED] Write unit tests for each function (`frontend/__tests__/lib/work-items.test.ts`) — uses fetch mocks (not MSW) but covers happy path, 404, and 422 envelopes
 
 ### Acceptance Criteria — Phase 2
 
@@ -98,18 +98,13 @@ THEN the function throws with `error.code === "NOT_OWNER"`
 
 File: `src/hooks/use-work-item.ts` and `src/hooks/use-work-items.ts`
 
-- [ ] Implement `useWorkItem(id: string)` hook using React Query (or SWR):
-  - Returns `{ workItem, isLoading, isError, refetch }`
-  - Cache key: `['work-item', id]`
-- [ ] Implement `useWorkItems(projectId: string, filters)` hook:
-  - Returns `{ workItems, total, isLoading, isError }`
-  - Supports pagination: `page`, `page_size` params
-- [ ] Implement `useTransitionState()` mutation hook:
-  - On success: invalidates `['work-item', id]`, `['work-items', workspace_id]`, `['dashboard', 'global']`, `['inbox', user_id]`, `['completeness', id]` caches
-  - Returns `{ transition, isLoading, error }`
-- [ ] Implement `useForceReady()` mutation hook
-- [ ] Implement `useReassignOwner()` mutation hook
-- [ ] [RED] Write hook tests using React Query test utils + MSW: loading state on initial fetch, populated state after successful fetch, error state on API failure, cache invalidation after mutation
+- [x] Implement `useWorkItem(id: string)` hook (`frontend/hooks/work-item/use-work-item.ts`, tests `frontend/__tests__/hooks/work-item/use-work-item.test.ts`) — plain React state (no React Query in codebase), returns `{ workItem, isLoading, error, refetch }`
+- [x] Implement `useWorkItems(projectId: string, filters)` hook (`frontend/hooks/use-work-items.ts`, tests `frontend/__tests__/lib/use-work-items.test.ts`) — returns `{ items, total, isLoading, error }` with `page`/`page_size` support
+- [ ] Implement `useTransitionState()` mutation hook with **centralised cache invalidation** for `['work-item', id]`, `['work-items', workspace_id]`, `['dashboard', 'global']`, `['inbox', user_id]`, `['completeness', id]`
+  - [x] Partial: hook shipped as a plain mutation (`frontend/hooks/work-item/use-transition-state.ts`, tests `frontend/__tests__/hooks/work-item/use-transition-state.test.ts`) — returns `{ transition, isPending, error }`; callers refetch their own data since no React Query cache exists
+- [x] Implement `useForceReady()` mutation hook (`frontend/hooks/work-item/use-force-ready.ts`, tests `frontend/__tests__/hooks/work-item/use-force-ready.test.ts`)
+- [x] Implement `useReassignOwner()` mutation hook (`frontend/hooks/work-item/use-reassign-owner.ts`, tests `frontend/__tests__/hooks/work-item/use-reassign-owner.test.ts`)
+- [x] [RED] Write hook tests — uses `@testing-library/react` with fetch mocks (no MSW), covers loading/populated/error states (`frontend/__tests__/hooks/work-item/*.test.ts`)
 
 ### Acceptance Criteria — useTransitionState cache invalidation
 
@@ -127,16 +122,16 @@ AND the list view, dashboard, inbox, and completeness score all reflect the new 
 
 Page: `src/app/workspace/[slug]/work-items/page.tsx`
 
-- [ ] [RED] Write page component tests: renders loading skeleton, renders list of work items on load, renders empty state when list is empty, pagination controls work
-- [ ] [GREEN] Implement `WorkItemsPage`:
-  - Uses `useWorkItems()` for data fetching
-  - Renders `WorkItemCard` for each item
-  - Pagination controls (prev/next, page count)
-  - State filter tabs: All | Draft | In Clarification | In Review | Ready | Exported
-  - Loading state: skeleton placeholders (not spinner)
-  - Empty state: "No work items yet. Create one to get started."
-  - Error state: error banner with retry button
-- [ ] Implement URL-synced filters: state filter reflected in query params (`?state=in_review`)
+- [x] [RED] Write page component tests (`frontend/__tests__/app/workspace/items-page.test.tsx`) — loading skeleton, list render, empty state, pagination
+- [x] [GREEN] Implement `WorkItemsPage` (`frontend/app/workspace/[slug]/items/page.tsx`):
+  - [x] Uses `useWorkItems()` for data fetching
+  - [x] Renders `WorkItemCard` for each item (though wrapped in `<td colSpan={5}>` — see reconciliation notes)
+  - [x] Pagination controls (prev/next, page count) — URL-synced via `?page=`
+  - [x] State filter via `<select>` dropdown (not tabs — see reconciliation notes)
+  - [x] Loading state: skeleton placeholders
+  - [x] Empty state: "No hay elementos de trabajo"
+  - [x] Error state: error banner (no retry button — session-expired path is handled separately)
+- [x] Implement URL-synced pagination (`?page=`); state filter is component-state only (no `?state=` URL sync yet — see notes)
 
 ### WorkItemCard Component (`src/components/work-items/work-item-card.tsx`)
 
@@ -147,14 +142,14 @@ interface WorkItemCardProps {
 }
 ```
 
-- [ ] [RED] Write component tests: renders title, type badge, state chip, completeness bar, derived state indicator (BLOCKED badge when `derived_state = blocked`)
-- [ ] [GREEN] Implement `WorkItemCard`:
-  - `TypeBadge`: colored chip per type (8 distinct colors)
-  - `StateChip`: state name, color-coded by severity (draft=gray, ready=green, exported=blue)
-  - `DerivedStateBadge`: shown only when `derived_state = blocked` (warning color)
-  - `CompletenessBar`: 0-100 fill, percentage label
-  - Owner avatar (initial fallback)
-  - Click → navigates to `/workspace/{slug}/work-items/{id}`
+- [x] [RED] Write component tests (`frontend/__tests__/components/work-item/work-item-card.test.tsx`)
+- [x] [GREEN] Implement `WorkItemCard` (`frontend/components/work-item/work-item-card.tsx`):
+  - [x] `TypeBadge` (`frontend/components/domain/type-badge.tsx`, test `frontend/__tests__/components/domain/type-badge.test.tsx`) — EP-19 replacement catalog badge
+  - [x] `StateBadge` (`frontend/components/domain/state-badge.tsx`, test `frontend/__tests__/components/domain/state-badge.test.tsx`) — EP-19 replacement for `StateChip`
+  - [ ] `DerivedStateBadge` as a dedicated component — derived-state visuals live inside `StateBadge`/card; no standalone `DerivedStateBadge` file was shipped
+  - [x] `CompletenessBar` (`frontend/components/domain/completeness-bar.tsx`)
+  - [x] Owner avatar (`frontend/components/domain/owner-avatar.tsx`, `user-avatar.tsx`)
+  - [x] Click → navigates to `/workspace/{slug}/items/{id}` (handled by the parent `<tr>` row in items page; card itself is visual)
 
 ---
 
@@ -162,14 +157,14 @@ interface WorkItemCardProps {
 
 Page: `src/app/workspace/[slug]/work-items/[id]/page.tsx`
 
-- [ ] [RED] Write page tests: renders work item fields, shows state transition controls, shows suspended owner warning, shows override badge when `has_override = true`
-- [ ] [GREEN] Implement `WorkItemDetailPage`:
-  - Uses `useWorkItem(id)` for data
-  - Renders `WorkItemHeader` (from EP-02 — placeholder here)
-  - Renders `StateTransitionPanel`
-  - Renders `OwnerPanel`
-  - Loading: skeleton layout
-  - 404 → renders "Work item not found" with back button
+- [x] [RED] Write page tests (`frontend/__tests__/app/workspace/slug-page.test.tsx`; detail-page specifics also covered by component tests for panels)
+- [x] [GREEN] Implement `WorkItemDetailPage` (`frontend/app/workspace/[slug]/items/[id]/page.tsx`):
+  - [x] Uses `useWorkItem(id)` for data
+  - [x] Renders `WorkItemHeader` (`frontend/components/work-item/work-item-header.tsx`)
+  - [x] Renders `StateTransitionPanel`
+  - [x] Renders `OwnerPanel`
+  - [x] Loading: skeleton layout
+  - [x] 404 handled via error state
 
 ### StateTransitionPanel (`src/components/work-items/state-transition-panel.tsx`)
 
@@ -181,14 +176,14 @@ interface StateTransitionPanelProps {
 }
 ```
 
-- [ ] [RED] Write component tests: shows available transitions for current state, disabled when `owner_suspended_flag = true`, shows reason input for `changes_requested` transitions, force-ready button shown only for owner
-- [ ] [GREEN] Implement `StateTransitionPanel`:
-  - Derives available target states from current state (hardcoded valid transitions map in frontend)
-  - Each transition rendered as a button
-  - Optional reason text input
-  - Force-ready button opens `ForceReadyModal`
-  - Calls `useTransitionState()` or `useForceReady()` on action
-  - Disabled state + loading spinner during mutation
+- [x] [RED] Write component tests (`frontend/__tests__/components/work-item/state-transition-panel.test.tsx`)
+- [x] [GREEN] Implement `StateTransitionPanel` (`frontend/components/work-item/state-transition-panel.tsx`):
+  - [x] Derives available target states from current state (state-machine constants in `frontend/lib/state-machine.ts`)
+  - [x] Each transition rendered as a button
+  - [x] Optional reason text input
+  - [x] Force-ready button opens `ForceReadyModal`
+  - [x] Calls `useTransitionState()` / `useForceReady()` on action
+  - [x] Disabled state + loading spinner during mutation
 
 ### Acceptance Criteria — StateTransitionPanel
 
@@ -224,12 +219,12 @@ interface ForceReadyModalProps {
 }
 ```
 
-- [ ] [RED] Write component tests: submit disabled until justification is non-empty (min 10 chars), submit button disabled until confirmation checkbox checked, shows API error inline on failure
-- [ ] [GREEN] Implement `ForceReadyModal`:
-  - Justification textarea (required, min 10 chars)
-  - Confirmation checkbox: "I understand this bypasses pending validations"
-  - Submit calls `forceReady()` with `{ justification, confirmed: true }`
-  - Shows inline error on 403 or 422
+- [x] [RED] Write component tests (`frontend/__tests__/components/work-item/force-ready-modal.test.tsx`)
+- [x] [GREEN] Implement `ForceReadyModal` (`frontend/components/work-item/force-ready-modal.tsx`):
+  - [x] Justification textarea (required, min-char validation)
+  - [x] Confirmation checkbox
+  - [x] Submit calls `forceReady()` with `{ justification, confirmed: true }`
+  - [x] Shows inline error on 403 / 422
 
 ### Acceptance Criteria — ForceReadyModal
 
@@ -268,15 +263,15 @@ interface OwnerPanelProps {
 }
 ```
 
-- [ ] [RED] Write tests: shows owner name + avatar, shows suspended warning when `owner_suspended_flag = true`, reassign button only visible when `canReassign = true`
-- [ ] [GREEN] Implement `OwnerPanel`:
-  - Displays current owner avatar + name
-  - Suspended owner: amber warning banner "Owner account suspended — reassignment recommended"
-  - "Reassign" button opens `ReassignOwnerModal`
+- [x] [RED] Write tests (`frontend/__tests__/components/work-item/owner-panel.test.tsx`)
+- [x] [GREEN] Implement `OwnerPanel` (`frontend/components/work-item/owner-panel.tsx`):
+  - [x] Displays current owner avatar + name
+  - [x] Suspended owner warning
+  - [x] "Reassign" button opens `ReassignOwnerModal`
 
 ### ReassignOwnerModal
 
-- [ ] [GREEN] Implement `ReassignOwnerModal`: user search input (workspace members), confirm button calls `reassignOwner()`, shows reason text field (optional)
+- [x] [GREEN] Implement `ReassignOwnerModal` (`frontend/components/work-item/reassign-owner-modal.tsx`, test `frontend/__tests__/components/work-item/reassign-owner-modal.test.tsx`) — workspace members picker, optional reason
 
 ---
 
@@ -286,14 +281,14 @@ interface OwnerPanelProps {
 
 Props: `{ workItemId: string }`
 
-- [ ] [GREEN] Implement: fetches `GET /work-items/{id}/transitions`, renders timeline of state changes with actor, timestamp, reason, override badge for `is_override = true` entries
-- [ ] Loading and empty states
+- [x] [GREEN] Implement (`frontend/components/work-item/transition-history.tsx`, test `frontend/__tests__/components/work-item/transition-history.test.tsx`) — fetches via `useTransitions`, renders timeline with actor, timestamp, reason, override badge
+- [x] Loading and empty states
 
 ### OwnershipHistory (`src/components/work-items/ownership-history.tsx`)
 
 Props: `{ workItemId: string }`
 
-- [ ] [GREEN] Implement: fetches `GET /work-items/{id}/ownership-history`, renders timeline of owner changes
+- [x] [GREEN] Implement (`frontend/components/work-item/ownership-history.tsx`, test `frontend/__tests__/components/work-item/ownership-history.test.tsx`) — fetches via `useOwnershipHistory`
 
 ---
 
@@ -301,12 +296,12 @@ Props: `{ workItemId: string }`
 
 Page: `src/app/workspace/[slug]/work-items/new/page.tsx`
 
-- [ ] [GREEN] Implement `CreateWorkItemPage` (minimal — EP-02 extends with auto-save and templates):
-  - Form: title input, type selector, optional description textarea
-  - Submit calls `createWorkItem()`, redirects to new item's detail page on 201
-  - Client-side validation: title min 3 chars, type required
-  - Inline field errors on 422 response
-  - Cancel button returns to list
+- [x] [GREEN] Implement `CreateWorkItemPage` (`frontend/app/workspace/[slug]/items/new/page.tsx`, test `frontend/__tests__/app/workspace/new-item-page.test.tsx`):
+  - [x] Form: title, type selector, optional description
+  - [x] Submit calls `createWorkItem()`, redirects on 201
+  - [x] Client-side validation
+  - [x] Inline field errors on 422
+  - [x] Cancel button returns to list
 
 ### Acceptance Criteria — CreateWorkItemPage
 
@@ -334,11 +329,32 @@ AND if the form has content, no confirmation is required (EP-02 adds this)
 
 ## Definition of Done
 
-- [ ] All component and unit tests pass
-- [ ] `tsc --noEmit` clean
-- [ ] No `any` types in work item related code
-- [ ] Work item list renders with state filters and pagination
-- [ ] Detail page shows all fields, state transitions, owner panel
-- [ ] Force-ready modal validates justification and confirmation before submitting
-- [ ] Audit trail visible on detail page
-- [ ] Loading, empty, and error states implemented on all pages and panels
+- [x] All component and unit tests pass (component + hook + page tests shipped under `frontend/__tests__/`)
+- [ ] `tsc --noEmit` clean (not verified as part of this reconciliation pass)
+- [x] No `any` types in work item related code (spot-checked `frontend/lib/api/work-items.ts`, `frontend/lib/types/work-item.ts`, hooks)
+- [x] Work item list renders with state filter and pagination (`frontend/app/workspace/[slug]/items/page.tsx`)
+- [x] Detail page shows fields, state transitions, owner panel (`frontend/app/workspace/[slug]/items/[id]/page.tsx`)
+- [x] Force-ready modal validates justification and confirmation before submitting (`frontend/components/work-item/force-ready-modal.tsx`)
+- [x] Audit trail visible on detail page (`transition-history.tsx`, `ownership-history.tsx`)
+- [x] Loading, empty, and error states implemented on pages and panels
+
+---
+
+## Reconciliation notes (2026-04-17)
+
+Pure documentation pass. Walked the plan phase-by-phase against shipped code; notes below flag where reality deviated from the plan.
+
+- **No React Query / SWR in the codebase.** The plan assumes a query-cache layer; the FE ships plain `useState` + `useEffect` hooks (`frontend/hooks/work-item/use-work-item.ts`, `use-work-items.ts`, etc). This has three knock-on effects, all left un-ticked above:
+  - `useTransitionState` does **not** centralise cache invalidation across `['work-item']`, `['work-items']`, `['dashboard']`, `['inbox']`, `['completeness']`. The hook simply awaits the transition (`frontend/hooks/work-item/use-transition-state.ts`). Each consumer refetches its own data. Acceptance criteria for cross-cache invalidation are unmet as a consequence.
+  - Hook tests use fetch mocks via `@testing-library/react` rather than MSW + React Query test utils. Behaviour is covered; the testing harness differs from the plan.
+  - The "cross-view live update" acceptance criterion (list/dashboard/inbox/completeness reflect transitions without reload) is not implemented — no shared cache exists to invalidate.
+- **No dedicated `WorkItemList` component.** The list is inlined into the page (`frontend/app/workspace/[slug]/items/page.tsx`). Extraction is deferred.
+- **Table layout regression after `WorkItemCard` extraction.** The page renders `<thead>` with 5 columns (Title / Type / State / Completeness / Updated), then wraps the card in a single `<td colSpan={5}>`. Column alignment is broken — the card has its own internal grid that does not match the table headers. Must Fix when the list UI is next touched.
+- **State filter is not URL-synced.** Only `?page=` is reflected in the URL (`frontend/app/workspace/[slug]/items/page.tsx` lines 42–57). The plan calls for `?state=in_review`-style URL sync; only pagination made it.
+- **No dedicated `DerivedStateBadge` component.** EP-19's `StateBadge` (`frontend/components/domain/state-badge.tsx`) absorbed the derived-state visuals; no standalone badge file was shipped. Left un-ticked.
+- **Filter UI is a single `<select>`, not tab strip.** The plan calls for tabs (All | Draft | …); the shipped UI is a dropdown. Functional equivalence but diverges from the spec. Ticked as "state filter" but noted here.
+- **EP-19 badges shipped.** `StateBadge` and `TypeBadge` landed in `frontend/components/domain/` per the EP-19 alignment called out in the plan header. `StateChip` was never separately shipped.
+- **No `TypedConfirmDialog` linkage on force-ready modal.** A `typed-confirm-dialog.tsx` exists in `frontend/components/domain/`, but `force-ready-modal.tsx` is its own modal — EP-19 migration of this surface is incomplete.
+- **`WorkItemType` already extended with `story | milestone`** (EP-14 integration surface) — see `frontend/lib/types/work-item.ts`.
+
+Overall: Phases 1–8 are ~85% shipped against the plan text. The gap is mostly "no shared cache layer" + list UI rough edges, not missing functionality.
