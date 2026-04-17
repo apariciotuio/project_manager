@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from app.application.services.dependency_service import DependencyService
     from app.application.services.draft_service import DraftService
     from app.application.services.integration_service import IntegrationService
+    from app.application.services.next_step_service import NextStepService
     from app.application.services.project_service import ProjectService
     from app.application.services.puppet_sync_service import PuppetSyncService
     from app.application.services.review_service import ReviewService
@@ -496,6 +497,31 @@ def get_gap_service(
     from app.application.services.completeness_service import GapService
 
     return GapService(completeness)
+
+
+def get_next_step_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
+) -> NextStepService:
+    from app.application.services.completeness_service import CompletenessService, GapService
+    from app.application.services.next_step_service import NextStepService
+    from app.infrastructure.persistence.section_repository_impl import (
+        SectionRepositoryImpl,
+        ValidatorRepositoryImpl,
+    )
+
+    completeness = CompletenessService(
+        work_item_repo=WorkItemRepositoryImpl(session),
+        section_repo=SectionRepositoryImpl(session),
+        validator_repo=ValidatorRepositoryImpl(session),
+        cache=cache,
+    )
+    gap_svc = GapService(completeness)
+    return NextStepService(
+        work_item_repo=WorkItemRepositoryImpl(session),
+        completeness_service=completeness,
+        gap_service=gap_svc,
+    )
 
 
 async def get_thread_repo_for_ws() -> AsyncGenerator[ConversationThreadRepositoryImpl]:

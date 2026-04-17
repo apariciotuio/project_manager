@@ -23,6 +23,7 @@ from app.presentation.controllers.dundun_callback_controller import (
 from app.presentation.controllers.health import router as health_router
 from app.presentation.controllers.integration_controller import router as integration_router
 from app.presentation.controllers.lock_controller import router as lock_router
+from app.presentation.controllers.next_step_controller import router as next_step_router
 from app.presentation.controllers.notification_controller import router as notification_router
 from app.presentation.controllers.project_controller import router as project_router
 from app.presentation.controllers.review_controller import router as review_router
@@ -118,6 +119,7 @@ def create_app() -> FastAPI:
     # EP-04 Phase 8 — specification + completeness
     app.include_router(specification_router, prefix="/api/v1")
     app.include_router(completeness_router, prefix="/api/v1")
+    app.include_router(next_step_router, prefix="/api/v1")
     # EP-05 — task hierarchy + dependencies
     app.include_router(task_router, prefix="/api/v1")
     # EP-06 — reviews + validation

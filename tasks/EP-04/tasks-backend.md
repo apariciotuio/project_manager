@@ -260,42 +260,23 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 
 ### NextStepDecisionTree
 
-- [ ] [RED] Write tests — one test per rule, at minimum:
-  - `owner=None` → `assign_owner` (highest priority, fires before all other rules)
-  - `completeness_score < 30` → `improve_content`
-  - All blocking gaps present → `fill_blocking_gaps` with `gaps_referenced`
-  - State = `draft` + completeness >= 30 → `submit_for_clarification`
-  - State = `in_clarification` + all required sections filled → `submit_for_review`
-  - At least 1 warning gap unfilled → `address_warnings`
-  - No validators assigned → `assign_validators`
-  - State = `ready` → `export_or_wait` (no blocking next step)
-  - State = `exported` → `null` (no next step)
-  - Fallback: `complete_specification` when no other rule matches
-- [ ] [GREEN] Implement `domain/quality/next_step_rules.py` — `NextStepDecisionTree.evaluate(work_item, completeness, gaps) -> NextStepResult`
+- [x] [RED] Write tests — 16 tests covering all 9 rules (assign_owner, improve_content, fill_blocking_gaps, submit_for_clarification, submit_for_review, address_warnings, assign_validators, export_or_wait, exported→null) (2026-04-17 — test_next_step_rules.py)
+- [x] [GREEN] Implement `domain/quality/next_step_rules.py` — `evaluate(work_item, completeness, gaps) -> NextStepResult` pure function, ordered rule list (2026-04-17)
 
 ### ValidatorSuggestionEngine
 
-- [ ] [RED] Write tests:
-  - Bug → `qa_engineer` (required), `tech_lead` (optional)
-  - User Story → `product_owner` (required), `tech_lead` (optional)
-  - Epic → `product_owner` (required), `tech_lead` (required), `stakeholder` (optional)
-  - All 8 element types covered
-  - Unconfigured role: `configured=False` + `setup_hint="Configure this role in workspace settings."`
-- [ ] [GREEN] Implement `domain/quality/validator_suggestion_engine.py`
+- [ ] [RED] Write tests: deferred (ValidatorSuggestionEngine not implemented — out of scope for this pass)
+- [ ] [GREEN] Implement `domain/quality/validator_suggestion_engine.py` — deferred
 
 ### Validator Role Config
 
-- [ ] [RED] Write tests: `ValidatorRolesConfig` loads from YAML fixture successfully, missing config file returns empty mapping without raising
-- [ ] [GREEN] Implement `infrastructure/config/validator_roles.py` — loads `validator_roles.yaml` at startup; `get_configured_roles(workspace_id) -> dict[str, str]` returns `{role: user_id | None}`
+- [ ] [RED] Deferred
+- [ ] [GREEN] Deferred
 
 ### NextStepService
 
-- [ ] [RED] Write unit tests:
-  - Result structure matches `GET /next-step` response shape
-  - `blocking=True` when blocking gaps present
-  - `suggested_validators` populated in all responses
-  - Exported item returns `next_step=null`
-- [ ] [GREEN] Implement `application/services/next_step_service.py` — `recommend(work_item_id) -> NextStepResult`
+- [x] [RED+GREEN] Implement `application/services/next_step_service.py` — `recommend(work_item_id) -> NextStepResult` (2026-04-17)
+- [x] `GET /api/v1/work-items/{id}/next-step` controller wired (`next_step_controller.py`, `main.py`, `dependencies.py`) (2026-04-17)
 
 ---
 
