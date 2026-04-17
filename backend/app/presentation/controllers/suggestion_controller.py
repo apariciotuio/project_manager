@@ -6,6 +6,9 @@ Routes:
   GET   /api/v1/suggestion-sets/{batch_id}        — get batch + items
   PATCH /api/v1/suggestion-items/{item_id}        — accept/reject a single item
   POST  /api/v1/suggestion-sets/{batch_id}/apply  — apply accepted suggestions (EP-03 phase 3.7)
+
+workspace_id is guaranteed non-None by get_scoped_session (used by all service deps).
+Explicit _require_workspace guard below ensures consistent pattern + type narrowing.
 """
 from __future__ import annotations
 
@@ -35,6 +38,14 @@ router = APIRouter(tags=["suggestions"])
 
 def _ok(data: object, message: str = "ok") -> dict[str, Any]:
     return {"data": data, "message": message}
+
+
+def _require_workspace(user: CurrentUser) -> None:
+    if user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
 
 
 def _forbidden() -> HTTPException:
@@ -70,6 +81,7 @@ async def generate_suggestions(
     directly here (sync path). Celery wrapping can be retrofitted without changing
     this handler's contract.
     """
+    _require_workspace(current_user)
     batch_id = await service.generate(
         work_item_id=work_item_id,
         user_id=current_user.id,
@@ -84,10 +96,11 @@ async def generate_suggestions(
 @router.get("/work-items/{work_item_id}/suggestion-sets")
 async def list_suggestion_sets(
     work_item_id: UUID,
-    current_user: CurrentUser = Depends(get_current_user),  # noqa: ARG001 — auth gate
+    current_user: CurrentUser = Depends(get_current_user),
     service: SuggestionService = Depends(get_suggestion_service),
 ) -> dict[str, Any]:
     """List pending (non-expired) suggestions for a work item."""
+    _require_workspace(current_user)
     suggestions = await service.list_pending_for_work_item(work_item_id)
     return _ok([SuggestionItemResponse.from_domain(s).model_dump(mode="json") for s in suggestions])
 
@@ -95,10 +108,11 @@ async def list_suggestion_sets(
 @router.get("/suggestion-sets/{batch_id}")
 async def get_suggestion_batch(
     batch_id: UUID,
-    current_user: CurrentUser = Depends(get_current_user),  # noqa: ARG001 — auth gate
+    current_user: CurrentUser = Depends(get_current_user),
     service: SuggestionService = Depends(get_suggestion_service),
 ) -> dict[str, Any]:
     """Return all suggestion items in a batch."""
+    _require_workspace(current_user)
     suggestions = await service.list_for_batch(batch_id)
     if not suggestions:
         raise _not_found("suggestion batch")
@@ -109,10 +123,11 @@ async def get_suggestion_batch(
 async def patch_suggestion_item(
     item_id: UUID,
     body: PatchSuggestionStatusRequest,
-    current_user: CurrentUser = Depends(get_current_user),  # noqa: ARG001 — auth gate
+    current_user: CurrentUser = Depends(get_current_user),
     service: SuggestionService = Depends(get_suggestion_service),
 ) -> dict[str, Any]:
     """Accept or reject a single suggestion item."""
+    _require_workspace(current_user)
     try:
         new_status = parse_suggestion_status(body.status)
     except ValueError as exc:
@@ -150,6 +165,7 @@ async def apply_suggestion_batch(
     404 — batch not found
     422 — batch exists but has no accepted suggestions to apply
     """
+    _require_workspace(current_user)
     try:
         result = await service.apply_accepted_batch(batch_id=batch_id, actor_id=current_user.id)
     except LookupError as exc:

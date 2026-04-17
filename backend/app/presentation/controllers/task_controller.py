@@ -10,6 +10,10 @@ Routes:
   POST   /api/v1/tasks/{id}/reopen
   POST   /api/v1/tasks/{id}/dependencies
   DELETE /api/v1/dependencies/{id}
+
+workspace_id is guaranteed non-None by get_scoped_session (used by all service deps).
+The explicit _require_workspace guard below mirrors every other controller for
+consistency and ensures type narrowing holds at the call site.
 """
 from __future__ import annotations
 
@@ -94,6 +98,14 @@ def _ok(data: object, message: str = "ok") -> dict[str, Any]:
     return {"data": data, "message": message}
 
 
+def _require_workspace(user: CurrentUser) -> None:
+    if user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
+
+
 def _node_payload(node: TaskNode) -> dict[str, Any]:
     return {
         "id": str(node.id),
@@ -145,9 +157,10 @@ def _build_tree(
 @router.get("/work-items/{work_item_id}/task-tree")
 async def get_task_tree(
     work_item_id: UUID,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     nodes = await service.get_tree(work_item_id)
     # Compute rollup_status for each node (pure, on-demand)
     enriched = _rollup_service.enrich_tree(nodes)
@@ -158,10 +171,11 @@ async def get_task_tree(
 @router.get("/tasks/{node_id}")
 async def get_task(
     node_id: UUID,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
     """Return single task node with breadcrumb [{id, title}, …] from root to parent."""
+    _require_workspace(current_user)
     result = await service.get_node_with_breadcrumb(node_id)
     if result is None:
         raise HTTPException(
@@ -178,10 +192,11 @@ async def get_task(
 async def search_tasks(
     work_item_id: UUID,
     q: str = "",
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
     """Search tasks by title within a work item. Returns flat list [{id, title}]. q < 2 chars → []."""
+    _require_workspace(current_user)
     results = await service.search_tasks(work_item_id=work_item_id, q=q)
     return _ok(results)
 
@@ -193,6 +208,7 @@ async def create_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         node = await service.create_node(
             work_item_id=work_item_id,
@@ -217,6 +233,7 @@ async def update_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         node = await service.update_node(
             node_id=node_id,
@@ -235,9 +252,10 @@ async def update_task(
 @router.delete("/tasks/{node_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_task(
     node_id: UUID,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> None:
+    _require_workspace(current_user)
     try:
         await service.delete_node(node_id)
     except TaskNodeNotFoundError as exc:
@@ -253,6 +271,7 @@ async def start_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         node = await service.start(node_id=node_id, actor_id=current_user.id)
     except TaskNodeNotFoundError as exc:
@@ -269,6 +288,7 @@ async def mark_done_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         node = await service.mark_done(node_id=node_id, actor_id=current_user.id)
     except TaskNodeNotFoundError as exc:
@@ -296,6 +316,7 @@ async def reopen_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         node = await service.reopen(node_id=node_id, actor_id=current_user.id)
     except TaskNodeNotFoundError as exc:
@@ -313,6 +334,7 @@ async def split_task(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         a, b = await service.split(
             task_id=node_id,
@@ -345,6 +367,7 @@ async def merge_tasks(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         merged = await service.merge(
             source_ids=body.source_ids,
@@ -372,6 +395,7 @@ async def reorder_tasks(
     current_user: CurrentUser = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         nodes = await service.reorder(
             work_item_id=work_item_id,
@@ -394,9 +418,10 @@ async def reorder_tasks(
 @router.get("/work-items/{work_item_id}/tasks/blocked")
 async def get_blocked_tasks(
     work_item_id: UUID,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     dep_service: DependencyService = Depends(get_dependency_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     blocked = await dep_service.get_blocked_tasks(work_item_id)
     return _ok([
         {
@@ -416,6 +441,7 @@ async def add_dependency(
     current_user: CurrentUser = Depends(get_current_user),
     dep_service: DependencyService = Depends(get_dependency_service),
 ) -> dict[str, Any]:
+    _require_workspace(current_user)
     try:
         dep = await dep_service.add(
             source_id=node_id,
@@ -452,9 +478,10 @@ async def add_dependency(
 @router.delete("/dependencies/{dep_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def remove_dependency(
     dep_id: UUID,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     dep_service: DependencyService = Depends(get_dependency_service),
 ) -> None:
+    _require_workspace(current_user)
     try:
         await dep_service.remove(dep_id)
     except DependencyNotFoundError as exc:
