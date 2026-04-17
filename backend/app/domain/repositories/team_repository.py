@@ -56,7 +56,24 @@ class ITeamMembershipRepository(ABC):
 
 class INotificationRepository(ABC):
     @abstractmethod
-    async def create(self, notification: Notification) -> Notification: ...
+    async def create(self, notification: Notification) -> Notification:
+        """Insert a notification.
+
+        Idempotency contract: if a row with the same (recipient_id, idempotency_key)
+        already exists the existing row is returned unchanged; no error is raised.
+        """
+        ...
+
+    @abstractmethod
+    async def bulk_insert_idempotent(
+        self, notifications: list[Notification]
+    ) -> list[Notification]:
+        """Insert a batch of notifications, skipping any that already exist.
+
+        Uses INSERT ... ON CONFLICT DO NOTHING semantics. Safe for Celery retries.
+        Returns the full list of (persisted or pre-existing) notifications.
+        """
+        ...
 
     @abstractmethod
     async def get_by_idempotency_key(
@@ -77,3 +94,16 @@ class INotificationRepository(ABC):
 
     @abstractmethod
     async def save(self, notification: Notification) -> Notification: ...
+
+    @abstractmethod
+    async def unread_count(self, user_id: UUID, workspace_id: UUID) -> int:
+        """Return the count of unread notifications for the user in the workspace."""
+        ...
+
+    @abstractmethod
+    async def mark_all_read(self, user_id: UUID, workspace_id: UUID) -> int:
+        """Bulk-mark all unread notifications for the user as read.
+
+        Returns the number of rows updated.
+        """
+        ...

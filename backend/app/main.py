@@ -73,10 +73,15 @@ def _rate_limit_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:
 
 
 def create_app() -> FastAPI:
+    from app.application.events import register_event_subscribers
+    from app.application.events.event_bus import get_global_bus
     from app.config.settings import get_settings
 
     settings = get_settings()
     configure_logging(settings.app.log_level)
+
+    # Wire event subscribers on the global bus once at startup.
+    register_event_subscribers(get_global_bus())
 
     app = FastAPI(
         title="Work Maturation Platform",

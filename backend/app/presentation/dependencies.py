@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.events.event_bus import EventBus
+from app.application.events.event_bus import EventBus, get_global_bus
 
 if TYPE_CHECKING:
+    from app.application.services.notification_service import ExtendedNotificationService
     from app.application.services.clarification_service import ClarificationService
     from app.application.services.comment_service import CommentService
     from app.application.services.completeness_service import (
@@ -237,7 +238,7 @@ def get_work_item_service(
         users=UserRepositoryImpl(session),
         memberships=WorkspaceMembershipRepositoryImpl(session),
         audit=audit,
-        events=EventBus(),
+        events=get_global_bus(),
     )
 
 
@@ -463,16 +464,29 @@ def get_section_service(
     cache: ICache = Depends(get_cache_adapter),
 ) -> SectionService:
     from app.application.services.section_service import SectionService
+    from app.application.services.versioning_service import VersioningService
     from app.infrastructure.persistence.section_repository_impl import (
         SectionRepositoryImpl,
         SectionVersionRepositoryImpl,
     )
+    from app.infrastructure.persistence.task_node_repository_impl import TaskNodeRepositoryImpl
+    from app.infrastructure.persistence.work_item_version_repository_impl import (
+        WorkItemVersionRepositoryImpl,
+    )
 
+    versioning = VersioningService(
+        session=session,
+        repo=WorkItemVersionRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+        section_repo=SectionRepositoryImpl(session),
+        task_node_repo=TaskNodeRepositoryImpl(session),
+    )
     return SectionService(
         section_repo=SectionRepositoryImpl(session),
         section_version_repo=SectionVersionRepositoryImpl(session),
         work_item_repo=WorkItemRepositoryImpl(session),
         cache=cache,
+        versioning_service=versioning,
     )
 
 
@@ -743,6 +757,19 @@ def get_notification_service(
     )
 
     return NotificationService(
+        notification_repo=NotificationRepositoryImpl(session),
+    )
+
+
+def get_extended_notification_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "ExtendedNotificationService":
+    from app.application.services.notification_service import ExtendedNotificationService
+    from app.infrastructure.persistence.team_repository_impl import (
+        NotificationRepositoryImpl,
+    )
+
+    return ExtendedNotificationService(
         notification_repo=NotificationRepositoryImpl(session),
     )
 

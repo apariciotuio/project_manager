@@ -40,3 +40,29 @@ class EventBus:
                     handler.__qualname__,
                     exc_info=True,
                 )
+
+
+# ---------------------------------------------------------------------------
+# Global shared bus — singleton registered once at startup.
+#
+# All domain services that emit events (WorkItemService, ReviewService, etc.)
+# should use this shared instance so that subscribers (timeline, notifications)
+# are invoked. Subscribers are registered in register_event_subscribers()
+# called from create_app().
+# ---------------------------------------------------------------------------
+
+_global_bus: EventBus | None = None
+
+
+def get_global_bus() -> EventBus:
+    """Return the process-wide shared EventBus, creating it on first call."""
+    global _global_bus
+    if _global_bus is None:
+        _global_bus = EventBus()
+    return _global_bus
+
+
+def reset_global_bus() -> None:
+    """Reset the global bus. Only for use in tests."""
+    global _global_bus
+    _global_bus = None

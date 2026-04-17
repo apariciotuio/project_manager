@@ -223,6 +223,49 @@ class NotificationRepositoryImpl(INotificationRepository):
             page_size=page_size,
         )
 
+    async def bulk_insert_idempotent(
+        self, notifications: list[Notification]
+    ) -> list[Notification]:
+        """Insert a batch of notifications, skipping duplicates (ON CONFLICT DO NOTHING).
+
+        Iterates and delegates to create() which already handles idempotency.
+        """
+        result = []
+        for n in notifications:
+            persisted = await self.create(n)
+            result.append(persisted)
+        return result
+
+    async def unread_count(self, user_id: UUID, workspace_id: UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(NotificationORM)
+            .where(
+                NotificationORM.recipient_id == user_id,
+                NotificationORM.workspace_id == workspace_id,
+                NotificationORM.state == "unread",
+            )
+        )
+        return (await self._session.execute(stmt)).scalar_one()
+
+    async def mark_all_read(self, user_id: UUID, workspace_id: UUID) -> int:
+        from datetime import UTC, datetime
+
+        import sqlalchemy as sa
+
+        stmt = (
+            sa.update(NotificationORM)
+            .where(
+                NotificationORM.recipient_id == user_id,
+                NotificationORM.workspace_id == workspace_id,
+                NotificationORM.state == "unread",
+            )
+            .values(state="read", read_at=datetime.now(UTC))
+            .returning(NotificationORM.id)
+        )
+        result = await self._session.execute(stmt)
+        return len(result.all())
+
     async def save(self, notification: Notification) -> Notification:
         existing = await self._session.get(NotificationORM, notification.id)
         if existing is None:
