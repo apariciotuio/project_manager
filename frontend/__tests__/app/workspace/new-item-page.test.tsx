@@ -504,4 +504,52 @@ describe('NewItemPage', () => {
       expect(mockPush).toHaveBeenCalledWith('/workspace/acme/items/wi1');
     }, { timeout: 5000 });
   }, 15000);
+
+  // ─── template_id forwarding ───────────────────────────────────────────────────
+
+  it('includes template_id in POST body when a template is selected', async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+
+    setupHandlers();
+    server.use(
+      http.post('http://localhost/api/v1/work-items', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          data: { id: 'wi1', title: 'My item', type: 'task', state: 'draft', created_at: new Date().toISOString() },
+        });
+      }),
+    );
+
+    const NewItemPage = await importPage();
+    render(<NewItemPage params={{ slug: 'acme' }} />);
+
+    // Wait for templates to render and click Bug Report template
+    const templateBtn = await screen.findByText('Bug Report');
+    await userEvent.click(templateBtn);
+
+    // Fill title
+    const titleInput = screen.getByPlaceholderText(/título/i);
+    await userEvent.type(titleInput, 'My item');
+
+    // Select project
+    await waitFor(() => {
+      const allSelects = document.querySelectorAll('select[aria-hidden="true"]');
+      let found = false;
+      for (const sel of allSelects) {
+        if (sel.querySelector('option[value="p1"]')) { found = true; break; }
+      }
+      expect(found).toBe(true);
+    }, { timeout: 3000 });
+    changeSelect(/proyecto/, 'p1');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^crear$/i })).not.toBeDisabled();
+    });
+    await userEvent.click(screen.getByRole('button', { name: /^crear$/i }));
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+      expect(capturedBody!.template_id).toBe('t1');
+    }, { timeout: 5000 });
+  }, 15000);
 });

@@ -194,6 +194,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
         project_id: projectId,
         parent_work_item_id: parentId || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
+        template_id: selectedTemplate?.id,
       });
       await discard();
       router.push(`/workspace/${slug}/items/${item.id}`);
