@@ -25,11 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Archive } from 'lucide-react';
-import type { ProjectCreateRequest, TagCreateRequest, IntegrationConfigCreateRequest } from '@/lib/types/api';
+import { Plus, Archive, Pencil } from 'lucide-react';
+import type { ProjectCreateRequest, TagCreateRequest, IntegrationConfigCreateRequest, Tag } from '@/lib/types/api';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
 import { useFormErrors } from '@/lib/errors/use-form-errors';
+import { TagEditModal } from '@/components/admin/tag-edit-modal';
 
 interface AdminPageProps {
   params: { slug: string };
@@ -462,11 +463,12 @@ function IntegrationsTab() {
 // ─── Tags Tab ─────────────────────────────────────────────────────────────────
 
 function TagsTab() {
-  const { tags, isLoading, error, createTag, archiveTag } = useTags();
+  const { tags, isLoading, error, createTag, archiveTag, replaceTag } = useTags();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<TagCreateRequest>({ name: '' });
   const [saving, setSaving] = useState(false);
   const { fieldErrors, handleApiError, clearErrors } = useFormErrors();
+  const [editTag, setEditTag] = useState<Tag | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -509,6 +511,14 @@ function TagsTab() {
               style={t.color ? { borderColor: t.color, color: t.color } : undefined}
             >
               <span className="text-body-sm font-medium">{t.name}</span>
+              <button
+                type="button"
+                aria-label={`Editar etiqueta ${t.name}`}
+                onClick={() => setEditTag(t)}
+                className="ml-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
               {!t.archived && (
                 <button
                   type="button"
@@ -567,6 +577,18 @@ function TagsTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {editTag && (
+        <TagEditModal
+          open={true}
+          tag={editTag}
+          onClose={() => setEditTag(null)}
+          onSaved={(updated) => {
+            replaceTag(updated);
+            setEditTag(null);
+          }}
+        />
+      )}
     </div>
   );
 }

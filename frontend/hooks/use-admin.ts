@@ -5,13 +5,15 @@ import { apiGet, apiPost, apiPatch } from '@/lib/api-client';
 import type {
   AuditEvent,
   AuditEventsResponse,
-  HealthResponse,
+  WorkspaceHealthResponse,
   Project,
   ProjectsResponse,
   ProjectResponse,
   ProjectCreateRequest,
   IntegrationConfig,
   IntegrationConfigsResponse,
+  IntegrationConfigResponse,
+  IntegrationConfigCreateRequest,
   Tag,
   TagsResponse,
   TagResponse,
@@ -39,8 +41,8 @@ export function useAuditEvents(): UseAuditEventsResult {
       try {
         const res = await apiGet<AuditEventsResponse>('/api/v1/admin/audit-events');
         if (!cancelled) {
-          setEvents(res.data);
-          setTotal(res.total);
+          setEvents(res.data.items);
+          setTotal(res.data.total);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
@@ -56,16 +58,16 @@ export function useAuditEvents(): UseAuditEventsResult {
   return { events, total, isLoading, error };
 }
 
-// ─── Health ────────────────────────────────────────────────────────────────────
+// ─── Health (workspace work item summary) ────────────────────────────────────
 
 interface UseHealthResult {
-  health: HealthResponse | null;
+  health: WorkspaceHealthResponse['data'] | null;
   isLoading: boolean;
   error: Error | null;
 }
 
 export function useHealth(): UseHealthResult {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [health, setHealth] = useState<WorkspaceHealthResponse['data'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -73,8 +75,8 @@ export function useHealth(): UseHealthResult {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await apiGet<HealthResponse>('/api/v1/admin/health');
-        if (!cancelled) setHealth(res);
+        const res = await apiGet<WorkspaceHealthResponse>('/api/v1/admin/health');
+        if (!cancelled) setHealth(res.data);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
@@ -135,6 +137,7 @@ interface UseIntegrationsResult {
   configs: IntegrationConfig[];
   isLoading: boolean;
   error: Error | null;
+  createIntegration: (req: IntegrationConfigCreateRequest) => Promise<IntegrationConfig>;
 }
 
 export function useIntegrations(): UseIntegrationsResult {
@@ -159,7 +162,16 @@ export function useIntegrations(): UseIntegrationsResult {
     };
   }, []);
 
-  return { configs, isLoading, error };
+  const createIntegration = useCallback(
+    async (req: IntegrationConfigCreateRequest): Promise<IntegrationConfig> => {
+      const res = await apiPost<IntegrationConfigResponse>('/api/v1/integrations/configs', req);
+      setConfigs((prev) => [...prev, res.data]);
+      return res.data;
+    },
+    []
+  );
+
+  return { configs, isLoading, error, createIntegration };
 }
 
 // ─── Tags ──────────────────────────────────────────────────────────────────────
@@ -170,6 +182,7 @@ interface UseTagsResult {
   error: Error | null;
   createTag: (req: TagCreateRequest) => Promise<Tag>;
   archiveTag: (id: string) => Promise<void>;
+  replaceTag: (updated: Tag) => void;
 }
 
 export function useTags(): UseTagsResult {
@@ -205,5 +218,9 @@ export function useTags(): UseTagsResult {
     setTags((prev) => prev.map((t) => (t.id === id ? { ...t, archived: true } : t)));
   }, []);
 
-  return { tags, isLoading, error, createTag, archiveTag };
+  const replaceTag = useCallback((updated: Tag): void => {
+    setTags((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }, []);
+
+  return { tags, isLoading, error, createTag, archiveTag, replaceTag };
 }

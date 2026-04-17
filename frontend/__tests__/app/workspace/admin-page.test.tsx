@@ -198,6 +198,58 @@ describe('AdminPage', () => {
     });
   });
 
+  it('tags tab — shows edit icon per tag row', async () => {
+    setupAllHandlers();
+    const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
+    render(<AdminPage params={{ slug: 'acme' }} />);
+
+    await userEvent.click(await screen.findByRole('tab', { name: /etiquetas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /editar etiqueta urgent/i })).toBeTruthy();
+    });
+  });
+
+  it('tags tab — clicking edit icon opens modal prefilled with tag values', async () => {
+    setupAllHandlers();
+    const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
+    render(<AdminPage params={{ slug: 'acme' }} />);
+
+    await userEvent.click(await screen.findByRole('tab', { name: /etiquetas/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /editar etiqueta urgent/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+      expect(screen.getByRole('textbox', { name: /nombre/i })).toHaveValue('urgent');
+    });
+  });
+
+  it('tags tab — edit tag PATCH updates list without reload', async () => {
+    setupAllHandlers();
+    server.use(
+      http.patch('http://localhost/api/v1/tags/tag1', () =>
+        HttpResponse.json({
+          data: { id: 'tag1', name: 'blocker', color: '#ff0000', archived: false, created_at: '2026-01-01T00:00:00Z' },
+        })
+      )
+    );
+    const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
+    render(<AdminPage params={{ slug: 'acme' }} />);
+
+    await userEvent.click(await screen.findByRole('tab', { name: /etiquetas/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /editar etiqueta urgent/i }));
+
+    const nameInput = await screen.findByRole('textbox', { name: /nombre/i });
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, 'blocker');
+
+    await userEvent.click(screen.getByRole('button', { name: /^guardar$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('blocker')).toBeTruthy();
+    });
+  });
+
   it('tags tab — create tag shows field error when name is taken', async () => {
     setupAllHandlers();
     server.use(
