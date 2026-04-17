@@ -31,6 +31,15 @@ class MandatoryValidationsPendingError(Exception):
         self.pending_ids = pending_ids
 
 
+class ReadyGateBlockedError(Exception):
+    """Raised by WorkItemService when the ReadyGate blocks a transition to READY."""
+
+    def __init__(self, item_id: UUID, blockers: list[object]) -> None:
+        super().__init__(f"Ready gate blocked for item {item_id}: {blockers}")
+        self.item_id = item_id
+        self.blockers = blockers
+
+
 class OwnerSuspendedError(Exception):
     def __init__(self, owner_id: UUID) -> None:
         super().__init__(f"Owner {owner_id} is suspended")

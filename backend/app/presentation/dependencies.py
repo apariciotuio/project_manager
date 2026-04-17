@@ -235,14 +235,25 @@ def get_work_item_service(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> WorkItemService:
     """Build WorkItemService for the current request with workspace-scoped session."""
+    from app.application.services.ready_gate_service import ReadyGateService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ValidationRequirementRepositoryImpl,
+        ValidationStatusRepositoryImpl,
+    )
+
     audit_repo = AuditRepositoryImpl(session)
     audit = AuditService(audit_repo)
+    ready_gate = ReadyGateService(
+        requirement_repo=ValidationRequirementRepositoryImpl(session),
+        status_repo=ValidationStatusRepositoryImpl(session),
+    )
     return WorkItemService(
         work_items=WorkItemRepositoryImpl(session),
         users=UserRepositoryImpl(session),
         memberships=WorkspaceMembershipRepositoryImpl(session),
         audit=audit,
         events=get_global_bus(),
+        ready_gate=ready_gate,
     )
 
 

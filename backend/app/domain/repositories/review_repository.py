@@ -7,6 +7,7 @@ from uuid import UUID
 from app.domain.models.review import (
     ReviewRequest,
     ReviewResponse,
+    ValidationRequirement,
     ValidationStatus,
 )
 
@@ -30,7 +31,27 @@ class IReviewResponseRepository(ABC):
     async def create(self, response: ReviewResponse) -> ReviewResponse: ...
 
     @abstractmethod
+    async def get_for_request(self, request_id: UUID) -> ReviewResponse | None: ...
+
+    @abstractmethod
     async def list_for_request(self, request_id: UUID) -> list[ReviewResponse]: ...
+
+
+class IValidationRequirementRepository(ABC):
+    @abstractmethod
+    async def get(self, rule_id: str) -> ValidationRequirement | None: ...
+
+    @abstractmethod
+    async def list_applicable(
+        self,
+        workspace_id: UUID,
+        work_item_type: str,
+        *,
+        required_only: bool = False,
+    ) -> list[ValidationRequirement]: ...
+
+    @abstractmethod
+    async def save(self, requirement: ValidationRequirement) -> ValidationRequirement: ...
 
 
 class IValidationStatusRepository(ABC):
@@ -47,6 +68,11 @@ class IValidationStatusRepository(ABC):
 
     @abstractmethod
     async def list_for_work_item(self, work_item_id: UUID) -> list[ValidationStatus]: ...
+
+    @abstractmethod
+    async def list_blocking(self, work_item_id: UUID) -> list[ValidationStatus]:
+        """Return all non-passed, non-obsolete statuses for required rules (gate hot path)."""
+        ...
 
     @abstractmethod
     async def all_required_passed(self, work_item_id: UUID) -> bool: ...

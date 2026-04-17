@@ -399,22 +399,45 @@ async def list_work_items(
 
 
 @router.get("/work-items")
-async def list_all_work_items(
-    state: WorkItemState | None = None,
-    type: WorkItemType | None = None,
+async def list_all_work_items(  # noqa: PLR0913
+    # --- existing filters (preserved for backward compat) ---
+    state: list[WorkItemState] | None = Query(default=None),
+    type: list[WorkItemType] | None = Query(default=None),
     owner_id: UUID | None = None,
     parent_work_item_id: UUID | None = None,
     has_override: bool | None = None,
     include_deleted: bool = False,
+    # --- new EP-09 filters ---
+    project_id: UUID | None = None,
+    creator_id: UUID | None = None,
+    tag_id: list[str] | None = Query(default=None),
+    priority: list[str] | None = Query(default=None),
+    completeness_min: int | None = Query(default=None, ge=0, le=100),
+    completeness_max: int | None = Query(default=None, ge=0, le=100),
+    updated_after: str | None = None,
+    updated_before: str | None = None,
+    sort: str = "updated_desc",
+    # --- cursor pagination (preferred) ---
+    cursor: str | None = None,
+    limit: int = Query(default=25, ge=1, le=100),
+    # --- legacy offset pagination ---
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
+    # --- free text + puppet ---
+    q: str | None = None,
+    use_puppet: bool = False,
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
     """List all work items in the current workspace (all projects).
 
-    RLS ensures only workspace-scoped items are returned.
-    Pass `parent_work_item_id` to return direct children of a given parent.
+    Supports cursor-based pagination (preferred) via `cursor` + `limit`.
+    Legacy `page` / `page_size` still works for backward compat but is not
+    recommended for real-time data.
+
+    New EP-09 filters: project_id, creator_id, tag_id (AND), priority,
+    completeness_min/max, updated_after/before, sort (enum), q (free-text).
+    Set use_puppet=true with q to delegate to Puppet semantic search.
     """
     if current_user.workspace_id is None:
         raise HTTPException(
@@ -422,50 +445,147 @@ async def list_all_work_items(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
         )
 
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from datetime import datetime
 
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import select
+
+    from app.application.services.work_item_list_service import WorkItemListQueryBuilder
+    from app.domain.pagination import PaginationCursor
+    from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
     from app.infrastructure.persistence.database import get_session_factory
-    from app.infrastructure.persistence.models.orm import WorkItemORM
+    from app.infrastructure.persistence.mappers.work_item_mapper import to_domain
     from app.infrastructure.persistence.session_context import with_workspace
+
+    # Parse sort enum
+    try:
+        sort_enum = SortOption(sort)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "INVALID_SORT",
+                    "message": f"sort must be one of {[o.value for o in SortOption]}",
+                    "details": {},
+                }
+            },
+        )
+
+    # Parse datetime strings
+    def _parse_dt(val: str | None) -> datetime | None:
+        if val is None:
+            return None
+        try:
+            return datetime.fromisoformat(val)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_DATETIME", "message": f"invalid ISO 8601 datetime: {val!r}", "details": {}}},
+            )
+
+    filters = WorkItemListFilters(
+        state=[s.value for s in state] if state else None,
+        type=[t.value for t in type] if type else None,
+        owner_id=owner_id,
+        parent_work_item_id=parent_work_item_id,
+        has_override=has_override,
+        include_deleted=include_deleted,
+        project_id=project_id,
+        creator_id=creator_id,
+        tag_id=tag_id,
+        priority=priority,
+        completeness_min=completeness_min,
+        completeness_max=completeness_max,
+        updated_after=_parse_dt(updated_after),
+        updated_before=_parse_dt(updated_before),
+        sort=sort_enum,
+        cursor=cursor,
+        limit=limit,
+        page=page,
+        page_size=page_size,
+        q=q,
+        use_puppet=use_puppet,
+    )
+
+    builder = WorkItemListQueryBuilder(
+        workspace_id=current_user.workspace_id,
+        filters=filters,
+    )
+
+    # Validate cursor early so we surface 422 before hitting DB
+    try:
+        decoded_cursor = builder.decoded_cursor
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "INVALID_CURSOR", "message": "invalid or tampered cursor", "details": {}}},
+        )
 
     factory = get_session_factory()
     async with factory() as session:
         await with_workspace(session, current_user.workspace_id)
-        stmt = select(WorkItemORM).where(
-            WorkItemORM.workspace_id == current_user.workspace_id
-        )
-        if state:
-            stmt = stmt.where(WorkItemORM.state == state.value)
-        if type:
-            stmt = stmt.where(WorkItemORM.type == type.value)
-        if owner_id:
-            stmt = stmt.where(WorkItemORM.owner_id == owner_id)
-        if parent_work_item_id is not None:
-            stmt = stmt.where(WorkItemORM.parent_work_item_id == parent_work_item_id)
-        if not include_deleted:
-            stmt = stmt.where(WorkItemORM.deleted_at.is_(None))
-        stmt = stmt.order_by(WorkItemORM.updated_at.desc())
 
-        from sqlalchemy import func as sa_func
+        # Count (same WHERE, no sort/limit)
+        total = (await session.execute(builder.build_count_stmt())).scalar_one()
 
-        total_stmt = select(sa_func.count()).select_from(stmt.subquery())
-        total = (await session.execute(total_stmt)).scalar_one()
-
-        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
-        rows = (await session.execute(stmt)).scalars().all()
-
-        from app.infrastructure.persistence.mappers.work_item_mapper import to_domain
+        # Data (limit+1 to detect next page)
+        rows = (await session.execute(builder.build_stmt())).scalars().all()
 
         items = [to_domain(row) for row in rows]
 
-    paged = PagedWorkItemResponse(
-        items=[
-            WorkItemResponse.from_domain(item, current_user.workspace_id)
-            for item in items
-        ],
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
-    return _ok(paged.model_dump(mode="json"))
+    has_next = len(items) > filters.limit
+    if has_next:
+        items = items[: filters.limit]
+
+    # Build next_cursor
+    next_cursor: str | None = None
+    if has_next and items:
+        last = items[-1]
+        sv: Any
+        if sort_enum in (SortOption.updated_desc, SortOption.updated_asc):
+            sv = last.updated_at
+        elif sort_enum == SortOption.created_desc:
+            sv = last.created_at
+        elif sort_enum == SortOption.title_asc:
+            sv = last.title
+        elif sort_enum == SortOption.completeness_desc:
+            sv = last.completeness_score
+        else:
+            sv = last.updated_at
+        next_cursor = PaginationCursor(sort_value=sv, last_id=last.id).encode()
+
+    # Applied filters for response transparency
+    applied_filters: dict[str, Any] = {}
+    if state:
+        applied_filters["state"] = [s.value for s in state]
+    if type:
+        applied_filters["type"] = [t.value for t in type]
+    if owner_id:
+        applied_filters["owner_id"] = str(owner_id)
+    if creator_id:
+        applied_filters["creator_id"] = str(creator_id)
+    if project_id:
+        applied_filters["project_id"] = str(project_id)
+    if priority:
+        applied_filters["priority"] = priority
+    if q:
+        applied_filters["q"] = q
+
+    return {
+        "data": {
+            "items": [
+                WorkItemResponse.from_domain(item, current_user.workspace_id).model_dump(mode="json")
+                for item in items
+            ],
+            "next_cursor": next_cursor,
+            "total": total,
+        },
+        "pagination": {
+            "cursor": next_cursor,
+            "has_next": has_next,
+            "total_count": total,
+        },
+        "applied_filters": applied_filters,
+        "message": "ok",
+    }

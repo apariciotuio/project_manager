@@ -1,4 +1,4 @@
-"""Mappers for ReviewRequest, ReviewResponse, ValidationStatus — EP-06."""
+"""Mappers for ReviewRequest, ReviewResponse, ValidationRequirement, ValidationStatus — EP-06."""
 from __future__ import annotations
 
 from app.domain.models.review import (  # noqa: I001
@@ -7,12 +7,14 @@ from app.domain.models.review import (  # noqa: I001
     ReviewRequest,
     ReviewResponse,
     ReviewStatus,
+    ValidationRequirement,
     ValidationState,
     ValidationStatus,
 )
 from app.infrastructure.persistence.models.orm import (
     ReviewRequestORM,
     ReviewResponseORM,
+    ValidationRequirementORM,
     ValidationStatusORM,
 )
 
@@ -82,6 +84,18 @@ def validation_status_to_domain(row: ValidationStatusORM) -> ValidationStatus:
         waived_at=row.waived_at,
         waived_by=row.waived_by,
         waive_reason=row.waive_reason,
+    )
+
+
+def validation_requirement_to_domain(row: ValidationRequirementORM) -> ValidationRequirement:
+    return ValidationRequirement(
+        rule_id=row.rule_id,
+        label=row.label,
+        required=row.required,
+        applies_to=tuple(row.applies_to.split(",") if row.applies_to else []),
+        workspace_id=row.workspace_id,
+        description=row.description,
+        is_active=row.is_active,
     )
 
 

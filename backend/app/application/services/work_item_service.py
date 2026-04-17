@@ -7,11 +7,17 @@ rules.
 
 Fire-and-forget audit: every method calls audit.log_event() but never awaits the
 result in a way that could block the caller — AuditService.log_event() never raises.
+
+EP-06 ReadyGate integration:
+The service accepts an optional `ready_gate_checker` callable injected at construction.
+When target_state=READY and the callable is provided, it is called before the FSM
+transition. If the gate is blocked, ReadyGateBlockedError is raised (422 in controller).
+force_ready() bypasses the gate by design.
 """
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -40,6 +46,7 @@ from app.domain.exceptions import (
     MandatoryValidationsPendingError,
     NotOwnerError,
     OwnerSuspendedError,
+    ReadyGateBlockedError,
     TargetUserSuspendedError,
     WorkItemNotFoundError,
 )
@@ -71,6 +78,7 @@ class WorkItemService:
         events: EventBus,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        ready_gate: object | None = None,
     ) -> None:
         self._work_items = work_items
         self._users = users
@@ -78,6 +86,10 @@ class WorkItemService:
         self._audit = audit
         self._events = events
         self._clock = clock
+        # EP-06 ReadyGateService — injected optionally to avoid circular imports.
+        # Must be an object with an async `check(work_item_id, workspace_id, work_item_type)`
+        # method returning a GateResult(ok, blockers). None = gate disabled (legacy / tests).
+        self._ready_gate = ready_gate
 
     # ------------------------------------------------------------------
     # create
@@ -278,6 +290,15 @@ class WorkItemService:
                 raise MandatoryValidationsPendingError(
                     item.id, pending_ids=(score,)
                 )
+            # EP-06 ReadyGate: check all mandatory validations
+            if self._ready_gate is not None:
+                gate_result = await self._ready_gate.check(
+                    work_item_id=item.id,
+                    workspace_id=cmd.workspace_id,
+                    work_item_type=item.type.value,
+                )
+                if not gate_result.ok:
+                    raise ReadyGateBlockedError(item.id, blockers=gate_result.blockers)
 
         # apply_transition enforces ownership and FSM edges
         transition = item.apply_transition(cmd.target_state, cmd.actor_id, cmd.reason)

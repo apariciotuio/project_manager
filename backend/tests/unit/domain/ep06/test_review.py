@@ -1,4 +1,4 @@
-"""EP-06 — ReviewRequest state machine + ReviewResponse validation."""
+"""EP-06 — ReviewRequest state machine + ReviewResponse validation + ValidationStatus."""
 from __future__ import annotations
 
 from uuid import uuid4
@@ -9,9 +9,14 @@ from app.domain.models.review import (
     ContentRequiredError,
     ReviewAlreadyClosedError,
     ReviewDecision,
+    ReviewInvariantError,
     ReviewRequest,
     ReviewResponse,
     ReviewStatus,
+    ReviewerType,
+    ValidationState,
+    ValidationStatus,
+    ValidationTransitionError,
 )
 
 
@@ -89,3 +94,132 @@ class TestReviewResponse:
             content="needs work",
         )
         assert resp.content == "needs work"
+
+
+class TestReviewRequestInvariant:
+    """Task 2.1 — reviewer target invariant."""
+
+    def test_user_reviewer_valid(self) -> None:
+        r = ReviewRequest.create_for_user(
+            work_item_id=uuid4(),
+            version_id=uuid4(),
+            reviewer_id=uuid4(),
+            requested_by=uuid4(),
+        )
+        assert r.reviewer_type is ReviewerType.USER
+        assert r.reviewer_id is not None
+        assert r.team_id is None
+
+    def test_team_reviewer_valid(self) -> None:
+        r = ReviewRequest.create_for_team(
+            work_item_id=uuid4(),
+            version_id=uuid4(),
+            team_id=uuid4(),
+            requested_by=uuid4(),
+        )
+        assert r.reviewer_type is ReviewerType.TEAM
+        assert r.team_id is not None
+        assert r.reviewer_id is None
+
+    def test_user_type_missing_reviewer_id_raises(self) -> None:
+        with pytest.raises(ReviewInvariantError):
+            ReviewRequest(
+                id=uuid4(),
+                work_item_id=uuid4(),
+                version_id=uuid4(),
+                reviewer_type=ReviewerType.USER,
+                reviewer_id=None,  # missing
+                team_id=None,
+                validation_rule_id=None,
+                status=ReviewStatus.PENDING,
+                requested_by=uuid4(),
+                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                cancelled_at=None,
+            )
+
+    def test_team_type_missing_team_id_raises(self) -> None:
+        with pytest.raises(ReviewInvariantError):
+            ReviewRequest(
+                id=uuid4(),
+                work_item_id=uuid4(),
+                version_id=uuid4(),
+                reviewer_type=ReviewerType.TEAM,
+                reviewer_id=None,
+                team_id=None,  # missing
+                validation_rule_id=None,
+                status=ReviewStatus.PENDING,
+                requested_by=uuid4(),
+                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                cancelled_at=None,
+            )
+
+    def test_both_reviewer_and_team_raises(self) -> None:
+        with pytest.raises(ReviewInvariantError):
+            ReviewRequest(
+                id=uuid4(),
+                work_item_id=uuid4(),
+                version_id=uuid4(),
+                reviewer_type=ReviewerType.USER,
+                reviewer_id=uuid4(),
+                team_id=uuid4(),  # both set
+                validation_rule_id=None,
+                status=ReviewStatus.PENDING,
+                requested_by=uuid4(),
+                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                cancelled_at=None,
+            )
+
+
+class TestValidationStatus:
+    """Tasks 2.5, 2.6 — ValidationStatus transition rules."""
+
+    def _pending(self) -> ValidationStatus:
+        return ValidationStatus.create_pending(work_item_id=uuid4(), rule_id="spec_review")
+
+    def test_pending_to_passed_allowed(self) -> None:
+        vs = self._pending()
+        vs.mark_passed()
+        assert vs.status is ValidationState.PASSED
+        assert vs.passed_at is not None
+
+    def test_pending_to_waived_allowed(self) -> None:
+        vs = self._pending()
+        vs.mark_waived(waived_by=uuid4())
+        assert vs.status is ValidationState.WAIVED
+        assert vs.waived_at is not None
+
+    def test_pending_transition_to_obsolete_allowed(self) -> None:
+        vs = self._pending()
+        vs.transition_to(ValidationState.OBSOLETE)
+        assert vs.status is ValidationState.OBSOLETE
+
+    def test_passed_to_anything_blocked(self) -> None:
+        vs = self._pending()
+        vs.mark_passed()
+        with pytest.raises(ValidationTransitionError):
+            vs.transition_to(ValidationState.PENDING)
+
+    def test_passed_to_waived_blocked(self) -> None:
+        vs = self._pending()
+        vs.mark_passed()
+        with pytest.raises(ValidationTransitionError):
+            vs.mark_waived(waived_by=uuid4())
+
+    def test_mark_passed_idempotent(self) -> None:
+        vs = self._pending()
+        vs.mark_passed()
+        passed_at_1 = vs.passed_at
+        vs.mark_passed()  # second call — idempotent, no raise
+        assert vs.passed_at == passed_at_1
+
+    def test_waived_to_pending_blocked(self) -> None:
+        vs = self._pending()
+        vs.mark_waived(waived_by=uuid4())
+        with pytest.raises(ValidationTransitionError):
+            vs.transition_to(ValidationState.PENDING)
+
+    def test_mark_passed_sets_review_request_id(self) -> None:
+        vs = self._pending()
+        rr_id = uuid4()
+        vs.mark_passed(by_review_request_id=rr_id)
+        assert vs.passed_by_review_request_id == rr_id

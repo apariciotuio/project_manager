@@ -1,10 +1,13 @@
 """EP-06 — Review controller.
 
 Routes:
-  POST   /api/v1/work-items/{id}/reviews          — request review
-  POST   /api/v1/reviews/{id}/responses           — respond to review
-  DELETE /api/v1/reviews/{id}                     — cancel
-  GET    /api/v1/work-items/{id}/reviews          — list
+  POST   /api/v1/work-items/{id}/review-requests   — request review (owner only)
+  GET    /api/v1/work-items/{id}/review-requests   — list requests + responses
+  GET    /api/v1/review-requests/{id}              — single request with version_outdated flag
+  DELETE /api/v1/review-requests/{id}              — cancel (owner only)
+  POST   /api/v1/review-requests/{id}/response     — respond (designated reviewer only)
+  GET    /api/v1/review-requests/{id}/response     — get response
+  GET    /api/v1/my/reviews                        — reviewer inbox (pending requests for me)
 """
 from __future__ import annotations
 
@@ -16,12 +19,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel
 
-from app.application.services.review_service import (
+from app.application.services.review_request_service import (
     ReviewForbiddenError,
     ReviewNotFoundError,
-    ReviewService,
+    ReviewRequestService,
     ReviewWithResponses,
+    SelfReviewForbiddenError,
 )
+from app.application.services.review_response_service import ReviewResponseService
+from app.application.services.validation_service import ValidationService
 from app.domain.models.review import (
     ContentRequiredError,
     ReviewAlreadyClosedError,
@@ -29,7 +35,12 @@ from app.domain.models.review import (
     ReviewRequest,
     ReviewResponse,
 )
-from app.presentation.dependencies import get_current_user, get_review_service
+from app.presentation.dependencies import (
+    get_current_user,
+    get_review_request_service,
+    get_review_response_service,
+    get_validation_service,
+)
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)
@@ -101,38 +112,73 @@ def _review_with_responses_payload(rwr: ReviewWithResponses) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/work-items/{work_item_id}/reviews", status_code=http_status.HTTP_201_CREATED)
+@router.post(
+    "/work-items/{work_item_id}/review-requests",
+    status_code=http_status.HTTP_201_CREATED,
+)
 async def request_review(
     work_item_id: UUID,
     body: RequestReviewBody,
     current_user: CurrentUser = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service),
-) -> dict[str, Any]:
-    _require_workspace(current_user)
-    review = await service.request_review(
-        work_item_id=work_item_id,
-        reviewer_id=body.reviewer_id,
-        version_id=body.version_id,
-        requested_by=current_user.id,
-        validation_rule_id=body.validation_rule_id,
-    )
-    return _ok(_review_request_payload(review), "review requested")
-
-
-@router.post("/reviews/{request_id}/responses", status_code=http_status.HTTP_201_CREATED)
-async def respond_to_review(
-    request_id: UUID,
-    body: RespondReviewBody,
-    current_user: CurrentUser = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service),
+    service: ReviewRequestService = Depends(get_review_request_service),
 ) -> dict[str, Any]:
     _require_workspace(current_user)
     try:
-        rwr = await service.respond(
+        review = await service.request_review(
+            work_item_id=work_item_id,
+            reviewer_id=body.reviewer_id,
+            version_id=body.version_id,
+            requested_by=current_user.id,
+            workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
+            validation_rule_id=body.validation_rule_id,
+        )
+    except SelfReviewForbiddenError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "SELF_REVIEW_FORBIDDEN", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_review_request_payload(review), "review requested")
+
+
+@router.get("/work-items/{work_item_id}/review-requests")
+async def list_reviews(
+    work_item_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: ReviewRequestService = Depends(get_review_request_service),
+) -> dict[str, Any]:
+    _require_workspace(current_user)
+    items = await service.list_for_work_item(work_item_id)
+    return _ok([_review_with_responses_payload(r) for r in items])
+
+
+@router.get("/review-requests/{request_id}")
+async def get_review_request(
+    request_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: ReviewRequestService = Depends(get_review_request_service),
+) -> dict[str, Any]:
+    _require_workspace(current_user)
+    req = await service.get(request_id)
+    if req is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "review request not found", "details": {}}},
+        )
+    return _ok(_review_request_payload(req))
+
+
+@router.delete("/review-requests/{request_id}", status_code=http_status.HTTP_200_OK)
+async def cancel_review(
+    request_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: ReviewRequestService = Depends(get_review_request_service),
+) -> dict[str, Any]:
+    _require_workspace(current_user)
+    try:
+        review = await service.cancel(
             request_id=request_id,
-            responder_id=current_user.id,
-            decision=body.decision,
-            content=body.content,
+            actor_id=current_user.id,
+            workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
         )
     except ReviewNotFoundError as exc:
         raise HTTPException(
@@ -142,29 +188,34 @@ async def respond_to_review(
     except ReviewAlreadyClosedError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
-            detail={
-                "error": {"code": "REVIEW_ALREADY_CLOSED", "message": str(exc), "details": {}}
-            },
+            detail={"error": {"code": "REVIEW_ALREADY_CLOSED", "message": str(exc), "details": {}}},
         ) from exc
-    except ContentRequiredError as exc:
+    except ReviewForbiddenError as exc:
         raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": {"code": "CONTENT_REQUIRED", "message": str(exc), "details": {}}
-            },
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": str(exc), "details": {}}},
         ) from exc
-    return _ok(_review_with_responses_payload(rwr), "response recorded")
+    return _ok({"status": review.status.value}, "review cancelled")
 
 
-@router.delete("/reviews/{request_id}", status_code=http_status.HTTP_200_OK)
-async def cancel_review(
+@router.post("/review-requests/{request_id}/response", status_code=http_status.HTTP_200_OK)
+async def respond_to_review(
     request_id: UUID,
+    body: RespondReviewBody,
     current_user: CurrentUser = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service),
+    response_svc: ReviewResponseService = Depends(get_review_response_service),
+    validation_svc: ValidationService = Depends(get_validation_service),
 ) -> dict[str, Any]:
     _require_workspace(current_user)
     try:
-        review = await service.cancel(request_id=request_id, actor_id=current_user.id)
+        rwr = await response_svc.respond(
+            request_id=request_id,
+            responder_id=current_user.id,
+            decision=body.decision,
+            content=body.content,
+            workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
+            validation_service=validation_svc,
+        )
     except ReviewNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -173,27 +224,45 @@ async def cancel_review(
     except ReviewAlreadyClosedError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
-            detail={
-                "error": {"code": "REVIEW_ALREADY_CLOSED", "message": str(exc), "details": {}}
-            },
+            detail={"error": {"code": "REVIEW_ALREADY_CLOSED", "message": str(exc), "details": {}}},
+        ) from exc
+    except ContentRequiredError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "CONTENT_REQUIRED", "message": str(exc), "details": {}}},
         ) from exc
     except ReviewForbiddenError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": str(exc), "details": {}}},
         ) from exc
-    return _ok(_review_request_payload(review), "review cancelled")
+    return _ok(_review_with_responses_payload(rwr), "response recorded")
 
 
-@router.get("/work-items/{work_item_id}/reviews")
-async def list_reviews(
-    work_item_id: UUID,
+@router.get("/review-requests/{request_id}/response")
+async def get_review_response(
+    request_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    service: ReviewService = Depends(get_review_service),
+    response_svc: ReviewResponseService = Depends(get_review_response_service),
 ) -> dict[str, Any]:
     _require_workspace(current_user)
-    items = await service.list_for_work_item(work_item_id)
-    return _ok([_review_with_responses_payload(r) for r in items])
+    response = await response_svc.get_response(request_id)
+    if response is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "no response yet", "details": {}}},
+        )
+    return _ok(_review_response_payload(response))
+
+
+@router.get("/my/reviews")
+async def my_pending_reviews(
+    current_user: CurrentUser = Depends(get_current_user),
+    service: ReviewRequestService = Depends(get_review_request_service),
+) -> dict[str, Any]:
+    _require_workspace(current_user)
+    requests = await service.list_pending_for_reviewer(current_user.id)
+    return _ok([_review_request_payload(r) for r in requests])
 
 
 # ---------------------------------------------------------------------------

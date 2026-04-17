@@ -3,19 +3,21 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.review import (
     ReviewRequest,
     ReviewResponse,
     ReviewStatus,
+    ValidationRequirement,
     ValidationState,
     ValidationStatus,
 )
 from app.domain.repositories.review_repository import (
     IReviewRequestRepository,
     IReviewResponseRepository,
+    IValidationRequirementRepository,
     IValidationStatusRepository,
 )
 from app.infrastructure.persistence.mappers.review_mapper import (
@@ -23,6 +25,7 @@ from app.infrastructure.persistence.mappers.review_mapper import (
     review_request_to_orm,
     review_response_to_domain,
     review_response_to_orm,
+    validation_requirement_to_domain,
     validation_status_to_domain,
     validation_status_to_orm,
 )
@@ -85,6 +88,14 @@ class ReviewResponseRepositoryImpl(IReviewResponseRepository):
         await self._session.flush()
         return response
 
+    async def get_for_request(self, request_id: UUID) -> ReviewResponse | None:
+        stmt = (
+            select(ReviewResponseORM)
+            .where(ReviewResponseORM.review_request_id == request_id)
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return review_response_to_domain(row) if row else None
+
     async def list_for_request(self, request_id: UUID) -> list[ReviewResponse]:
         stmt = (
             select(ReviewResponseORM)
@@ -93,6 +104,68 @@ class ReviewResponseRepositoryImpl(IReviewResponseRepository):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [review_response_to_domain(r) for r in rows]
+
+
+class ValidationRequirementRepositoryImpl(IValidationRequirementRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get(self, rule_id: str) -> ValidationRequirement | None:
+        row = await self._session.get(ValidationRequirementORM, rule_id)
+        return validation_requirement_to_domain(row) if row else None
+
+    async def list_applicable(
+        self,
+        workspace_id: UUID,
+        work_item_type: str,
+        *,
+        required_only: bool = False,
+    ) -> list[ValidationRequirement]:
+        """Return active rules applicable to this workspace + work_item_type.
+
+        Rules with workspace_id=NULL are global defaults visible to all workspaces.
+        Workspace-scoped rules (workspace_id=workspace_id) extend or override globals.
+        applies_to='' (empty) means the rule applies to all types.
+        """
+        stmt = select(ValidationRequirementORM).where(
+            and_(
+                ValidationRequirementORM.is_active.is_(True),
+                or_(
+                    ValidationRequirementORM.workspace_id.is_(None),
+                    ValidationRequirementORM.workspace_id == workspace_id,
+                ),
+            )
+        )
+        if required_only:
+            stmt = stmt.where(ValidationRequirementORM.required.is_(True))
+        rows = (await self._session.execute(stmt)).scalars().all()
+        # Filter by applies_to: empty string / empty list = applies to all types
+        result = []
+        for row in rows:
+            if not row.applies_to or work_item_type in row.applies_to.split(","):
+                result.append(validation_requirement_to_domain(row))
+        return result
+
+    async def save(self, requirement: ValidationRequirement) -> ValidationRequirement:
+        row = await self._session.get(ValidationRequirementORM, requirement.rule_id)
+        if row is None:
+            new_row = ValidationRequirementORM()
+            new_row.rule_id = requirement.rule_id
+            new_row.label = requirement.label
+            new_row.required = requirement.required
+            new_row.applies_to = ",".join(requirement.applies_to)
+            new_row.workspace_id = requirement.workspace_id
+            new_row.description = requirement.description
+            new_row.is_active = requirement.is_active
+            self._session.add(new_row)
+        else:
+            row.label = requirement.label
+            row.required = requirement.required
+            row.applies_to = ",".join(requirement.applies_to)
+            row.description = requirement.description
+            row.is_active = requirement.is_active
+        await self._session.flush()
+        return requirement
 
 
 class ValidationStatusRepositoryImpl(IValidationStatusRepository):
@@ -136,9 +209,21 @@ class ValidationStatusRepositoryImpl(IValidationStatusRepository):
         rows = (await self._session.execute(stmt)).scalars().all()
         return [validation_status_to_domain(r) for r in rows]
 
+    async def list_blocking(self, work_item_id: UUID) -> list[ValidationStatus]:
+        """Return non-passed, non-obsolete statuses — gate hot path."""
+        stmt = select(ValidationStatusORM).where(
+            and_(
+                ValidationStatusORM.work_item_id == work_item_id,
+                ValidationStatusORM.status.notin_(
+                    [ValidationState.PASSED.value, ValidationState.OBSOLETE.value]
+                ),
+            )
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [validation_status_to_domain(r) for r in rows]
+
     async def all_required_passed(self, work_item_id: UUID) -> bool:
         """Returns True if every required ValidationRequirement has a PASSED ValidationStatus."""
-        # Fetch all required rule_ids
         req_stmt = select(ValidationRequirementORM.rule_id).where(
             ValidationRequirementORM.required.is_(True)
         )
@@ -148,7 +233,6 @@ class ValidationStatusRepositoryImpl(IValidationStatusRepository):
         if not required_rule_ids:
             return True
 
-        # Compare count of passed rule_ids against required set
         passed_stmt = (
             select(ValidationStatusORM.rule_id)
             .where(
