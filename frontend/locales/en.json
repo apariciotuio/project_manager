@@ -44,6 +44,11 @@
       "invalid_state": "Invalid request. Please try again.",
       "cancelled": "You cancelled sign-in.",
       "no_workspace": "Your account doesn't have access to any workspace."
+    },
+    "sessionExpired": {
+      "title": "Your session has expired",
+      "description": "For security, you need to sign in again. Any unsaved changes may be lost.",
+      "cta": "Sign in"
     }
   },
   "nav": {

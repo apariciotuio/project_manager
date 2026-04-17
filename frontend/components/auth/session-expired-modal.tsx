@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -17,10 +18,11 @@ interface SessionExpiredModalProps {
 
 export function SessionExpiredModal({ open }: SessionExpiredModalProps) {
   const pathname = usePathname();
+  const t = useTranslations('auth.sessionExpired');
 
   function goToLogin() {
-    // Redirige directo al flujo OAuth de Google — evita el paso extra por /login
-    // y la doble interacción. Si la sesión de Google sigue viva, es un solo clic.
+    // Go straight to the OAuth entry point — if the Google session is still
+    // alive, re-auth is one click. Otherwise the backend bounces to /login.
     const returnTo = pathname && pathname !== '/login' ? pathname : '/';
     window.location.href = `/api/v1/auth/google?return_to=${encodeURIComponent(returnTo)}`;
   }
@@ -33,14 +35,11 @@ export function SessionExpiredModal({ open }: SessionExpiredModalProps) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Tu sesión ha caducado</DialogTitle>
-          <DialogDescription>
-            Por seguridad, necesitas iniciar sesión de nuevo. Los cambios sin guardar
-            podrían perderse.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button onClick={goToLogin}>Iniciar sesión</Button>
+          <Button onClick={goToLogin}>{t('cta')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

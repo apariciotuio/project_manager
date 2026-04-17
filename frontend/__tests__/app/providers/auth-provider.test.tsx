@@ -12,6 +12,12 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// next-intl mock — AuthProvider renders SessionExpiredModal which uses useTranslations
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 const MOCK_USER: AuthUser = {
   id: 'user-1',
   email: 'test@example.com',

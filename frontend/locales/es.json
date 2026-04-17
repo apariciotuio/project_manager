@@ -44,6 +44,11 @@
       "invalid_state": "Solicitud inválida. Inténtalo de nuevo.",
       "cancelled": "Cancelaste el inicio de sesión.",
       "no_workspace": "Tu cuenta no tiene acceso a ningún workspace."
+    },
+    "sessionExpired": {
+      "title": "Tu sesión ha caducado",
+      "description": "Por seguridad, necesitas iniciar sesión de nuevo. Los cambios sin guardar podrían perderse.",
+      "cta": "Iniciar sesión"
     }
   },
   "nav": {
