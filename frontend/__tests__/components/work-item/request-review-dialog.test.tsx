@@ -83,6 +83,7 @@ describe('RequestReviewDialog', () => {
     render(
       <RequestReviewDialog
         workItemId="wi-1"
+        versionId="v-1"
         open={true}
         onSuccess={onSuccess}
         onClose={vi.fn()}
@@ -111,6 +112,7 @@ describe('RequestReviewDialog', () => {
     render(
       <RequestReviewDialog
         workItemId="wi-1"
+        versionId="v-1"
         open={true}
         onSuccess={vi.fn()}
         onClose={vi.fn()}

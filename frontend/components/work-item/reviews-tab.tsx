@@ -15,13 +15,15 @@ import type { ReviewRequest, ReviewRequestWithResponses } from '@/lib/api/review
 
 interface ReviewsTabProps {
   workItemId: string;
+  /** Real version id from useVersions; null while loading, undefined if hook not yet invoked. */
+  versionId?: string | null;
   currentUserId?: string;
   isOwner?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ReviewsTab({ workItemId, currentUserId = '', isOwner = false }: ReviewsTabProps) {
+export function ReviewsTab({ workItemId, versionId = null, currentUserId = '', isOwner = false }: ReviewsTabProps) {
   const t = useTranslations('workspace.itemDetail.reviews');
 
   const { requests, isLoading, error, create, cancel, refetch } = useReviewRequests(workItemId);
@@ -97,6 +99,7 @@ export function ReviewsTab({ workItemId, currentUserId = '', isOwner = false }: 
       {/* Request review dialog */}
       <RequestReviewDialog
         workItemId={workItemId}
+        versionId={versionId}
         open={requestDialogOpen}
         onSuccess={handleRequestSuccess}
         onClose={() => setRequestDialogOpen(false)}

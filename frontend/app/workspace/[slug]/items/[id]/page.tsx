@@ -21,6 +21,7 @@ import { ChildItemsTab } from '@/components/work-item/child-items-tab';
 import { ClarificationTab } from '@/components/clarification/clarification-tab';
 import { VersionHistoryPanel } from '@/components/work-item/version-history-panel';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
+import { useVersions } from '@/hooks/work-item/use-versions';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
@@ -35,8 +36,12 @@ export default function WorkItemDetailPage({
   params: { slug, id },
 }: WorkItemDetailPageProps) {
   const { workItem, isLoading, error, refetch } = useWorkItem(id);
+  const { versions } = useVersions(id);
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
+
+  // Pick the latest version id — null while versions haven't loaded yet
+  const latestVersionId = versions.length > 0 ? (versions[0]?.id ?? null) : null;
 
   if (isLoading) {
     return (
@@ -159,7 +164,7 @@ export default function WorkItemDetailPage({
         </TabsContent>
 
         <TabsContent value="revisiones" className="mt-4">
-          <ReviewsTab workItemId={id} />
+          <ReviewsTab workItemId={id} versionId={latestVersionId} />
         </TabsContent>
 
         <TabsContent value="comentarios" className="mt-4">

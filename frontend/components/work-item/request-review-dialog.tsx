@@ -27,6 +27,8 @@ import type { ReviewRequest } from '@/lib/api/reviews';
 
 export interface RequestReviewDialogProps {
   workItemId: string;
+  /** Real version id from the server. If null, the item has no version yet — submit is blocked. */
+  versionId?: string | null;
   open: boolean;
   onSuccess: (request: ReviewRequest) => void;
   onClose: () => void;
@@ -36,6 +38,7 @@ export interface RequestReviewDialogProps {
 
 export function RequestReviewDialog({
   workItemId,
+  versionId = null,
   open,
   onSuccess,
   onClose,
@@ -60,14 +63,13 @@ export function RequestReviewDialog({
   }
 
   async function handleSubmit() {
-    if (!reviewerId) return;
+    if (!reviewerId || !versionId) return;
     setIsPending(true);
     setInlineError(null);
     try {
-      // We need a version_id — use a sentinel that the BE accepts; in real usage, parent passes it
       const result = await createReviewRequest(workItemId, {
         reviewer_id: reviewerId,
-        version_id: 'current',
+        version_id: versionId,
       });
       reset();
       onSuccess(result);
@@ -121,6 +123,12 @@ export function RequestReviewDialog({
             />
           </div>
 
+          {versionId === null && (
+            <p data-testid="version-pending-hint" className="text-sm text-muted-foreground">
+              {t('versionPending')}
+            </p>
+          )}
+
           {inlineError && (
             <p role="alert" data-testid="inline-error" className="text-sm text-destructive">
               {inlineError}
@@ -142,7 +150,7 @@ export function RequestReviewDialog({
             type="button"
             data-testid="submit-btn"
             onClick={() => void handleSubmit()}
-            disabled={isPending || !reviewerId}
+            disabled={isPending || !reviewerId || versionId === null}
           >
             {t('submit')}
           </Button>

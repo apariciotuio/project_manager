@@ -395,6 +395,11 @@
         "parentAria": "Ir al elemento padre",
         "separator": "/",
         "aria": "Navegación del elemento"
+      },
+      "reviews": {
+        "requestDialog": {
+          "versionPending": "Generando primera versión…"
+        }
       }
     },
     "newItem": {

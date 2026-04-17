@@ -57,7 +57,6 @@
     "inbox": "Inbox",
     "teams": "Teams",
     "admin": "Admin",
-    "dashboard": "Dashboard",
     "workspaceAriaLabel": "Workspace navigation",
     "unreadNotifications": "{count} unread notifications"
   },
@@ -396,6 +395,11 @@
         "parentAria": "Go to parent item",
         "separator": "/",
         "aria": "Item breadcrumb"
+      },
+      "reviews": {
+        "requestDialog": {
+          "versionPending": "Generating first version…"
+        }
       }
     },
     "newItem": {
