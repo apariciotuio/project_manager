@@ -41,22 +41,26 @@ export async function updateSuggestionItemStatus(
 }
 
 /**
- * Apply selected suggestions. Throws ApiError(409) on version conflict.
+ * Apply all accepted suggestions in a batch.
+ * Throws ApiError(404) if batch not found, ApiError(422) if no accepted suggestions,
+ * ApiError(409) on version conflict.
+ */
+export async function applyBatch(batchId: string): Promise<ApplySuggestionsResult> {
+  const res = await apiPost<Envelope<ApplySuggestionsResult>>(
+    `/api/v1/suggestion-sets/${batchId}/apply`,
+    {},
+  );
+  return res.data;
+}
+
+/**
+ * @deprecated Use applyBatch(batchId) instead.
  */
 export async function applySuggestions(
   setId: string,
-  acceptedItemIds: string[],
+  _acceptedItemIds: string[],
 ): Promise<ApplySuggestionsResult> {
-  try {
-    const res = await apiPost<Envelope<ApplySuggestionsResult>>(
-      `/api/v1/suggestion-sets/${setId}/apply`,
-      { accepted_item_ids: acceptedItemIds },
-    );
-    return res.data;
-  } catch (err) {
-    // Re-throw so callers can handle 409 specifically
-    throw err;
-  }
+  return applyBatch(setId);
 }
 
 export { ApiError };

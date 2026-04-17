@@ -187,6 +187,7 @@
         "expired": "Estas sugerencias han caducado",
         "generateNew": "Generar nuevas",
         "applySelected": "Aplicar seleccionadas",
+        "applyAccepted": "Aplicar {count} aceptadas",
         "conflictBanner": "El contenido cambió desde que se generaron las sugerencias. ¿Regenerar?",
         "regenerate": "Regenerar",
         "accept": "Aceptar",

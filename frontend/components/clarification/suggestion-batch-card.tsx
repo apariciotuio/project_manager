@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { applySuggestions, generateSuggestionSet } from '@/lib/api/suggestions';
+import { applyBatch, generateSuggestionSet } from '@/lib/api/suggestions';
 import { ApiError } from '@/lib/api-client';
 import type { SuggestionSet, SuggestionItem, ApplySuggestionsResult } from '@/lib/types/suggestion';
 import { cn } from '@/lib/utils';
@@ -15,12 +15,16 @@ interface SuggestionBatchCardProps {
   suggestionSet: SuggestionSet;
   onApplied: (result: ApplySuggestionsResult) => void;
   onDismiss: () => void;
+  onRefetchSections?: () => void;
+  onRefetchVersions?: () => void;
 }
 
 export function SuggestionBatchCard({
   suggestionSet,
   onApplied,
   onDismiss,
+  onRefetchSections,
+  onRefetchVersions,
 }: SuggestionBatchCardProps) {
   const t = useTranslations('workspace.itemDetail.suggestions');
   const [expanded, setExpanded] = useState(false);
@@ -54,8 +58,10 @@ export function SuggestionBatchCard({
     setApplyError(null);
     setIsVersionConflict(false);
     try {
-      const result = await applySuggestions(suggestionSet.id, acceptedIds);
+      const result = await applyBatch(suggestionSet.id);
       onApplied(result);
+      onRefetchSections?.();
+      onRefetchVersions?.();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setIsVersionConflict(true);
@@ -107,11 +113,21 @@ export function SuggestionBatchCard({
           <div className="flex items-center gap-2 shrink-0">
             <Button
               size="sm"
-              aria-label={t('applySelected')}
+              aria-label={
+                acceptedIds.length > 0
+                  ? t('applyAccepted', { count: acceptedIds.length })
+                  : t('applySelected')
+              }
               disabled={!canApply || isApplying}
               onClick={() => void handleApply()}
             >
-              {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('applySelected')}
+              {isApplying ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : acceptedIds.length > 0 ? (
+                t('applyAccepted', { count: acceptedIds.length })
+              ) : (
+                t('applySelected')
+              )}
             </Button>
             <Button size="sm" variant="ghost" onClick={onDismiss}>
               ✕
@@ -141,7 +157,7 @@ export function SuggestionBatchCard({
         )}
 
         {applyError && (
-          <p className="text-xs text-destructive mt-1">{applyError}</p>
+          <p role="alert" className="text-xs text-destructive mt-1">{applyError}</p>
         )}
       </CardHeader>
 

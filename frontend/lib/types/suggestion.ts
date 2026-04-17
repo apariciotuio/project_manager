@@ -30,6 +30,8 @@ export interface SuggestionSet {
 }
 
 export interface ApplySuggestionsResult {
-  new_version: number;
-  applied_sections: string[];
+  applied_count: number;
+  skipped_count: number;
+  latest_version_id: string | null;
+  latest_version_number: number | null;
 }

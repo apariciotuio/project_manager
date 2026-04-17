@@ -187,6 +187,7 @@
         "expired": "These suggestions have expired",
         "generateNew": "Generate new",
         "applySelected": "Apply Selected",
+        "applyAccepted": "Apply {count} accepted",
         "conflictBanner": "Content changed since suggestions were generated. Regenerate?",
         "regenerate": "Regenerate",
         "accept": "Accept",

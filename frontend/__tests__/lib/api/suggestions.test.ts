@@ -59,12 +59,19 @@ describe('applySuggestions', () => {
   it('returns apply result on success', async () => {
     server.use(
       http.post(`${BASE}/api/v1/suggestion-sets/batch-1/apply`, () =>
-        HttpResponse.json({ data: { new_version: 2, applied_sections: ['acceptance_criteria'] } }),
+        HttpResponse.json({
+          data: {
+            applied_count: 1,
+            skipped_count: 0,
+            latest_version_id: 'ver-1',
+            latest_version_number: 2,
+          },
+        }),
       ),
     );
     const result = await applySuggestions('batch-1', ['item-1']);
-    expect(result.new_version).toBe(2);
-    expect(result.applied_sections).toContain('acceptance_criteria');
+    expect(result.applied_count).toBe(1);
+    expect(result.latest_version_number).toBe(2);
   });
 
   it('throws ApiError(409) on version conflict', async () => {

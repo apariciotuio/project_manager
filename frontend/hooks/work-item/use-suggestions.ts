@@ -5,6 +5,7 @@ import {
   generateSuggestionSet,
   getSuggestionSet,
   applySuggestions,
+  applyBatch,
   updateSuggestionItemStatus,
 } from '@/lib/api/suggestions';
 import { ApiError } from '@/lib/api-client';
@@ -20,6 +21,7 @@ interface UseSuggestionsResult {
   isVersionConflict: boolean;
   generate: () => Promise<void>;
   applySelected: (acceptedItemIds: string[]) => Promise<ApplySuggestionsResult | null>;
+  applyBatchById: (batchId: string) => Promise<ApplySuggestionsResult | null>;
   patchItemStatus: (itemId: string, status: SuggestionItemStatus) => Promise<void>;
 }
 
@@ -90,6 +92,28 @@ export function useSuggestions(workItemId: string): UseSuggestionsResult {
     [suggestionSet],
   );
 
+  const applyBatchById = useCallback(
+    async (batchId: string): Promise<ApplySuggestionsResult | null> => {
+      setIsApplying(true);
+      setApplyError(null);
+      setIsVersionConflict(false);
+      try {
+        const result = await applyBatch(batchId);
+        return result;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          setIsVersionConflict(true);
+        } else {
+          setApplyError(err instanceof Error ? err.message : 'Apply failed');
+        }
+        return null;
+      } finally {
+        setIsApplying(false);
+      }
+    },
+    [],
+  );
+
   const patchItemStatus = useCallback(
     async (itemId: string, status: SuggestionItemStatus) => {
       await updateSuggestionItemStatus(itemId, status);
@@ -105,6 +129,7 @@ export function useSuggestions(workItemId: string): UseSuggestionsResult {
     isVersionConflict,
     generate,
     applySelected,
+    applyBatchById,
     patchItemStatus,
   };
 }

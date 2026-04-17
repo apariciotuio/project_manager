@@ -6,7 +6,10 @@ import { SuggestionBatchCard } from '@/components/clarification/suggestion-batch
 import type { SuggestionSet } from '@/lib/types/suggestion';
 
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
+    if (params && 'count' in params) return `${key}(${params.count})`;
+    return key;
+  },
 }));
 
 const BASE = 'http://localhost';
@@ -77,7 +80,7 @@ describe('SuggestionBatchCard', () => {
     expect(screen.getByRole('button', { name: /applySelected/i })).toBeDisabled();
   });
 
-  it('Apply Selected enabled after accepting at least one item', async () => {
+  it('Apply button enabled after accepting at least one item', async () => {
     render(
       <SuggestionBatchCard
         suggestionSet={pendingSet}
@@ -88,17 +91,23 @@ describe('SuggestionBatchCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /expand|batch/i }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /accept/i })[0]).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole('button', { name: /accept/i })[0]!);
-    expect(screen.getByRole('button', { name: /applySelected/i })).not.toBeDisabled();
+    // After accepting, button shows "applyAccepted(1)" and is enabled
+    expect(screen.getByRole('button', { name: /applyAccepted\(1\)/i })).not.toBeDisabled();
   });
 
-  it('Apply Selected calls onApplied with accepted item IDs only', async () => {
+  it('Apply button calls onApplied on success', async () => {
     const onApplied = vi.fn();
     server.use(
-      http.post(`${BASE}/api/v1/suggestion-sets/batch-1/apply`, async ({ request }) => {
-        const body = await request.json() as { accepted_item_ids: string[] };
-        expect(body.accepted_item_ids).toEqual(['item-1']);
-        return HttpResponse.json({ data: { new_version: 2, applied_sections: ['acceptance_criteria'] } });
-      }),
+      http.post(`${BASE}/api/v1/suggestion-sets/batch-1/apply`, () =>
+        HttpResponse.json({
+          data: {
+            applied_count: 1,
+            skipped_count: 2,
+            latest_version_id: 'ver-1',
+            latest_version_number: 2,
+          },
+        }),
+      ),
     );
 
     render(
@@ -111,16 +120,19 @@ describe('SuggestionBatchCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /expand|batch/i }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /accept/i })[0]).toBeInTheDocument());
 
-    // Accept only item-1
+    // Accept item-1
     fireEvent.click(screen.getAllByRole('button', { name: /accept/i })[0]!);
-    // Reject item-2
-    fireEvent.click(screen.getAllByRole('button', { name: /reject/i })[1]!);
 
-    fireEvent.click(screen.getByRole('button', { name: /applySelected/i }));
-    await waitFor(() => expect(onApplied).toHaveBeenCalledWith({ new_version: 2, applied_sections: ['acceptance_criteria'] }));
+    fireEvent.click(screen.getByRole('button', { name: /applyAccepted\(1\)/i }));
+    await waitFor(() => expect(onApplied).toHaveBeenCalledWith({
+      applied_count: 1,
+      skipped_count: 2,
+      latest_version_id: 'ver-1',
+      latest_version_number: 2,
+    }));
   });
 
-  it('shows expired message and disables Apply Selected for expired sets', () => {
+  it('shows expired message and disables Apply button for expired sets', () => {
     render(
       <SuggestionBatchCard
         suggestionSet={expiredSet}
@@ -128,6 +140,7 @@ describe('SuggestionBatchCard', () => {
         onDismiss={vi.fn()}
       />,
     );
+    // No accepted items → shows applySelected, which is disabled due to expired
     expect(screen.getByRole('button', { name: /applySelected/i })).toBeDisabled();
     expect(screen.getAllByText(/expired/i).length).toBeGreaterThan(0);
   });
@@ -154,7 +167,7 @@ describe('SuggestionBatchCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /expand|batch/i }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /accept/i })[0]).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole('button', { name: /accept/i })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: /applySelected/i }));
+    fireEvent.click(screen.getByRole('button', { name: /applyAccepted\(1\)/i }));
 
     await waitFor(() => expect(screen.getByText(/conflictBanner/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /regenerate/i })).toBeInTheDocument();
