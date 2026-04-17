@@ -20,7 +20,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSock
 from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 
-from app.application.services.conversation_service import ConversationService
+from app.application.services.conversation_service import (
+    ConversationService,
+    ThreadNotFoundError,
+)
 from app.config.settings import get_settings
 from app.infrastructure.adapters.jwt_adapter import (
     JwtAdapter,
@@ -43,13 +46,6 @@ router = APIRouter(tags=["conversations"])
 
 def _ok(data: object, message: str = "ok") -> dict[str, Any]:
     return {"data": data, "message": message}
-
-
-def _forbidden() -> HTTPException:
-    return HTTPException(
-        status_code=http_status.HTTP_403_FORBIDDEN,
-        detail={"error": {"code": "FORBIDDEN", "message": "access denied", "details": {}}},
-    )
 
 
 def _not_found(resource: str = "thread") -> HTTPException:
@@ -94,11 +90,10 @@ async def get_thread(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
-    thread = await service._thread_repo.get_by_id(thread_id)
-    if thread is None:
-        raise _not_found()
-    if thread.user_id != current_user.id:
-        raise _forbidden()
+    try:
+        thread = await service.get_thread_for_user(thread_id, current_user.id)
+    except ThreadNotFoundError as exc:
+        raise _not_found() from exc
     return _ok(ThreadResponse.from_domain(thread).model_dump(mode="json"))
 
 
@@ -108,12 +103,10 @@ async def get_thread_history(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
-    # IDOR: check ownership before fetching history
-    thread = await service._thread_repo.get_by_id(thread_id)
-    if thread is None:
-        raise _not_found()
-    if thread.user_id != current_user.id:
-        raise _forbidden()
+    try:
+        await service.get_thread_for_user(thread_id, current_user.id)
+    except ThreadNotFoundError as exc:
+        raise _not_found() from exc
 
     history = await service.get_history(thread_id)
     return _ok(history)
@@ -125,12 +118,10 @@ async def archive_thread(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> None:
-    # IDOR: check ownership before archiving
-    thread = await service._thread_repo.get_by_id(thread_id)
-    if thread is None:
-        raise _not_found()
-    if thread.user_id != current_user.id:
-        raise _forbidden()
+    try:
+        await service.get_thread_for_user(thread_id, current_user.id)
+    except ThreadNotFoundError as exc:
+        raise _not_found() from exc
 
     await service.archive_thread(thread_id)
 

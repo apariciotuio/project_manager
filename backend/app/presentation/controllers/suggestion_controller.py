@@ -101,7 +101,7 @@ async def get_suggestion_batch(
     service: SuggestionService = Depends(get_suggestion_service),
 ) -> dict[str, Any]:
     """Return all suggestion items in a batch."""
-    suggestions = await service._suggestion_repo.get_by_batch_id(batch_id)
+    suggestions = await service.list_for_batch(batch_id)
     if not suggestions:
         raise _not_found("suggestion batch")
     return _ok(SuggestionBatchResponse.from_suggestions(suggestions).model_dump(mode="json"))

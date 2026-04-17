@@ -77,6 +77,10 @@ class SuggestionService:
         """Return non-expired pending suggestions for a work item."""
         return await self._suggestion_repo.list_pending_for_work_item(work_item_id)
 
+    async def list_for_batch(self, batch_id: UUID) -> list[AssistantSuggestion]:
+        """Return every suggestion item in the batch (controller-facing passthrough)."""
+        return await self._suggestion_repo.get_by_batch_id(batch_id)
+
     async def update_single_status(
         self, item_id: UUID, new_status: SuggestionStatus
     ) -> AssistantSuggestion:

@@ -23,6 +23,13 @@ from app.domain.repositories.conversation_thread_repository import (
 logger = logging.getLogger(__name__)
 
 
+class ThreadNotFoundError(LookupError):
+    """Raised when a thread does not exist or belongs to another user.
+
+    Same exception for both cases so IDOR-scoped callers don't leak existence.
+    """
+
+
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -84,6 +91,19 @@ class ConversationService:
         created = await self._thread_repo.create(thread)
         logger.info("thread_created id=%s user=%s work_item=%s", created.id, user_id, work_item_id)
         return created
+
+    async def get_thread_for_user(
+        self, thread_id: UUID, user_id: UUID
+    ) -> ConversationThread:
+        """Return the thread only if it exists AND belongs to user_id.
+
+        Raises ThreadNotFoundError for both missing and cross-user cases —
+        controllers should never be able to distinguish.
+        """
+        thread = await self._thread_repo.get_by_id(thread_id)
+        if thread is None or thread.user_id != user_id:
+            raise ThreadNotFoundError(f"thread {thread_id} not found")
+        return thread
 
     async def get_history(self, thread_id: UUID) -> list[dict]:  # type: ignore[type-arg]
         """Return conversation history frames from Dundun.

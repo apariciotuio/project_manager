@@ -3,9 +3,9 @@
 Scenarios:
   GET /api/v1/threads — list user's threads; IDOR: only own
   POST /api/v1/threads — get-or-create; 201
-  GET /api/v1/threads/{id} — get pointer; 403 on wrong user
-  GET /api/v1/threads/{id}/history — 403 if not owner; empty list (Dundun stub)
-  DELETE /api/v1/threads/{id} — archive; 404 on missing; 403 on wrong user
+  GET /api/v1/threads/{id} — get pointer; 404 on wrong user (IDOR: no existence leak)
+  GET /api/v1/threads/{id}/history — 404 if not owner; empty list (Dundun stub)
+  DELETE /api/v1/threads/{id} — archive; 404 on missing; 404 on wrong user
   Unauthenticated → 401
 """
 from __future__ import annotations
@@ -229,9 +229,10 @@ class TestGetThread:
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == thread_id
 
-    async def test_other_user_gets_403(
+    async def test_other_user_gets_404(
         self, http: AsyncClient, migrated_database
     ) -> None:
+        # IDOR: cross-user fetch must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
 
@@ -239,7 +240,7 @@ class TestGetThread:
         thread_id = r.json()["data"]["id"]
 
         resp = await http.get(f"/api/v1/threads/{thread_id}", cookies={"access_token": token_b})
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     async def test_missing_thread_returns_404(
         self, http: AsyncClient, migrated_database
@@ -268,9 +269,10 @@ class TestGetThreadHistory:
         assert resp.status_code == 200
         assert resp.json()["data"] == []
 
-    async def test_wrong_user_gets_403(
+    async def test_wrong_user_gets_404(
         self, http: AsyncClient, migrated_database
     ) -> None:
+        # IDOR: cross-user fetch must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
 
@@ -280,7 +282,7 @@ class TestGetThreadHistory:
         resp = await http.get(
             f"/api/v1/threads/{thread_id}/history", cookies={"access_token": token_b}
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     async def test_missing_thread_returns_404(
         self, http: AsyncClient, migrated_database
@@ -310,9 +312,10 @@ class TestDeleteThread:
         )
         assert resp.status_code == 204
 
-    async def test_other_user_gets_403(
+    async def test_other_user_gets_404(
         self, http: AsyncClient, migrated_database
     ) -> None:
+        # IDOR: cross-user delete must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
 
@@ -322,7 +325,7 @@ class TestDeleteThread:
         resp = await http.delete(
             f"/api/v1/threads/{thread_id}", cookies={"access_token": token_b}
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     async def test_missing_thread_returns_404(
         self, http: AsyncClient, migrated_database
