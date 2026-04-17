@@ -16,8 +16,8 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 - [x] `specs/matrix-entry-cascade/spec.md` — F-8
 - [x] `specs/color-picker/spec.md` — F-9
 - [x] `specs/tag-edit/spec.md` — F-10
-- [ ] Implementation
-- [ ] code-review
+- [x] Implementation
+- [x] code-review (3 MF + 7 SF + 5 N — all closed)
 - [ ] review-before-push
 
 ## Items
@@ -64,10 +64,10 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 |-------|--------|
 | Proposal | **COMPLETED** (2026-04-17) |
 | Specs / Design | **COMPLETED** (2026-04-17) |
-| Wave 1 implementation | In progress |
-| Wave 2 implementation | Pending Wave 1 |
-| Wave 3 implementation | Pending Wave 2 |
-| Reviews | Pending |
+| Wave 1 implementation | **COMPLETED** (2026-04-17) |
+| Wave 2 implementation | **COMPLETED** (2026-04-17) |
+| Wave 3 implementation | **COMPLETED** (2026-04-17) |
+| Reviews | **COMPLETED** (2026-04-17) — all MF/SF/N closed |
 
 ## Evidence
 

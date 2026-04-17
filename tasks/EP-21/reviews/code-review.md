@@ -138,41 +138,47 @@ The import is conditional on a settings flag, which is fine for dev. But `FakeDu
 
 ## Nitpick
 
-### N-1 -- Hardcoded Spanish UI strings in modals
+### N-1 -- Hardcoded Spanish UI strings in modals [FIXED]
 
 **Files:** `frontend/components/work-item/work-item-edit-modal.tsx:29-46`, `frontend/components/admin/tag-edit-modal.tsx`
 
 Priority labels (`Baja`, `Media`, `Alta`), type labels (`Error`, `Mejora`), and dialog titles (`Editar elemento`) are hardcoded in Spanish. The rest of the app uses `useTranslations()` (e.g., `user-menu.tsx:31`). These components bypass i18n.
 
+Migrated both modals to `useTranslations('modals.workItemEdit')`, `useTranslations('modals.tagEdit')`, and `useTranslations('common')`. Translation keys already existed in `locales/{es,en}.json`; both test files mock `next-intl` and assert against keys (same pattern as `user-menu.test.tsx`).
+
 ---
 
-### N-2 -- `as Priority` / `as WorkItemType` unsafe casts
+### N-2 -- `as Priority` / `as WorkItemType` unsafe casts [FIXED]
 
 **File:** `frontend/components/work-item/work-item-edit-modal.tsx:166,185`
 
 `v as Priority` and `v as WorkItemType` are unchecked casts from `string`. If the Select component emits an unexpected value, these silently produce an invalid payload.
 
-**Fix:** Validate with a type guard or a Set lookup before casting.
+Introduced `PRIORITY_VALUES` / `TYPE_VALUES` as the authoritative lists plus `isPriority()` / `isWorkItemType()` type guards. Unknown values are now silently ignored instead of being cast.
 
 ---
 
-### N-3 -- `role="button"` on elements that are already `<button>`
+### N-3 -- `role="button"` on elements that are already `<button>` [FIXED in commit a3fc82c]
 
 **File:** `frontend/components/workspace/user-menu/user-menu.tsx:139,178`
 
 `<button type="button" role="button">` -- the explicit `role="button"` is redundant on a `<button>` element.
 
+Already removed during the user-menu refactor (a3fc82c). Current file contains zero redundant `role="button"` attributes.
+
 ---
 
-### N-4 -- Unused `request` parameter in dundun-fake
+### N-4 -- Unused `request` parameter in dundun-fake [FIXED]
 
 **File:** `infra/dundun-fake/app.py:56`
 
 `request: Request` is declared but never used in `post_message`.
 
+Removed `request` param and the unused `Request` import.
+
 ---
 
-### N-5 -- Seed script idempotency detection is fragile
+### N-5 -- Seed script idempotency detection is fragile [FIXED]
 
 **File:** `backend/scripts/seed_notifications.py:72`
 
@@ -182,6 +188,8 @@ if existing.id == notification.id:
 ```
 
 This relies on the repository returning the same object reference or a fresh UUID for new rows vs. the existing row for duplicates. If the repo implementation changes (e.g., returns a copy with a new id), the count will be wrong. Not a production concern, but worth documenting the contract.
+
+Formalised the contract on `INotificationRepository.create` docstring (new key ⇒ same `id`; duplicate key ⇒ pre-existing row with different `id`). Seed script now references that contract explicitly.
 
 ---
 
