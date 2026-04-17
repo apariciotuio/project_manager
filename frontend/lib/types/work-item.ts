@@ -49,9 +49,19 @@ export interface WorkItemResponse {
   has_override: boolean;
   override_justification: string | null;
   owner_suspended_flag: boolean;
+  parent_work_item_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+}
+
+// ─── Tag types ────────────────────────────────────────────────────────────────
+
+export interface WorkItemTag {
+  id: string;
+  name: string;
+  color: string;
+  is_archived: boolean;
 }
 
 // ─── Paged response ───────────────────────────────────────────────────────────
@@ -68,12 +78,14 @@ export interface PagedWorkItemResponse<T> {
 export interface WorkItemCreateRequest {
   title: string;
   type: WorkItemType;
-  project_id: string;
+  project_id?: string;
+  parent_work_item_id?: string;
   description?: string;
   priority?: Priority;
   due_date?: string;
   tags?: string[];
   owner_id?: string;
+  template_id?: string;
 }
 
 export interface WorkItemUpdateRequest {
