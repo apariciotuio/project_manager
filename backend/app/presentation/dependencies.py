@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from app.application.services.template_service import TemplateService
     from app.application.services.timeline_service import TimelineService
     from app.application.services.versioning_service import VersioningService
+    from app.application.services.saved_search_service import SavedSearchService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -895,6 +896,17 @@ def get_saved_search_repo(
     )
 
     return SavedSearchRepositoryImpl(session)
+
+
+def get_saved_search_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "SavedSearchService":
+    from app.application.services.saved_search_service import SavedSearchService
+    from app.infrastructure.persistence.saved_search_repository_impl import (
+        SavedSearchRepositoryImpl,
+    )
+
+    return SavedSearchService(repo=SavedSearchRepositoryImpl(session))
 
 
 # ---------------------------------------------------------------------------
