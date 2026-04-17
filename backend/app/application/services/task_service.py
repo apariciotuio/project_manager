@@ -188,6 +188,68 @@ class TaskService:
         return await self._nodes.get_tree_recursive(work_item_id)
 
     # ------------------------------------------------------------------
+    # Single node + breadcrumb (EP-05 Commit 2)
+    # ------------------------------------------------------------------
+
+    async def get_node_with_breadcrumb(
+        self, node_id: UUID
+    ) -> tuple[TaskNode, list[dict]] | None:
+        """Return (node, breadcrumb) where breadcrumb = [{id, title}, ...] root→parent.
+
+        Breadcrumb is derived from materialized_path without extra DB queries:
+        split path segments (UUIDs), look each up in the flat node list for
+        this work item, return in order (root first, parent last).
+        """
+        node = await self._nodes.get(node_id)
+        if node is None:
+            return None
+
+        # materialized_path = "uuid.uuid.uuid" — segments are ancestor IDs
+        path = node.materialized_path or ""
+        segments = path.split(".") if path else []
+        # Last segment is the node itself — drop it
+        ancestor_ids = segments[:-1]
+
+        if not ancestor_ids:
+            return node, []
+
+        # Fetch all nodes for this work item to build a lookup map
+        siblings = await self._nodes.get_by_work_item(node.work_item_id)
+        id_to_node = {str(n.id): n for n in siblings}
+
+        breadcrumb = []
+        for seg in ancestor_ids:
+            anc = id_to_node.get(seg)
+            if anc is not None:
+                breadcrumb.append({"id": str(anc.id), "title": anc.title})
+
+        return node, breadcrumb
+
+    # ------------------------------------------------------------------
+    # Search (EP-05 Commit 2)
+    # ------------------------------------------------------------------
+
+    async def search_tasks(
+        self, *, work_item_id: UUID, q: str
+    ) -> list[dict]:
+        """Return [{id, title}] for tasks whose title ILIKE '%q%' within work_item.
+
+        Returns [] without DB query when len(q) < 2.
+        Limited to 10 results.
+        """
+        if len(q) < 2:
+            return []
+
+        nodes = await self._nodes.get_by_work_item(work_item_id)
+        q_lower = q.lower()
+        results = [
+            {"id": str(n.id), "title": n.title}
+            for n in nodes
+            if q_lower in n.title.lower()
+        ]
+        return results[:10]
+
+    # ------------------------------------------------------------------
     # Split
     # ------------------------------------------------------------------
 

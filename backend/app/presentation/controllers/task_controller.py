@@ -141,6 +141,37 @@ async def get_task_tree(
     return _ok({"work_item_id": str(work_item_id), "tree": _build_tree(nodes)})
 
 
+@router.get("/tasks/{node_id}")
+async def get_task(
+    node_id: UUID,
+    _: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    """Return single task node with breadcrumb [{id, title}, …] from root to parent."""
+    result = await service.get_node_with_breadcrumb(node_id)
+    if result is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": f"task {node_id} not found", "details": {}}},
+        )
+    node, breadcrumb = result
+    payload = _node_payload(node)
+    payload["breadcrumb"] = breadcrumb
+    return _ok(payload)
+
+
+@router.get("/work-items/{work_item_id}/tasks/search")
+async def search_tasks(
+    work_item_id: UUID,
+    q: str = "",
+    _: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    """Search tasks by title within a work item. Returns flat list [{id, title}]. q < 2 chars → []."""
+    results = await service.search_tasks(work_item_id=work_item_id, q=q)
+    return _ok(results)
+
+
 @router.post("/work-items/{work_item_id}/tasks", status_code=http_status.HTTP_201_CREATED)
 async def create_task(
     work_item_id: UUID,
