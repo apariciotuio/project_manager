@@ -16,6 +16,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 
 from app.application.services.project_service import (
     ProjectNotFoundError,
@@ -78,6 +79,17 @@ async def create_project(
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": {"code": "INVALID_INPUT", "message": str(exc), "details": {}}},
+        ) from exc
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "PROJECT_NAME_TAKEN",
+                    "message": f"project name '{body.name}' already exists in this workspace",
+                    "details": {},
+                }
+            },
         ) from exc
     return _ok(_project_payload(project), "project created")
 

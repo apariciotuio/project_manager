@@ -49,11 +49,34 @@ async def _resolve_role(
 
 @router.get("/templates")
 async def get_template(
-    type: WorkItemType,
-    workspace_id: UUID = Query(...),
-    current_user: CurrentUser = Depends(get_current_user),  # noqa: ARG001 — auth trigger
+    type: WorkItemType | None = None,
+    workspace_id: UUID | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
     service: TemplateService = Depends(get_template_service),
 ) -> dict[str, Any]:
+    """List or lookup templates.
+
+    - No params → list all templates for the current user's workspace (+ system defaults).
+    - `type` + `workspace_id` → resolve a single template (workspace-specific, system fallback).
+    """
+    if type is None and workspace_id is None:
+        assert current_user.workspace_id is not None
+        tmpls = await service.list_for_workspace(current_user.workspace_id)
+        return _ok([TemplateResponse.from_domain(t).model_dump(mode="json") for t in tmpls])
+
+    if type is None or workspace_id is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "INVALID_INPUT",
+                    "message": "provide both `type` and `workspace_id`, or neither",
+                    "details": {},
+                }
+            },
+        )
     tmpl = await service.get_template_for_type(type, workspace_id)
     if tmpl is None:
         return _ok(None)

@@ -68,6 +68,9 @@ class TemplateService:
         self._repo = template_repo
         self._cache = cache
 
+    async def list_for_workspace(self, workspace_id: UUID) -> list[Template]:
+        return await self._repo.list_for_workspace(workspace_id)
+
     async def get_template_for_type(
         self, type: WorkItemType, workspace_id: UUID
     ) -> Template | None:
