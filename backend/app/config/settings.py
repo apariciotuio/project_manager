@@ -11,6 +11,24 @@ def _csv_to_list(value: object) -> object:
     return value
 
 
+def _csv_to_kv_dict(value: object) -> object:
+    """Parse 'key=value,key2=value2' string into {key: value, ...} dict."""
+    if isinstance(value, str):
+        if not value.strip():
+            return {}
+        result: dict[str, str] = {}
+        for pair in value.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            eq_idx = pair.index("=")
+            k = pair[:eq_idx].strip()
+            v = pair[eq_idx + 1:].strip()
+            result[k] = v
+        return result
+    return value
+
+
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
@@ -19,8 +37,11 @@ class AppSettings(BaseSettings):
     log_level: str = "INFO"
     base_url: str = "http://localhost:17004"
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    max_body_bytes: int = 1_048_576
+    csp_overrides: Annotated[dict[str, str], NoDecode] = Field(default_factory=dict)
 
     _split_cors = field_validator("cors_allowed_origins", mode="before")(_csv_to_list)
+    _split_csp = field_validator("csp_overrides", mode="before")(_csv_to_kv_dict)
 
 
 class DatabaseSettings(BaseSettings):
