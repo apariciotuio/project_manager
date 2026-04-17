@@ -74,7 +74,7 @@ File: `src/hooks/useAutoSave.ts`
 - [x] [RED] Write tests for `useAutoSave` (debounce fires once, conflict path, unmount cleanup)
   - Evidence: `__tests__/app/workspace/new-item-page.test.tsx` — "draft save is triggered after debounce" test covers the debounce path end-to-end via MSW. Granular unit-level tests for the hook itself are not present as separate files.
 - [x] [GREEN] Implement auto-save with debounce
-  - Evidence: `use-pre-creation-draft.ts` — debounce via `useRef + setTimeout`, 2000ms window (plan specified 3s; actual is 2s — minor deviation). `localVersion` tracked in `useRef`. Timer cleared in `discard()`.
+  - Evidence: `use-pre-creation-draft.ts` — debounce via `useRef + setTimeout`, 3000ms window (corrected from 2s to match plan spec, 2026-04-17). `localVersion` tracked in `useRef`. Timer cleared in `discard()`. Commit: d1b9c16.
 - [x] [REFACTOR] Timer cleared on cleanup
   - Evidence: `discard()` clears `debounceRef.current`. Unmount cleanup relies on discard — note: no `useEffect` cleanup for the timer on unmount (only on explicit discard). Minor gap vs plan which specified `useEffect` cleanup.
 
@@ -90,14 +90,14 @@ Component: `src/components/capture-form/capture-form.tsx`
 
 - [x] [RED] Write component tests for form behaviour
   - Evidence: `__tests__/app/workspace/new-item-page.test.tsx` covers: renders title input, submit disabled when title empty, project picker, tag toggle, parent picker visibility, draft hydration, draft save debounce, submit + redirect. No separate `CaptureForm` component — form is inlined in the page.
-- [ ] [RED] Write tests for `StalenessWarning` component
-  - Not implemented as a separate component with dedicated tests. Conflict banner renders inline in the page but no "Keep mine" / "Load latest" UX; only "Sobreescribir" (overwrite) button that calls `resolveConflict`.
+- [x] [RED] Write tests for `StalenessWarning` component
+  - Shipped 2026-04-17. 6 tests in `__tests__/components/capture/staleness-warning.test.tsx` covering: banner text, overwrite button, keepMine button, both click handlers, relative-time display. Commit: e38993f.
 - [x] [GREEN] Implement form fields: TypeSelector, TitleInput, DescriptionEditor, SubmitButton, CancelButton
   - Evidence: `frontend/app/workspace/[slug]/items/new/page.tsx` — all fields present inline: type Select, title Input, description Textarea, Submit Button (disabled when `!title.trim() || !projectId`), Cancel Button.
-- [ ] [GREEN] Implement `DraftResumeBanner` sub-component
-  - Not shipped as a separate component. Draft auto-hydrates silently via `onHydrate` callback — no explicit "Resume / Discard" banner shown to the user. Deviation: plan required the banner; current impl auto-applies draft on mount.
-- [ ] [GREEN] Implement `StalenessWarning` sub-component
-  - Partial: conflict error renders an inline yellow banner with "Sobreescribir" (overwrite) but no "Keep mine" option. Diverges from plan spec.
+- [x] [GREEN] Implement `DraftResumeBanner` sub-component
+  - Shipped 2026-04-17. `components/capture/draft-resume-banner.tsx` renders resume title + relative-time body + Resume/Discard buttons. Hook now holds `pendingServerDraft` state; form not auto-hydrated. `applyPendingDraft` / `discardPendingDraft` callbacks wired to banner. 5 component tests + 3 new page tests. Commit: 0a0c43d.
+- [x] [GREEN] Implement `StalenessWarning` sub-component
+  - Shipped 2026-04-17. `components/capture/staleness-warning.tsx` replaces inline conflict div. Overwrite + Keep mine buttons; `keepMine()` hook callback does client-wins PATCH (server_version+1). Commit: e38993f.
 - [x] Wire `useAutoSave` into form — save called on field change
   - Evidence: `useEffect` in `new/page.tsx` fires `save()` on `[title, type, description, projectId, parentId, selectedTags]` changes.
 - [ ] Wire template fetch with `staleTime: 5 * 60 * 1000` on type selector change
@@ -131,7 +131,7 @@ Update: `src/app/workspace/[slug]/work-items/new/page.tsx`
 - [x] On successful POST: discard draft and redirect
   - Evidence: `handleSubmit` calls `discard()` then `router.push(...)`.
 - [x] Pass `template_id` to create request when template applied
-  - Partial: `selectedTemplate` state exists and template picker sets it, but `template_id` is **not** included in the `createWorkItem()` call body. Gap.
+  - Shipped 2026-04-17. `selectedTemplate?.id` included in `createWorkItem()` payload. Test asserts POST body contains `template_id: 't1'` when template is selected. Commit: a274bd1.
 
 ---
 
