@@ -117,6 +117,7 @@
         "subtitle": "Create your first item to get started",
         "createButton": "New item"
       },
+      "listAria": "Work item list",
       "columns": {
         "title": "Title",
         "type": "Type",

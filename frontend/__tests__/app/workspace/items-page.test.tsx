@@ -124,7 +124,7 @@ describe('WorkItemsPage', () => {
     expect(btn).toHaveAttribute('href', '/workspace/acme/items/new');
   });
 
-  it('navigates to item detail on row click', async () => {
+  it('renders item title as link to detail page', async () => {
     server.use(
       http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
@@ -136,8 +136,8 @@ describe('WorkItemsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
-    await userEvent.click(screen.getByText('Implement login flow'));
-    expect(mockPush).toHaveBeenCalledWith('/workspace/acme/items/wi-1');
+    const link = screen.getByRole('link', { name: /implement login flow/i });
+    expect(link).toHaveAttribute('href', '/workspace/acme/items/wi-1');
   });
 
   it('renders state filter dropdown', async () => {

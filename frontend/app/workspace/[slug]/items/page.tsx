@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +35,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
   const { slug } = params;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tItems = useTranslations('workspace.items');
 
   const { user } = useAuth();
   const [stateFilter, setStateFilter] = useState<WorkItemState | ''>('');
@@ -127,50 +129,17 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
         <EmptyState slug={slug} />
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-body-sm">
-              <thead className="border-b border-border bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    {t('workitem.list.columns.title')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    {t('workitem.list.columns.type')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    {t('workitem.list.columns.state')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    {t('workitem.list.columns.completeness')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    {t('workitem.list.columns.updatedAt')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item) => (
-                  <tr
-                    key={item.id}
-                    tabIndex={0}
-                    role="row"
-                    aria-label={item.title}
-                    onClick={() => router.push(`/workspace/${slug}/items/${item.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        router.push(`/workspace/${slug}/items/${item.id}`);
-                      }
-                    }}
-                    className="cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset"
-                  >
-                    <td className="px-4 py-3" colSpan={5}>
-                      <WorkItemCard workItem={item} slug={slug} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul
+            role="list"
+            aria-label={tItems('listAria')}
+            className="overflow-hidden rounded-lg border border-border divide-y divide-border"
+          >
+            {filtered.map((item) => (
+              <li key={item.id}>
+                <WorkItemCard workItem={item} slug={slug} />
+              </li>
+            ))}
+          </ul>
 
           {/* Pagination — always shown when items exist */}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

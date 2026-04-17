@@ -56,7 +56,7 @@ export function WorkItemCard({ workItem, slug, ownerDisplayName }: WorkItemCardP
   const level = scoreToLevel(workItem.completeness_score);
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+    <div className="flex w-full items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors">
       {/* Title link */}
       <div className="flex-1 min-w-0">
         <Link

@@ -117,6 +117,7 @@
         "subtitle": "Crea tu primer elemento para empezar a trabajar",
         "createButton": "Nuevo elemento"
       },
+      "listAria": "Lista de elementos de trabajo",
       "columns": {
         "title": "Título",
         "type": "Tipo",
