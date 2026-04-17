@@ -16,6 +16,7 @@ import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
 import { ChildItemsTab } from '@/components/work-item/child-items-tab';
+import { ClarificationTab } from '@/components/clarification/clarification-tab';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
@@ -120,6 +121,7 @@ export default function WorkItemDetailPage({
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
           <TabsTrigger value="especificacion">Especificación</TabsTrigger>
+          <TabsTrigger value="clarificacion">Clarificación</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
@@ -130,6 +132,14 @@ export default function WorkItemDetailPage({
 
         <TabsContent value="especificacion" className="mt-4">
           <SpecificationTab workItemId={id} />
+        </TabsContent>
+
+        <TabsContent value="clarificacion" className="mt-4">
+          <ClarificationTab
+            workItemId={id}
+            workItemVersion={workItem.updated_at ? 1 : 1}
+            canEdit={canEdit}
+          />
         </TabsContent>
 
         <TabsContent value="tareas" className="mt-4">
