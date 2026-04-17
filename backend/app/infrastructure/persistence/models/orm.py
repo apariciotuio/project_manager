@@ -1134,6 +1134,19 @@ class ProjectORM(Base):
 
 class RoutingRuleORM(Base):
     __tablename__ = "routing_rules"
+    __table_args__ = (
+        CheckConstraint(
+            f"work_item_type IN ({_WORK_ITEM_TYPES})",
+            name="routing_rules_type_check",
+        ),
+        Index(
+            "idx_routing_rules_lookup",
+            "workspace_id",
+            "work_item_type",
+            sa.text("priority DESC"),
+            postgresql_where=sa.text("active = true"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     workspace_id: Mapped[UUID] = mapped_column(
@@ -1142,7 +1155,7 @@ class RoutingRuleORM(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
     )
-    work_item_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    work_item_type: Mapped[str] = mapped_column(String(40), nullable=False)
     suggested_team_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
     )
@@ -1153,6 +1166,7 @@ class RoutingRuleORM(Base):
         JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
     )
     priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -1185,6 +1199,53 @@ class IntegrationConfigORM(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# EP-10 — Validation Rule Templates
+# ---------------------------------------------------------------------------
+
+_REQUIREMENT_TYPES = (
+    "'section_content','reviewer_approval','validator_approval','custom'"
+)
+
+
+class ValidationRuleTemplateORM(Base):
+    __tablename__ = "validation_rule_templates"
+    __table_args__ = (
+        CheckConstraint(
+            f"requirement_type IN ({_REQUIREMENT_TYPES})",
+            name="vrt_requirement_type_check",
+        ),
+        CheckConstraint(
+            "workspace_id IS NULL OR true",  # placeholder — global templates allowed
+            name="vrt_global_allowed",
+        ),
+        Index(
+            "idx_vrt_workspace_type",
+            "workspace_id",
+            "work_item_type",
+            postgresql_where=sa.text("active = true"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    work_item_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    requirement_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    default_dimension: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    default_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_mandatory: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 # ---------------------------------------------------------------------------

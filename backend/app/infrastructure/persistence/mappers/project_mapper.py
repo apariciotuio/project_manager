@@ -41,6 +41,7 @@ def routing_rule_to_domain(row: RoutingRuleORM) -> RoutingRule:
         suggested_owner_id=row.suggested_owner_id,
         suggested_validators=list(row.suggested_validators),
         priority=row.priority,
+        active=row.active,
         created_at=row.created_at,
         updated_at=row.updated_at,
         created_by=row.created_by,
@@ -57,6 +58,7 @@ def routing_rule_to_orm(entity: RoutingRule) -> RoutingRuleORM:
     row.suggested_owner_id = entity.suggested_owner_id
     row.suggested_validators = entity.suggested_validators
     row.priority = entity.priority
+    row.active = entity.active
     row.created_at = entity.created_at
     row.updated_at = entity.updated_at
     row.created_by = entity.created_by

@@ -118,6 +118,20 @@ class RoutingRuleRepositoryImpl(IRoutingRuleRepository):
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return routing_rule_to_domain(row) if row else None
 
+    async def save(self, rule: RoutingRule) -> RoutingRule:
+        existing = await self._session.get(RoutingRuleORM, rule.id)
+        if existing is None:
+            self._session.add(routing_rule_to_orm(rule))
+        else:
+            existing.suggested_team_id = rule.suggested_team_id
+            existing.suggested_owner_id = rule.suggested_owner_id
+            existing.suggested_validators = rule.suggested_validators
+            existing.priority = rule.priority
+            existing.active = rule.active
+            existing.updated_at = rule.updated_at
+        await self._session.flush()
+        return rule
+
     async def delete(self, rule_id: UUID) -> None:
         row = await self._session.get(RoutingRuleORM, rule_id)
         if row is not None:

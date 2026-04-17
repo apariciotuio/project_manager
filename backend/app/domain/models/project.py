@@ -58,6 +58,7 @@ class RoutingRule:
     suggested_owner_id: UUID | None
     suggested_validators: list[Any]
     priority: int
+    active: bool
     created_at: datetime
     updated_at: datetime
     created_by: UUID
@@ -74,6 +75,7 @@ class RoutingRule:
         suggested_owner_id: UUID | None = None,
         suggested_validators: list[Any] | None = None,
         priority: int = 0,
+        active: bool = True,
     ) -> RoutingRule:
         now = datetime.now(UTC)
         return cls(
@@ -85,7 +87,12 @@ class RoutingRule:
             suggested_owner_id=suggested_owner_id,
             suggested_validators=suggested_validators or [],
             priority=priority,
+            active=active,
             created_at=now,
             updated_at=now,
             created_by=created_by,
         )
+
+    def deactivate(self) -> None:
+        self.active = False
+        self.updated_at = datetime.now(UTC)

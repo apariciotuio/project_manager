@@ -581,6 +581,52 @@ THEN the API returns HTTP 403
 
 ---
 
+## Reconciliation notes (2026-04-17) — Second pass
+
+**Shipped in this session (4 commits):**
+
+### Commit 1: Migration 0110 + RoutingRule domain/ORM hardening
+- [x] Migration 0110: `routing_rules` — add `active BOOL NOT NULL DEFAULT true`, CHECK constraint on `work_item_type`, UNIQUE partial index `uq_routing_rules_active_scope`, composite index `idx_routing_rules_lookup` WHERE active=true
+- [x] `RoutingRuleORM` updated: `work_item_type VARCHAR(40)`, `active` field, `CheckConstraint`, `Index`
+- [x] `RoutingRule` domain entity: added `active: bool` field + `deactivate()` method
+- [x] `routing_rule_to_domain` / `routing_rule_to_orm` mappers updated for `active`
+- [x] `IRoutingRuleRepository.save()` added; `RoutingRuleRepositoryImpl.save()` implemented
+- [x] Unit tests: `test_routing_rule_domain.py` — 11 tests, all green
+
+### Commit 2: Migration 0111 + ValidationRuleTemplate domain + auto-seed subscriber
+- [x] Migration 0111: create `validation_rule_templates` table (workspace_id nullable for global, work_item_type nullable for any-type, requirement_type CHECK, active, timestamps)
+- [x] `ValidationRuleTemplateORM` added to `orm.py`
+- [x] `ValidationRuleTemplate` domain entity with `create()` factory + `deactivate()` — full invariant checks (name length, requirement_type allowlist)
+- [x] `IValidationRuleTemplateRepository` interface: create/get/list_for_workspace/list_matching/save/delete
+- [x] `ValidationRuleTemplateRepositoryImpl` SQLAlchemy impl
+- [x] `validation_rule_template_mapper.py` — bidirectional mapper
+- [x] `WorkItemCreatedSubscriber` (`validation_template_subscriber.py`) — auto-seeds `validation_requirements` from matching templates on work item creation; registered in `app/application/events/__init__.py`
+- [x] Unit tests: `test_validation_rule_template_domain.py` — 17 tests, all green
+
+### Commit 3: Services + REST controllers for both
+- [x] `ValidationRuleTemplateService` — CRUD + `seed_for_work_item(workspace_id, type)`; workspace-scoped get/update/delete (IDOR-safe)
+- [x] `ProjectService` updated: `get_routing_rule()`, `update_routing_rule()`, `delete_routing_rule()` — all workspace-scoped
+- [x] `require_admin` FastAPI dependency — loads membership from DB, checks `role in ('admin', 'workspace_admin')` or `is_superadmin`; returns 403 on failure
+- [x] `get_validation_rule_template_service` dep factory added to `dependencies.py`
+- [x] `routing_rule_controller.py` — full CRUD: GET/POST/GET{id}/PATCH{id}/DELETE{id} under `/api/v1/routing-rules`; admin-only
+- [x] `validation_rule_template_controller.py` — full CRUD under `/api/v1/validation-rule-templates`; admin-only; 422 on invalid requirement_type
+- [x] Both routers registered in `main.py`
+- [x] Unit tests: `test_routing_rule_service.py` — 14 tests, `test_validation_rule_template_service.py` — 17 tests, all green
+- [x] Integration tests: `test_ep10_routing_rules.py` — 15 tests covering CRUD + 403 for non-admin + 401 unauth
+
+### Commit 4: Integration controller DELETE + hardening
+- [x] `DELETE /api/v1/integrations/configs/{id}` — workspace-scoped (IDOR mitigation: 404 for both missing + cross-workspace), 401 without auth, 204 on success
+- [x] `IIntegrationConfigRepository.delete()` added; `IntegrationConfigRepositoryImpl.delete()` implemented
+- [x] `IntegrationService.get_config()` — scoped get with IDOR mitigation
+- [x] `IntegrationService.delete_config()` — delegates to scoped get + repo delete
+- [x] Integration tests: `test_ep10_integration_delete.py` — 5 tests covering success/404/cross-workspace/401/no-workspace
+
+**Test delta: +69 tests (11 unit-domain + 17 unit-domain + 14 unit-service + 17 unit-service + 15 integration-routing + 5 integration-delete = 79 new tests)**
+
+**Still pending (Groups 0-14 minus above):** member management, invitations, capabilities, context sources/presets, Jira/Puppet full config, audit log endpoint, admin dashboard, support tools, superadmin endpoints, tag admin integration, full validation rules engine (EP-10 Group 5).
+
+---
+
 ## Reconciliation notes (2026-04-17)
 
 **Opportunistic EP-10 slice; full admin backend still pending.** EP-10 is enormous (14 groups, members + rules + projects + Jira/Puppet + audit + dashboard + support + superadmin + tags). Today's pass only touched minor project/template bits adjacent to EP-12 hardening. Specifically shipped:
