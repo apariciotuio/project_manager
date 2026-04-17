@@ -10,11 +10,11 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 
 ### BE-14-01: Migration — alter work_items table
 - [ ] Write migration `EP-14_001_hierarchy_columns.sql`
-  - Drop old `work_items_type_valid` CHECK constraint
-  - Add updated CHECK including `'milestone'`, `'story'`
-  - Add `parent_work_item_id UUID REFERENCES work_items(id) ON DELETE RESTRICT` (nullable)
-  - Add `materialized_path TEXT NOT NULL DEFAULT ''`
-  - Add indexes: `idx_work_items_parent_id`, `idx_work_items_mat_path` (GIN trigram), `idx_work_items_ws_parent`
+  - [x] Drop old `work_items_type_valid` CHECK constraint (migration 0031, `backend/migrations/versions/0031_extend_work_item_types.py:36`)
+  - [x] Add updated CHECK including `'milestone'`, `'story'` — shipped via `ADD CONSTRAINT ... NOT VALID` + `VALIDATE CONSTRAINT` for zero-downtime (`backend/migrations/versions/0031_extend_work_item_types.py:39-43`)
+  - [x] Add `parent_work_item_id UUID REFERENCES work_items(id) ON DELETE RESTRICT` (nullable) — shipped in earlier migration 0030 (`backend/migrations/versions/0030_ep14_ep15_ep16_ep17.py`)
+  - [ ] Add `materialized_path TEXT NOT NULL DEFAULT ''`
+  - [ ] Add indexes: `idx_work_items_parent_id`, `idx_work_items_mat_path` (GIN trigram), `idx_work_items_ws_parent`
 - [ ] Verify migration runs clean on a fresh DB and on a DB with existing work_items rows
 - [ ] Verify existing rows have `parent_work_item_id = NULL` and `materialized_path = ''` after migration
 - Acceptance: migration is idempotent-safe (UP only; DOWN drops columns and restores old CHECK)
@@ -25,9 +25,10 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 
 ### BE-14-02: Extend WorkItemType enum and WorkItem entity
 - [ ] RED: test that `WorkItemType.MILESTONE` and `WorkItemType.STORY` exist and are serialised as `"milestone"` and `"story"`
-- [ ] GREEN: add values to `WorkItemType` enum in `domain/models/work_item.py`
+- [x] GREEN: add values to `WorkItemType` enum in `domain/models/work_item.py` — already present in domain value object; ORM `_WORK_ITEM_TYPES` also synced (`backend/app/infrastructure/persistence/models/orm.py:208`)
 - [ ] RED: test that `WorkItem` dataclass accepts `parent_work_item_id: UUID | None` and `materialized_path: str`
 - [ ] GREEN: add fields to `WorkItem`
+  - [x] **Partial:** `parent_work_item_id: UUID | None` is on the domain model + ORM + mapper (`backend/app/domain/models/work_item.py`, `backend/app/infrastructure/persistence/mappers/work_item_mapper.py`). `materialized_path` NOT shipped.
 - [ ] REFACTOR: ensure existing tests still pass (no field regressions)
 - Acceptance: type check passes with `strict: true` equivalent (mypy --strict); no `Any` introduced
 
@@ -104,6 +105,7 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 - [ ] RED: test create with valid parent computes and sets `materialized_path`
 - [ ] RED: test create with `type=milestone` and non-null parent raises error
 - [ ] GREEN: implement validation + path computation in `WorkItemService.create_work_item`
+  - [x] **Partial (propagation only):** `CreateWorkItemCommand.parent_work_item_id` field (`backend/app/application/commands/create_work_item_command.py:26`); controller accepts it on `POST /api/v1/work-items` (`backend/app/presentation/controllers/work_item_controller.py:92`); request schema exposes it (`backend/app/presentation/schemas/work_item_schemas.py:46`). **No** `HierarchyValidator`, cycle detection, path computation, or cross-scope checks yet.
 - [ ] REFACTOR: extract workspace+project cross-check into private `_validate_parent_scope` method
 
 ### BE-14-08: Amend update_work_item to handle reparenting
@@ -187,6 +189,7 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 - [ ] RED: test `PATCH /work-items/:id` with new `parent_work_item_id` — triggers subtree update
 - [ ] RED: test `PATCH /work-items/:id` with `parent_work_item_id: null` — detaches
 - [ ] GREEN: amend `work_item_controller.py` and request schemas
+  - [x] **Partial (create only):** `POST /work-items` accepts and persists `parent_work_item_id` (`backend/app/presentation/schemas/work_item_schemas.py:46`, controller line 92). No validation shipped — invalid parent types silently accepted. PATCH reparent NOT shipped.
 
 ### BE-14-14: Amend list endpoint for ancestor filter (EP-09 extension)
 - [ ] RED: test `GET /projects/:id/work-items?parent_id=<uuid>` filters to direct children only
@@ -194,6 +197,7 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 - [ ] RED: test `?ancestor_id=<uuid>&type=story` applies both filters
 - [ ] RED: test `?ancestor_id=<non-existent>` returns empty list (no error)
 - [ ] GREEN: amend list endpoint filter handling in `WorkItemService.list_work_items` and repository
+  - [x] **Partial (parent filter only):** `GET /api/v1/work-items?parent_work_item_id=<uuid>` returns direct children (`backend/app/presentation/controllers/work_item_controller.py:406,444-445`). Query param is `parent_work_item_id`, not `parent_id` as the plan text suggests. `ancestor_id` filter NOT shipped (requires `materialized_path` column).
 
 ---
 
@@ -219,3 +223,18 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 - [ ] Workspace scoping verified in every service method and repository query
 - [ ] No N+1 queries (EXPLAIN verified on key endpoints)
 - [ ] Security: all endpoints require Bearer JWT; workspace scoping enforced in service layer (not just controller)
+
+---
+
+## Reconciliation notes (2026-04-17)
+
+**Opportunistic EP-14 slice — parent link plumbing only, no validators.** Today's pass threaded `parent_work_item_id` through the create path and added a direct-children list filter. The hierarchy algorithms (`HierarchyValidator`, `MaterializedPathService`, cycle detection, `CompletionRollupService`, `TreeQueryService`) remain un-shipped.
+
+Shipped:
+
+- **Migration 0031** — extends `work_items_type_valid` CHECK to include `story`, `milestone`. Uses zero-downtime `ADD CONSTRAINT NOT VALID` + `VALIDATE CONSTRAINT` pattern with downgrade safety (refuses if offending rows exist). Note: the domain enum and ORM `_WORK_ITEM_TYPES` already had `story`/`milestone` — the DB CHECK was out of sync. This fixes the drift.
+- **`parent_work_item_id` threaded through the create surface** — `CreateWorkItemCommand`, `WorkItemService.create`, `POST /api/v1/work-items`, `WorkItemCreateRequest`. Persists the FK; no validation.
+- **`GET /api/v1/work-items?parent_work_item_id=<uuid>`** — returns direct children. Note: param name is `parent_work_item_id` (plan text suggests `parent_id` — the shipped name matches the column, not the plan).
+- **Frontend surface** (listed for context; EP-14 tasks-frontend.md covers it) — `useChildItems(parentId)` + `ChildItemsTab` component; `useParentWorkItem(id)` + parent Link in work-item-header; `useWorkItemTags` (EP-15 integration). See `frontend/hooks/work-item/use-child-items.ts`, `use-parent-work-item.ts`, `use-work-item-tags.ts` + corresponding `frontend/__tests__/hooks/work-item/*.test.ts`.
+
+Gaps intentionally left un-ticked — `materialized_path` column, `HierarchyValidator` (Group 3), `MaterializedPathService` (Group 4), cycle detection (Group 5), reparent/delete hierarchy logic in service (BE-14-08, BE-14-09), `CompletionRollupService` (Group 7), `TreeQueryService` (Group 8), hierarchy endpoints (BE-14-12), rollup Celery handler (Group 10). **>75% of the plan is still pending.** When EP-14 enters formal delivery, the algorithms + `materialized_path` column are the pre-requisites before any validator work can ship.
