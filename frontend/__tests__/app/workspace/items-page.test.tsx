@@ -7,12 +7,16 @@ import WorkItemsPage from '@/app/workspace/[slug]/items/page';
 import type { WorkItemResponse } from '@/lib/types/work-item';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
+let mockSearchParams: Record<string, string> = {};
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/workspace/acme/items',
   useParams: () => ({ slug: 'acme' }),
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({
+    get: (key: string) => mockSearchParams[key] ?? null,
+  }),
 }));
 
 vi.mock('next-intl', () => ({
@@ -147,5 +151,96 @@ describe('WorkItemsPage', () => {
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
     await waitFor(() => expect(screen.queryByTestId('work-items-skeleton')).toBeNull());
     expect(screen.getByRole('combobox', { name: /estado/i })).toBeInTheDocument();
+  });
+
+  // ─── Pagination ───────────────────────────────────────────────────────────────
+
+  it('renders pagination controls when total > page_size', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 45, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+    // Prev button disabled on page 1
+    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
+    // Next button enabled
+    expect(screen.getByRole('button', { name: /siguiente/i })).not.toBeDisabled();
+  });
+
+  it('Next button advances page and calls replace with updated search params', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 45, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+
+    const nextBtn = screen.getByRole('button', { name: /siguiente/i });
+    await userEvent.click(nextBtn);
+
+    expect(mockReplace).toHaveBeenCalled();
+    // Check the last call — initial mount also calls replace with page=1
+    const calls = mockReplace.mock.calls;
+    const lastCall = calls[calls.length - 1]?.[0] as string | undefined;
+    expect(lastCall).toBeDefined();
+    expect(lastCall).toContain('page=2');
+  });
+
+  it('Prev button is disabled on first page', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 45, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
+  });
+
+  it('Next button is disabled on last page', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          // total=20, page_size=20 → only 1 page
+          data: { items: [mockWorkItem], total: 20, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /siguiente/i })).toBeDisabled();
+  });
+
+  it('does not render pagination controls when total <= page_size', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [], total: 0, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText(/crea tu primer elemento/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('button', { name: /anterior/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /siguiente/i })).toBeNull();
   });
 });

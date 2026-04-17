@@ -124,6 +124,11 @@
         "completeness": "Completitud",
         "updatedAt": "Actualizado"
       },
+      "pagination": {
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "pageOf": "Página {page} de {total}"
+      },
       "states": {
         "draft": "Borrador",
         "in_clarification": "En aclaración",
@@ -142,11 +147,52 @@
       "tabsAria": "Secciones del elemento",
       "tabs": {
         "specification": "Especificación",
+        "clarification": "Clarificación",
         "tasks": "Tareas",
         "reviews": "Revisiones",
         "comments": "Comentarios",
         "timeline": "Historial",
         "subItems": "Sub-items"
+      },
+      "clarification": {
+        "tabLabel": "Clarificación",
+        "chatPlaceholder": "Pregunta a Dundun…",
+        "sendAria": "Enviar mensaje",
+        "emptyChat": "Inicia la conversación enviando un mensaje",
+        "typing": "Dundun está escribiendo…",
+        "errorBanner": "Error al enviar mensaje",
+        "retryLabel": "Reintentar",
+        "historyError": "No se pudo cargar el historial de conversación"
+      },
+      "gaps": {
+        "loading": "Cargando análisis de brechas…",
+        "unavailable": "Análisis de brechas no disponible",
+        "retry": "Reintentar",
+        "completeness": "Completitud",
+        "noGaps": "No se encontraron brechas",
+        "runAiReview": "Ejecutar revisión IA",
+        "reviewing": "Revisión en progreso…"
+      },
+      "suggestions": {
+        "generateButton": "Obtener sugerencias",
+        "generating": "Generando sugerencias…",
+        "analyzingStage1": "Analizando…",
+        "analyzingStage2": "Generando sugerencias…",
+        "analyzingStage3": "Casi listo…",
+        "takingLonger": "Tardando más de lo habitual…",
+        "timeoutError": "Se agotó el tiempo de generación",
+        "retryGenerate": "Reintentar",
+        "noSuggestions": "Aún no hay sugerencias",
+        "expired": "Estas sugerencias han caducado",
+        "generateNew": "Generar nuevas",
+        "applySelected": "Aplicar seleccionadas",
+        "conflictBanner": "El contenido cambió desde que se generaron las sugerencias. ¿Regenerar?",
+        "regenerate": "Regenerar",
+        "accept": "Aceptar",
+        "reject": "Rechazar",
+        "current": "Actual",
+        "proposed": "Propuesto",
+        "section": "Sección"
       },
       "audit": {
         "tab": "Auditoría",

@@ -124,6 +124,11 @@
         "completeness": "Completeness",
         "updatedAt": "Updated"
       },
+      "pagination": {
+        "prev": "Previous",
+        "next": "Next",
+        "pageOf": "Page {page} of {total}"
+      },
       "states": {
         "draft": "Draft",
         "in_clarification": "In clarification",
@@ -142,11 +147,52 @@
       "tabsAria": "Item sections",
       "tabs": {
         "specification": "Specification",
+        "clarification": "Clarification",
         "tasks": "Tasks",
         "reviews": "Reviews",
         "comments": "Comments",
         "timeline": "Timeline",
         "subItems": "Sub-items"
+      },
+      "clarification": {
+        "tabLabel": "Clarification",
+        "chatPlaceholder": "Ask Dundun…",
+        "sendAria": "Send message",
+        "emptyChat": "Start the conversation by sending a message",
+        "typing": "Dundun is typing…",
+        "errorBanner": "Error sending message",
+        "retryLabel": "Retry",
+        "historyError": "Could not load conversation history"
+      },
+      "gaps": {
+        "loading": "Loading gap analysis…",
+        "unavailable": "Gap analysis unavailable",
+        "retry": "Retry",
+        "completeness": "Completeness",
+        "noGaps": "No gaps found",
+        "runAiReview": "Run AI Review",
+        "reviewing": "Review in progress…"
+      },
+      "suggestions": {
+        "generateButton": "Get Suggestions",
+        "generating": "Generating suggestions…",
+        "analyzingStage1": "Analyzing…",
+        "analyzingStage2": "Generating suggestions…",
+        "analyzingStage3": "Almost done…",
+        "takingLonger": "Taking longer than usual…",
+        "timeoutError": "Generation timed out",
+        "retryGenerate": "Retry",
+        "noSuggestions": "No suggestions yet",
+        "expired": "These suggestions have expired",
+        "generateNew": "Generate new",
+        "applySelected": "Apply Selected",
+        "conflictBanner": "Content changed since suggestions were generated. Regenerate?",
+        "regenerate": "Regenerate",
+        "accept": "Accept",
+        "reject": "Reject",
+        "current": "Current",
+        "proposed": "Proposed",
+        "section": "Section"
       },
       "audit": {
         "tab": "Audit",

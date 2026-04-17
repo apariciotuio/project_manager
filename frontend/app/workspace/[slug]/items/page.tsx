@@ -1,56 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
-import { StateBadge } from '@/components/domain/state-badge';
-import { TypeBadge } from '@/components/domain/type-badge';
-import { CompletenessBar } from '@/components/domain/completeness-bar';
-import { RelativeTime } from '@/components/domain/relative-time';
+import { WorkItemCard } from '@/components/work-item/work-item-card';
 import { t } from '@/lib/i18n';
 import { PageContainer } from '@/components/layout/page-container';
-import type { WorkItemState, WorkItemType } from '@/lib/types/work-item';
-import type { CompletenessLevel } from '@/components/domain/level-badge';
-import type { WorkitemState } from '@/components/domain/state-badge';
-import type { WorkitemType } from '@/components/domain/type-badge';
+import type { WorkItemState } from '@/lib/types/work-item';
 
-// Map backend state → StateBadge WorkitemState
-const STATE_MAP: Partial<Record<WorkItemState, WorkitemState>> = {
-  draft: 'draft',
-  in_review: 'in-review',
-  changes_requested: 'blocked',
-  partially_validated: 'in-review',
-  ready: 'ready',
-  exported: 'exported',
-  in_clarification: 'draft',
-};
-
-// Map backend type → TypeBadge WorkitemType
-const TYPE_MAP: Partial<Record<WorkItemType, WorkitemType>> = {
-  story: 'story',
-  milestone: 'milestone',
-  bug: 'bug',
-  task: 'task',
-  spike: 'spike',
-  idea: 'idea',
-  requirement: 'requirement',
-  enhancement: 'change',
-  initiative: 'epic',
-  business_change: 'change',
-};
-
-function scoreToLevel(score: number): CompletenessLevel {
-  if (score >= 80) return 'ready';
-  if (score >= 60) return 'high';
-  if (score >= 30) return 'medium';
-  return 'low';
-}
+const PAGE_SIZE = 20;
 
 const STATE_OPTIONS: WorkItemState[] = [
   'draft',
@@ -69,17 +33,43 @@ interface WorkItemsPageProps {
 export default function WorkItemsPage({ params }: WorkItemsPageProps) {
   const { slug } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { user } = useAuth();
   const [stateFilter, setStateFilter] = useState<WorkItemState | ''>('');
   const [search, setSearch] = useState('');
 
+  // ─── Pagination — URL-synced ─────────────────────────────────────────────────
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get('page') ?? '1', 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
+
+  // Sync page → URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    // Carry over existing params (state filter etc.)
+    const stateVal = searchParams.get('state');
+    if (stateVal) params.set('state', stateVal);
+    params.set('page', String(page));
+    router.replace(`?${params.toString()}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [stateFilter]);
+
   // Use workspace_id as project_id for now (1-workspace : 1-project assumption)
   const projectId = user?.workspace_id ?? null;
 
-  const { items, isLoading, error } = useWorkItems(
+  const { items, total, isLoading, error } = useWorkItems(
     projectId,
-    stateFilter ? { state: stateFilter } : {},
+    stateFilter ? { state: stateFilter, page, page_size: PAGE_SIZE } : { page, page_size: PAGE_SIZE },
   );
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filtered = search.trim()
     ? items.filter((item) =>
@@ -136,33 +126,30 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
       ) : error ? null : filtered.length === 0 ? (
         <EmptyState slug={slug} />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full text-body-sm">
-            <thead className="border-b border-border bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t('workitem.list.columns.title')}
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t('workitem.list.columns.type')}
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t('workitem.list.columns.state')}
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t('workitem.list.columns.completeness')}
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  {t('workitem.list.columns.updatedAt')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => {
-                const badgeState = STATE_MAP[item.state] ?? 'draft';
-                const badgeType = TYPE_MAP[item.type];
-                const level = scoreToLevel(item.completeness_score);
-                return (
+        <>
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-body-sm">
+              <thead className="border-b border-border bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    {t('workitem.list.columns.title')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    {t('workitem.list.columns.type')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    {t('workitem.list.columns.state')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    {t('workitem.list.columns.completeness')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    {t('workitem.list.columns.updatedAt')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
                   <tr
                     key={item.id}
                     tabIndex={0}
@@ -176,39 +163,62 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
                     }}
                     className="cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset"
                   >
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      {item.title}
-                    </td>
-                    <td className="px-4 py-3">
-                      {badgeType ? (
-                        <TypeBadge type={badgeType} size="sm" />
-                      ) : (
-                        <span className="text-muted-foreground">{item.type}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StateBadge state={badgeState} size="sm" />
-                    </td>
-                    <td className="px-4 py-3 w-36">
-                      <CompletenessBar
-                        level={level}
-                        percent={item.completeness_score}
-                        showLabel
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <RelativeTime iso={item.updated_at} />
+                    <td className="px-4 py-3" colSpan={5}>
+                      <WorkItemCard workItem={item} slug={slug} />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination — always shown when items exist */}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
     </PageContainer>
   );
 }
+
+// ─── Pagination controls ──────────────────────────────────────────────────────
+
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-2">
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label="Anterior"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+        Anterior
+      </Button>
+      <span className="text-body-sm text-muted-foreground tabular-nums">
+        Página {page} de {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label="Siguiente"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Siguiente
+        <ChevronRight className="h-4 w-4 ml-1" aria-hidden />
+      </Button>
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function WorkItemsSkeleton() {
   return (
