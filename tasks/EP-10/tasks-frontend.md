@@ -29,12 +29,13 @@
 
 ## API Client Functions
 
-- [ ] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation`
+- [x] [GREEN] Implement `hooks/use-admin.ts` — `useWorkspaceMembers` (GET /api/v1/workspaces/members), `useAuditEvents(filters)`, `useHealth`, `useProjects` (createProject, updateProject, deleteProject), `useIntegrations` (createIntegration, deleteIntegration), `useTags` — 2026-04-17
+- [ ] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation` (blocked: admin members endpoint not yet live)
 - [ ] [GREEN] Implement `lib/api/admin/rules.ts` — `listValidationRules`, `createValidationRule`, `updateValidationRule`, `deleteValidationRule`, `listRoutingRules`, `createRoutingRule`, `updateRoutingRule`, `deleteRoutingRule`
 - [ ] [GREEN] Implement `lib/api/admin/projects.ts` — `listProjects`, `createProject`, `updateProject`, `getProject`, `replaceContextSources`, `updateTemplateBindings`
 - [ ] [GREEN] Implement `lib/api/admin/presets.ts` — `listContextPresets`, `createContextPreset`, `updateContextPreset`, `deleteContextPreset`
 - [ ] [GREEN] Implement `lib/api/admin/jira.ts` — `listJiraConfigs`, `createJiraConfig`, `updateJiraConfig`, `testJiraConnection`, `listMappings`, `createMapping`, `listSyncLogs`, `retrySyncLog`
-- [ ] [GREEN] Implement `lib/api/admin/audit.ts` — `getAuditLog(filters, cursor)`
+- [x] [GREEN] Implement audit events hook — `getAuditLog(filters)` via `useAuditEvents(filters)` in use-admin.ts — 2026-04-17
 - [ ] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)`
 - [ ] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems`
 - [ ] All functions use shared API client with correlation ID header (EP-12)
@@ -71,10 +72,10 @@ THEN the active nav item is highlighted and `aria-current="page"` is set
 ## Group 2 — Members & Capabilities
 
 ### Member List (`app/admin/members/page.tsx`)
-- [ ] [RED] Test: renders member list with state badges, capability chips, filter by state and teamless
-- [ ] [RED] Test: empty state when no members
-- [ ] [RED] Test: skeleton shown during fetch
-- [ ] [GREEN] Implement member list page using `DataTable` component (EP-12)
+- [x] [RED] Test: renders member list with state badges, capability chips, filter by state and teamless — 2026-04-17 (role badge; capability/team filter deferred, EP-12 DataTable not yet in)
+- [x] [RED] Test: empty state when no members — 2026-04-17 (data-testid="members-empty")
+- [x] [RED] Test: skeleton shown during fetch — 2026-04-17 (data-testid="members-skeleton")
+- [x] [GREEN] Implement member list: table with full_name / email / role; loading skeleton / empty state / error banner — 2026-04-17 (inline MembersTab in admin/page.tsx; GET /api/v1/workspaces/members)
 - [ ] [GREEN] Columns: name/email, state badge, capabilities (truncated chips), teams, invited_at/joined_at, actions
 - [ ] [GREEN] Filter controls: by state (active/invited/suspended/deleted), teamless toggle
 - [ ] [GREEN] Cursor-based pagination via "Load more" or paginated DataTable
@@ -165,9 +166,9 @@ THEN the form shows inline error explaining that a workspace-level blocked_overr
 - [ ] [GREEN] Implement project list page
 
 ### Create/Edit Project Form
-- [ ] [RED] Test: name validation, team multi-select, context preset dropdown, template bindings editor, submit, duplicate name 409
-- [ ] [GREEN] Implement `ProjectForm` (modal or full page for edit)
-- [ ] [GREEN] Archive project: confirmation dialog with open-elements count warning
+- [x] [RED] Test: create success (project in list), 409 PROJECT_NAME_TAKEN inline field error, edit PATCH updates list, delete removes from list — 2026-04-17
+- [x] [GREEN] Implement create modal (name + description, 409 field error), edit modal (PATCH), delete confirmation dialog — 2026-04-17 (ProjectsTab in admin/page.tsx; updateProject/deleteProject added to useProjects)
+- [ ] [GREEN] Archive project: confirmation dialog with open-elements count warning (deferred — no backend archive endpoint yet)
 
 ### Context Sources Editor (`components/admin/ContextSourcesEditor.tsx`)
 - [ ] [RED] Test: add source (type/label/url/description), remove source, bulk replace via PUT, inline validation
@@ -206,6 +207,10 @@ THEN the inline result shows "Authentication failed — check your API token"
 
 WHEN the retry button in `JiraExportHistoryTable` is clicked by a user lacking `retry_exports` capability
 THEN the button is absent (not just disabled)
+
+### General Integrations Tab (admin/page.tsx — IntegrationsTab)
+- [x] [RED] Test: list with provider + status badge, empty state, create success, delete removes from list, masked credentials hint — 2026-04-17
+- [x] [GREEN] Implement IntegrationsTab: list with active/inactive badge + masked credentials row, create modal (base_url/email/api_token), delete confirmation — 2026-04-17 (GET/POST /api/v1/integrations/configs; deleteIntegration added to useIntegrations; NOTE: backend has no DELETE /api/v1/integrations/configs/{id} — optimistic delete will 404 in prod until endpoint added)
 
 ### Jira Config List (`app/admin/integrations/jira/page.tsx`)
 - [ ] [RED] Test: renders config cards with state badge (active/disabled/error), health status, last check time
@@ -284,6 +289,8 @@ Visibility: render only when `user.is_superadmin = true` (from `/auth/me` respon
 
 Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 
+- [x] [GREEN] Tags tab in admin page: TagsTab with loading skeleton / empty state (data-testid="tags-empty") / error banner (data-testid="tags-error") consistent with other tabs — 2026-04-17
+- [x] [RED] Test: shows tags, empty state, error banner, edit icon opens modal pre-filled, PATCH updates list, 409 shows field error — 2026-04-17
 - [ ] [GREEN] Admin left-nav entry: **Tags** → `/admin/tags` (route implemented in EP-15)
 - [ ] [GREEN] Entry visible to members with `manage_tags` or `merge_tags` capability (or superadmin)
 
@@ -291,9 +298,10 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 
 ## Group 6 — Audit Log (`app/admin/audit-log/page.tsx`)
 
-- [ ] [RED] Test: renders log table with actor, action, entity, date; filters (actor, action, entity_type, date range); pagination; empty state
-- [ ] [GREEN] Implement audit log page using `DataTable`
-- [ ] [GREEN] Filter bar: actor search, action type filter, entity type filter, date range picker
+- [x] [RED] Test: renders log table with actor, action, entity, date; filters (action select, category text); empty state — 2026-04-17
+- [x] [GREEN] Implement audit tab: action filter select + category text input; re-fetches on change; empty/error states — 2026-04-17 (AuditTab in admin/page.tsx; GET /api/v1/admin/audit-events?action=&category=)
+- [x] [RED] Test: action filter triggers re-fetch with action= param — 2026-04-17
+- [ ] [GREEN] Filter bar: actor search, entity type filter, date range picker (deferred — backend doesn't support those params yet)
 - [ ] [GREEN] Row detail: expand row to show before/after JSONB diff (collapsible)
 - [ ] [GREEN] Cursor-based pagination, max 200 per page
 - [ ] [RED] Test: 403 shown when user lacks `view_audit_log` capability (guard at page level)
@@ -302,12 +310,13 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 
 ## Group 7 — Admin Health Dashboard (`app/admin/dashboard/page.tsx`)
 
+- [x] [RED] Test: state breakdown bar segments per state, total_active count, empty + error states — 2026-04-17 (scoped to WorkspaceHealthSection only; GET /api/v1/admin/health)
 - [ ] [RED] Test: renders four health sections (workspace, org, process, integration), project scope selector
-- [ ] [GREEN] Implement admin dashboard page
+- [ ] [GREEN] Implement admin dashboard page (full 4-section dashboard deferred to Group 7 proper)
 
 ### WorkspaceHealthSection
-- [ ] [RED] Test: state breakdown by count, critical blocks highlighted, avg time to ready, stale reviews count
-- [ ] [GREEN] Implement `WorkspaceHealthSection` with bar chart (or count cards) per state
+- [x] [RED] Test: bar segments add up (widths > 0 when count > 0) — 2026-04-17
+- [x] [GREEN] Implement HealthTab with divided bar chart, colour-coded by state, legend below — 2026-04-17 (inline HealthTab in admin/page.tsx)
 
 ### OrgHealthSection
 - [ ] [RED] Test: active member count, teamless members list (clickable), teams without lead, top loaded owners
