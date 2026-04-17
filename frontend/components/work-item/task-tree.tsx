@@ -9,7 +9,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragOverEvent,
 } from '@dnd-kit/core';
 import { TaskTreeNode } from '@/components/work-item/task-tree-node';
 import { TaskTreeAddDialog } from '@/components/work-item/task-tree-add-dialog';
@@ -39,7 +38,6 @@ function isAncestorOf(
 export function TaskTree({ tree, workItemId, onRefetch }: TaskTreeProps) {
   const t = useTranslations('workspace.itemDetail.tasks');
   const [addingRoot, setAddingRoot] = useState(false);
-  const [activeDropTarget, setActiveDropTarget] = useState<string | null>(null);
   const [cycleError, setCycleError] = useState<string | null>(null);
   // Optimistic local node list for rollback
   const [localNodes, setLocalNodes] = useState<TaskNode[] | null>(null);
@@ -55,13 +53,8 @@ export function TaskTree({ tree, workItemId, onRefetch }: TaskTreeProps) {
     useSensor(KeyboardSensor),
   );
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    setActiveDropTarget(event.over ? String(event.over.id) : null);
-  }, []);
-
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
-      setActiveDropTarget(null);
       const draggedId = String(event.active.id);
       const overId = event.over ? String(event.over.id) : null;
 
@@ -138,7 +131,6 @@ export function TaskTree({ tree, workItemId, onRefetch }: TaskTreeProps) {
   return (
     <DndContext
       sensors={sensors}
-      onDragOver={handleDragOver}
       onDragEnd={(e) => void handleDragEnd(e)}
     >
       <div className="flex flex-col gap-2">
@@ -164,7 +156,6 @@ export function TaskTree({ tree, workItemId, onRefetch }: TaskTreeProps) {
               workItemId={workItemId}
               onRefetch={onRefetch}
               isDragDisabled={isPending}
-              isDropTarget={activeDropTarget === node.id}
             />
           ))}
         </ul>

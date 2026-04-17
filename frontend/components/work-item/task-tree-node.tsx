@@ -31,8 +31,6 @@ interface TaskTreeNodeProps {
   onRefetch: () => void;
   /** Set by parent DnD context while a mutation is in flight */
   isDragDisabled?: boolean;
-  /** Set by parent DnD context when this node is the active drop target */
-  isDropTarget?: boolean;
 }
 
 export function TaskTreeNode({
@@ -44,7 +42,6 @@ export function TaskTreeNode({
   workItemId,
   onRefetch,
   isDragDisabled = false,
-  isDropTarget = false,
 }: TaskTreeNodeProps) {
   const t = useTranslations('workspace.itemDetail.tasks');
   const [expanded, setExpanded] = useState(true);
@@ -132,12 +129,12 @@ export function TaskTreeNode({
         className={cn(
           'flex items-center gap-2 py-1.5 rounded px-2 group transition-colors',
           'hover:bg-muted/50',
-          (isOver || isDropTarget) && 'bg-primary/10 ring-1 ring-primary/40',
+          isOver && 'bg-primary/10 ring-1 ring-primary/40',
           isDragging && 'opacity-40',
         )}
         style={{ paddingLeft: `${depth * DEPTH_PX + 8}px` }}
         data-drag-id={node.id}
-        data-drop-target={isOver || isDropTarget ? 'true' : undefined}
+        data-drop-target={isOver ? 'true' : undefined}
         aria-describedby={`drag-desc-${node.id}`}
       >
         {/* Visually hidden drag state description for screen readers */}
@@ -245,7 +242,6 @@ export function TaskTreeNode({
                 workItemId={workItemId}
                 onRefetch={onRefetch}
                 isDragDisabled={isDragDisabled}
-                isDropTarget={isDropTarget}
               />
             ))}
         </ul>
