@@ -808,6 +808,26 @@ class TaskDependencyORM(Base):
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
 
 
+class TaskNodeSectionLinkORM(Base):
+    __tablename__ = "task_node_section_links"
+    __table_args__ = (
+        UniqueConstraint("task_id", "section_id", name="uq_task_section_link"),
+        Index("idx_tnsl_task_id", "task_id"),
+        Index("idx_tnsl_section_id", "section_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("task_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    section_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_item_sections.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 # ---------------------------------------------------------------------------
 # EP-06 — Reviews, Validation
 # ---------------------------------------------------------------------------

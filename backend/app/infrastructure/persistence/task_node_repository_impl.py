@@ -1,15 +1,17 @@
-"""EP-05 — TaskNodeRepositoryImpl + TaskDependencyRepositoryImpl."""
+"""EP-05 — TaskNodeRepositoryImpl + TaskDependencyRepositoryImpl + TaskSectionLinkRepositoryImpl."""
 from __future__ import annotations
 
-from uuid import UUID
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.task_node import TaskDependency, TaskNode
 from app.domain.repositories.task_node_repository import (
     ITaskDependencyRepository,
     ITaskNodeRepository,
+    ITaskSectionLinkRepository,
 )
 from app.infrastructure.persistence.mappers.task_node_mapper import (
     task_dependency_to_domain,
@@ -17,7 +19,11 @@ from app.infrastructure.persistence.mappers.task_node_mapper import (
     task_node_to_domain,
     task_node_to_orm,
 )
-from app.infrastructure.persistence.models.orm import TaskDependencyORM, TaskNodeORM
+from app.infrastructure.persistence.models.orm import (
+    TaskDependencyORM,
+    TaskNodeORM,
+    TaskNodeSectionLinkORM,
+)
 
 _RECURSIVE_CTE = text(
     """
@@ -53,6 +59,13 @@ class TaskNodeRepositoryImpl(ITaskNodeRepository):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [task_node_to_domain(r) for r in rows]
+
+    async def count_by_work_item(self, work_item_id: UUID) -> int:
+        stmt = select(func.count()).select_from(TaskNodeORM).where(
+            TaskNodeORM.work_item_id == work_item_id
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
 
     async def save(self, node: TaskNode) -> TaskNode:
         existing = await self._session.get(TaskNodeORM, node.id)
@@ -97,9 +110,20 @@ class TaskDependencyRepositoryImpl(ITaskDependencyRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def get(self, dep_id: UUID) -> TaskDependency | None:
+        row = await self._session.get(TaskDependencyORM, dep_id)
+        return task_dependency_to_domain(row) if row else None
+
     async def get_by_source(self, source_id: UUID) -> list[TaskDependency]:
         stmt = select(TaskDependencyORM).where(
             TaskDependencyORM.source_id == source_id
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [task_dependency_to_domain(r) for r in rows]
+
+    async def get_by_target(self, target_id: UUID) -> list[TaskDependency]:
+        stmt = select(TaskDependencyORM).where(
+            TaskDependencyORM.target_id == target_id
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [task_dependency_to_domain(r) for r in rows]
@@ -122,5 +146,34 @@ class TaskDependencyRepositoryImpl(ITaskDependencyRepository):
     async def remove(self, dep_id: UUID) -> None:
         await self._session.execute(
             delete(TaskDependencyORM).where(TaskDependencyORM.id == dep_id)
+        )
+        await self._session.flush()
+
+
+class TaskSectionLinkRepositoryImpl(ITaskSectionLinkRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get_by_task(self, task_id: UUID) -> list[UUID]:
+        stmt = select(TaskNodeSectionLinkORM.section_id).where(
+            TaskNodeSectionLinkORM.task_id == task_id
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def create_bulk(self, task_id: UUID, section_ids: list[UUID]) -> None:
+        now = datetime.now(UTC)
+        for section_id in section_ids:
+            link = TaskNodeSectionLinkORM()
+            link.id = uuid4()
+            link.task_id = task_id
+            link.section_id = section_id
+            link.created_at = now
+            self._session.add(link)
+        await self._session.flush()
+
+    async def delete_by_task(self, task_id: UUID) -> None:
+        await self._session.execute(
+            delete(TaskNodeSectionLinkORM).where(TaskNodeSectionLinkORM.task_id == task_id)
         )
         await self._session.flush()
