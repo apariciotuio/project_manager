@@ -18,6 +18,7 @@ from app.domain.quality import dimension_checkers
 from app.domain.quality import score_calculator as score_calc
 from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
 from app.domain.repositories.section_repository import ISectionRepository
+from app.domain.repositories.task_node_repository import ITaskNodeRepository
 from app.domain.repositories.validator_repository import IValidatorRepository
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 
@@ -57,11 +58,13 @@ class CompletenessService:
         section_repo: ISectionRepository,
         validator_repo: IValidatorRepository,
         cache: ICache,
+        task_node_repo: ITaskNodeRepository | None = None,
     ) -> None:
         self._work_items = work_item_repo
         self._sections = section_repo
         self._validators = validator_repo
         self._cache = cache
+        self._task_nodes = task_node_repo
 
     async def compute(
         self, work_item_id: UUID, workspace_id: UUID
@@ -75,7 +78,12 @@ class CompletenessService:
             raise LookupError(f"work item {work_item_id} not found")
         sections = await self._sections.get_by_work_item(work_item_id)
         validators = await self._validators.get_by_work_item(work_item_id)
-        dims = dimension_checkers.check_all(work_item, sections, validators)
+        task_count = (
+            await self._task_nodes.count_by_work_item(work_item_id)
+            if self._task_nodes is not None
+            else 0
+        )
+        dims = dimension_checkers.check_all(work_item, sections, validators, task_count=task_count)
         result = score_calc.compute(dims)
 
         await self._cache.set(

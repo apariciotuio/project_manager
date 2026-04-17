@@ -13,6 +13,7 @@ from app.domain.models.task_node import (
     TaskNode,
     TaskStatus,
 )
+from app.domain.ports.cache import ICache
 from app.domain.repositories.task_node_repository import (
     ITaskDependencyRepository,
     ITaskNodeRepository,
@@ -28,6 +29,10 @@ class TaskCyclicDependencyError(ValueError):
     pass
 
 
+def _completeness_cache_key(work_item_id: UUID) -> str:
+    return f"completeness:{work_item_id}"
+
+
 class TaskService:
     def __init__(
         self,
@@ -35,10 +40,16 @@ class TaskService:
         node_repo: ITaskNodeRepository,
         dep_repo: ITaskDependencyRepository,
         link_repo: ITaskSectionLinkRepository | None = None,
+        cache: ICache | None = None,
     ) -> None:
         self._nodes = node_repo
         self._deps = dep_repo
         self._links = link_repo
+        self._cache = cache
+
+    async def _invalidate_completeness(self, work_item_id: UUID) -> None:
+        if self._cache is not None:
+            await self._cache.delete(_completeness_cache_key(work_item_id))
 
     # ------------------------------------------------------------------
     # Helpers
@@ -87,7 +98,9 @@ class TaskService:
         )
         # Set path after we have the id
         node.materialized_path = self._build_path(parent_path, node.id)
-        return await self._nodes.save(node)
+        saved = await self._nodes.save(node)
+        await self._invalidate_completeness(work_item_id)
+        return saved
 
     async def update_node(
         self,
@@ -109,8 +122,9 @@ class TaskService:
         return await self._nodes.save(node)
 
     async def delete_node(self, node_id: UUID) -> None:
-        await self._get_or_404(node_id)
+        node = await self._get_or_404(node_id)
         await self._nodes.delete(node_id)
+        await self._invalidate_completeness(node.work_item_id)
 
     async def move_node(
         self,
@@ -311,6 +325,7 @@ class TaskService:
             await self._links.create_bulk(node_b.id, section_ids)
 
         await self._nodes.delete(task_id)
+        await self._invalidate_completeness(source.work_item_id)
 
         return node_a, node_b
 
@@ -385,6 +400,7 @@ class TaskService:
 
         for src in sources:
             await self._nodes.delete(src.id)
+        await self._invalidate_completeness(sample.work_item_id)
 
         return merged
 
