@@ -11,8 +11,15 @@ const TOAST_DURATION_MS = 6000;
 export function showErrorToast(code: string, message: string): void {
   if (typeof document === 'undefined') return; // SSR guard
 
-  // Deduplicate by (code, message) within the display window
-  const dedupeKey = `toast-${code}-${message}`;
+  // Deduplicate by (code, message) within the display window.
+  // btoa handles encoding; strip non-alphanumeric to satisfy HTML ID rules
+  // (spaces, quotes, angle brackets in free-form messages would otherwise
+  // break getElementById in spec-compliant browsers).
+  const dedupeKey =
+    'toast-' +
+    btoa(unescape(encodeURIComponent(code + ':' + message)))
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 32);
   if (document.getElementById(dedupeKey)) return;
 
   const container = getOrCreateContainer();
