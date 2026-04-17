@@ -22,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -205,7 +206,8 @@ _WORK_ITEM_STATES = (
 )
 
 _WORK_ITEM_TYPES = (
-    "'idea','bug','enhancement','task','initiative','spike','business_change','requirement'"
+    "'idea','bug','enhancement','task','initiative','spike','business_change',"
+    "'requirement','story','milestone'"
 )
 
 
@@ -978,6 +980,12 @@ class TeamMembershipORM(Base):
     __tablename__ = "team_memberships"
     __table_args__ = (
         UniqueConstraint("team_id", "user_id", name="uq_team_membership_active"),
+        Index(
+            "idx_team_memberships_team_active",
+            "team_id",
+            "joined_at",
+            postgresql_where=text("removed_at IS NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
