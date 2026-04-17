@@ -133,6 +133,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 - [ ] [RED] Test: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers present on all responses
 - [ ] [GREEN] Implement `RateLimitMiddleware` in `app/infrastructure/rate_limiting/redis_rate_limiter.py` (Redis sliding window: key `ratelimit:{identifier}:{window_start_minute}`, INCR + EXPIRE)
 - [ ] [GREEN] Wire into middleware chain
+- [x] **Settings reverted to spec defaults:** `access_token_ttl_seconds = 900` (15m) and `rate_limit_per_minute = 10` in `backend/app/config/settings.py:55,58`. DX overrides via `.env.development`. (Not a middleware implementation — just resets the config creep.)
 
 ### Input Validation
 - [ ] [RED] Test: endpoint rejects unknown fields (Pydantic `extra="forbid"`)
@@ -161,6 +162,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 ### Secrets Handling
 - [ ] Grep codebase for hardcoded secrets (patterns: password, secret, key, token in non-test source)
 - [ ] [GREEN] Add startup validation: if any required secret is None in production, raise `ConfigurationError` with variable name
+  - [x] **Partial:** `scripts/dev_token.py` refuses to run unless `APP_ENVIRONMENT in {development,dev,test,testing,local}` (`backend/scripts/dev_token.py:31-42`) — prevents minting arbitrary JWTs against prod DBs
 - [ ] [GREEN] Logging formatter scrubs known-sensitive keys (`Authorization`, `token`, `password`, `secret`, `api_key`, `credentials`) from log records
 
 ---
@@ -218,6 +220,7 @@ Cache key strategy (non-negotiable — must match exactly):
 - [ ] [RED] Test: inbox cache invalidated on element status change affecting assignee
 - [ ] [RED] Test: Redis unavailable falls back to DB without raising 5xx
 - [ ] [GREEN] Implement `CacheService` in `app/infrastructure/cache/redis_cache.py` — cache-aside pattern
+  - [x] **Partial (test/dev fake):** `InMemoryCacheAdapter` implements `ICache` with `OrderedDict` + FIFO eviction at `MAX_ENTRIES=10_000`, lazy TTL check, and a `.clear()` hook for test isolation (`backend/app/infrastructure/adapters/in_memory_cache_adapter.py`). Used when `REDIS_USE_FAKE=true`. Full Redis cache-aside path pending.
 - [ ] [GREEN] Apply cache key strategy per design.md table: `inbox:{user_id}:{workspace_id}` (TTL 30s), `work_item:agg:{work_item_id}` (TTL 60s), `dashboard:{workspace_id}` (TTL 120s), `search:{workspace_id}:{hash(query)}` (TTL 15s)
 
 ### N+1 Detection
@@ -229,6 +232,8 @@ Cache key strategy (non-negotiable — must match exactly):
 - [ ] Audit existing migrations for missing composite indexes on `(workspace_id, created_at DESC)`
 - [ ] Audit FK columns for missing supporting indexes
 - [ ] Create migration for any missing indexes
+  - [x] **Partial:** Migration 0032 adds partial index `idx_team_memberships_team_active ON team_memberships(team_id, joined_at) WHERE removed_at IS NULL` (`backend/migrations/versions/0032_team_memberships_idx.py`) — backs the EP-08 team-picker N+1 fix.
+  - [x] **Partial:** Migration 0033 adds `workspace_id` + btree index + RLS policy to `conversation_threads`, `assistant_suggestions`, `gap_findings` (`backend/migrations/versions/0033_ep03_rls.py`) — closes EP-03 cross-workspace leakage.
 - [ ] Document in project CLAUDE.md: all new migrations must include EXPLAIN ANALYZE output for 3 most frequent queries
 
 ### Acceptance Criteria — SSE Infrastructure
@@ -291,3 +296,24 @@ Retained:
 - Correlation ID on FE error UI (see `tasks.md` Group 4.1)
 
 Integration failures are surfaced at the API boundary (error response + structured log line with `correlation_id`, `integration_id`, `error_code`). No separate `integration_sync_log`/product-event trail. Re-evaluate when scale or ops needs change.
+
+---
+
+## Reconciliation notes (2026-04-17)
+
+**Opportunistic EP-12 hardening slice — no middleware stack yet.** EP-12 is the foundational middleware epic (correlation ID, rate limit, JWT, cursor pagination, Redis cache, SSE handler). None of the core middleware is implemented yet — the chain in `main.py` still runs without `CorrelationIDMiddleware`, `RequestLoggingMiddleware`, or `RateLimitMiddleware`. Today's pass fixed drift and tactical holes only.
+
+Shipped today (all adjacent to EP-12 concerns, most outside the plan's explicit checkbox surface):
+
+- **Config creep reverted** — `access_token_ttl_seconds` 7d → 15m; `rate_limit_per_minute` 300 → 10. DX overrides move to `.env.development` (`backend/app/config/settings.py:55,58`).
+- **`assert current_user.workspace_id` → explicit `HTTPException(401, NO_WORKSPACE)`** in 16 callsites across `work_item_controller.py` + `template_controller.py`. `assert` is compiled away under `python -O` — previously these endpoints would leak `None.workspace_id` under prod build flags. Not a plan checkbox, but foundational security.
+- **`dev_token.py` env guard** — refuses to mint JWTs unless `APP_ENVIRONMENT` is in `{development,dev,test,testing,local}` (`backend/scripts/dev_token.py:31-42`).
+- **`InMemoryCacheAdapter`** — bounded `OrderedDict` with FIFO eviction + `.clear()` for test isolation (`backend/app/infrastructure/adapters/in_memory_cache_adapter.py`). Ships as the `REDIS_USE_FAKE` path; does NOT replace the planned Redis cache-aside service.
+- **Hard `.limit(500)` on 4 list endpoints** — teams, projects, templates, workspaces/members. Stop-gap while cursor-based pagination is still un-shipped. Plan calls cursor pagination a MUST FIX — `.limit(500)` is a weaker substitute.
+- **Migration 0032** — `idx_team_memberships_team_active` partial index, backs EP-08 N+1 fix.
+- **Migration 0031** — extends `work_items_type_valid` CHECK with `story`/`milestone` using zero-downtime `ADD CONSTRAINT NOT VALID` + `VALIDATE CONSTRAINT` pattern (`backend/migrations/versions/0031_extend_work_item_types.py`). Downgrade refuses if offending rows exist. ORM `_WORK_ITEM_TYPES` in `orm.py:208` was out of sync with the domain enum; now fixed.
+- **Dundun callback** verified to use shared session transaction + `SET LOCAL app.current_workspace` for RLS (`backend/app/presentation/controllers/dundun_callback_controller.py:81,146`) — prevents the callback from bypassing RLS when it commits across repos.
+- **`JwtAdapter` singleton** — `@lru_cache(maxsize=1)` in `backend/app/presentation/dependencies.py:107` + injected via `Depends(get_jwt_adapter)` on the WS endpoint instead of per-connection instantiation.
+- **Migration 0033** — workspace scoping (column + FK + btree index + RLS policy) on `conversation_threads`, `assistant_suggestions`, `gap_findings`. Backfill via work-item join; orphan threads dropped.
+
+Gaps intentionally left un-ticked — **the entire middleware chain** in Group 1 (CorrelationID, RequestLogging), all CORS/CSP/CSRF enforcement, the Pydantic `extra="forbid"` sweep, full rate limiter middleware, cursor pagination, Redis cache-aside proper, N+1 detection middleware, SSE infrastructure. These are the bulk of EP-12 and none of them have started. When EP-12 enters formal delivery, the plan text is still accurate — most of it just hasn't been executed.
