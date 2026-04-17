@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { List, Bell, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNotifications } from '@/hooks/use-notifications';
+import { useUnreadCount } from '@/hooks/use-unread-count';
 import { MatrixRain } from '@/components/system/matrix-rain';
 import { UserMenu } from '@/components/workspace/user-menu/user-menu';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 
 interface NavItem {
   href: string;
@@ -21,7 +22,7 @@ interface WorkspaceSidebarProps {
 }
 
 export function WorkspaceSidebar({ slug, workspaceName }: WorkspaceSidebarProps) {
-  const { unreadCount } = useNotifications();
+  const { count: unreadCount } = useUnreadCount();
   const pathname = usePathname();
   const t = useTranslations('nav');
 
@@ -39,11 +40,12 @@ export function WorkspaceSidebar({ slug, workspaceName }: WorkspaceSidebarProps)
         aria-label={t('workspaceAriaLabel')}
         className="flex h-full w-[280px] shrink-0 flex-col border-r border-border bg-card"
       >
-        {/* Workspace name */}
-        <div className="flex h-14 items-center border-b border-border px-4">
+        {/* Workspace name + NotificationBell */}
+        <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <span className="truncate text-body font-semibold text-foreground">
             {workspaceName ?? slug}
           </span>
+          <NotificationBell slug={slug} />
         </div>
 
         {/* Nav items */}
