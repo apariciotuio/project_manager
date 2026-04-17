@@ -548,3 +548,10 @@ When you start implementation, in this order:
 ## Revision history
 
 - 2026-04-14: initial draft after full planning round (32 resolved decisions + 18 EPs enriched)
+- 2026-04-16: EP-03 Phase 7 verified + Phase 8 security review; EP-04 Phase 1-5 + controllers
+- 2026-04-16: EP-05..EP-17 baseline backend (migrations + domain + repos + services + controllers)
+- 2026-04-17: EP-05..EP-17 full service layer (parallel agents); all ORM models; 1052 backend tests
+- 2026-04-17: Frontend complete (workspace layout, items list, item detail 5-tab, create, inbox, teams, admin); 298 frontend tests
+- 2026-04-17: EP-18 MCP server skeleton (15 tools, stdio+SSE)
+- 2026-04-17: Workspace flow fix (GET /workspaces/mine endpoint, JWT refresh, middleware, hydration)
+- 2026-04-17: Dev seed script (8 work items + tags + team + tasks)

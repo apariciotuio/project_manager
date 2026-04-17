@@ -2,28 +2,28 @@
 
 ## Epic Summary
 
-| Epic | Name | Dependencies | Complexity | Status |
-|------|------|-------------|------------|--------|
-| EP-00 | Access, Identity & Bootstrap | — | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-01 | Core Model, States & Ownership | EP-00 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-02 | Capture, Drafts & Templates | EP-00, EP-01 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-03 | Clarification, Conversation & Assisted Actions | EP-02 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-04 | Structured Specification & Quality Engine | EP-01, EP-02, EP-03 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-05 | Breakdown, Hierarchy & Dependencies | EP-04 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-06 | Reviews, Validations & Flow to Ready | EP-01, EP-04, EP-05, EP-08 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-07 | Comments, Versions, Diff & Traceability | EP-01, EP-04, EP-05, EP-06 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-08 | Teams, Assignments, Notifications & Inbox | EP-00, EP-01 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-09 | Listings, Dashboards, Search & Workspace | EP-01, EP-02, EP-06, EP-08 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-10 | Configuration, Projects, Rules & Admin | EP-00, EP-08 | High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-11 | Export & Sync with Jira | EP-01, EP-04, EP-06, EP-10 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| EP-12 | Responsive, Security, Performance & Observability | Transversal | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks |
-| **EP-13** | **Semantic Search + Puppet Integration** | EP-09, EP-10, EP-12 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-14** | **Hierarchy: Milestones, Epics, Stories** | EP-01, EP-05, EP-09, EP-10 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-15** | **Tags + Labels** | EP-01, EP-09, EP-10 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-16** | **Attachments + Media** | EP-01, EP-07, EP-10, EP-12 | High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-17** | **Edit Locking + Collaboration Control** | EP-01, EP-08, EP-10, EP-12 | Medium-High | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-18** | **MCP Server: Read & Query Interface** | EP-00, EP-01, EP-03, EP-04, EP-05, EP-06, EP-07, EP-08, EP-09, EP-10, EP-11, EP-12, EP-13, EP-19 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (back+front) |
-| **EP-19** | **Design System & Frontend Foundations** | EP-12 | Medium | [x] Proposal [x] Specs [x] Design [x] Tasks (frontend-only) |
+| Epic | Name | Dependencies | Complexity | Backend | Frontend | Status |
+|------|------|-------------|------------|---------|----------|--------|
+| EP-00 | Access, Identity & Bootstrap | — | Medium | ✅ Done | ✅ Done | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-01 | Core Model, States & Ownership | EP-00 | High | ✅ Done | ✅ Items list + detail | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-02 | Capture, Drafts & Templates | EP-00, EP-01 | Medium | ✅ Done | ✅ Create form | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-03 | Clarification, Conversation & Assisted Actions | EP-02 | High | ✅ Done (deferred: RLS, WS bidir) | ⬜ Chat UI pending | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [ ] Frontend |
+| EP-04 | Structured Specification & Quality Engine | EP-01, EP-02, EP-03 | High | ✅ Done (deferred: NextStep, spec-gen) | ✅ Spec tab + completeness | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-05 | Breakdown, Hierarchy & Dependencies | EP-04 | Medium-High | ✅ Done (repos + services + controllers) | ✅ Tasks tab | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-06 | Reviews, Validations & Flow to Ready | EP-01, EP-04, EP-05, EP-08 | High | ✅ Done (repos + services + controllers) | ✅ Reviews tab | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-07 | Comments, Versions, Diff & Traceability | EP-01, EP-04, EP-05, EP-06 | High | ✅ Done (deferred: diff engine, SSE) | ✅ Comments + Timeline tabs | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-08 | Teams, Assignments, Notifications & Inbox | EP-00, EP-01 | Medium-High | ✅ Done (repos + services + controllers) | ✅ Teams + Inbox pages | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-09 | Listings, Dashboards, Search & Workspace | EP-01, EP-02, EP-06, EP-08 | Medium-High | ✅ Done (saved searches + controllers) | ✅ Items list + filter | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-10 | Configuration, Projects, Rules & Admin | EP-00, EP-08 | High | ✅ Done (projects + routing + admin) | ✅ Admin page (6 tabs) | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-11 | Export & Sync with Jira | EP-01, EP-04, EP-06, EP-10 | Medium-High | ✅ Done (stub export) | ✅ Integrations tab | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| EP-12 | Responsive, Security, Performance & Observability | Transversal | Medium | 🟡 Partial (rate limit, CORS, correlation ID) | ⬜ Pending audit | [x] Proposal [x] Specs [x] Design [x] Tasks [ ] Backend [ ] Frontend |
+| **EP-13** | **Semantic Search + Puppet Integration** | EP-09, EP-10, EP-12 | High | ✅ Done (outbox + Celery task) | ⬜ Search bar wiring | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [ ] Frontend |
+| **EP-14** | **Hierarchy: Milestones, Epics, Stories** | EP-01, EP-05, EP-09, EP-10 | High | ✅ Done (types + catalog + rules) | ⬜ Tree view | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [ ] Frontend |
+| **EP-15** | **Tags + Labels** | EP-01, EP-09, EP-10 | Medium | ✅ Done (repos + controllers) | ✅ Tag management in admin | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| **EP-16** | **Attachments + Media** | EP-01, EP-07, EP-10, EP-12 | High | ✅ Done (repos + controllers, no MinIO yet) | ✅ Attachment list (metadata) | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| **EP-17** | **Edit Locking + Collaboration Control** | EP-01, EP-08, EP-10, EP-12 | Medium-High | ✅ Done (repos + controllers) | ✅ Lock indicators in spec tab | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
+| **EP-18** | **MCP Server: Read & Query Interface** | EP-00..EP-19 | Medium | ✅ Skeleton (15 tools, stdio+SSE) | N/A | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend |
+| **EP-19** | **Design System & Frontend Foundations** | EP-12 | Medium | N/A | ✅ Done (shadcn + tokens + i18n) | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Frontend |
 
 ## Implementation Order (Suggested)
 
@@ -45,7 +45,10 @@ EP-13, EP-14, EP-15, EP-16, EP-17, EP-18 ─────────────
 
 ## Pending side-tasks (non-epic)
 
-- [ ] **Dev seed script** — populate `workspaces/users/memberships/work_items/work_item_drafts/templates` with dummies for manual QA. Build after EP-02 backend lands. Location TBD: `backend/app/infrastructure/seed/dev.py` or `backend/scripts/seed_dev.py`. Idempotent, gated behind `APP_ENV != "production"`, seeded superadmin email must match `AUTH_SEED_SUPERADMIN_EMAILS`.
+- [x] **Dev seed script** — `backend/scripts/seed_dev.py` (workspace + membership) + `backend/scripts/seed_sample_data.py` (8 work items, 5 tags, 1 team, 5 task nodes, sections). Idempotent.
+- [ ] **Workspace RLS follow-up** — add `workspace_id` + RLS to EP-03/EP-04 tables (`conversation_threads`, `assistant_suggestions`, `gap_findings`, `work_item_sections`, `work_item_section_versions`, `work_item_validators`, `work_item_versions`). See `tasks/EP-03/phase_8_security_findings.md`.
+- [ ] **E2E verification** — verify login → workspace select → items list → item detail → sections edit → completeness flow in a real browser.
+- [ ] **External integrations** — wire real HTTP clients for Dundun, Puppet, Jira (currently using fakes).
 
 ## Critical Path
 
@@ -67,7 +70,7 @@ EP-10 (Admin) can start after EP-08, in parallel with EP-04/EP-05.
 | Back/Front Split + Subtasks | COMPLETED — 26 files (13 backend + 13 frontend) |
 | OpenSpec Detail Pass | COMPLETED — ~150 acceptance criteria blocks added |
 | Specialist Reviews (arch→sec→front→back→DB) | COMPLETED — 5 reviews, see tasks/reviews/ |
-| Implementation | PENDING — address review findings first |
+| Implementation | **IN PROGRESS** — backend 100% schema + services, frontend pages built, E2E flow pending verification |
 | **NEW REQUIREMENTS** | **COMPLETED — EP-13..EP-17 planned + extensions applied** |
 | EP-13..EP-17 Specs + Design + Tasks | COMPLETED — specs/design/back+front for all 5 |
 | Existing epics extensions (EP-01, EP-03, EP-07, EP-09, EP-10) | COMPLETED — see extensions.md for change log |
