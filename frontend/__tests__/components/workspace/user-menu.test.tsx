@@ -35,6 +35,12 @@ vi.mock('@/components/system/matrix-entry-cascade/matrix-entry-cascade', () => (
     active ? <div data-testid="cascade-active" /> : null,
 }));
 
+// next-intl mock — returns the key so tests assert against translation keys
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 // Import AFTER mocks
 import { UserMenu } from '@/components/workspace/user-menu/user-menu';
 
@@ -50,7 +56,8 @@ beforeEach(() => {
 });
 
 async function openMenu() {
-  const trigger = screen.getByRole('button', { name: /abrir menú de usuario/i });
+  // triggerAria key → 'userMenu.triggerAria'
+  const trigger = screen.getByRole('button', { name: /userMenu\.triggerAria/i });
   await userEvent.click(trigger);
 }
 
@@ -76,76 +83,77 @@ describe('UserMenu — sidebar identity', () => {
 });
 
 describe('UserMenu — trigger', () => {
-  it('renders an avatar button with a Spanish aria-label', () => {
+  it('renders an avatar button with a translated aria-label key', () => {
     render(<UserMenu />);
     expect(
-      screen.getByRole('button', { name: /abrir menú de usuario/i }),
+      screen.getByRole('button', { name: /userMenu\.triggerAria/i }),
     ).toBeInTheDocument();
   });
 
   it('trigger has aria-haspopup="menu"', () => {
     render(<UserMenu />);
     expect(
-      screen.getByRole('button', { name: /abrir menú de usuario/i }),
+      screen.getByRole('button', { name: /userMenu\.triggerAria/i }),
     ).toHaveAttribute('aria-haspopup', 'menu');
   });
 });
 
-describe('UserMenu — theme segment (Claro / Oscuro / Píldora)', () => {
-  it('renders three radio options with icon labels', async () => {
+describe('UserMenu — theme segment (light / dark / matrix)', () => {
+  it('renders three radio options with translated labels', async () => {
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByRole('radio', { name: /claro/i })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /oscuro/i })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /píldora/i })).toBeInTheDocument();
+    // Labels come from theme.switcher.light, theme.switcher.dark, theme.redPill.label
+    expect(screen.getByRole('radio', { name: /theme\.switcher\.light/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /theme\.switcher\.dark/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /theme\.redPill\.label/i })).toBeInTheDocument();
   });
 
   it('active theme (light) radio has aria-checked="true"', async () => {
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByRole('radio', { name: /claro/i })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: /theme\.switcher\.light/i })).toHaveAttribute(
       'aria-checked',
       'true',
     );
   });
 
-  it('active theme (matrix) is reflected on Píldora', async () => {
+  it('active theme (matrix) is reflected on the matrix radio', async () => {
     mockTheme = 'matrix';
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByRole('radio', { name: /píldora/i })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: /theme\.redPill\.label/i })).toHaveAttribute(
       'aria-checked',
       'true',
     );
   });
 
-  it('clicking Oscuro calls setTheme("dark") and persists previous', async () => {
+  it('clicking dark radio calls setTheme("dark") and persists previous', async () => {
     const { setPreviousTheme } = await import('@/lib/theme/trinity');
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('radio', { name: /oscuro/i }));
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.switcher\.dark/i }));
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
     expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('dark');
   });
 
-  it('clicking Píldora from light calls setTheme("matrix") and fires cascade', async () => {
+  it('clicking matrix radio from light calls setTheme("matrix") and fires cascade', async () => {
     const { setPreviousTheme } = await import('@/lib/theme/trinity');
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('radio', { name: /píldora/i }));
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.redPill\.label/i }));
     expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('light');
     expect(mockSetTheme).toHaveBeenCalledWith('matrix');
     expect(screen.getByTestId('cascade-active')).toBeInTheDocument();
   });
 
-  it('clicking Claro from matrix exits without firing cascade', async () => {
+  it('clicking light radio from matrix exits without firing cascade', async () => {
     mockTheme = 'matrix';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('radio', { name: /claro/i }));
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.switcher\.light/i }));
     expect(mockSetTheme).toHaveBeenCalledWith('light');
     expect(screen.queryByTestId('cascade-active')).toBeNull();
   });
@@ -154,7 +162,7 @@ describe('UserMenu — theme segment (Claro / Oscuro / Píldora)', () => {
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('radio', { name: /claro/i }));
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.switcher\.light/i }));
     expect(mockSetTheme).not.toHaveBeenCalled();
   });
 });
@@ -169,7 +177,7 @@ describe('UserMenu — language toggle', () => {
   it('clicking the language button toggles ES → EN, writes cookie, reloads', async () => {
     render(<UserMenu />);
     await openMenu();
-    const localeBtn = screen.getByRole('button', { name: /idioma actual/i });
+    const localeBtn = screen.getByRole('button', { name: /userMenu\.localeAriaLabel/i });
     await userEvent.click(localeBtn);
     expect(document.cookie).toContain('tuio-locale=en');
     expect(window.location.reload).toHaveBeenCalledOnce();
@@ -193,18 +201,18 @@ describe('UserMenu — no settings placeholder', () => {
 });
 
 describe('UserMenu — Sign out', () => {
-  it('renders a Cerrar sesión menuitem', async () => {
+  it('renders a sign-out menu item with translated key', async () => {
     render(<UserMenu />);
     await openMenu();
     expect(
-      screen.getByRole('menuitem', { name: /cerrar sesión/i }),
+      screen.getByRole('menuitem', { name: /userMenu\.signOut/i }),
     ).toBeInTheDocument();
   });
 
-  it('clicking Cerrar sesión calls logout()', async () => {
+  it('clicking sign-out calls logout()', async () => {
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('menuitem', { name: /cerrar sesión/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /userMenu\.signOut/i }));
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
   });
 });

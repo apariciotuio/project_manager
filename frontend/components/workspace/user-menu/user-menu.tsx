@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { LogOut, Sun, Moon, Pill, Languages } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/app/providers/auth-provider';
 import { UserAvatar } from '@/components/domain/user-avatar';
@@ -21,32 +22,32 @@ type LocaleChoice = 'es' | 'en';
 
 const LOCALE_COOKIE = 'tuio-locale';
 
-interface ThemeOption {
+interface ThemeOptionConfig {
   key: ThemeChoice;
-  label: string;
+  themeKey: 'light' | 'dark' | 'switcher';
   Icon: typeof Sun;
   ringClass: string;
   iconClass: string;
 }
 
-const THEME_OPTIONS: ReadonlyArray<ThemeOption> = [
+const THEME_OPTION_CONFIGS: ReadonlyArray<ThemeOptionConfig> = [
   {
     key: 'light',
-    label: 'Claro',
+    themeKey: 'light',
     Icon: Sun,
     ringClass: 'data-[active=true]:bg-amber-100 data-[active=true]:text-amber-700 data-[active=true]:ring-amber-400/60',
     iconClass: 'text-amber-500',
   },
   {
     key: 'dark',
-    label: 'Oscuro',
+    themeKey: 'dark',
     Icon: Moon,
     ringClass: 'data-[active=true]:bg-indigo-950/70 data-[active=true]:text-indigo-200 data-[active=true]:ring-indigo-400/60',
     iconClass: 'text-indigo-400',
   },
   {
     key: 'matrix',
-    label: 'Píldora',
+    themeKey: 'switcher',
     Icon: Pill,
     ringClass: 'data-[active=true]:bg-emerald-950/70 data-[active=true]:text-emerald-200 data-[active=true]:ring-emerald-400/70',
     iconClass: 'text-emerald-500',
@@ -73,6 +74,9 @@ export function UserMenu() {
   const [cascadeActive, setCascadeActive] = useState(false);
   const [locale, setLocale] = useState<LocaleChoice>('es');
 
+  const t = useTranslations('userMenu');
+  const tTheme = useTranslations('theme');
+
   useEffect(() => {
     setMounted(true);
     setLocale(readLocaleCookie());
@@ -85,6 +89,12 @@ export function UserMenu() {
         ? 'dark'
         : 'light'
     : null;
+
+  function getThemeLabel(key: ThemeChoice): string {
+    if (key === 'light') return tTheme('switcher.light');
+    if (key === 'dark') return tTheme('switcher.dark');
+    return tTheme('redPill.label');
+  }
 
   function handleThemeChange(next: ThemeChoice) {
     if (!mounted || next === currentTheme) return;
@@ -109,6 +119,9 @@ export function UserMenu() {
     window.location.reload();
   }
 
+  const nextLocale = locale === 'es' ? 'English' : 'Español';
+  const currentLocaleLabel = locale === 'es' ? 'Español' : 'English';
+
   return (
     <>
       <MatrixEntryCascade
@@ -120,7 +133,7 @@ export function UserMenu() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label="Abrir menú de usuario"
+              aria-label={t('triggerAria')}
               aria-haspopup="menu"
               className={cn(
                 'flex shrink-0 items-center rounded-full',
@@ -145,11 +158,12 @@ export function UserMenu() {
             <div className="flex items-center gap-1 px-1.5 py-1.5">
               <div
                 role="radiogroup"
-                aria-label="Tema"
+                aria-label={t('themeAriaGroup')}
                 className="flex flex-1 items-center gap-1"
               >
-                {THEME_OPTIONS.map(({ key, label, Icon, ringClass, iconClass }) => {
+                {THEME_OPTION_CONFIGS.map(({ key, Icon, ringClass, iconClass }) => {
                   const isActive = currentTheme === key;
+                  const label = getThemeLabel(key);
                   return (
                     <button
                       key={key}
@@ -176,8 +190,8 @@ export function UserMenu() {
 
               <button
                 type="button"
-                aria-label={`Idioma actual: ${locale === 'es' ? 'Español' : 'English'}. Cambiar.`}
-                title={locale === 'es' ? 'Cambiar a English' : 'Cambiar a Español'}
+                aria-label={t('localeAriaLabel', { locale: currentLocaleLabel })}
+                title={t('localeTitle', { locale: nextLocale })}
                 onClick={handleLocaleToggle}
                 className={cn(
                   'ml-1 flex h-9 items-center gap-1.5 rounded-md px-2 transition-colors',
@@ -197,7 +211,7 @@ export function UserMenu() {
               className="flex items-center gap-2 text-destructive focus:text-destructive"
             >
               <LogOut className="h-4 w-4" aria-hidden />
-              Cerrar sesión
+              {t('signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

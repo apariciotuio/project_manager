@@ -71,15 +71,16 @@ describe('WorkspaceLayout', () => {
     expect(screen.getByRole('img', { name: /ada lovelace/i })).toBeInTheDocument();
   });
 
-  it('calls logout when Cerrar sesión is selected from user menu', async () => {
+  it('calls logout when sign-out is selected from user menu', async () => {
     render(
       <WorkspaceLayout params={{ slug: 'acme' }}>
         <div>content</div>
       </WorkspaceLayout>,
     );
-    const menuTrigger = screen.getByRole('button', { name: /abrir menú de usuario/i });
+    // next-intl mock returns key as-is: t('triggerAria') → 'triggerAria'
+    const menuTrigger = screen.getByRole('button', { name: /triggerAria/i });
     await userEvent.click(menuTrigger);
-    const signOutItem = screen.getByRole('menuitem', { name: /cerrar sesión/i });
+    const signOutItem = screen.getByRole('menuitem', { name: /signOut/i });
     await userEvent.click(signOutItem);
     expect(mockLogout).toHaveBeenCalledOnce();
   });
