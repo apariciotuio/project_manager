@@ -44,6 +44,7 @@ from app.presentation.controllers.workspace_controller import (
     router as workspace_router,
 )
 from app.presentation.middleware.correlation_id import CorrelationIDMiddleware
+from app.presentation.middleware.error_envelope import register_domain_error_handler
 from app.presentation.middleware.error_middleware import register_error_handlers
 from app.presentation.rate_limit import build_limiter
 
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)  # type: ignore[arg-type]
     register_error_handlers(app)
+    register_domain_error_handler(app)
 
     app.add_middleware(CorrelationIDMiddleware)
     cors_origins = settings.app.cors_allowed_origins

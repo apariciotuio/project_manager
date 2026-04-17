@@ -19,8 +19,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.errors.codes import TagNameTakenError
 from app.domain.models.tag import Tag, TagArchivedError, WorkItemTag
 from app.infrastructure.persistence.tag_repository_impl import (
     TagRepositoryImpl,
@@ -97,7 +99,10 @@ async def create_tag(
         color=body.color,
     )
     repo = TagRepositoryImpl(session)
-    saved = await repo.create(tag)
+    try:
+        saved = await repo.create(tag)
+    except IntegrityError as exc:
+        raise TagNameTakenError(body.name) from exc
     return _ok(_tag_payload(saved), "tag created")
 
 
