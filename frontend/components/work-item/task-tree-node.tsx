@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { useTaskMutations } from '@/hooks/work-item/use-task-mutations';
 import { TaskTreeAddDialog } from '@/components/work-item/task-tree-add-dialog';
@@ -28,6 +29,10 @@ interface TaskTreeNodeProps {
   edges: TaskEdge[];
   workItemId: string;
   onRefetch: () => void;
+  /** Set by parent DnD context while a mutation is in flight */
+  isDragDisabled?: boolean;
+  /** Set by parent DnD context when this node is the active drop target */
+  isDropTarget?: boolean;
 }
 
 export function TaskTreeNode({
@@ -38,6 +43,8 @@ export function TaskTreeNode({
   edges,
   workItemId,
   onRefetch,
+  isDragDisabled = false,
+  isDropTarget = false,
 }: TaskTreeNodeProps) {
   const t = useTranslations('workspace.itemDetail.tasks');
   const [expanded, setExpanded] = useState(true);
@@ -48,6 +55,22 @@ export function TaskTreeNode({
 
   const { renameTask, setStatus } = useTaskMutations(onRefetch);
 
+  // ---- dnd-kit hooks -------------------------------------------------------
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+  } = useDraggable({
+    id: node.id,
+    disabled: isDragDisabled,
+  });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: node.id,
+    disabled: isDragDisabled,
+  });
+
   const hasChildren = children.length > 0;
 
   const handleToggle = useCallback(() => {
@@ -57,7 +80,6 @@ export function TaskTreeNode({
   const handleTitleClick = useCallback(() => {
     setRenaming(true);
     setRenameValue(node.title);
-    // Focus input on next tick
     setTimeout(() => inputRef.current?.focus(), 0);
   }, [node.title]);
 
@@ -94,12 +116,54 @@ export function TaskTreeNode({
     }
   }, [node.id, node.status, setStatus]);
 
+  // Combine drag + drop refs on the row
+  const setRowRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      setDragRef(el);
+      setDropRef(el);
+    },
+    [setDragRef, setDropRef],
+  );
+
   return (
     <li>
       <div
-        className="flex items-center gap-2 py-1.5 rounded hover:bg-muted/50 px-2 group"
+        ref={setRowRef}
+        className={cn(
+          'flex items-center gap-2 py-1.5 rounded px-2 group transition-colors',
+          'hover:bg-muted/50',
+          (isOver || isDropTarget) && 'bg-primary/10 ring-1 ring-primary/40',
+          isDragging && 'opacity-40',
+        )}
         style={{ paddingLeft: `${depth * DEPTH_PX + 8}px` }}
+        data-drag-id={node.id}
+        data-drop-target={isOver || isDropTarget ? 'true' : undefined}
+        aria-describedby={`drag-desc-${node.id}`}
       >
+        {/* Visually hidden drag state description for screen readers */}
+        <span id={`drag-desc-${node.id}`} className="sr-only">
+          {isDragging
+            ? t('dnd.dragging')
+            : t('dnd.dragInstructions')}
+        </span>
+
+        {/* Drag handle */}
+        <button
+          type="button"
+          aria-label={t('dnd.dragHandle')}
+          className={cn(
+            'shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+            'p-0.5 rounded cursor-grab active:cursor-grabbing',
+            'text-muted-foreground hover:text-foreground',
+            isDragDisabled && 'cursor-not-allowed opacity-30',
+          )}
+          data-testid="drag-handle"
+          {...listeners}
+          {...attributes}
+        >
+          <GripVertical className="h-3.5 w-3.5" aria-hidden />
+        </button>
+
         {/* Expand/collapse toggle */}
         <button
           onClick={handleToggle}
@@ -180,6 +244,8 @@ export function TaskTreeNode({
                 edges={edges}
                 workItemId={workItemId}
                 onRefetch={onRefetch}
+                isDragDisabled={isDragDisabled}
+                isDropTarget={isDropTarget}
               />
             ))}
         </ul>

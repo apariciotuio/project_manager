@@ -389,7 +389,14 @@
         "dependencyRemove": "Remove",
         "dependencyTargetLabel": "Blocks task",
         "dependencyTargetPlaceholder": "Select a task…",
-        "dependencyNone": "No dependencies yet"
+        "dependencyNone": "No dependencies yet",
+        "dnd": {
+          "dragHandle": "Drag to reparent",
+          "dragging": "Dragging — release to drop",
+          "dragInstructions": "Press Space to pick up, arrow keys to move, Space to drop",
+          "cycleError": "Cannot move a parent under its own descendant",
+          "genericError": "Failed to move task — please try again"
+        }
       },
       "breadcrumb": {
         "parentAria": "Go to parent item",

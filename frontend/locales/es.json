@@ -389,7 +389,14 @@
         "dependencyRemove": "Eliminar",
         "dependencyTargetLabel": "Bloquea tarea",
         "dependencyTargetPlaceholder": "Seleccionar tarea…",
-        "dependencyNone": "Sin dependencias"
+        "dependencyNone": "Sin dependencias",
+        "dnd": {
+          "dragHandle": "Arrastrar para mover",
+          "dragging": "Arrastrando — suelta para soltar",
+          "dragInstructions": "Pulsa Espacio para coger, flechas para mover, Espacio para soltar",
+          "cycleError": "No se puede mover un padre bajo su propio descendiente",
+          "genericError": "Error al mover la tarea — inténtalo de nuevo"
+        }
       },
       "breadcrumb": {
         "parentAria": "Ir al elemento padre",
