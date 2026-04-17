@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from app.application.services.dependency_service import (
     DependencyCycleError,
+    DependencyNotFoundError,
     DependencyService,
 )
 from app.application.services.task_service import (
@@ -62,6 +63,23 @@ class MoveTaskRequest(BaseModel):
 
 class AddDependencyRequest(BaseModel):
     target_id: UUID
+
+
+class SplitTaskRequest(BaseModel):
+    title_a: str
+    title_b: str
+    description_a: str = ""
+    description_b: str = ""
+
+
+class MergeTaskRequest(BaseModel):
+    source_ids: list[UUID]
+    title: str
+    description: str = ""
+
+
+class ReorderTaskRequest(BaseModel):
+    ordered_ids: list[UUID]
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +261,109 @@ async def reopen_task(
     return _ok(_node_payload(node))
 
 
+@router.post("/tasks/{node_id}/split", status_code=http_status.HTTP_201_CREATED)
+async def split_task(
+    node_id: UUID,
+    body: SplitTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        a, b = await service.split(
+            task_id=node_id,
+            title_a=body.title_a,
+            title_b=body.title_b,
+            description_a=body.description_a,
+            description_b=body.description_b,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok({"a": _node_payload(a), "b": _node_payload(b)})
+
+
+@router.post(
+    "/work-items/{work_item_id}/tasks/merge",
+    status_code=http_status.HTTP_201_CREATED,
+)
+async def merge_tasks(
+    work_item_id: UUID,
+    body: MergeTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        merged = await service.merge(
+            source_ids=body.source_ids,
+            title=body.title,
+            description=body.description,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(merged))
+
+
+@router.patch("/work-items/{work_item_id}/tasks/reorder")
+async def reorder_tasks(
+    work_item_id: UUID,
+    body: ReorderTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    try:
+        nodes = await service.reorder(
+            work_item_id=work_item_id,
+            ordered_ids=body.ordered_ids,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "INVALID_TASK_IDS", "message": str(exc), "details": {}}},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok({"ordered_ids": [str(n.id) for n in nodes]})
+
+
+@router.get("/work-items/{work_item_id}/tasks/blocked")
+async def get_blocked_tasks(
+    work_item_id: UUID,
+    _: CurrentUser = Depends(get_current_user),
+    dep_service: DependencyService = Depends(get_dependency_service),
+) -> dict[str, Any]:
+    blocked = await dep_service.get_blocked_tasks(work_item_id)
+    return _ok([
+        {
+            "id": str(item["id"]),
+            "title": item["title"],
+            "status": item["status"],
+            "blocked_by": [str(b) for b in item["blocked_by"]],
+        }
+        for item in blocked
+    ])
+
+
 @router.post("/tasks/{node_id}/dependencies", status_code=http_status.HTTP_201_CREATED)
 async def add_dependency(
     node_id: UUID,
@@ -289,4 +410,10 @@ async def remove_dependency(
     _: CurrentUser = Depends(get_current_user),
     dep_service: DependencyService = Depends(get_dependency_service),
 ) -> None:
-    await dep_service.remove(dep_id)
+    try:
+        await dep_service.remove(dep_id)
+    except DependencyNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
