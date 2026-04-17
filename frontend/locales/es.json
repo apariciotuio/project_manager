@@ -104,6 +104,26 @@
     }
   },
   "workspace": {
+    "inbox": {
+      "title": "Bandeja de entrada",
+      "empty": "Todo al día",
+      "onlyUnread": "Solo no leídas",
+      "markAllRead": "Marcar todo como leído",
+      "errorBanner": "Error al cargar la bandeja",
+      "retry": "Reintentar",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "pageOf": "Página {page} de {total}",
+      "loadError": "Error al cargar notificaciones"
+    },
+    "notificationBell": {
+      "ariaLabel": "Notificaciones",
+      "popoverLabel": "Panel de notificaciones",
+      "title": "Notificaciones",
+      "viewAll": "Ver todas",
+      "empty": "Todo al día",
+      "loadError": "Error al cargar"
+    },
     "items": {
       "title": "Elementos de trabajo",
       "newButton": "Nuevo elemento",
@@ -346,6 +366,31 @@
           "open_clarification": "Abrir clarificación",
           "open_breakdown": "Abrir sub-elementos"
         }
+      },
+      "tasks": {
+        "empty": "Sin sub-tareas aún",
+        "addRoot": "Añadir tarea",
+        "addChild": "Añadir sub-tarea",
+        "rename": "Renombrar",
+        "renameCancel": "Cancelar",
+        "renameConfirm": "Renombrar",
+        "statusDraft": "Borrador",
+        "statusInProgress": "En progreso",
+        "statusDone": "Hecho",
+        "expand": "Expandir",
+        "collapse": "Contraer",
+        "dialogTitle": "Añadir tarea",
+        "dialogParentLabel": "Tarea padre (opcional)",
+        "dialogTitleLabel": "Nombre de la tarea",
+        "dialogSubmit": "Añadir",
+        "dialogCancel": "Cancelar",
+        "dependencyBadgeAria": "Bloquea {count} tarea(s)",
+        "dependencyTooltipTitle": "Bloquea:"
+      },
+      "breadcrumb": {
+        "parentAria": "Ir al elemento padre",
+        "separator": "/",
+        "aria": "Navegación del elemento"
       }
     },
     "newItem": {

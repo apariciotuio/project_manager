@@ -104,6 +104,26 @@
     }
   },
   "workspace": {
+    "inbox": {
+      "title": "Inbox",
+      "empty": "You're all caught up",
+      "onlyUnread": "Unread only",
+      "markAllRead": "Mark all read",
+      "errorBanner": "Failed to load inbox",
+      "retry": "Retry",
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {total}",
+      "loadError": "Failed to load notifications"
+    },
+    "notificationBell": {
+      "ariaLabel": "Notifications",
+      "popoverLabel": "Notifications panel",
+      "title": "Notifications",
+      "viewAll": "View all",
+      "empty": "You're all caught up",
+      "loadError": "Failed to load"
+    },
     "items": {
       "title": "Work items",
       "newButton": "New item",
@@ -346,6 +366,31 @@
           "open_clarification": "Open Clarification",
           "open_breakdown": "Open Sub-items"
         }
+      },
+      "tasks": {
+        "empty": "No sub-tasks yet",
+        "addRoot": "Add task",
+        "addChild": "Add sub-task",
+        "rename": "Rename",
+        "renameCancel": "Cancel",
+        "renameConfirm": "Rename",
+        "statusDraft": "Draft",
+        "statusInProgress": "In progress",
+        "statusDone": "Done",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "dialogTitle": "Add task",
+        "dialogParentLabel": "Parent task (optional)",
+        "dialogTitleLabel": "Task title",
+        "dialogSubmit": "Add",
+        "dialogCancel": "Cancel",
+        "dependencyBadgeAria": "Blocks {count} task(s)",
+        "dependencyTooltipTitle": "Blocks:"
+      },
+      "breadcrumb": {
+        "parentAria": "Go to parent item",
+        "separator": "/",
+        "aria": "Item breadcrumb"
       }
     },
     "newItem": {
