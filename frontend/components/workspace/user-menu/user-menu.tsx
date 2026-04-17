@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/app/providers/auth-provider';
 import { UserAvatar } from '@/components/domain/user-avatar';
 import { ThemeSwitcher } from '@/components/system/theme-switcher';
+import { MatrixEntryCascade } from '@/components/system/matrix-entry-cascade/matrix-entry-cascade';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,7 @@ export function UserMenu() {
   const t = useTranslations();
   const [mounted, setMounted] = useState(false);
   const [rainEnabled, setRainEnabledState] = useState(false);
+  const [cascadeActive, setCascadeActive] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -42,11 +44,15 @@ export function UserMenu() {
   function handleMatrixToggle() {
     if (!mounted) return;
     if (isMatrix) {
+      // Exiting matrix — no cascade
+      setCascadeActive(false);
       const prev = getPreviousTheme();
       setTheme(prev);
     } else {
+      // Entering matrix — fire cascade (guard: previous theme must NOT be matrix)
       setPreviousTheme((theme ?? 'system') as 'light' | 'dark' | 'system');
       setTheme('matrix');
+      setCascadeActive(true);
     }
   }
 
@@ -68,6 +74,11 @@ export function UserMenu() {
     : t('userMenu.rainRequiresMatrix');
 
   return (
+    <>
+    <MatrixEntryCascade
+      active={cascadeActive}
+      onComplete={() => setCascadeActive(false)}
+    />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -225,5 +236,6 @@ export function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }
