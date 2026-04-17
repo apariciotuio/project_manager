@@ -142,7 +142,7 @@ async def db_session(migrated_database):
             text(
                 "TRUNCATE TABLE "
                 "section_locks, attachments, work_item_tags, tags, "
-                "puppet_sync_outbox, integration_exports, integration_configs, "
+                "puppet_ingest_requests, puppet_sync_outbox, integration_exports, integration_configs, "
                 "routing_rules, projects, saved_searches, notifications, "
                 "team_memberships, teams, timeline_events, comments, "
                 "review_responses, validation_status, review_requests, "

@@ -5,6 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
 from app.presentation.controllers.admin_controller import router as admin_router
+from app.presentation.controllers.puppet_controller import router as puppet_router
 from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
@@ -145,6 +146,8 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix="/api/v1")
     # EP-11 — integrations
     app.include_router(integration_router, prefix="/api/v1")
+    # EP-13 — Puppet ingest callback + search + admin
+    app.include_router(puppet_router, prefix="/api/v1")
 
     return app
 
