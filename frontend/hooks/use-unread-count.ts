@@ -15,18 +15,24 @@ interface UseUnreadCountResult {
   error: Error | null;
 }
 
-export function useUnreadCount(): UseUnreadCountResult {
+interface UseUnreadCountOptions {
+  paused?: boolean;
+}
+
+export function useUnreadCount(options: UseUnreadCountOptions = {}): UseUnreadCountResult {
+  const { paused = false } = options;
   const [count, setCount] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   // Trigger state used to force a re-fetch
   const [fetchTick, setFetchTick] = useState(0);
 
   const refetch = useCallback(() => {
-    setFetchTick((t) => t + 1);
-  }, []);
+    if (!paused) setFetchTick((t) => t + 1);
+  }, [paused]);
 
-  // Fetch on mount and on explicit refetch calls
+  // Fetch on mount and on explicit refetch calls (skipped when paused)
   useEffect(() => {
+    if (paused) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -45,10 +51,11 @@ export function useUnreadCount(): UseUnreadCountResult {
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchTick]);
+  }, [fetchTick, paused]);
 
-  // 30s polling — pauses when document is hidden
+  // 30s polling — pauses when document is hidden or DND is on
   useEffect(() => {
+    if (paused) return;
     const interval = setInterval(() => {
       if (!document.hidden) {
         setFetchTick((t) => t + 1);
@@ -67,7 +74,7 @@ export function useUnreadCount(): UseUnreadCountResult {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, []);
+  }, [paused]);
 
   return { count, refetch, error };
 }

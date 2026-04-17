@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,14 @@ import type { NotificationV2 } from '@/lib/types/api';
 
 const DND_KEY = 'notifications.muted';
 
+function readDnd(): boolean {
+  try {
+    return localStorage.getItem(DND_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 const MAX_PREVIEW = 10;
 
 interface NotificationBellProps {
@@ -27,12 +35,27 @@ interface NotificationBellProps {
 
 export function NotificationBell({ slug }: NotificationBellProps) {
   const t = useTranslations('workspace.notificationBell');
-  const { count, refetch: refetchCount } = useUnreadCount();
+  const [dnd, setDnd] = useState<boolean>(() => readDnd());
+  const { count, refetch: refetchCount } = useUnreadCount({ paused: dnd });
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationV2[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sheetNotification, setSheetNotification] = useState<NotificationV2 | null>(null);
+
+  function toggleDnd() {
+    const next = !dnd;
+    setDnd(next);
+    try {
+      if (next) {
+        localStorage.setItem(DND_KEY, 'true');
+      } else {
+        localStorage.removeItem(DND_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
 
   async function loadNotifications() {
     setIsLoading(true);
@@ -103,12 +126,29 @@ export function NotificationBell({ slug }: NotificationBellProps) {
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <span className="text-body-sm font-semibold">{t('title')}</span>
-          <Link
-            href={`/workspace/${slug}/inbox`}
-            className="text-body-sm text-primary hover:underline"
-          >
-            {t('viewAll')}
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              data-testid="dnd-toggle"
+              data-dnd-active={dnd ? 'true' : 'false'}
+              onClick={toggleDnd}
+              aria-pressed={dnd}
+              aria-label={dnd ? t('dndOff') : t('dnd')}
+              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+              title={dnd ? t('dndOff') : t('dnd')}
+            >
+              {dnd ? (
+                <BellOff className="h-4 w-4 text-destructive" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
+            </button>
+            <Link
+              href={`/workspace/${slug}/inbox`}
+              className="text-body-sm text-primary hover:underline"
+            >
+              {t('viewAll')}
+            </Link>
+          </div>
         </div>
 
         <div className="max-h-80 overflow-y-auto py-1">
