@@ -7,6 +7,7 @@ Each request gets its own AsyncSession; services built on top of it are request-
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, Request
@@ -102,7 +103,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
             raise
 
 
-def get_jwt_adapter() -> JwtAdapter:
+@lru_cache(maxsize=1)
+def _cached_jwt_adapter() -> JwtAdapter:
     settings = get_settings()
     return JwtAdapter(
         secret=settings.auth.jwt_secret,
@@ -110,6 +112,16 @@ def get_jwt_adapter() -> JwtAdapter:
         issuer=settings.auth.jwt_issuer,
         audience=settings.auth.jwt_audience,
     )
+
+
+def get_jwt_adapter() -> JwtAdapter:
+    """Return a process-wide shared JwtAdapter.
+
+    JwtAdapter is stateless after construction (secret + algorithm pinned);
+    sharing avoids per-request re-instantiation, which mattered most on the
+    WS endpoint where the adapter was being constructed inside the handler.
+    """
+    return _cached_jwt_adapter()
 
 
 def get_google_oauth_adapter() -> GoogleOAuthAdapter:

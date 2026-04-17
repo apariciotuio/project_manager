@@ -24,7 +24,6 @@ from app.application.services.conversation_service import (
     ConversationService,
     ThreadNotFoundError,
 )
-from app.config.settings import get_settings
 from app.infrastructure.adapters.jwt_adapter import (
     JwtAdapter,
     TokenExpiredError,
@@ -34,6 +33,7 @@ from app.presentation.dependencies import (
     get_conversation_service,
     get_current_user,
     get_dundun_client,
+    get_jwt_adapter,
     get_thread_repo_for_ws,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
@@ -138,19 +138,14 @@ async def archive_thread(
 # ---------------------------------------------------------------------------
 
 
-async def _authenticate_ws(token: str | None) -> CurrentUser | None:
+async def _authenticate_ws(
+    token: str | None, jwt_adapter: JwtAdapter
+) -> CurrentUser | None:
     """Validate JWT from WS query param. Returns CurrentUser or None."""
     if not token:
         return None
 
     try:
-        settings = get_settings()
-        jwt_adapter = JwtAdapter(
-            secret=settings.auth.jwt_secret,
-            algorithm=settings.auth.jwt_algorithm,
-            issuer=settings.auth.jwt_issuer,
-            audience=settings.auth.jwt_audience,
-        )
         claims = jwt_adapter.decode(token)
         workspace_id = (
             UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
@@ -170,10 +165,11 @@ async def conversation_ws(
     websocket: WebSocket,
     thread_id: UUID,
     token: str | None = Query(default=None),
+    jwt_adapter: JwtAdapter = Depends(get_jwt_adapter),
 ) -> None:
     """Bidirectional WebSocket proxy between the FE and Dundun /ws/chat."""
     # 1. Authenticate
-    user = await _authenticate_ws(token)
+    user = await _authenticate_ws(token, jwt_adapter)
     if user is None:
         await websocket.close(code=4401)
         return
