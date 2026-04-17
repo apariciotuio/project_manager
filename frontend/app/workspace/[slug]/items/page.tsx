@@ -9,9 +9,10 @@ import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
 import { WorkItemList } from '@/components/work-item/work-item-list';
+import { SearchBar } from '@/components/search/search-bar';
 import { useTranslations } from 'next-intl';
 import { PageContainer } from '@/components/layout/page-container';
-import type { WorkItemState, WorkItemType, Priority } from '@/lib/types/work-item';
+import type { WorkItemState, WorkItemType, Priority, WorkItemResponse } from '@/lib/types/work-item';
 
 const PAGE_SIZE = 20;
 
@@ -138,6 +139,10 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
     setPage(1);
   };
 
+  // ─── Search state ─────────────────────────────────────────────────────────────
+  const [searchResults, setSearchResults] = useState<WorkItemResponse[] | null>(null);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+
   const projectId = user?.workspace_id ?? null;
 
   const { items, total, isLoading, error } = useWorkItems(
@@ -156,6 +161,9 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // When search is active, display search results instead of filtered list
+  const displayItems = isSearchActive ? (searchResults ?? []) : items;
+
   return (
     <PageContainer variant="wide" className="flex flex-col gap-6">
       {/* Header */}
@@ -171,8 +179,15 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
         </Button>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3">
+      {/* Search bar */}
+      <SearchBar
+        slug={slug}
+        onResults={setSearchResults}
+        onSearchActiveChange={setIsSearchActive}
+      />
+
+      {/* Filter bar — hidden when search is active */}
+      <div className={`flex flex-wrap items-end gap-3 ${isSearchActive ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* State filter */}
         <div className="flex flex-col gap-1">
           <label htmlFor="filter-state" className="text-body-sm text-muted-foreground sr-only">
@@ -289,15 +304,15 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
 
       {/* Content */}
       <WorkItemList
-        items={items}
+        items={displayItems}
         slug={slug}
-        isLoading={isLoading}
-        error={error && !isSessionExpired(error) ? error : null}
+        isLoading={isLoading && !isSearchActive}
+        error={!isSearchActive && error && !isSessionExpired(error) ? error : null}
         emptyState={<EmptyState slug={slug} tItems={tItems} />}
       />
 
-      {/* Pagination */}
-      {!isLoading && !error && items.length > 0 && (
+      {/* Pagination — hidden when search active */}
+      {!isSearchActive && !isLoading && !error && displayItems.length > 0 && (
         <Pagination
           page={page}
           totalPages={totalPages}
