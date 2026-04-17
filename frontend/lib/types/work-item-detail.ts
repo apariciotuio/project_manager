@@ -180,31 +180,53 @@ export interface AddCommentRequest {
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 
+/**
+ * Event types emitted by the EP-07 backend timeline subscriber.
+ * Matches the values written in timeline_subscriber.py and comment_service.py.
+ */
 export type TimelineEventType =
   | 'state_transition'
-  | 'section_updated'
-  | 'task_created'
-  | 'task_status_changed'
-  | 'review_requested'
-  | 'review_responded'
-  | 'comment_added'
   | 'owner_changed'
+  | 'section_updated'
+  | 'task_added'
+  | 'task_completed'
+  | 'review_requested'
+  | 'review_completed'
+  | 'comment_added'
   | 'tag_added'
   | 'tag_removed';
 
+/** Actor category — mirrors TimelineActorType in the BE domain model. */
+export type TimelineActorType = 'human' | 'ai_suggestion' | 'system';
+
+/**
+ * Shape returned by GET /api/v1/work-items/:id/timeline for each event.
+ * Matches _event_payload() in timeline_controller.py.
+ */
 export interface TimelineEvent {
   id: string;
+  work_item_id: string;
+  workspace_id: string;
   event_type: TimelineEventType;
+  actor_type: TimelineActorType;
   actor_id: string | null;
-  actor_name: string | null;
+  /** Resolved display name (user full_name or "System"). */
+  actor_display_name: string | null;
   summary: string;
+  payload: Record<string, unknown>;
   occurred_at: string;
-  metadata: Record<string, unknown>;
+  source_id: string | null;
+  source_table: string | null;
 }
 
+/**
+ * Envelope returned by GET /api/v1/work-items/:id/timeline.
+ * BE explicitly includes has_more (not inferred from next_cursor).
+ */
 export interface TimelineResponse {
   data: {
     events: TimelineEvent[];
+    has_more: boolean;
     next_cursor: string | null;
   };
 }

@@ -33,7 +33,8 @@ export function useTimeline(workItemId: string): UseTimelineResult {
         const res = await apiGet<TimelineResponse>(
           `/api/v1/work-items/${workItemId}/timeline${qs}`
         );
-        setNextCursor(res.data.next_cursor);
+        // BE explicitly provides has_more; next_cursor also kept for loadMore()
+        setNextCursor(res.data.has_more ? res.data.next_cursor : null);
         setEvents((prev) =>
           append ? [...prev, ...res.data.events] : res.data.events,
         );

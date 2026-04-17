@@ -9,9 +9,9 @@ import {
   ArrowRightLeft,
   FileEdit,
   CheckSquare,
-  RefreshCw,
+  CheckCircle2,
   Eye,
-  MessageSquare,
+  CheckCheck,
   MessageCircle,
   UserCog,
   Tag,
@@ -19,13 +19,13 @@ import {
 
 const EVENT_ICONS: Record<TimelineEventType, React.ComponentType<{ className?: string }>> = {
   state_transition: ArrowRightLeft,
-  section_updated: FileEdit,
-  task_created: CheckSquare,
-  task_status_changed: RefreshCw,
-  review_requested: Eye,
-  review_responded: MessageSquare,
-  comment_added: MessageCircle,
   owner_changed: UserCog,
+  section_updated: FileEdit,
+  task_added: CheckSquare,
+  task_completed: CheckCircle2,
+  review_requested: Eye,
+  review_completed: CheckCheck,
+  comment_added: MessageCircle,
   tag_added: Tag,
   tag_removed: Tag,
 };
@@ -67,8 +67,8 @@ export function TimelineTab({ workItemId }: TimelineTabProps) {
                   </div>
                   <div className="flex flex-col gap-0.5 pt-1 min-w-0">
                     <p className="text-sm text-foreground">
-                      {event.actor_name && (
-                        <span className="font-medium">{event.actor_name} </span>
+                      {event.actor_display_name && (
+                        <span className="font-medium">{event.actor_display_name} </span>
                       )}
                       {event.summary}
                     </p>
