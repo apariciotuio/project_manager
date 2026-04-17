@@ -26,12 +26,25 @@ Progress 2026-04-17 (this session):
 - [x] 14 integration tests added in `tests/integration/test_task_controller_ep05.py` (all GREEN)
 - [x] Full regression: 1292 passed, 1 pre-existing failure (section_repository unrelated to EP-05)
 
-Remaining within EP-05:
-- [ ] Phase 5: `TaskService.update_section_links()` + completeness cache invalidation wiring
-- [ ] Phase 6: `GET /tasks/:id` (single node with section_links + breadcrumb), `GET /work-items/:id/sections/:sid/tasks`
-- [ ] Phase 7: `check_breakdown` update for task_count (currently uses section content — needs task_count injection)
-- [ ] Phase 8: E2E integration tests (generate→tree→split→tree chain)
-- [ ] Dundun `wm_breakdown_agent` dispatch via Celery + callback (phase 6 in original plan)
+Progress 2026-04-17 session 2 (this session):
+- [x] Commit ec9ef8c — `wm_breakdown_agent` callback handler in `dundun_callback_controller.py`. Schema extended with `BreakdownItem`. `_handle_breakdown` extracted as pure function for unit testing. Parent title resolution via in-batch title→node map; fallback to root on miss. 4 unit tests (happy path 10 nodes, parent resolution, nested chain, unknown parent fallback).
+- [x] Commit e1833c6 — `TaskService.get_node_with_breadcrumb()` (materialized_path → ancestor UUIDs, no extra DB query), `TaskService.search_tasks()` (ILIKE, len<2 guard, LIMIT 10). Controller: `GET /tasks/{id}` (200+breadcrumb, 404), `GET /work-items/{id}/tasks/search?q=`. 9 unit tests.
+- [x] Commit 6886906 — `CompletionRollupService`: pure `compute_rollup()` (all-done→done, any-in_progress→in_progress, else→draft) + `enrich_tree()` (O(N²) via materialized_path prefix matching). `GET /work-items/{id}/task-tree` injects `rollup_status` per node. 7 unit tests.
+- [x] Commit b6d266c — E2E integration chain: 12 tests covering breadcrumb (root/child/404), split→tree, search (match/short-q), dependency cycle (triangle), predecessor blocking mark_done, rollup propagation (draft/done/in_progress).
+
+Remaining / Skipped:
+- [ ] Phase 5: `TaskService.update_section_links()` — not required by current scope; deferred
+- [x] Phase 7: `check_breakdown` task_count integration into CompletenessService — CLOSED 2026-04-17 (commits d76f626 + 61335ca)
+- [ ] `GET /work-items/:id/sections/:sid/tasks` — not required by immediate EP-05 contract; deferred
+- [ ] Dundun dispatch (Celery trigger for breakdown generation) — EP-03 infra concern, not in EP-05 callback scope
+
+EP-04/EP-05 cross-EP gap closed (2026-04-17):
+- [x] `check_breakdown` accepts `task_count: int` kwarg; bands 0→0.0, 1-2→0.4, 3-5→0.8, 6+→1.0 (commit d76f626)
+- [x] `CompletenessService` injects `ITaskNodeRepository`; `compute()` calls `count_by_work_item()` (commit 61335ca)
+- [x] `TaskService` injects `ICache`; create/delete/split/merge invalidate `completeness:{work_item_id}` (commit 61335ca)
+- [x] 13 new tests: 8 band unit tests, 4 service unit tests, 5 invalidation unit tests, 2 integration tests
+
+**Status: COMPLETED** (2026-04-17) — 4 commits shipped + EP-04/05 cross-EP gap closed.
 
 ---
 
@@ -530,3 +543,6 @@ AND the `breakdown` dimension result reflects the current task count
 - [ ] 8.3 E2E: `merge` two tasks → verify deduped section links in response → `GET /task-tree`
 - [ ] 8.4 E2E: status transition to `done` blocked by undone predecessor → verify 422
 - [ ] 8.5 E2E: completeness score changes when task nodes created — `breakdown` dimension flips from `False` to `True`
+
+## MF-2 fix (2026-04-17, session-2026-04-17-mega-review)
+- [x] MF-2: Added explicit `_require_workspace` guard to all 16 task_controller + dependency endpoints — 401/NO_WORKSPACE for tokens without workspace_id (commit 702581a)

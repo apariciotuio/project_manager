@@ -189,6 +189,7 @@ All dimension checkers are pure functions: `(WorkItem, list[Section], list[Valid
 - [ ] [RED] Write tests for `check_next_step_clarity()`: deferred (checker not yet implemented)
 - [x] [GREEN] Implement all dimension checker functions in `domain/quality/dimension_checkers.py` (2026-04-16)
 - [x] [REFACTOR] 100% branch coverage on all dimension checkers; no imports from infrastructure layer (2026-04-17 — 44 tests in test_dimension_checkers.py)
+- [x] [GREEN] `check_breakdown` updated to score by `task_count` (bands 0/0.4/0.8/1.0); `check_all` forwards `task_count` kwarg — CLOSED 2026-04-17 (commit d76f626, 8 unit tests in test_breakdown_checker_task_count.py)
 
 ### Acceptance Criteria — Dimension Checkers
 
@@ -250,6 +251,7 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 
 - [x] [RED] Write test: `SectionService.update_section()` calls cache.delete(completeness:{work_item_id}) (2026-04-17 — test_section_service_cache.py)
 - [x] [GREEN] Hook cache invalidation in `SectionService.update_section()` (2026-04-17)
+- [x] [GREEN] Hook cache invalidation in `TaskService.create_node/delete_node/split/merge` — CLOSED 2026-04-17 (commit 61335ca, 5 unit tests in test_task_service_cache_invalidation.py)
 - [ ] [RED] Write test: `WorkItemService.transition_state()` invalidates completeness cache
 - [ ] [GREEN] Hook cache invalidation in `WorkItemService.transition_state()` post-commit — deferred
 - [ ] [GREEN] Hook cache invalidation in `ValidatorService.update_status()` post-commit — deferred
