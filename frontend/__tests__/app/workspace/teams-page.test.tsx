@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../msw/server';
 
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string) => `${ns}.${key}`,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useParams: () => ({ slug: 'acme' }),
@@ -82,7 +86,7 @@ describe('TeamsPage', () => {
     const btn = screen.getByRole('button', { name: /crear equipo/i });
     await userEvent.click(btn);
 
-    const nameInput = await screen.findByPlaceholderText(/nombre del equipo/i);
+    const nameInput = await screen.findByPlaceholderText(/workspace\.teams\.createDialog\.namePlaceholder/i);
     await userEvent.type(nameInput, 'Design');
 
     const submit = screen.getByRole('button', { name: /crear$/i });

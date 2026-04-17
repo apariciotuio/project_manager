@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/app/providers/auth-provider';
 import {
   useWorkspaceMembers,
@@ -293,6 +294,7 @@ interface ProjectFormState {
 }
 
 function ProjectsTab() {
+  const t = useTranslations('workspace.admin');
   const { projects, isLoading, error, createProject, updateProject, deleteProject } =
     useProjects();
 
@@ -446,7 +448,7 @@ function ProjectsTab() {
               <Label htmlFor="proj-desc">Descripción</Label>
               <Textarea
                 id="proj-desc"
-                placeholder="Descripción opcional"
+                placeholder={t('projects.dialog.descPlaceholder')}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={3}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useTeams } from '@/hooks/use-teams';
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ interface TeamsPageProps {
 }
 
 export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
+  const t = useTranslations('workspace.teams');
   const { teams, isLoading, error, isPendingMutation, createTeam, addMember } = useTeams();
   const { members: workspaceMembers } = useWorkspaceMembers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -221,7 +223,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
               <Label htmlFor="team-name">Nombre *</Label>
               <Input
                 id="team-name"
-                placeholder="Nombre del equipo"
+                placeholder={t('createDialog.namePlaceholder')}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 required
@@ -231,7 +233,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
               <Label htmlFor="team-desc">Descripción</Label>
               <Textarea
                 id="team-desc"
-                placeholder="Descripción opcional"
+                placeholder={t('createDialog.descPlaceholder')}
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 rows={3}
@@ -277,7 +279,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
               ) : (
                 <Select value={memberUserId} onValueChange={setMemberUserId}>
                   <SelectTrigger id="member-user" className="h-11">
-                    <SelectValue placeholder="Selecciona un miembro del workspace" />
+                    <SelectValue placeholder={t('selectMember')} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableMembers.map((m) => (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTemplates } from '@/hooks/use-templates';
 import { useProjects } from '@/hooks/use-admin';
 import { useTags } from '@/hooks/use-admin';
@@ -66,6 +67,7 @@ interface NewItemPageProps {
 
 export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
   const router = useRouter();
+  const t = useTranslations('workspace.newItem');
   const { user } = useAuth();
   const { templates, isLoading: templatesLoading } = useTemplates();
   const { projects, isLoading: projectsLoading, createProject } = useProjects();
@@ -282,7 +284,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               <Label htmlFor="title">Título *</Label>
               <Input
                 id="title"
-                placeholder="Título del elemento"
+                placeholder={t('fields.titlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -296,7 +298,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               <Label htmlFor="type">Tipo</Label>
               <Select value={type} onValueChange={(v) => setType(v as WorkItemType)}>
                 <SelectTrigger id="type" className="h-11">
-                  <SelectValue placeholder="Selecciona un tipo" />
+                  <SelectValue placeholder={t('fields.typePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {WORK_ITEM_TYPES.map((t) => (
@@ -413,7 +415,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               <Label htmlFor="description">Descripción</Label>
               <Textarea
                 id="description"
-                placeholder="Descripción opcional"
+                placeholder={t('fields.descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={8}
@@ -464,7 +466,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               <Label htmlFor="new-project-desc">Descripción</Label>
               <Textarea
                 id="new-project-desc"
-                placeholder="Descripción opcional"
+                placeholder={t('fields.descriptionPlaceholder')}
                 value={newProjectDesc}
                 onChange={(e) => setNewProjectDesc(e.target.value)}
                 rows={3}

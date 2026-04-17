@@ -186,7 +186,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    expect(await screen.findByPlaceholderText(/título/i)).toBeTruthy();
+    expect(await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i)).toBeTruthy();
   });
 
   it('renders templates after load', async () => {
@@ -204,7 +204,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    await screen.findByPlaceholderText(/título/i);
+    await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
     const btn = screen.getByRole('button', { name: /crear/i });
     expect(btn).toBeDisabled();
   });
@@ -302,7 +302,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    await screen.findByPlaceholderText(/título/i);
+    await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
 
     // Default type is task (child type), so parent picker IS shown
     await waitFor(() => {
@@ -322,7 +322,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    await screen.findByPlaceholderText(/título/i);
+    await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
 
     // Switch to milestone — no parent picker
     changeSelect(/tipo/, 'milestone');
@@ -342,7 +342,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    await screen.findByPlaceholderText(/título/i);
+    await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
     // task type is default — parent picker shown
     await waitFor(() => {
       expect(screen.getByLabelText(/padre/i)).toBeTruthy();
@@ -381,7 +381,7 @@ describe('NewItemPage', () => {
       expect(screen.getByText('workspace.newItem.draft.resumeButton')).toBeTruthy();
     });
     // Form title is still empty — no auto-hydration
-    const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
+    const titleInput = screen.getByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i) as HTMLInputElement;
     expect(titleInput.value).toBe('');
   });
 
@@ -403,11 +403,11 @@ describe('NewItemPage', () => {
     await userEvent.click(resumeBtn);
 
     await waitFor(() => {
-      const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
+      const titleInput = screen.getByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i) as HTMLInputElement;
       expect(titleInput.value).toBe('Hydrated title');
     });
 
-    const descInput = screen.getByPlaceholderText(/descripción opcional/i) as HTMLTextAreaElement;
+    const descInput = screen.getByPlaceholderText(/workspace\.newItem\.fields\.descriptionPlaceholder/i) as HTMLTextAreaElement;
     expect(descInput.value).toBe('Hydrated desc');
   });
 
@@ -435,7 +435,7 @@ describe('NewItemPage', () => {
     });
     expect(deleteCalled).toBe(true);
     // Form is still blank
-    const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
+    const titleInput = screen.getByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i) as HTMLInputElement;
     expect(titleInput.value).toBe('');
   });
 
@@ -457,7 +457,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    const titleInput = await screen.findByPlaceholderText(/título/i);
+    const titleInput = await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
     await userEvent.type(titleInput, 'X');
 
     // Wait for 3s debounce + buffer
@@ -476,7 +476,7 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
-    const titleInput = await screen.findByPlaceholderText(/título/i);
+    const titleInput = await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
     await userEvent.type(titleInput, 'My item');
 
     // Wait for projects to load, then select p1
@@ -528,7 +528,7 @@ describe('NewItemPage', () => {
     await userEvent.click(templateBtn);
 
     // Fill title
-    const titleInput = screen.getByPlaceholderText(/título/i);
+    const titleInput = screen.getByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
     await userEvent.type(titleInput, 'My item');
 
     // Select project

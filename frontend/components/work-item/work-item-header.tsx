@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { StateBadge } from '@/components/domain/state-badge';
 import { TypeBadge } from '@/components/domain/type-badge';
 import { OwnerAvatar } from '@/components/domain/owner-avatar';
@@ -52,6 +53,7 @@ interface WorkItemHeaderProps {
 }
 
 export function WorkItemHeader({ workItem, slug, onTitleChange }: WorkItemHeaderProps) {
+  const t = useTranslations('workItem.header');
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(workItem.title);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
@@ -111,7 +113,7 @@ export function WorkItemHeader({ workItem, slug, onTitleChange }: WorkItemHeader
               onChange={(e) => setTitle(e.target.value)}
               onBlur={commitEdit}
               onKeyDown={handleKeyDown}
-              aria-label="Título del elemento"
+              aria-label={t('titleInputAria')}
               className="w-full text-2xl font-semibold bg-transparent border-b border-primary outline-none focus:border-primary"
             />
           ) : (
