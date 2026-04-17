@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -302,6 +302,21 @@ async def run() -> int:
                 )
             await session.flush()
             print(f"[seed-data] tagged {len(tag_assignments)} work items")
+
+            # Seed inbox notifications
+            from app.infrastructure.persistence.notification_repository_impl import (
+                NotificationRepositoryImpl,
+            )
+            from scripts.seed_notifications import seed_notifications  # type: ignore[import]
+
+            notification_repo = NotificationRepositoryImpl(session)
+            notif_count = await seed_notifications(
+                repo=notification_repo,
+                user_id=user.id,
+                workspace_id=ws.id,
+                work_item_ids=[UUID(str(wi_id)) for wi_id in work_item_ids],
+            )
+            print(f"[seed-data] seeded {notif_count} inbox notifications")
 
     print("[seed-data] done. Refresh your browser.")
     return 0
