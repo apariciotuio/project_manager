@@ -9,6 +9,12 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ slug: 'acme' }),
 }));
 
+// next-intl mock — TagEditModal uses useTranslations
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 vi.mock('@/app/providers/auth-provider', () => ({
   useAuth: () => ({
     user: { id: 'u1', full_name: 'Ada Lovelace', workspace_id: 'ws1', workspace_slug: 'acme', email: 'ada@co.com', avatar_url: null, is_superadmin: false },
@@ -220,7 +226,8 @@ describe('AdminPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
-      expect(screen.getByRole('textbox', { name: /nombre/i })).toHaveValue('urgent');
+      // TagEditModal uses next-intl; mocked to `modals.tagEdit.fields.name`.
+      expect(screen.getByRole('textbox', { name: /modals\.tagEdit\.fields\.name/i })).toHaveValue('urgent');
     });
   });
 
@@ -239,11 +246,12 @@ describe('AdminPage', () => {
     await userEvent.click(await screen.findByRole('tab', { name: /etiquetas/i }));
     await userEvent.click(await screen.findByRole('button', { name: /editar etiqueta urgent/i }));
 
-    const nameInput = await screen.findByRole('textbox', { name: /nombre/i });
+    // TagEditModal uses next-intl; mocked to `modals.tagEdit.fields.name` / `common.save`.
+    const nameInput = await screen.findByRole('textbox', { name: /modals\.tagEdit\.fields\.name/i });
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, 'blocker');
 
-    await userEvent.click(screen.getByRole('button', { name: /^guardar$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^common\.save$/i }));
 
     await waitFor(() => {
       expect(screen.getByText('blocker')).toBeTruthy();

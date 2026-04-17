@@ -9,6 +9,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
+// next-intl mock — returns `${ns}.${key}` so WorkItemEditModal renders
+// without a provider. Tests assert behaviour, not translated strings.
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 // Default auth: owner of the work item (owner_id = 'user-1')
 vi.mock('@/app/providers/auth-provider', () => ({
   useAuth: () => ({
@@ -216,8 +223,9 @@ describe('WorkItemDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
-    // The modal's title input (not the header's inline edit button)
-    const titleInput = screen.getByRole('textbox', { name: /título \*/i });
+    // The modal's title input (not the header's inline edit button).
+    // Label text comes from next-intl; mocked to `modals.workItemEdit.fields.title`.
+    const titleInput = screen.getByRole('textbox', { name: /modals\.workItemEdit\.fields\.title/i });
     expect(titleInput).toHaveValue('Fix login bug');
   });
 });
