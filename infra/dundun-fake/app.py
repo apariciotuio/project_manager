@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -52,7 +52,6 @@ async def health() -> dict[str, str]:
 @app.post("/messages")
 async def post_message(
     body: MessageRequest,
-    request: Request,
     x_fake_force_error: str | None = Header(default=None),
 ) -> Any:
     # Error injection via header
