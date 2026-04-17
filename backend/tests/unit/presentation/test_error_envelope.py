@@ -171,14 +171,48 @@ def test_no_details_key_when_empty() -> None:
 def test_error_codes_http_status_mapping() -> None:
     from app.domain.errors.codes import ERROR_CODES
     assert ERROR_CODES["VALIDATION_ERROR"] == 400
+    assert ERROR_CODES["INVALID_INPUT"] == 400
     assert ERROR_CODES["UNAUTHORIZED"] == 401
     assert ERROR_CODES["INVALID_CREDENTIALS"] == 401
     assert ERROR_CODES["FORBIDDEN"] == 403
     assert ERROR_CODES["NOT_FOUND"] == 404
     assert ERROR_CODES["TEAM_MEMBER_ALREADY_EXISTS"] == 409
     assert ERROR_CODES["TAG_NAME_TAKEN"] == 409
+    assert ERROR_CODES["TAG_ARCHIVED"] == 409
     assert ERROR_CODES["WORK_ITEM_INVALID_TRANSITION"] == 422
     assert ERROR_CODES["INTERNAL_ERROR"] == 500
+
+
+def test_tag_archived_domain_error_returns_409() -> None:
+    from app.domain.errors.codes import TagArchivedDomainError
+    app = FastAPI()
+    register_domain_error_handler(app)
+
+    @app.get("/raise/tag-archived")
+    async def raise_tag_archived() -> None:
+        raise TagArchivedDomainError("tag is archived")
+
+    c = TestClient(app, raise_server_exceptions=False)
+    response = c.get("/raise/tag-archived")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "TAG_ARCHIVED"
+
+
+def test_invalid_input_error_returns_400() -> None:
+    from app.domain.errors.codes import InvalidInputError
+    app = FastAPI()
+    register_domain_error_handler(app)
+
+    @app.get("/raise/invalid-input")
+    async def raise_invalid_input() -> None:
+        raise InvalidInputError("name cannot be empty", field="name")
+
+    c = TestClient(app, raise_server_exceptions=False)
+    response = c.get("/raise/invalid-input")
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "INVALID_INPUT"
+    assert body["error"]["field"] == "name"
 
 
 # ---------------------------------------------------------------------------
