@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from app.application.services.timeline_service import TimelineService
     from app.application.services.versioning_service import VersioningService
     from app.application.services.saved_search_service import SavedSearchService
+    from app.application.services.search_service import SearchService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -907,6 +908,23 @@ def get_saved_search_service(
     )
 
     return SavedSearchService(repo=SavedSearchRepositoryImpl(session))
+
+
+def get_search_service() -> "SearchService":
+    """Build SearchService with real or fake PuppetClient based on settings."""
+    from app.application.services.search_service import SearchService
+
+    settings = get_settings()
+    if settings.puppet.use_fake:
+        from tests.fakes.fake_puppet_client import FakePuppetClient
+        puppet_client = FakePuppetClient()
+    else:
+        from app.infrastructure.adapters.puppet_http_client import PuppetHTTPClient
+        puppet_client = PuppetHTTPClient(
+            base_url=settings.puppet.base_url,
+            api_key=settings.puppet.api_key,
+        )
+    return SearchService(puppet_client=puppet_client)
 
 
 # ---------------------------------------------------------------------------

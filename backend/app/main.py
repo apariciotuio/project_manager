@@ -31,6 +31,7 @@ from app.presentation.controllers.ready_gate_controller import router as ready_g
 from app.presentation.controllers.review_controller import router as review_router
 from app.presentation.controllers.validation_controller import router as validation_router
 from app.presentation.controllers.saved_search_controller import router as saved_search_router
+from app.presentation.controllers.search_controller import router as search_router
 from app.presentation.controllers.specification_controller import (
     router as specification_router,
 )
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
     app.include_router(notification_router, prefix="/api/v1")
     # EP-09 — saved searches
     app.include_router(saved_search_router, prefix="/api/v1")
+    app.include_router(search_router, prefix="/api/v1")
     # EP-10 — projects + admin
     app.include_router(project_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
