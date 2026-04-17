@@ -20,4 +20,8 @@ class ITimelineEventRepository(ABC):
         before_occurred_at: datetime | None = None,
         before_id: UUID | None = None,
         limit: int = 50,
+        event_types: list[str] | None = None,
+        actor_types: list[str] | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
     ) -> list[TimelineEvent]: ...

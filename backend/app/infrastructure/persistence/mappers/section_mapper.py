@@ -109,6 +109,8 @@ def validator_to_orm(entity: Validator) -> WorkItemValidatorORM:
 
 
 def work_item_version_to_domain(row: WorkItemVersionORM) -> WorkItemVersion:
+    from app.domain.models.work_item_version import VersionActorType, VersionTrigger
+
     return WorkItemVersion(
         id=row.id,
         work_item_id=row.work_item_id,
@@ -116,4 +118,10 @@ def work_item_version_to_domain(row: WorkItemVersionORM) -> WorkItemVersion:
         snapshot=dict(row.snapshot),
         created_by=row.created_by,
         created_at=row.created_at,
+        snapshot_schema_version=getattr(row, "snapshot_schema_version", 1),
+        trigger=VersionTrigger(getattr(row, "trigger", "content_edit")),
+        actor_type=VersionActorType(getattr(row, "actor_type", "human")),
+        actor_id=getattr(row, "actor_id", None),
+        commit_message=getattr(row, "commit_message", None),
+        archived=getattr(row, "archived", False),
     )

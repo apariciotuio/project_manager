@@ -32,6 +32,10 @@ class TimelineEventRepositoryImpl(ITimelineEventRepository):
         before_occurred_at: datetime | None = None,
         before_id: UUID | None = None,
         limit: int = 50,
+        event_types: list[str] | None = None,
+        actor_types: list[str] | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
     ) -> list[TimelineEvent]:
         stmt = select(TimelineEventORM).where(
             TimelineEventORM.work_item_id == work_item_id
@@ -39,7 +43,6 @@ class TimelineEventRepositoryImpl(ITimelineEventRepository):
 
         if before_occurred_at is not None and before_id is not None:
             # Keyset pagination: (occurred_at, id) DESC
-            # rows where occurred_at < cursor OR (occurred_at == cursor AND id < cursor_id)
             stmt = stmt.where(
                 or_(
                     TimelineEventORM.occurred_at < before_occurred_at,
@@ -49,6 +52,18 @@ class TimelineEventRepositoryImpl(ITimelineEventRepository):
                     ),
                 )
             )
+
+        if event_types:
+            stmt = stmt.where(TimelineEventORM.event_type.in_(event_types))
+
+        if actor_types:
+            stmt = stmt.where(TimelineEventORM.actor_type.in_(actor_types))
+
+        if from_date is not None:
+            stmt = stmt.where(TimelineEventORM.occurred_at >= from_date)
+
+        if to_date is not None:
+            stmt = stmt.where(TimelineEventORM.occurred_at <= to_date)
 
         stmt = (
             stmt
