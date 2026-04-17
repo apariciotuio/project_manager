@@ -3,14 +3,12 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
 import { Plus, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
-import { WorkItemCard } from '@/components/work-item/work-item-card';
+import { WorkItemList } from '@/components/work-item/work-item-list';
 import { t } from '@/lib/i18n';
 import { PageContainer } from '@/components/layout/page-container';
 import type { WorkItemState } from '@/lib/types/work-item';
@@ -35,7 +33,6 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
   const { slug } = params;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tItems = useTranslations('workspace.items');
 
   const { user } = useAuth();
 
@@ -121,31 +118,17 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
       </div>
 
       {/* Content */}
-      {isLoading ? (
-        <WorkItemsSkeleton />
-      ) : error && !isSessionExpired(error) ? (
-        <div role="alert" className="text-body-sm text-destructive">
-          {t('workitem.list.errorBanner')}: {error.message}
-        </div>
-      ) : error ? null : filtered.length === 0 ? (
-        <EmptyState slug={slug} />
-      ) : (
-        <>
-          <ul
-            role="list"
-            aria-label={tItems('listAria')}
-            className="overflow-hidden rounded-lg border border-border divide-y divide-border"
-          >
-            {filtered.map((item) => (
-              <li key={item.id}>
-                <WorkItemCard workItem={item} slug={slug} />
-              </li>
-            ))}
-          </ul>
+      <WorkItemList
+        items={filtered}
+        slug={slug}
+        isLoading={isLoading}
+        error={error && !isSessionExpired(error) ? error : null}
+        emptyState={<EmptyState slug={slug} />}
+      />
 
-          {/* Pagination — always shown when items exist */}
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </>
+      {/* Pagination — shown only when there are items */}
+      {!isLoading && !error && filtered.length > 0 && (
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
     </PageContainer>
   );
@@ -190,16 +173,6 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function WorkItemsSkeleton() {
-  return (
-    <div data-testid="work-items-skeleton" className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-12 w-full rounded-md" />
-      ))}
-    </div>
-  );
-}
 
 function EmptyState({ slug }: { slug: string }) {
   return (
