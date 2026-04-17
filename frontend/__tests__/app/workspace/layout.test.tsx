@@ -70,17 +70,15 @@ describe('WorkspaceLayout', () => {
     expect(screen.getByRole('img', { name: /ada lovelace/i })).toBeInTheDocument();
   });
 
-  it('calls logout when Sign out is selected from user menu', async () => {
+  it('calls logout when Cerrar sesión is selected from user menu', async () => {
     render(
       <WorkspaceLayout params={{ slug: 'acme' }}>
         <div>content</div>
       </WorkspaceLayout>,
     );
-    // Open the user menu via the trigger button (aria-label is the i18n key in this mock)
-    const menuTrigger = screen.getByRole('button', { name: /userMenu\.trigger/i });
+    const menuTrigger = screen.getByRole('button', { name: /abrir menú de usuario/i });
     await userEvent.click(menuTrigger);
-    // In this test, useTranslations returns raw keys — the rendered text is the key
-    const signOutItem = screen.getByRole('menuitem', { name: /signOut/i });
+    const signOutItem = screen.getByRole('menuitem', { name: /cerrar sesión/i });
     await userEvent.click(signOutItem);
     expect(mockLogout).toHaveBeenCalledOnce();
   });

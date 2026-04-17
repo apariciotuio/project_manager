@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import type { AbstractIntlMessages } from 'next-intl';
+import { cookies } from 'next/headers';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
+
+const SUPPORTED_LOCALES = new Set(['es', 'en']);
+const LOCALE_COOKIE = 'tuio-locale';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -30,7 +34,11 @@ interface RootLayoutProps {
 }
 
 export default async function RootLayout({ children }: RootLayoutProps) {
-  const locale = process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] ?? 'es';
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const envDefault = process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] ?? 'es';
+  const locale =
+    cookieLocale && SUPPORTED_LOCALES.has(cookieLocale) ? cookieLocale : envDefault;
   const messages = await getMessages(locale);
 
   return (

@@ -12,26 +12,26 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 // Duration of the cascade in milliseconds
-const CASCADE_DURATION_MS = 1200;
+const CASCADE_DURATION_MS = 1600;
 
-// Column count bounds
-const MIN_COLUMNS = 10;
-const MAX_COLUMNS = 15;
+// Font size & spacing — columns are packed one per FONT_SIZE of horizontal space
+// so the screen fills densely, matching the classic Matrix rain look.
+const FONT_SIZE = 16;
 
 // Stream length bounds (glyphs per column)
-const MIN_STREAM_LEN = 8;
-const MAX_STREAM_LEN = 20;
+const MIN_STREAM_LEN = 10;
+const MAX_STREAM_LEN = 28;
 
-// Speed variation: ±30% around BASE_SPEED (px per frame at 60fps)
-const BASE_SPEED = 18;
-const SPEED_VARIATION = 0.3;
+// Speed variation: ±40% around BASE_SPEED (px per frame at 60fps)
+const BASE_SPEED = 14;
+const SPEED_VARIATION = 0.4;
 
 // Phosphor green palette
 const COLOR_LEAD = '#AAFFAA';
 const COLOR_TRAIL = '#00FF41';
 
 // Font matching the Matrix theme monospace stack
-const FONT = '16px ui-monospace, "Cascadia Code", "Courier New", monospace';
+const FONT = `${FONT_SIZE}px ui-monospace, "Cascadia Code", "Courier New", monospace`;
 
 // Glyph pool: half-width katakana U+FF66–U+FF9D + digits
 const GLYPH_POOL: string[] = [];
@@ -95,7 +95,13 @@ export function MatrixEntryCascade({ active, onComplete }: MatrixEntryCascadePro
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const colCount = MIN_COLUMNS + Math.floor(Math.random() * (MAX_COLUMNS - MIN_COLUMNS + 1));
+    // Paint opaque black backdrop once — the per-frame fade below keeps it dark
+    // so the underlying page is hidden while the cascade plays.
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // One column per FONT_SIZE of horizontal space — dense coverage.
+    const colCount = Math.max(1, Math.floor(canvas.width / FONT_SIZE));
     const colSpacing = canvas.width / colCount;
 
     const columns: Column[] = Array.from({ length: colCount }, (_, i) => {
@@ -103,7 +109,9 @@ export function MatrixEntryCascade({ active, onComplete }: MatrixEntryCascadePro
       const speed = BASE_SPEED * (1 + (Math.random() * 2 - 1) * SPEED_VARIATION);
       return {
         x: i * colSpacing + colSpacing / 2,
-        y: -(streamLen * 16 + Math.random() * canvas.height * 0.5),
+        // Stagger column starts so the wavefront sweeps across the screen
+        // rather than arriving uniformly.
+        y: -(Math.random() * canvas.height * 0.8 + streamLen * FONT_SIZE),
         speed,
         glyphs: Array.from({ length: streamLen }, randomGlyph),
         streamLen,
@@ -111,17 +119,18 @@ export function MatrixEntryCascade({ active, onComplete }: MatrixEntryCascadePro
     });
 
     const startTime = performance.now();
-    const FONT_SIZE = 16;
 
     function draw(now: number) {
       if (!canvas || !ctx) return;
 
       const elapsed = now - startTime;
 
-      // Clear to transparent each frame (not additive — burst mode)
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Semi-opaque black overlay fades prior frames (classic Matrix trail).
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.font = FONT;
+      ctx.textBaseline = 'top';
 
       for (const col of columns) {
         // Advance position

@@ -4,42 +4,11 @@ import userEvent from '@testing-library/user-event';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
-    const map: Record<string, string> = {
-      'userMenu.trigger': 'Open user menu',
-      'userMenu.theme': 'Theme',
-      'userMenu.matrixMode': 'Matrix mode',
-      'userMenu.rainEffect': 'Rain effect',
-      'userMenu.rainRequiresMatrix': 'Requires Matrix mode',
-      'userMenu.rainReducedMotion': 'Disabled by your system preference',
-      'userMenu.settings': 'Settings',
-      'userMenu.settingsComingSoon': 'Coming soon',
-      'userMenu.signOut': 'Sign out',
-      'switcher.light': 'Light',
-      'switcher.dark': 'Dark',
-      'switcher.system': 'System',
-      'switcher.ariaLabel': 'Theme selector',
-      'redPill.aria': 'Enter Matrix theme',
-      'redPill.tooltip': 'Enter Matrix',
-      'bluePill.aria': 'Exit Matrix theme',
-      'bluePill.tooltip': 'Exit Matrix',
-      'rain.on': 'Enable rain',
-      'rain.off': 'Disable rain',
-      'rain.toggle': 'Toggle rain',
-    };
-    return map[key] ?? key;
-  },
-}));
-
 const mockSetTheme = vi.fn();
 let mockTheme: string = 'light';
 
 vi.mock('next-themes', () => ({
-  useTheme: () => ({
-    theme: mockTheme,
-    setTheme: mockSetTheme,
-  }),
+  useTheme: () => ({ theme: mockTheme, setTheme: mockSetTheme }),
 }));
 
 const mockLogout = vi.fn();
@@ -58,18 +27,12 @@ vi.mock('@/app/providers/auth-provider', () => ({
 vi.mock('@/lib/theme/trinity', () => ({
   getPreviousTheme: () => 'dark',
   setPreviousTheme: vi.fn(),
-  isRainEnabled: () => false,
-  setRainEnabled: vi.fn(),
 }));
 
-// Radix Tooltip passthrough
-vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-content">{children}</div>
-  ),
-  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+// Cascade stub — unit tests don't exercise the canvas
+vi.mock('@/components/system/matrix-entry-cascade/matrix-entry-cascade', () => ({
+  MatrixEntryCascade: ({ active }: { active: boolean }) =>
+    active ? <div data-testid="cascade-active" /> : null,
 }));
 
 // Import AFTER mocks
@@ -78,172 +41,170 @@ import { UserMenu } from '@/components/workspace/user-menu/user-menu';
 beforeEach(() => {
   vi.clearAllMocks();
   mockTheme = 'light';
+  document.cookie = 'tuio-locale=; path=/; max-age=0';
+  // Stub reload so the language toggle doesn't nuke jsdom
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...window.location, reload: vi.fn() },
+  });
 });
 
-// Helper: open the menu
 async function openMenu() {
-  const trigger = screen.getByRole('button', { name: /open user menu/i });
+  const trigger = screen.getByRole('button', { name: /abrir menú de usuario/i });
   await userEvent.click(trigger);
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
+describe('UserMenu — sidebar identity', () => {
+  it('renders the user name next to the avatar', () => {
+    render(<UserMenu />);
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+  });
+
+  it('renders the user email next to the avatar', () => {
+    render(<UserMenu />);
+    expect(screen.getByText('ada@tuio.com')).toBeInTheDocument();
+  });
+
+  it('identity block is NOT inside the menu', () => {
+    render(<UserMenu />);
+    // name is visible without opening the menu
+    const name = screen.getByText('Ada Lovelace');
+    expect(name.closest('[role="menu"]')).toBeNull();
+  });
+});
+
 describe('UserMenu — trigger', () => {
-  it('renders an avatar button with correct aria-label', () => {
+  it('renders an avatar button with a Spanish aria-label', () => {
     render(<UserMenu />);
     expect(
-      screen.getByRole('button', { name: /open user menu/i }),
+      screen.getByRole('button', { name: /abrir menú de usuario/i }),
     ).toBeInTheDocument();
   });
 
   it('trigger has aria-haspopup="menu"', () => {
     render(<UserMenu />);
     expect(
-      screen.getByRole('button', { name: /open user menu/i }),
+      screen.getByRole('button', { name: /abrir menú de usuario/i }),
     ).toHaveAttribute('aria-haspopup', 'menu');
   });
 });
 
-describe('UserMenu — identity block', () => {
-  it('shows the user name in the menu', async () => {
+describe('UserMenu — theme segment (Claro / Oscuro / Píldora)', () => {
+  it('renders three radio options with icon labels', async () => {
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /claro/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /oscuro/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /píldora/i })).toBeInTheDocument();
   });
 
-  it('shows the user email in the menu', async () => {
-    render(<UserMenu />);
-    await openMenu();
-    expect(screen.getByText('ada@tuio.com')).toBeInTheDocument();
-  });
-
-  it('identity block is not interactive (no role=menuitem)', async () => {
-    render(<UserMenu />);
-    await openMenu();
-    // The identity block is a label-only div — it must not be a menuitem
-    const nameEl = screen.getByText('Ada Lovelace');
-    expect(nameEl.closest('[role="menuitem"]')).toBeNull();
-  });
-});
-
-describe('UserMenu — theme segment', () => {
-  it('renders Light, Dark, System buttons inside menu', async () => {
-    render(<UserMenu />);
-    await openMenu();
-    expect(screen.getByRole('button', { name: /light/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /dark/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /system/i })).toBeInTheDocument();
-  });
-
-  it('active theme (light) button has aria-pressed="true"', async () => {
+  it('active theme (light) radio has aria-checked="true"', async () => {
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByRole('button', { name: /light/i })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: /claro/i })).toHaveAttribute(
+      'aria-checked',
       'true',
     );
   });
 
-  it('clicking Dark calls setTheme("dark")', async () => {
-    mockTheme = 'light';
-    render(<UserMenu />);
-    await openMenu();
-    await userEvent.click(screen.getByRole('button', { name: /dark/i }));
-    expect(mockSetTheme).toHaveBeenCalledWith('dark');
-  });
-});
-
-describe('UserMenu — Matrix mode toggle', () => {
-  it('renders a Matrix mode toggle', async () => {
-    render(<UserMenu />);
-    await openMenu();
-    expect(screen.getByRole('button', { name: /matrix mode/i })).toBeInTheDocument();
-  });
-
-  it('in light theme: Matrix toggle is unchecked (not in matrix)', async () => {
-    mockTheme = 'light';
-    render(<UserMenu />);
-    await openMenu();
-    const toggle = screen.getByRole('button', { name: /matrix mode/i });
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('in matrix theme: Matrix toggle is checked', async () => {
+  it('active theme (matrix) is reflected on Píldora', async () => {
     mockTheme = 'matrix';
     render(<UserMenu />);
     await openMenu();
-    const toggle = screen.getByRole('button', { name: /matrix mode/i });
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: /píldora/i })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
-  it('clicking Matrix toggle in light mode calls setTheme("matrix") and saves previous theme', async () => {
+  it('clicking Oscuro calls setTheme("dark") and persists previous', async () => {
     const { setPreviousTheme } = await import('@/lib/theme/trinity');
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('button', { name: /matrix mode/i }));
+    await userEvent.click(screen.getByRole('radio', { name: /oscuro/i }));
+    expect(mockSetTheme).toHaveBeenCalledWith('dark');
+    expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('dark');
+  });
+
+  it('clicking Píldora from light calls setTheme("matrix") and fires cascade', async () => {
+    const { setPreviousTheme } = await import('@/lib/theme/trinity');
+    mockTheme = 'light';
+    render(<UserMenu />);
+    await openMenu();
+    await userEvent.click(screen.getByRole('radio', { name: /píldora/i }));
     expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('light');
     expect(mockSetTheme).toHaveBeenCalledWith('matrix');
+    expect(screen.getByTestId('cascade-active')).toBeInTheDocument();
   });
 
-  it('clicking Matrix toggle in matrix mode reverts to previous theme', async () => {
+  it('clicking Claro from matrix exits without firing cascade', async () => {
     mockTheme = 'matrix';
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('button', { name: /matrix mode/i }));
-    // getPreviousTheme returns 'dark' per mock
-    expect(mockSetTheme).toHaveBeenCalledWith('dark');
+    await userEvent.click(screen.getByRole('radio', { name: /claro/i }));
+    expect(mockSetTheme).toHaveBeenCalledWith('light');
+    expect(screen.queryByTestId('cascade-active')).toBeNull();
   });
-});
 
-describe('UserMenu — Rain effect toggle', () => {
-  it('Rain toggle is disabled when Matrix mode is off', async () => {
+  it('clicking the already-active theme is a no-op', async () => {
     mockTheme = 'light';
     render(<UserMenu />);
     await openMenu();
-    const rainBtn = screen.getByRole('button', { name: /rain effect/i });
-    expect(rainBtn).toBeDisabled();
-  });
-
-  it('Rain toggle has aria-disabled when Matrix mode is off', async () => {
-    mockTheme = 'light';
-    render(<UserMenu />);
-    await openMenu();
-    const rainBtn = screen.getByRole('button', { name: /rain effect/i });
-    expect(rainBtn).toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('Rain toggle is enabled when Matrix mode is on', async () => {
-    mockTheme = 'matrix';
-    render(<UserMenu />);
-    await openMenu();
-    const rainBtn = screen.getByRole('button', { name: /rain effect/i });
-    expect(rainBtn).not.toBeDisabled();
+    await userEvent.click(screen.getByRole('radio', { name: /claro/i }));
+    expect(mockSetTheme).not.toHaveBeenCalled();
   });
 });
 
-describe('UserMenu — Settings placeholder', () => {
-  it('renders a Settings item', async () => {
+describe('UserMenu — language toggle', () => {
+  it('defaults to ES when no cookie is set', async () => {
     render(<UserMenu />);
     await openMenu();
-    expect(screen.getByText(/settings/i)).toBeInTheDocument();
+    expect(screen.getByText('ES')).toBeInTheDocument();
+  });
+
+  it('clicking the language button toggles ES → EN, writes cookie, reloads', async () => {
+    render(<UserMenu />);
+    await openMenu();
+    const localeBtn = screen.getByRole('button', { name: /idioma actual/i });
+    await userEvent.click(localeBtn);
+    expect(document.cookie).toContain('tuio-locale=en');
+    expect(window.location.reload).toHaveBeenCalledOnce();
+  });
+
+  it('reads EN cookie on mount', async () => {
+    document.cookie = 'tuio-locale=en; path=/';
+    render(<UserMenu />);
+    await openMenu();
+    expect(screen.getByText('EN')).toBeInTheDocument();
+  });
+});
+
+describe('UserMenu — no settings placeholder', () => {
+  it('does NOT render an "Ajustes próximamente" row', async () => {
+    render(<UserMenu />);
+    await openMenu();
+    expect(screen.queryByText(/ajustes/i)).toBeNull();
+    expect(screen.queryByText(/próximamente/i)).toBeNull();
   });
 });
 
 describe('UserMenu — Sign out', () => {
-  it('renders Sign out button', async () => {
+  it('renders a Cerrar sesión menuitem', async () => {
     render(<UserMenu />);
     await openMenu();
     expect(
-      screen.getByRole('menuitem', { name: /sign out/i }),
+      screen.getByRole('menuitem', { name: /cerrar sesión/i }),
     ).toBeInTheDocument();
   });
 
-  it('clicking Sign out calls logout()', async () => {
+  it('clicking Cerrar sesión calls logout()', async () => {
     render(<UserMenu />);
     await openMenu();
-    await userEvent.click(screen.getByRole('menuitem', { name: /sign out/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /cerrar sesión/i }));
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
   });
 });
