@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -36,8 +37,10 @@ class FakeDundunClient:
     def __init__(self) -> None:
         # Records of (agent, user_id, conversation_id, work_item_id, callback_url, payload)
         self.invocations: list[tuple[str, UUID, str | None, UUID | None, str, dict[str, Any]]] = []
-        # Frames to yield from chat_ws; cleared after each iteration
+        # Frames seeded for the next chat_ws bridge to deliver via recv()
         self.chat_frames: list[dict[str, Any]] = []
+        # Every bridge opened via chat_ws is tracked so tests can inspect .sent
+        self.ws_bridges: list[FakeDundunWSBridge] = []
         # Synthetic history store per conversation_id
         self.history_by_conversation: dict[str, list[dict[str, Any]]] = {}
         # Set to raise on the next call (any method); cleared after raising
@@ -65,19 +68,42 @@ class FakeDundunClient:
         )
         return {"request_id": f"fake-{uuid4()}"}
 
+    @asynccontextmanager
     async def chat_ws(
         self,
         *,
         conversation_id: str,  # noqa: ARG002
         user_id: UUID,  # noqa: ARG002
         work_item_id: UUID | None,  # noqa: ARG002
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> AsyncIterator["FakeDundunWSBridge"]:
         self._check_error()
         frames = list(self.chat_frames)
         self.chat_frames = []
-        for frame in frames:
-            yield frame
+        bridge = FakeDundunWSBridge(downstream_frames=frames)
+        self.ws_bridges.append(bridge)
+        try:
+            yield bridge
+        finally:
+            pass
+
 
     async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
         self._check_error()
         return list(self.history_by_conversation.get(conversation_id, []))
+
+
+class FakeDundunWSBridge:
+    """Bidirectional fake handle — tests can seed downstream frames and inspect
+    client-side frames captured via send()."""
+
+    def __init__(self, *, downstream_frames: list[dict[str, Any]]) -> None:
+        self.downstream: list[dict[str, Any]] = list(downstream_frames)
+        self.sent: list[dict[str, Any]] = []
+
+    async def send(self, frame: dict[str, Any]) -> None:
+        self.sent.append(frame)
+
+    async def recv(self) -> dict[str, Any] | None:
+        if not self.downstream:
+            return None
+        return self.downstream.pop(0)

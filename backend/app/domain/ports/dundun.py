@@ -13,7 +13,7 @@ Deviation from design.md §2.1:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from contextlib import AbstractAsyncContextManager
 from typing import TYPE_CHECKING, Any, Protocol
 from uuid import UUID
 
@@ -82,14 +82,30 @@ class DundunClient(Protocol):
         conversation_id: str,
         user_id: UUID,
         work_item_id: UUID | None,
-    ) -> AsyncIterator[dict[str, Any]]:
-        """Open a WebSocket to Dundun /ws/chat and yield frames.
+    ) -> AbstractAsyncContextManager["DundunWSBridge"]:
+        """Open a WebSocket to Dundun /ws/chat as a bidirectional channel.
+
+        Returns an async context manager yielding a DundunWSBridge with send/recv.
+        Bidirectional — client frames go upstream via .send(), Dundun frames
+        come back via .recv() (None on upstream close).
 
         NOTE: Dundun's public OpenAPI v0.1.1 does not document a WS endpoint.
         This method is specified in design.md §2.2 (WS proxy) for a future
         Dundun WS transport. Implementations SHOULD raise NotImplementedError
         until Dundun publishes the WS contract.
         """
+        ...
+
+
+class DundunWSBridge(Protocol):
+    """Bidirectional handle over a live Dundun WS connection."""
+
+    async def send(self, frame: dict[str, Any]) -> None:
+        """Push a frame upstream to Dundun (JSON-encoded under the hood)."""
+        ...
+
+    async def recv(self) -> dict[str, Any] | None:
+        """Pull the next frame from Dundun; None when upstream closes."""
         ...
 
     async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:

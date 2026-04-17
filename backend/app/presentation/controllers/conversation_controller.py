@@ -201,10 +201,12 @@ async def conversation_ws(
 
 
 class _UpstreamWS:
-    """Async context manager wrapping DundunClient.chat_ws async generator.
+    """Async context manager wrapping DundunClient.chat_ws (now a bidirectional
+    context manager yielding a bridge with send/recv).
 
-    DundunHTTPClient.chat_ws is an async generator over websockets frames.
-    We wrap it to expose receive() and send() for the bidirectional pump.
+    Previous version treated chat_ws as a pull-only async generator and called
+    asend() for upstream frames — a no-op on a generator that never consumes
+    its sent values. This wrapper now defers to the bridge's real send/recv.
     """
 
     def __init__(
@@ -218,37 +220,37 @@ class _UpstreamWS:
         self._conv_id = conversation_id
         self._user_id = user_id
         self._work_item_id = work_item_id
-        self._gen: Any = None
+        self._cm: Any = None
+        self._bridge: Any = None
 
     async def __aenter__(self) -> _UpstreamWS:
-        self._gen = self._dundun.chat_ws(
+        self._cm = self._dundun.chat_ws(
             conversation_id=self._conv_id,
             user_id=self._user_id,
             work_item_id=self._work_item_id,
         )
+        self._bridge = await self._cm.__aenter__()
         return self
 
-    async def __aexit__(self, *args: object) -> None:
-        if self._gen is not None:
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        if self._cm is not None:
             with contextlib.suppress(Exception):
-                await self._gen.aclose()
+                await self._cm.__aexit__(exc_type, exc, tb)
 
     async def receive(self) -> dict[str, Any] | None:
-        """Get next frame from upstream; returns None on exhaustion."""
-        try:
-            frame: dict[str, Any] = await self._gen.__anext__()
-            return frame
-        except StopAsyncIteration:
+        """Get next frame from upstream; returns None when Dundun closes."""
+        if self._bridge is None:
             return None
+        return await self._bridge.recv()
 
     async def send(self, frame: dict[str, Any]) -> None:
-        """Forward a client frame upstream via the generator's asend()."""
+        """Forward a client frame upstream."""
+        if self._bridge is None:
+            return
         try:
-            await self._gen.asend(frame)
-        except (StopIteration, StopAsyncIteration):
-            pass
+            await self._bridge.send(frame)
         except Exception:
-            logger.debug("ws_proxy: upstream send error")
+            logger.debug("ws_proxy: upstream send error", exc_info=True)
 
 
 async def _pump(websocket: WebSocket, upstream: _UpstreamWS) -> None:

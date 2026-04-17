@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
@@ -147,20 +148,23 @@ class DundunHTTPClient:
         )
         return []
 
+    @asynccontextmanager
     async def chat_ws(
         self,
         *,
         conversation_id: str,
         user_id: UUID,
         work_item_id: UUID | None,
-    ) -> AsyncIterator[dict[str, Any]]:
-        """Connect to Dundun /ws/chat and yield parsed JSON frames.
+    ) -> AsyncIterator["_DundunWSBridge"]:
+        """Open a bidirectional Dundun /ws/chat connection.
 
-        NOTE: Dundun v0.1.1 does not document a WS endpoint. This is speculative
-        per design.md §2.2 (WS proxy). The implementation will be updated when
-        Dundun publishes the WS contract.
+        The prior async-generator shape only yielded frames — no way to push
+        client frames upstream. asend() on a plain generator is a no-op when
+        the generator doesn't consume its sent values (MF-2). Now exposes a
+        bridge with send() + recv() for both directions.
 
-        Frames are expected to be JSON strings; non-JSON frames are logged and skipped.
+        NOTE: Dundun v0.1.1 does not document a WS endpoint. Still speculative
+        per design.md §2.2 until Dundun publishes the WS contract.
         """
         ws_url = f"{self._ws_base}{_WS_CHAT_PATH}?conversation_id={conversation_id}"
         extra_headers = {
@@ -172,11 +176,28 @@ class DundunHTTPClient:
             extra_headers["X-Work-Item-Id"] = str(work_item_id)
 
         async with websockets.connect(ws_url, additional_headers=extra_headers) as ws:
-            async for raw_frame in ws:
-                if isinstance(raw_frame, bytes):
-                    raw_frame = raw_frame.decode("utf-8")
-                try:
-                    frame: dict[str, Any] = json.loads(raw_frame)
-                    yield frame
-                except json.JSONDecodeError:
-                    logger.warning("Dundun WS: non-JSON frame received, skipping: %r", raw_frame)
+            yield _DundunWSBridge(ws)
+
+
+class _DundunWSBridge:
+    """Thin JSON framing layer over a websockets client connection."""
+
+    def __init__(self, ws: Any) -> None:
+        self._ws = ws
+
+    async def send(self, frame: dict[str, Any]) -> None:
+        await self._ws.send(json.dumps(frame))
+
+    async def recv(self) -> dict[str, Any] | None:
+        try:
+            raw = await self._ws.recv()
+        except websockets.ConnectionClosed:
+            return None
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        try:
+            frame: dict[str, Any] = json.loads(raw)
+            return frame
+        except json.JSONDecodeError:
+            logger.warning("Dundun WS: non-JSON frame received, skipping: %r", raw)
+            return None

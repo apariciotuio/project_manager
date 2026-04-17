@@ -151,12 +151,13 @@ class TestFakeDundunClientChatWs:
         fake.chat_frames = list(expected)
 
         received = []
-        async for frame in fake.chat_ws(
+        async with fake.chat_ws(
             conversation_id=CONV_ID,
             user_id=USER_ID,
             work_item_id=None,
-        ):
-            received.append(frame)
+        ) as bridge:
+            while (frame := await bridge.recv()) is not None:
+                received.append(frame)
 
         assert received == expected
 
@@ -165,12 +166,13 @@ class TestFakeDundunClientChatWs:
         fake = FakeDundunClient()
 
         received = []
-        async for frame in fake.chat_ws(
+        async with fake.chat_ws(
             conversation_id=CONV_ID,
             user_id=USER_ID,
             work_item_id=None,
-        ):
-            received.append(frame)
+        ) as bridge:
+            while (frame := await bridge.recv()) is not None:
+                received.append(frame)
 
         assert received == []
 
@@ -180,21 +182,23 @@ class TestFakeDundunClientChatWs:
         fake.chat_frames = [{"type": "progress", "content": "x"}]
 
         # consume once
-        async for _ in fake.chat_ws(
+        async with fake.chat_ws(
             conversation_id=CONV_ID,
             user_id=USER_ID,
             work_item_id=None,
-        ):
-            pass
+        ) as bridge:
+            while await bridge.recv() is not None:
+                pass
 
         # second iteration yields nothing (frames are consumed)
         received = []
-        async for frame in fake.chat_ws(
+        async with fake.chat_ws(
             conversation_id=CONV_ID,
             user_id=USER_ID,
             work_item_id=None,
-        ):
-            received.append(frame)
+        ) as bridge:
+            while (frame := await bridge.recv()) is not None:
+                received.append(frame)
 
         assert received == []
 
@@ -205,7 +209,7 @@ class TestFakeDundunClientChatWs:
         fake.next_error = DundunClientError("ws error")
 
         with pytest.raises(DundunClientError, match="ws error"):
-            async for _ in fake.chat_ws(
+            async with fake.chat_ws(
                 conversation_id=CONV_ID,
                 user_id=USER_ID,
                 work_item_id=None,

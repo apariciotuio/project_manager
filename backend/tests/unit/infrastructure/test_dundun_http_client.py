@@ -401,10 +401,12 @@ class TestGetHistory:
 
 
 class _AsyncWsMock:
-    """Minimal async context manager that yields string frames."""
+    """Minimal async context manager exposing recv() / send() — mirrors the
+    subset of the websockets client contract that DundunHTTPClient uses."""
 
     def __init__(self, frames: list[str]) -> None:
-        self._frames = frames
+        self._frames = list(frames)
+        self.sent: list[str] = []
         self.connect_uri: str = ""
         self.connect_kwargs: dict[str, Any] = {}
 
@@ -414,15 +416,14 @@ class _AsyncWsMock:
     async def __aexit__(self, *_: object) -> None:
         pass
 
-    def __aiter__(self) -> _AsyncWsMock:
-        self._iter = iter(self._frames)
-        return self
+    async def recv(self) -> str:
+        if not self._frames:
+            from websockets import ConnectionClosed as _CC
+            raise _CC(None, None)
+        return self._frames.pop(0)
 
-    async def __anext__(self) -> str:
-        try:
-            return next(self._iter)
-        except StopIteration as exc:
-            raise StopAsyncIteration from exc
+    async def send(self, payload: str) -> None:
+        self.sent.append(payload)
 
 
 def _make_ws_connect(frames: list[str]) -> tuple[_AsyncWsMock, MagicMock]:
@@ -459,12 +460,13 @@ class TestChatWs:
             client = _make_client(transport)
 
             received: list[dict[str, Any]] = []
-            async for frame in client.chat_ws(
+            async with client.chat_ws(
                 conversation_id=CONV_ID,
                 user_id=USER_ID,
                 work_item_id=None,
-            ):
-                received.append(frame)
+            ) as bridge:
+                while (frame := await bridge.recv()) is not None:
+                    received.append(frame)
 
         assert len(received) == 2
         assert received[0] == {"type": "progress", "content": "thinking..."}
@@ -481,7 +483,7 @@ class TestChatWs:
             transport = _mock_transport(200, {})
             client = _make_client(transport)
 
-            async for _ in client.chat_ws(
+            async with client.chat_ws(
                 conversation_id=CONV_ID,
                 user_id=USER_ID,
                 work_item_id=WORK_ITEM_ID,
@@ -508,11 +510,12 @@ class TestChatWs:
             client = _make_client(transport)
 
             received = []
-            async for frame in client.chat_ws(
+            async with client.chat_ws(
                 conversation_id=CONV_ID,
                 user_id=USER_ID,
                 work_item_id=None,
-            ):
-                received.append(frame)
+            ) as bridge:
+                while (frame := await bridge.recv()) is not None:
+                    received.append(frame)
 
         assert received == []
