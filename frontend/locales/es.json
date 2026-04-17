@@ -3,7 +3,32 @@
     "title": "Work Maturation Platform"
   },
   "theme": {
-    "toggle": "Cambiar tema"
+    "toggle": "Cambiar tema",
+    "switcher": {
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema",
+      "ariaLabel": "Selector de tema"
+    },
+    "redPill": {
+      "label": "Píldora roja",
+      "tooltip": "Entra en Matrix",
+      "aria": "Entrar en el tema Matrix"
+    },
+    "bluePill": {
+      "label": "Píldora azul",
+      "tooltip": "Salir de Matrix",
+      "aria": "Salir del tema Matrix"
+    },
+    "rain": {
+      "toggle": "Lluvia digital",
+      "on": "Activar lluvia",
+      "off": "Desactivar lluvia"
+    },
+    "announce": {
+      "entered": "Tema Matrix activado",
+      "exited": "Saliste del tema Matrix"
+    }
   },
   "health": {
     "ok": "OK",
@@ -19,6 +44,429 @@
       "invalid_state": "Solicitud inválida. Inténtalo de nuevo.",
       "cancelled": "Cancelaste el inicio de sesión.",
       "no_workspace": "Tu cuenta no tiene acceso a ningún workspace."
+    }
+  },
+  "nav": {
+    "items": "Elementos",
+    "inbox": "Bandeja de entrada",
+    "teams": "Equipos",
+    "admin": "Administración",
+    "workspaceAriaLabel": "Navegación del workspace",
+    "unreadNotifications": "{count} notificaciones sin leer"
+  },
+  "userMenu": {
+    "triggerAria": "Abrir menú de usuario",
+    "themeAriaGroup": "Tema",
+    "localeAriaLabel": "Idioma actual: {locale}. Cambiar.",
+    "localeTitle": "Cambiar a {locale}",
+    "signOut": "Cerrar sesión"
+  },
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "creating": "Creando...",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando...",
+    "retry": "Reintentar",
+    "confirm": "Confirmar",
+    "add": "Añadir",
+    "adding": "Añadiendo...",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "new": "Nuevo",
+    "archive": "Archivar",
+    "search": "Buscar",
+    "optional": "opcional",
+    "required": "requerido",
+    "nameRequired": "Nombre *",
+    "titleRequired": "Título *",
+    "description": "Descripción",
+    "name": "Nombre",
+    "color": "Color",
+    "allProjects": "Todos los proyectos",
+    "noResults": "Sin resultados",
+    "collapse": "Contraer",
+    "expand": "Expandir",
+    "reply": "Responder",
+    "comment": "Comentar",
+    "loadMore": "Cargar más",
+    "typeToConfirm": "Escribe {expected} para confirmar",
+    "errors": {
+      "generic": "Ha ocurrido un error. Inténtalo de nuevo."
+    }
+  },
+  "workspace": {
+    "items": {
+      "title": "Elementos de trabajo",
+      "newButton": "Nuevo elemento",
+      "newButtonAria": "Nuevo elemento",
+      "allStates": "Todos los estados",
+      "stateFilterAria": "Estado",
+      "searchPlaceholder": "Buscar",
+      "errorBanner": "Error al cargar elementos",
+      "empty": {
+        "title": "No hay elementos de trabajo",
+        "subtitle": "Crea tu primer elemento para empezar a trabajar",
+        "createButton": "Nuevo elemento"
+      },
+      "columns": {
+        "title": "Título",
+        "type": "Tipo",
+        "state": "Estado",
+        "completeness": "Completitud",
+        "updatedAt": "Actualizado"
+      },
+      "states": {
+        "draft": "Borrador",
+        "in_clarification": "En aclaración",
+        "in_review": "En revisión",
+        "changes_requested": "Cambios solicitados",
+        "partially_validated": "Parcialmente validado",
+        "ready": "Listo",
+        "exported": "Exportado"
+      }
+    },
+    "itemDetail": {
+      "loadingAria": "Cargando elemento",
+      "errorPrefix": "Error al cargar el elemento",
+      "editButtonAria": "Editar elemento",
+      "editButton": "Editar",
+      "tabsAria": "Secciones del elemento",
+      "tabs": {
+        "specification": "Especificación",
+        "tasks": "Tareas",
+        "reviews": "Revisiones",
+        "comments": "Comentarios",
+        "timeline": "Historial",
+        "subItems": "Sub-items"
+      }
+    },
+    "newItem": {
+      "title": "Nuevo elemento",
+      "subtitle": "Crea un elemento de trabajo. Podrás editar los detalles tras crearlo.",
+      "fields": {
+        "title": "Título *",
+        "titlePlaceholder": "Título del elemento",
+        "type": "Tipo",
+        "typePlaceholder": "Selecciona un tipo",
+        "project": "Proyecto *",
+        "projectPlaceholder": "Selecciona un proyecto",
+        "parent": "Padre",
+        "parentPlaceholder": "Sin padre",
+        "noParent": "Sin padre",
+        "tags": "Etiquetas",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Descripción opcional",
+        "template": "Plantilla"
+      },
+      "noProjects": "Sin proyectos.",
+      "createProject": "Crear proyecto",
+      "newProject": "Nuevo",
+      "conflictBanner": "Hay un borrador más reciente en otro dispositivo.",
+      "overwrite": "Sobreescribir",
+      "errorCreate": "Error al crear el elemento",
+      "projectDialog": {
+        "title": "Crear proyecto",
+        "namePlaceholder": "Nombre del proyecto",
+        "descPlaceholder": "Descripción opcional"
+      },
+      "types": {
+        "idea": "Idea",
+        "bug": "Bug",
+        "enhancement": "Mejora",
+        "task": "Tarea",
+        "initiative": "Iniciativa",
+        "spike": "Spike",
+        "business_change": "Cambio de negocio",
+        "requirement": "Requisito",
+        "milestone": "Hito",
+        "story": "Historia"
+      }
+    },
+    "inbox": {
+      "title": "Bandeja de entrada",
+      "loading": "Cargando...",
+      "errorPrefix": "No se pudo cargar la bandeja",
+      "empty": "No tienes notificaciones",
+      "unreadAria": "No leída"
+    },
+    "teams": {
+      "title": "Equipos",
+      "loading": "Cargando...",
+      "errorPrefix": "No se pudieron cargar los equipos",
+      "empty": "No hay equipos creados",
+      "createButton": "Crear equipo",
+      "noMembers": "Sin miembros aún.",
+      "addMember": "Añadir miembro",
+      "addMemberTitle": "Añadir miembro",
+      "addMemberTo": "Añadir miembro a {teamName}",
+      "memberCount_one": "1 miembro",
+      "memberCount_other": "{count} miembros",
+      "noAvailableMembers": "No hay más usuarios del workspace disponibles para este equipo.",
+      "selectMember": "Selecciona un miembro del workspace",
+      "userLabel": "Usuario",
+      "createDialog": {
+        "title": "Crear equipo",
+        "namePlaceholder": "Nombre del equipo",
+        "descPlaceholder": "Descripción opcional",
+        "errorCreate": "Error al crear el equipo"
+      },
+      "addMemberError": "Error al añadir miembro"
+    },
+    "admin": {
+      "title": "Administración",
+      "tabs": {
+        "members": "Miembros",
+        "audit": "Auditoría",
+        "health": "Salud",
+        "projects": "Proyectos",
+        "integrations": "Integraciones",
+        "tags": "Etiquetas"
+      },
+      "members": {
+        "stub": "Vista de miembros del workspace (stub — mostrando usuario actual).",
+        "superadmin": "Superadmin"
+      },
+      "audit": {
+        "loading": "Cargando...",
+        "errorPrefix": "No se pudo cargar la auditoría",
+        "eventCount": "{total} eventos",
+        "columns": {
+          "actor": "Actor",
+          "action": "Acción",
+          "resource": "Recurso",
+          "date": "Fecha"
+        },
+        "empty": "No hay eventos de auditoría."
+      },
+      "health": {
+        "loading": "Cargando...",
+        "errorPrefix": "No se pudo cargar el resumen",
+        "distribution": "Distribución de elementos de trabajo por estado.",
+        "active": "activos",
+        "empty": "Aún no hay elementos de trabajo."
+      },
+      "projects": {
+        "loading": "Cargando...",
+        "errorPrefix": "No se pudieron cargar los proyectos",
+        "empty": "No hay proyectos.",
+        "newButton": "Nuevo proyecto",
+        "dialog": {
+          "title": "Nuevo proyecto",
+          "namePlaceholder": "Nombre del proyecto",
+          "descPlaceholder": "Descripción opcional"
+        }
+      },
+      "integrations": {
+        "loading": "Cargando...",
+        "errorPrefix": "No se pudieron cargar las integraciones",
+        "empty": "No hay integraciones configuradas. Crea una para exportar items a Jira u otros sistemas.",
+        "newButton": "Nueva integración",
+        "created": "Integración creada",
+        "allProjects": "Todos los proyectos",
+        "active": "Activa",
+        "inactive": "Inactiva",
+        "dialog": {
+          "title": "Nueva integración",
+          "provider": "Proveedor",
+          "projectLabel": "Proyecto (opcional)",
+          "projectPlaceholder": "Todos los proyectos / sin proyecto específico",
+          "jiraUrlLabel": "URL base de Jira *",
+          "emailLabel": "Email",
+          "apiTokenLabel": "API Token",
+          "apiTokenPlaceholder": "Token de Jira",
+          "showMapping": "Mostrar mapping avanzado",
+          "hideMapping": "Ocultar mapping avanzado"
+        }
+      },
+      "tags": {
+        "loading": "Cargando...",
+        "errorPrefix": "No se pudieron cargar las etiquetas",
+        "empty": "No hay etiquetas.",
+        "newButton": "Nueva etiqueta",
+        "editAria": "Editar etiqueta {name}",
+        "archiveTitle": "Archivar",
+        "dialog": {
+          "title": "Nueva etiqueta",
+          "namePlaceholder": "Nombre de la etiqueta",
+          "colorLabel": "Color (hex)"
+        }
+      }
+    }
+  },
+  "modals": {
+    "workItemEdit": {
+      "title": "Editar elemento",
+      "fields": {
+        "title": "Título *",
+        "description": "Descripción",
+        "priority": "Prioridad",
+        "noPriority": "Sin prioridad",
+        "type": "Tipo"
+      },
+      "priority": {
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta",
+        "critical": "Crítica"
+      },
+      "type": {
+        "idea": "Idea",
+        "bug": "Error",
+        "enhancement": "Mejora",
+        "task": "Tarea",
+        "initiative": "Iniciativa",
+        "spike": "Spike",
+        "business_change": "Cambio de negocio",
+        "requirement": "Requisito",
+        "milestone": "Hito",
+        "story": "Historia"
+      }
+    },
+    "tagEdit": {
+      "title": "Editar etiqueta",
+      "archived": "Archivada",
+      "fields": {
+        "name": "Nombre *",
+        "color": "Color"
+      }
+    }
+  },
+  "workItem": {
+    "header": {
+      "titleInputAria": "Título del elemento",
+      "editTitleAria": "Editar título",
+      "completenessAria": "Completitud: {score}%",
+      "belongsTo": "Pertenece a:",
+      "tagsAria": "Etiquetas",
+      "addTagAria": "Añadir etiqueta",
+      "noTagsAvailable": "No hay etiquetas disponibles",
+      "availableTagsAria": "Etiquetas disponibles"
+    },
+    "specification": {
+      "panelAria": "Panel de completitud",
+      "completenessTitle": "Completitud",
+      "completenessAria": "Completitud total: {score}%",
+      "gapsTitle": "Brechas",
+      "savingIndicator": "Guardando…",
+      "lockedByAria": "Bloqueado por {name}",
+      "lockedByFallback": "Otro usuario",
+      "writePlaceholder": "Escribe aquí el contenido de \"{section}\"…",
+      "sections": {
+        "problem_statement": "Problema",
+        "acceptance_criteria": "Criterios de aceptación",
+        "solution_description": "Descripción de solución",
+        "technical_notes": "Notas técnicas",
+        "business_justification": "Justificación de negocio",
+        "scope": "Alcance",
+        "out_of_scope": "Fuera de alcance",
+        "dependencies": "Dependencias",
+        "risks": "Riesgos",
+        "mockups": "Maquetas",
+        "definition_of_done": "Definición de hecho"
+      }
+    },
+    "tasks": {
+      "addTask": "Añadir tarea",
+      "addTaskAria": "Añadir tarea",
+      "taskNamePlaceholder": "Nombre de la tarea…",
+      "taskNameAria": "Nombre de la nueva tarea",
+      "collapseAria": "Contraer",
+      "expandAria": "Expandir",
+      "statusAria": "Estado: {status}",
+      "status": {
+        "draft": "Borrador",
+        "in_progress": "En progreso",
+        "done": "Hecho"
+      }
+    },
+    "comments": {
+      "placeholder": "Escribe un comentario…",
+      "replyPlaceholder": "Escribe una respuesta…",
+      "commentAria": "Comentario",
+      "reply": "Responder",
+      "empty": "Sin comentarios todavía.",
+      "addCommentTitle": "Añadir comentario"
+    },
+    "reviews": {
+      "title": "Revisiones ({count})",
+      "requestButton": "Solicitar revisión",
+      "reviewerIdPlaceholder": "ID del revisor…",
+      "reviewerIdAria": "ID del revisor",
+      "submitReview": "Enviar",
+      "empty": "No hay revisiones todavía.",
+      "noResponses": "Sin respuestas todavía.",
+      "statusAria": "Estado de revisión: {status}",
+      "status": {
+        "pending": "Pendiente",
+        "approved": "Aprobado",
+        "changes_requested": "Cambios solicitados",
+        "dismissed": "Descartado"
+      },
+      "decision": {
+        "approved": "Aprobado",
+        "changes_requested": "Cambios solicitados"
+      }
+    },
+    "timeline": {
+      "listAria": "Historial de actividad",
+      "empty": "Sin actividad todavía.",
+      "loadMore": "Cargar más",
+      "loading": "Cargando…"
+    },
+    "children": {
+      "subItemsTitle": "Sub-items",
+      "addSubItemAria": "Añadir sub-item",
+      "addSubItemLabel": "+ Añadir sub-item",
+      "empty": "Sin sub-items aún",
+      "listAria": "Sub-items"
+    }
+  },
+  "domain": {
+    "stateBadge": {
+      "aria": "Estado: {label}",
+      "draft": "Borrador",
+      "in-review": "En revisión",
+      "ready": "Listo",
+      "blocked": "Bloqueado",
+      "archived": "Archivado",
+      "exported": "Exportado"
+    },
+    "typeBadge": {
+      "aria": "Tipo: {label}",
+      "story": "Historia",
+      "milestone": "Hito",
+      "epic": "Épica",
+      "bug": "Error",
+      "task": "Tarea",
+      "spike": "Investigación",
+      "idea": "Idea",
+      "change": "Cambio",
+      "requirement": "Requisito"
+    },
+    "tierBadge": {
+      "aria": "Prioridad {tier}"
+    },
+    "confirmDialog": {
+      "confirmLabel": "Confirmar",
+      "cancelLabel": "Cancelar",
+      "typeToConfirm": "Escribe {expected} para confirmar"
+    },
+    "humanError": {
+      "UNKNOWN": "Ha ocurrido un error inesperado.",
+      "VALIDATION_ERROR": "Los datos enviados no son válidos.",
+      "UNAUTHORIZED": "No tienes permiso para realizar esta acción.",
+      "NOT_FOUND": "El recurso solicitado no existe.",
+      "CONFLICT": "Ya existe un recurso con esos datos.",
+      "TAG_NAME_TAKEN": "Ya existe una etiqueta con ese nombre en este workspace.",
+      "TEAM_MEMBER_ALREADY_EXISTS": "Este usuario ya es miembro del equipo.",
+      "WORK_ITEM_NOT_FOUND": "El elemento de trabajo no existe.",
+      "TEMPLATE_NOT_FOUND": "La plantilla no existe.",
+      "PROJECT_NOT_FOUND": "El proyecto no existe.",
+      "RATE_LIMIT_EXCEEDED": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo."
     }
   }
 }

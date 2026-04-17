@@ -3,7 +3,32 @@
     "title": "Work Maturation Platform"
   },
   "theme": {
-    "toggle": "Toggle theme"
+    "toggle": "Toggle theme",
+    "switcher": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "ariaLabel": "Theme selector"
+    },
+    "redPill": {
+      "label": "Red pill",
+      "tooltip": "Enter Matrix",
+      "aria": "Enter Matrix theme"
+    },
+    "bluePill": {
+      "label": "Blue pill",
+      "tooltip": "Exit Matrix",
+      "aria": "Exit Matrix theme"
+    },
+    "rain": {
+      "toggle": "Digital rain",
+      "on": "Enable rain",
+      "off": "Disable rain"
+    },
+    "announce": {
+      "entered": "Matrix theme activated",
+      "exited": "Matrix theme deactivated"
+    }
   },
   "health": {
     "ok": "OK",
@@ -19,6 +44,429 @@
       "invalid_state": "Invalid request. Please try again.",
       "cancelled": "You cancelled sign-in.",
       "no_workspace": "Your account doesn't have access to any workspace."
+    }
+  },
+  "nav": {
+    "items": "Items",
+    "inbox": "Inbox",
+    "teams": "Teams",
+    "admin": "Admin",
+    "workspaceAriaLabel": "Workspace navigation",
+    "unreadNotifications": "{count} unread notifications"
+  },
+  "userMenu": {
+    "triggerAria": "Open user menu",
+    "themeAriaGroup": "Theme",
+    "localeAriaLabel": "Current language: {locale}. Switch.",
+    "localeTitle": "Switch to {locale}",
+    "signOut": "Sign out"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating...",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "add": "Add",
+    "adding": "Adding...",
+    "send": "Send",
+    "sending": "Sending…",
+    "new": "New",
+    "archive": "Archive",
+    "search": "Search",
+    "optional": "optional",
+    "required": "required",
+    "nameRequired": "Name *",
+    "titleRequired": "Title *",
+    "description": "Description",
+    "name": "Name",
+    "color": "Color",
+    "allProjects": "All projects",
+    "noResults": "No results",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "reply": "Reply",
+    "comment": "Comment",
+    "loadMore": "Load more",
+    "typeToConfirm": "Type {expected} to confirm",
+    "errors": {
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "workspace": {
+    "items": {
+      "title": "Work items",
+      "newButton": "New item",
+      "newButtonAria": "New item",
+      "allStates": "All states",
+      "stateFilterAria": "State",
+      "searchPlaceholder": "Search",
+      "errorBanner": "Failed to load items",
+      "empty": {
+        "title": "No work items",
+        "subtitle": "Create your first item to get started",
+        "createButton": "New item"
+      },
+      "columns": {
+        "title": "Title",
+        "type": "Type",
+        "state": "State",
+        "completeness": "Completeness",
+        "updatedAt": "Updated"
+      },
+      "states": {
+        "draft": "Draft",
+        "in_clarification": "In clarification",
+        "in_review": "In review",
+        "changes_requested": "Changes requested",
+        "partially_validated": "Partially validated",
+        "ready": "Ready",
+        "exported": "Exported"
+      }
+    },
+    "itemDetail": {
+      "loadingAria": "Loading item",
+      "errorPrefix": "Error loading item",
+      "editButtonAria": "Edit item",
+      "editButton": "Edit",
+      "tabsAria": "Item sections",
+      "tabs": {
+        "specification": "Specification",
+        "tasks": "Tasks",
+        "reviews": "Reviews",
+        "comments": "Comments",
+        "timeline": "Timeline",
+        "subItems": "Sub-items"
+      }
+    },
+    "newItem": {
+      "title": "New item",
+      "subtitle": "Create a work item. You can edit details after creating it.",
+      "fields": {
+        "title": "Title *",
+        "titlePlaceholder": "Item title",
+        "type": "Type",
+        "typePlaceholder": "Select a type",
+        "project": "Project *",
+        "projectPlaceholder": "Select a project",
+        "parent": "Parent",
+        "parentPlaceholder": "No parent",
+        "noParent": "No parent",
+        "tags": "Tags",
+        "description": "Description",
+        "descriptionPlaceholder": "Optional description",
+        "template": "Template"
+      },
+      "noProjects": "No projects.",
+      "createProject": "Create project",
+      "newProject": "New",
+      "conflictBanner": "There is a more recent draft on another device.",
+      "overwrite": "Overwrite",
+      "errorCreate": "Failed to create item",
+      "projectDialog": {
+        "title": "Create project",
+        "namePlaceholder": "Project name",
+        "descPlaceholder": "Optional description"
+      },
+      "types": {
+        "idea": "Idea",
+        "bug": "Bug",
+        "enhancement": "Enhancement",
+        "task": "Task",
+        "initiative": "Initiative",
+        "spike": "Spike",
+        "business_change": "Business change",
+        "requirement": "Requirement",
+        "milestone": "Milestone",
+        "story": "Story"
+      }
+    },
+    "inbox": {
+      "title": "Inbox",
+      "loading": "Loading...",
+      "errorPrefix": "Failed to load inbox",
+      "empty": "You have no notifications",
+      "unreadAria": "Unread"
+    },
+    "teams": {
+      "title": "Teams",
+      "loading": "Loading...",
+      "errorPrefix": "Failed to load teams",
+      "empty": "No teams yet",
+      "createButton": "Create team",
+      "noMembers": "No members yet.",
+      "addMember": "Add member",
+      "addMemberTitle": "Add member",
+      "addMemberTo": "Add member to {teamName}",
+      "memberCount_one": "1 member",
+      "memberCount_other": "{count} members",
+      "noAvailableMembers": "No more workspace users available for this team.",
+      "selectMember": "Select a workspace member",
+      "userLabel": "User",
+      "createDialog": {
+        "title": "Create team",
+        "namePlaceholder": "Team name",
+        "descPlaceholder": "Optional description",
+        "errorCreate": "Failed to create team"
+      },
+      "addMemberError": "Failed to add member"
+    },
+    "admin": {
+      "title": "Admin",
+      "tabs": {
+        "members": "Members",
+        "audit": "Audit",
+        "health": "Health",
+        "projects": "Projects",
+        "integrations": "Integrations",
+        "tags": "Tags"
+      },
+      "members": {
+        "stub": "Workspace members view (stub — showing current user).",
+        "superadmin": "Superadmin"
+      },
+      "audit": {
+        "loading": "Loading...",
+        "errorPrefix": "Failed to load audit log",
+        "eventCount": "{total} events",
+        "columns": {
+          "actor": "Actor",
+          "action": "Action",
+          "resource": "Resource",
+          "date": "Date"
+        },
+        "empty": "No audit events."
+      },
+      "health": {
+        "loading": "Loading...",
+        "errorPrefix": "Failed to load summary",
+        "distribution": "Work item distribution by state.",
+        "active": "active",
+        "empty": "No work items yet."
+      },
+      "projects": {
+        "loading": "Loading...",
+        "errorPrefix": "Failed to load projects",
+        "empty": "No projects.",
+        "newButton": "New project",
+        "dialog": {
+          "title": "New project",
+          "namePlaceholder": "Project name",
+          "descPlaceholder": "Optional description"
+        }
+      },
+      "integrations": {
+        "loading": "Loading...",
+        "errorPrefix": "Failed to load integrations",
+        "empty": "No integrations configured. Create one to export items to Jira or other systems.",
+        "newButton": "New integration",
+        "created": "Integration created",
+        "allProjects": "All projects",
+        "active": "Active",
+        "inactive": "Inactive",
+        "dialog": {
+          "title": "New integration",
+          "provider": "Provider",
+          "projectLabel": "Project (optional)",
+          "projectPlaceholder": "All projects / no specific project",
+          "jiraUrlLabel": "Jira base URL *",
+          "emailLabel": "Email",
+          "apiTokenLabel": "API Token",
+          "apiTokenPlaceholder": "Jira token",
+          "showMapping": "Show advanced mapping",
+          "hideMapping": "Hide advanced mapping"
+        }
+      },
+      "tags": {
+        "loading": "Loading...",
+        "errorPrefix": "Failed to load tags",
+        "empty": "No tags.",
+        "newButton": "New tag",
+        "editAria": "Edit tag {name}",
+        "archiveTitle": "Archive",
+        "dialog": {
+          "title": "New tag",
+          "namePlaceholder": "Tag name",
+          "colorLabel": "Color (hex)"
+        }
+      }
+    }
+  },
+  "modals": {
+    "workItemEdit": {
+      "title": "Edit item",
+      "fields": {
+        "title": "Title *",
+        "description": "Description",
+        "priority": "Priority",
+        "noPriority": "No priority",
+        "type": "Type"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "type": {
+        "idea": "Idea",
+        "bug": "Bug",
+        "enhancement": "Enhancement",
+        "task": "Task",
+        "initiative": "Initiative",
+        "spike": "Spike",
+        "business_change": "Business change",
+        "requirement": "Requirement",
+        "milestone": "Milestone",
+        "story": "Story"
+      }
+    },
+    "tagEdit": {
+      "title": "Edit tag",
+      "archived": "Archived",
+      "fields": {
+        "name": "Name *",
+        "color": "Color"
+      }
+    }
+  },
+  "workItem": {
+    "header": {
+      "titleInputAria": "Item title",
+      "editTitleAria": "Edit title",
+      "completenessAria": "Completeness: {score}%",
+      "belongsTo": "Belongs to:",
+      "tagsAria": "Tags",
+      "addTagAria": "Add tag",
+      "noTagsAvailable": "No tags available",
+      "availableTagsAria": "Available tags"
+    },
+    "specification": {
+      "panelAria": "Completeness panel",
+      "completenessTitle": "Completeness",
+      "completenessAria": "Total completeness: {score}%",
+      "gapsTitle": "Gaps",
+      "savingIndicator": "Saving…",
+      "lockedByAria": "Locked by {name}",
+      "lockedByFallback": "Another user",
+      "writePlaceholder": "Write \"{section}\" content here…",
+      "sections": {
+        "problem_statement": "Problem statement",
+        "acceptance_criteria": "Acceptance criteria",
+        "solution_description": "Solution description",
+        "technical_notes": "Technical notes",
+        "business_justification": "Business justification",
+        "scope": "Scope",
+        "out_of_scope": "Out of scope",
+        "dependencies": "Dependencies",
+        "risks": "Risks",
+        "mockups": "Mockups",
+        "definition_of_done": "Definition of done"
+      }
+    },
+    "tasks": {
+      "addTask": "Add task",
+      "addTaskAria": "Add task",
+      "taskNamePlaceholder": "Task name…",
+      "taskNameAria": "New task name",
+      "collapseAria": "Collapse",
+      "expandAria": "Expand",
+      "statusAria": "Status: {status}",
+      "status": {
+        "draft": "Draft",
+        "in_progress": "In progress",
+        "done": "Done"
+      }
+    },
+    "comments": {
+      "placeholder": "Write a comment…",
+      "replyPlaceholder": "Write a reply…",
+      "commentAria": "Comment",
+      "reply": "Reply",
+      "empty": "No comments yet.",
+      "addCommentTitle": "Add comment"
+    },
+    "reviews": {
+      "title": "Reviews ({count})",
+      "requestButton": "Request review",
+      "reviewerIdPlaceholder": "Reviewer ID…",
+      "reviewerIdAria": "Reviewer ID",
+      "submitReview": "Submit",
+      "empty": "No reviews yet.",
+      "noResponses": "No responses yet.",
+      "statusAria": "Review status: {status}",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "changes_requested": "Changes requested",
+        "dismissed": "Dismissed"
+      },
+      "decision": {
+        "approved": "Approved",
+        "changes_requested": "Changes requested"
+      }
+    },
+    "timeline": {
+      "listAria": "Activity history",
+      "empty": "No activity yet.",
+      "loadMore": "Load more",
+      "loading": "Loading…"
+    },
+    "children": {
+      "subItemsTitle": "Sub-items",
+      "addSubItemAria": "Add sub-item",
+      "addSubItemLabel": "+ Add sub-item",
+      "empty": "No sub-items yet",
+      "listAria": "Sub-items"
+    }
+  },
+  "domain": {
+    "stateBadge": {
+      "aria": "State: {label}",
+      "draft": "Draft",
+      "in-review": "In review",
+      "ready": "Ready",
+      "blocked": "Blocked",
+      "archived": "Archived",
+      "exported": "Exported"
+    },
+    "typeBadge": {
+      "aria": "Type: {label}",
+      "story": "Story",
+      "milestone": "Milestone",
+      "epic": "Epic",
+      "bug": "Bug",
+      "task": "Task",
+      "spike": "Spike",
+      "idea": "Idea",
+      "change": "Change",
+      "requirement": "Requirement"
+    },
+    "tierBadge": {
+      "aria": "Priority {tier}"
+    },
+    "confirmDialog": {
+      "confirmLabel": "Confirm",
+      "cancelLabel": "Cancel",
+      "typeToConfirm": "Type {expected} to confirm"
+    },
+    "humanError": {
+      "UNKNOWN": "An unexpected error occurred.",
+      "VALIDATION_ERROR": "The submitted data is not valid.",
+      "UNAUTHORIZED": "You don't have permission to perform this action.",
+      "NOT_FOUND": "The requested resource does not exist.",
+      "CONFLICT": "A resource with that data already exists.",
+      "TAG_NAME_TAKEN": "A tag with that name already exists in this workspace.",
+      "TEAM_MEMBER_ALREADY_EXISTS": "This user is already a member of the team.",
+      "WORK_ITEM_NOT_FOUND": "The work item does not exist.",
+      "TEMPLATE_NOT_FOUND": "The template does not exist.",
+      "PROJECT_NOT_FOUND": "The project does not exist.",
+      "RATE_LIMIT_EXCEEDED": "Too many requests. Please wait a moment and try again."
     }
   }
 }

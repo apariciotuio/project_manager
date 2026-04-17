@@ -45,10 +45,11 @@ describe('WorkspaceLayout', () => {
         <div>content</div>
       </WorkspaceLayout>,
     );
-    expect(screen.getByRole('link', { name: /elementos/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /bandeja/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /equipos/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /administración/i })).toBeInTheDocument();
+    // next-intl mock returns key as-is, so t('items') → 'items'
+    expect(screen.getByRole('link', { name: /items/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /inbox/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /teams/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /admin/i })).toBeInTheDocument();
   });
 
   it('renders children in main content area', () => {
@@ -89,7 +90,7 @@ describe('WorkspaceLayout', () => {
         <div>content</div>
       </WorkspaceLayout>,
     );
-    const itemsLink = screen.getByRole('link', { name: /elementos/i });
+    const itemsLink = screen.getByRole('link', { name: /items/i });
     // active link should have aria-current="page"
     expect(itemsLink).toHaveAttribute('aria-current', 'page');
   });
