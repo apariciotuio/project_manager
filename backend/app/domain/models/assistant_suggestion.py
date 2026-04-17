@@ -26,6 +26,7 @@ def _now() -> datetime:
 @dataclasses.dataclass
 class AssistantSuggestion:
     id: UUID
+    workspace_id: UUID
     work_item_id: UUID
     thread_id: UUID | None
     section_id: UUID | None

@@ -47,11 +47,13 @@ class ConversationService:
         self._now = now
 
     async def get_or_create_thread(
-        self, user_id: UUID, work_item_id: UUID | None
+        self, workspace_id: UUID, user_id: UUID, work_item_id: UUID | None
     ) -> ConversationThread:
         """Idempotent: returns existing active thread or creates a new one.
 
         Archived threads are resurrected (deleted_at cleared) rather than duplicated.
+        The `workspace_id` is required so RLS policies on `conversation_threads`
+        scope the row to the caller's workspace.
         """
         existing = await self._thread_repo.get_by_user_and_work_item(user_id, work_item_id)
 
@@ -60,6 +62,7 @@ class ConversationService:
                 # Resurrect: clear deleted_at
                 resurrected = ConversationThread(
                     id=existing.id,
+                    workspace_id=existing.workspace_id,
                     user_id=existing.user_id,
                     work_item_id=existing.work_item_id,
                     dundun_conversation_id=existing.dundun_conversation_id,
@@ -80,6 +83,7 @@ class ConversationService:
         now = self._now()
         thread = ConversationThread(
             id=uuid4(),
+            workspace_id=workspace_id,
             user_id=user_id,
             work_item_id=work_item_id,
             dundun_conversation_id=dundun_conversation_id,
@@ -124,6 +128,7 @@ class ConversationService:
                 preview = content[:200]
             updated_thread = ConversationThread(
                 id=thread.id,
+                workspace_id=thread.workspace_id,
                 user_id=thread.user_id,
                 work_item_id=thread.work_item_id,
                 dundun_conversation_id=thread.dundun_conversation_id,

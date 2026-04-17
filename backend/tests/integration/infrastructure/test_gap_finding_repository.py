@@ -30,6 +30,7 @@ from app.domain.models.gap_finding import GapSeverity, StoredGapFinding
 def _make_finding(
     work_item_id: object,
     *,
+    workspace_id: object | None = None,
     source: str = "rule",
     severity: GapSeverity = GapSeverity.WARNING,
     dimension: str = "title",
@@ -39,6 +40,7 @@ def _make_finding(
 ) -> StoredGapFinding:
     return StoredGapFinding(
         id=uuid4(),
+        workspace_id=workspace_id or uuid4(),  # type: ignore[arg-type]
         work_item_id=work_item_id,  # type: ignore[arg-type]
         dimension=dimension,
         severity=severity,
@@ -109,6 +111,7 @@ async def user_and_work_item(db: AsyncSession):
         export_reference=None,
     )
     item = await WorkItemRepositoryImpl(db).save(item, ws.id)
+    item.workspace_id = ws.id  # type: ignore[attr-defined]
     await db.flush()
     return user, item
 
@@ -128,8 +131,8 @@ class TestGapFindingRepositoryInsertMany:
 
         _user, item = user_and_work_item
         findings = [
-            _make_finding(item.id, source="rule"),
-            _make_finding(item.id, source="dundun"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
         ]
 
         results = await GapFindingRepositoryImpl(db).insert_many(findings)
@@ -158,7 +161,7 @@ class TestGapFindingRepositoryInsertMany:
         )
 
         _user, item = user_and_work_item
-        [result] = await GapFindingRepositoryImpl(db).insert_many([_make_finding(item.id)])
+        [result] = await GapFindingRepositoryImpl(db).insert_many([_make_finding(item.id, workspace_id=item.workspace_id)])
 
         assert result.created_at is not None
         assert result.invalidated_at is None
@@ -171,7 +174,7 @@ class TestGapFindingRepositoryInsertMany:
         )
 
         _user, item = user_and_work_item
-        finding = _make_finding(item.id, source="dundun", severity=GapSeverity.BLOCKING)
+        finding = _make_finding(item.id, workspace_id=item.workspace_id, source="dundun", severity=GapSeverity.BLOCKING)
 
         [result] = await GapFindingRepositoryImpl(db).insert_many([finding])
 
@@ -190,8 +193,8 @@ class TestGapFindingRepositoryGetActive:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        active = _make_finding(item.id)
-        invalidated = _make_finding(item.id, invalidated_at=datetime.now(UTC))
+        active = _make_finding(item.id, workspace_id=item.workspace_id)
+        invalidated = _make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))
         [a, inv] = await repo.insert_many([active, invalidated])
 
         results = await repo.get_active_for_work_item(item.id)
@@ -210,8 +213,8 @@ class TestGapFindingRepositoryGetActive:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        rule_finding = _make_finding(item.id, source="rule")
-        dundun_finding = _make_finding(item.id, source="dundun")
+        rule_finding = _make_finding(item.id, workspace_id=item.workspace_id, source="rule")
+        dundun_finding = _make_finding(item.id, workspace_id=item.workspace_id, source="dundun")
         [rf, df] = await repo.insert_many([rule_finding, dundun_finding])
 
         rule_results = await repo.get_active_for_work_item(item.id, source="rule")
@@ -230,7 +233,7 @@ class TestGapFindingRepositoryGetActive:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        finding = _make_finding(item.id, invalidated_at=datetime.now(UTC))
+        finding = _make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))
         await repo.insert_many([finding])
 
         results = await repo.get_active_for_work_item(item.id)
@@ -262,8 +265,8 @@ class TestGapFindingRepositoryInvalidate:
         repo = GapFindingRepositoryImpl(db)
 
         await repo.insert_many([
-            _make_finding(item.id, source="rule"),
-            _make_finding(item.id, source="dundun"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
         ])
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC))
@@ -283,8 +286,8 @@ class TestGapFindingRepositoryInvalidate:
         repo = GapFindingRepositoryImpl(db)
 
         [rule_f, dundun_f] = await repo.insert_many([
-            _make_finding(item.id, source="rule"),
-            _make_finding(item.id, source="dundun"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
+            _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
         ])
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC), source="rule")
@@ -306,7 +309,7 @@ class TestGapFindingRepositoryInvalidate:
         repo = GapFindingRepositoryImpl(db)
 
         # insert already-invalidated finding
-        await repo.insert_many([_make_finding(item.id, invalidated_at=datetime.now(UTC))])
+        await repo.insert_many([_make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))])
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC))
 
@@ -363,12 +366,13 @@ class TestGapFindingRepositoryInvalidate:
             export_reference=None,
         )
         other_item = await WorkItemRepositoryImpl(db).save(other_item, ws_id)
+        other_item.workspace_id = ws_id  # type: ignore[attr-defined]
         await db.flush()
 
         repo = GapFindingRepositoryImpl(db)
         await repo.insert_many([
-            _make_finding(item.id),
-            _make_finding(other_item.id),
+            _make_finding(item.id, workspace_id=item.workspace_id),
+            _make_finding(other_item.id, workspace_id=other_item.workspace_id),
         ])
 
         await repo.invalidate_for_work_item(item.id, datetime.now(UTC))

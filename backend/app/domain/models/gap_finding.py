@@ -37,6 +37,7 @@ class StoredGapFinding:
     """Persisted version of GapFinding — carries DB identity and timestamps."""
 
     id: UUID
+    workspace_id: UUID
     work_item_id: UUID
     dimension: str
     severity: GapSeverity

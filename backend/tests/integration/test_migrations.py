@@ -258,17 +258,28 @@ async def test_conversation_threads_dundun_unique(engine) -> None:
         )
         await conn.execute(
             text(
+                "INSERT INTO workspaces (id, name, slug, created_by) "
+                "SELECT gen_random_uuid(), 'CT1-WS', 'ct1-ws', id "
+                "FROM users WHERE email='ct1@tuio.com'"
+            )
+        )
+        await conn.execute(
+            text(
                 "INSERT INTO conversation_threads "
-                "(user_id, dundun_conversation_id) "
-                "SELECT id, 'dun-unique-1' FROM users WHERE email='ct1@tuio.com'"
+                "(workspace_id, user_id, dundun_conversation_id) "
+                "SELECT w.id, u.id, 'dun-unique-1' "
+                "FROM users u, workspaces w "
+                "WHERE u.email='ct1@tuio.com' AND w.slug='ct1-ws'"
             )
         )
         with pytest.raises(Exception, match="unique|duplicate"):
             await conn.execute(
                 text(
                     "INSERT INTO conversation_threads "
-                    "(user_id, dundun_conversation_id) "
-                    "SELECT id, 'dun-unique-1' FROM users WHERE email='ct1@tuio.com'"
+                    "(workspace_id, user_id, dundun_conversation_id) "
+                    "SELECT w.id, u.id, 'dun-unique-1' "
+                    "FROM users u, workspaces w "
+                    "WHERE u.email='ct1@tuio.com' AND w.slug='ct1-ws'"
                 )
             )
 
@@ -300,20 +311,20 @@ async def test_conversation_threads_unique_user_work_item(engine) -> None:
         await conn.execute(
             text(
                 "INSERT INTO conversation_threads "
-                "(user_id, work_item_id, dundun_conversation_id) "
-                "SELECT u.id, wi.id, 'dun-pair-1' "
-                "FROM users u, work_items wi "
-                "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item'"
+                "(workspace_id, user_id, work_item_id, dundun_conversation_id) "
+                "SELECT w.id, u.id, wi.id, 'dun-pair-1' "
+                "FROM users u, work_items wi, workspaces w "
+                "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item' AND w.slug='ct-ws'"
             )
         )
         with pytest.raises(Exception, match="unique|duplicate"):
             await conn.execute(
                 text(
                     "INSERT INTO conversation_threads "
-                    "(user_id, work_item_id, dundun_conversation_id) "
-                    "SELECT u.id, wi.id, 'dun-pair-2' "
-                    "FROM users u, work_items wi "
-                    "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item'"
+                    "(workspace_id, user_id, work_item_id, dundun_conversation_id) "
+                    "SELECT w.id, u.id, wi.id, 'dun-pair-2' "
+                    "FROM users u, work_items wi, workspaces w "
+                    "WHERE u.email='ct2@tuio.com' AND wi.title='CT Item' AND w.slug='ct-ws'"
                 )
             )
 
@@ -345,10 +356,10 @@ async def test_conversation_threads_work_item_fk_set_null(engine) -> None:
         await conn.execute(
             text(
                 "INSERT INTO conversation_threads "
-                "(user_id, work_item_id, dundun_conversation_id) "
-                "SELECT u.id, wi.id, 'dun-setnull' "
-                "FROM users u, work_items wi "
-                "WHERE u.email='ct3@tuio.com' AND wi.title='CT Item3'"
+                "(workspace_id, user_id, work_item_id, dundun_conversation_id) "
+                "SELECT w.id, u.id, wi.id, 'dun-setnull' "
+                "FROM users u, work_items wi, workspaces w "
+                "WHERE u.email='ct3@tuio.com' AND wi.title='CT Item3' AND w.slug='ct-ws3'"
             )
         )
         await conn.execute(
@@ -423,12 +434,12 @@ async def test_assistant_suggestions_status_check(engine) -> None:
             await conn.execute(
                 text(
                     "INSERT INTO assistant_suggestions "
-                    "(work_item_id, proposed_content, current_content, status, "
+                    "(workspace_id, work_item_id, proposed_content, current_content, status, "
                     " version_number_target, batch_id, created_by, expires_at) "
-                    "SELECT wi.id, 'p', 'c', 'invalid', 1, gen_random_uuid(), u.id, "
+                    "SELECT w.id, wi.id, 'p', 'c', 'invalid', 1, gen_random_uuid(), u.id, "
                     "       now() + interval '1 day' "
-                    "FROM work_items wi, users u "
-                    "WHERE u.email='as1@tuio.com' AND wi.title='AS Item'"
+                    "FROM work_items wi, users u, workspaces w "
+                    "WHERE u.email='as1@tuio.com' AND wi.title='AS Item' AND w.slug='as-ws'"
                 )
             )
 
@@ -460,12 +471,12 @@ async def test_assistant_suggestions_status_default_pending(engine) -> None:
         await conn.execute(
             text(
                 "INSERT INTO assistant_suggestions "
-                "(work_item_id, proposed_content, current_content, "
+                "(workspace_id, work_item_id, proposed_content, current_content, "
                 " version_number_target, batch_id, created_by, expires_at) "
-                "SELECT wi.id, 'prop', 'curr', 1, gen_random_uuid(), u.id, "
+                "SELECT w.id, wi.id, 'prop', 'curr', 1, gen_random_uuid(), u.id, "
                 "       now() + interval '1 day' "
-                "FROM work_items wi, users u "
-                "WHERE u.email='as2@tuio.com' AND wi.title='AS Item2'"
+                "FROM work_items wi, users u, workspaces w "
+                "WHERE u.email='as2@tuio.com' AND wi.title='AS Item2' AND w.slug='as-ws2'"
             )
         )
         row = (
@@ -528,12 +539,12 @@ async def test_assistant_suggestions_work_item_fk_cascade(engine) -> None:
         await conn.execute(
             text(
                 "INSERT INTO assistant_suggestions "
-                "(work_item_id, proposed_content, current_content, "
+                "(workspace_id, work_item_id, proposed_content, current_content, "
                 " version_number_target, batch_id, created_by, expires_at) "
-                "SELECT wi.id, 'p3', 'c3', 1, gen_random_uuid(), u.id, "
+                "SELECT w.id, wi.id, 'p3', 'c3', 1, gen_random_uuid(), u.id, "
                 "       now() + interval '1 day' "
-                "FROM work_items wi, users u "
-                "WHERE u.email='as3@tuio.com' AND wi.title='AS Item3'"
+                "FROM work_items wi, users u, workspaces w "
+                "WHERE u.email='as3@tuio.com' AND wi.title='AS Item3' AND w.slug='as-ws3'"
             )
         )
         await conn.execute(
@@ -606,9 +617,10 @@ async def test_gap_findings_source_check(engine) -> None:
             await conn.execute(
                 text(
                     "INSERT INTO gap_findings "
-                    "(work_item_id, source, severity, dimension, message) "
-                    "SELECT wi.id, 'invalid', 'warning', 'dim', 'msg' "
-                    "FROM work_items wi WHERE wi.title='GF Item'"
+                    "(workspace_id, work_item_id, source, severity, dimension, message) "
+                    "SELECT w.id, wi.id, 'invalid', 'warning', 'dim', 'msg' "
+                    "FROM work_items wi, workspaces w "
+                    "WHERE wi.title='GF Item' AND w.slug='gf-ws'"
                 )
             )
 
@@ -641,9 +653,10 @@ async def test_gap_findings_severity_check(engine) -> None:
             await conn.execute(
                 text(
                     "INSERT INTO gap_findings "
-                    "(work_item_id, source, severity, dimension, message) "
-                    "SELECT wi.id, 'rule', 'critical', 'dim', 'msg' "
-                    "FROM work_items wi WHERE wi.title='GF Item2'"
+                    "(workspace_id, work_item_id, source, severity, dimension, message) "
+                    "SELECT w.id, wi.id, 'rule', 'critical', 'dim', 'msg' "
+                    "FROM work_items wi, workspaces w "
+                    "WHERE wi.title='GF Item2' AND w.slug='gf-ws2'"
                 )
             )
 
@@ -690,9 +703,10 @@ async def test_gap_findings_work_item_fk_cascade(engine) -> None:
         await conn.execute(
             text(
                 "INSERT INTO gap_findings "
-                "(work_item_id, source, severity, dimension, message) "
-                "SELECT wi.id, 'rule', 'warning', 'dim', 'msg' "
-                "FROM work_items wi WHERE wi.title='GF Item3'"
+                "(workspace_id, work_item_id, source, severity, dimension, message) "
+                "SELECT w.id, wi.id, 'rule', 'warning', 'dim', 'msg' "
+                "FROM work_items wi, workspaces w "
+                "WHERE wi.title='GF Item3' AND w.slug='gf-ws3'"
             )
         )
         await conn.execute(

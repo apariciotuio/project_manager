@@ -27,6 +27,7 @@ def _make_suggestion(work_item_id: UUID, *, status="pending", expires_at: dateti
         expires_at = now + timedelta(hours=1)
     return AssistantSuggestion(
         id=uuid4(),
+        workspace_id=uuid4(),
         work_item_id=work_item_id,
         thread_id=None,
         section_id=None,

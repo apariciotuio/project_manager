@@ -8,6 +8,7 @@ from app.infrastructure.persistence.models.orm import GapFindingORM
 def to_domain(row: GapFindingORM) -> StoredGapFinding:
     return StoredGapFinding(
         id=row.id,
+        workspace_id=row.workspace_id,
         work_item_id=row.work_item_id,
         dimension=row.dimension,
         severity=GapSeverity(row.severity),
@@ -22,6 +23,7 @@ def to_domain(row: GapFindingORM) -> StoredGapFinding:
 def to_orm(entity: StoredGapFinding) -> GapFindingORM:
     row = GapFindingORM()
     row.id = entity.id
+    row.workspace_id = entity.workspace_id
     row.work_item_id = entity.work_item_id
     row.source = entity.source
     row.severity = entity.severity.value

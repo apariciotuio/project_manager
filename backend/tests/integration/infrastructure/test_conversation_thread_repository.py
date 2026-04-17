@@ -34,11 +34,13 @@ def _make_thread(
     user_id: object,
     work_item_id: object = None,
     *,
+    workspace_id: object | None = None,
     dundun_id: str | None = None,
 ) -> ConversationThread:
     now = datetime.now(UTC)
     return ConversationThread(
         id=uuid4(),
+        workspace_id=workspace_id or uuid4(),  # type: ignore[arg-type]
         user_id=user_id,  # type: ignore[arg-type]
         work_item_id=work_item_id,  # type: ignore[arg-type]
         dundun_conversation_id=dundun_id or f"dun_{uuid4().hex}",
@@ -108,6 +110,8 @@ async def user_and_work_item(db: AsyncSession):
         export_reference=None,
     )
     item = await WorkItemRepositoryImpl(db).save(item, ws.id)
+    # Stash workspace_id on the item for downstream tests (domain model doesn't carry it).
+    item.workspace_id = ws.id  # type: ignore[attr-defined]
     await db.flush()
     return user, item
 
@@ -126,7 +130,7 @@ class TestConversationThreadRepositoryCreate:
         )
 
         user, item = user_and_work_item
-        thread = _make_thread(user.id, item.id)
+        thread = _make_thread(user.id, item.id, workspace_id=item.workspace_id)
 
         result = await ConversationThreadRepositoryImpl(db).create(thread)
 
@@ -143,8 +147,8 @@ class TestConversationThreadRepositoryCreate:
             ConversationThreadRepositoryImpl,
         )
 
-        user, _item = user_and_work_item
-        thread = _make_thread(user.id, None)
+        user, item = user_and_work_item
+        thread = _make_thread(user.id, None, workspace_id=item.workspace_id)
 
         result = await ConversationThreadRepositoryImpl(db).create(thread)
 
@@ -161,11 +165,11 @@ class TestConversationThreadRepositoryCreate:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
 
-        thread1 = _make_thread(user.id, item.id)
+        thread1 = _make_thread(user.id, item.id, workspace_id=item.workspace_id)
         await repo.create(thread1)
         await db.flush()
 
-        thread2 = _make_thread(user.id, item.id)  # same (user, work_item)
+        thread2 = _make_thread(user.id, item.id, workspace_id=item.workspace_id)  # same (user, work_item)
         with pytest.raises(IntegrityError):
             await repo.create(thread2)
             await db.flush()
@@ -181,7 +185,7 @@ class TestConversationThreadRepositoryGet:
 
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
-        thread = await repo.create(_make_thread(user.id, item.id))
+        thread = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
 
         fetched = await repo.get_by_id(thread.id)
 
@@ -209,7 +213,7 @@ class TestConversationThreadRepositoryGet:
 
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
-        created = await repo.create(_make_thread(user.id, item.id))
+        created = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
 
         fetched = await repo.get_by_user_and_work_item(user.id, item.id)
 
@@ -223,9 +227,9 @@ class TestConversationThreadRepositoryGet:
             ConversationThreadRepositoryImpl,
         )
 
-        user, _item = user_and_work_item
+        user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
-        created = await repo.create(_make_thread(user.id, None))
+        created = await repo.create(_make_thread(user.id, None, workspace_id=item.workspace_id))
 
         fetched = await repo.get_by_user_and_work_item(user.id, None)
 
@@ -257,7 +261,7 @@ class TestConversationThreadRepositoryGet:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
         dundun_id = f"dun_{uuid4().hex}"
-        created = await repo.create(_make_thread(user.id, item.id, dundun_id=dundun_id))
+        created = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id, dundun_id=dundun_id))
 
         fetched = await repo.get_by_dundun_conversation_id(dundun_id)
 
@@ -290,8 +294,8 @@ class TestConversationThreadRepositoryList:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
 
-        active = await repo.create(_make_thread(user.id, item.id))
-        archived_thread = _make_thread(user.id, None)
+        active = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
+        archived_thread = _make_thread(user.id, None, workspace_id=item.workspace_id)
         archived_thread = ConversationThread(
             **{**archived_thread.__dict__, "deleted_at": datetime.now(UTC)}
         )
@@ -313,8 +317,8 @@ class TestConversationThreadRepositoryList:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
 
-        active = await repo.create(_make_thread(user.id, item.id))
-        archived_thread = _make_thread(user.id, None)
+        active = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
+        archived_thread = _make_thread(user.id, None, workspace_id=item.workspace_id)
         archived_thread = ConversationThread(
             **{**archived_thread.__dict__, "deleted_at": datetime.now(UTC)}
         )
@@ -336,8 +340,8 @@ class TestConversationThreadRepositoryList:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
 
-        item_thread = await repo.create(_make_thread(user.id, item.id))
-        general_thread = await repo.create(_make_thread(user.id, None))
+        item_thread = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
+        general_thread = await repo.create(_make_thread(user.id, None, workspace_id=item.workspace_id))
 
         results = await repo.list_for_user(user.id, work_item_id=item.id)
 
@@ -356,7 +360,7 @@ class TestConversationThreadRepositoryUpdate:
 
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
-        thread = await repo.create(_make_thread(user.id, item.id))
+        thread = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
 
         now = datetime.now(UTC)
         updated_thread = ConversationThread(
@@ -380,7 +384,7 @@ class TestConversationThreadRepositoryUpdate:
 
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
-        thread = await repo.create(_make_thread(user.id, item.id))
+        thread = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
 
         archived = thread.archive(datetime.now(UTC))
         result = await repo.update(archived)

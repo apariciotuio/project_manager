@@ -9,6 +9,7 @@ from uuid import UUID
 @dataclasses.dataclass
 class ConversationThread:
     id: UUID
+    workspace_id: UUID
     user_id: UUID
     work_item_id: UUID | None
     dundun_conversation_id: str

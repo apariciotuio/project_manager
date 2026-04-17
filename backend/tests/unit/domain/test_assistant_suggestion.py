@@ -20,6 +20,7 @@ def _make(
 ) -> AssistantSuggestion:
     return AssistantSuggestion(
         id=uuid4(),
+        workspace_id=uuid4(),
         work_item_id=uuid4(),
         thread_id=None,
         section_id=None,

@@ -26,6 +26,7 @@ def _make(
     bid: UUID = batch_id if batch_id is not None else uuid4()  # type: ignore[assignment]
     return AssistantSuggestion(
         id=uuid4(),
+        workspace_id=uuid4(),
         work_item_id=uuid4(),
         thread_id=None,
         section_id=None,

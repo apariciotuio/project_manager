@@ -76,7 +76,14 @@ async def get_or_create_thread(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> JSONResponse:
-    thread = await service.get_or_create_thread(current_user.id, body.work_item_id)
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
+    thread = await service.get_or_create_thread(
+        current_user.workspace_id, current_user.id, body.work_item_id
+    )
     data = ThreadResponse.from_domain(thread).model_dump(mode="json")
     return JSONResponse(
         status_code=http_status.HTTP_201_CREATED,

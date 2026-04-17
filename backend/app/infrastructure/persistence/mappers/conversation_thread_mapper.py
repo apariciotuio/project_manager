@@ -8,6 +8,7 @@ from app.infrastructure.persistence.models.orm import ConversationThreadORM
 def to_domain(row: ConversationThreadORM) -> ConversationThread:
     return ConversationThread(
         id=row.id,
+        workspace_id=row.workspace_id,
         user_id=row.user_id,
         work_item_id=row.work_item_id,
         dundun_conversation_id=row.dundun_conversation_id,
@@ -21,6 +22,7 @@ def to_domain(row: ConversationThreadORM) -> ConversationThread:
 def to_orm(entity: ConversationThread) -> ConversationThreadORM:
     row = ConversationThreadORM()
     row.id = entity.id
+    row.workspace_id = entity.workspace_id
     row.user_id = entity.user_id
     row.work_item_id = entity.work_item_id
     row.dundun_conversation_id = entity.dundun_conversation_id

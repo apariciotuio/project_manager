@@ -18,6 +18,7 @@ def _make(
     wid: UUID | None = work_item_id  # type: ignore[assignment]
     return ConversationThread(
         id=uuid4(),
+        workspace_id=uuid4(),
         user_id=uuid4(),
         work_item_id=wid,
         dundun_conversation_id="dun-abc123",

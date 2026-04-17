@@ -411,9 +411,13 @@ class ConversationThreadORM(Base):
             "work_item_id",
             postgresql_where=sa.text("work_item_id IS NOT NULL"),
         ),
+        Index("idx_conversation_threads_workspace", "workspace_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
@@ -453,9 +457,13 @@ class AssistantSuggestionORM(Base):
             "dundun_request_id",
             postgresql_where=sa.text("dundun_request_id IS NOT NULL"),
         ),
+        Index("idx_assistant_suggestions_workspace", "workspace_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )
@@ -501,9 +509,13 @@ class GapFindingORM(Base):
             "work_item_id",
             postgresql_where=sa.text("invalidated_at IS NULL"),
         ),
+        Index("idx_gap_findings_workspace", "workspace_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )

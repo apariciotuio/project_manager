@@ -128,6 +128,7 @@ def test_invoke_suggestion_agent_idempotent_on_retry(monkeypatch: pytest.MonkeyP
     now = datetime.now(UTC)
     existing = AssistantSuggestion(
         id=uuid4(),
+        workspace_id=uuid4(),
         work_item_id=work_item_id,
         thread_id=None,
         section_id=None,

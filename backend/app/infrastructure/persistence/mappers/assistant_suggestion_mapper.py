@@ -8,6 +8,7 @@ from app.infrastructure.persistence.models.orm import AssistantSuggestionORM
 def to_domain(row: AssistantSuggestionORM) -> AssistantSuggestion:
     return AssistantSuggestion(
         id=row.id,
+        workspace_id=row.workspace_id,
         work_item_id=row.work_item_id,
         thread_id=row.thread_id,
         section_id=row.section_id,
@@ -28,6 +29,7 @@ def to_domain(row: AssistantSuggestionORM) -> AssistantSuggestion:
 def to_orm(entity: AssistantSuggestion) -> AssistantSuggestionORM:
     row = AssistantSuggestionORM()
     row.id = entity.id
+    row.workspace_id = entity.workspace_id
     row.work_item_id = entity.work_item_id
     row.thread_id = entity.thread_id
     row.section_id = entity.section_id

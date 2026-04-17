@@ -155,8 +155,19 @@ async def _seed_suggestion(migrated_database, work_item_id, user_id, batch_id=No
     factory = async_sessionmaker(engine, expire_on_commit=False)
     now = datetime.now(UTC)
     batch = batch_id or uuid4()
+    # Derive workspace_id from the work item row so RLS and FK line up.
+    async with factory() as _lookup_session:
+        from sqlalchemy import text as _sql
+        row = (
+            await _lookup_session.execute(
+                _sql("SELECT workspace_id FROM work_items WHERE id = :wid"),
+                {"wid": work_item_id},
+            )
+        ).scalar_one()
+        workspace_id = row
     suggestion = AssistantSuggestion(
         id=uuid4(),
+        workspace_id=workspace_id,
         work_item_id=work_item_id,
         thread_id=None,
         section_id=None,

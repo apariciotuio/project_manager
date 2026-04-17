@@ -15,6 +15,8 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import status as http_status
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import get_settings
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
@@ -26,7 +28,9 @@ from app.infrastructure.persistence.assistant_suggestion_repository_impl import 
 from app.infrastructure.persistence.gap_finding_repository_impl import (
     GapFindingRepositoryImpl,
 )
-from app.presentation.dependencies import get_assistant_suggestion_repo, get_gap_finding_repo
+from app.infrastructure.persistence.models.orm import WorkItemORM
+from app.infrastructure.persistence.session_context import with_workspace
+from app.presentation.dependencies import get_callback_session
 from app.presentation.schemas.dundun_callback_schemas import DundunCallbackRequest
 
 logger = logging.getLogger(__name__)
@@ -60,9 +64,12 @@ def _ok(agent: str, count: int, note: str = "") -> JSONResponse:
 @router.post("/dundun/callback")
 async def dundun_callback(
     request: Request,
-    suggestion_repo: AssistantSuggestionRepositoryImpl = Depends(get_assistant_suggestion_repo),
-    gap_repo: GapFindingRepositoryImpl = Depends(get_gap_finding_repo),
+    session: AsyncSession = Depends(get_callback_session),
 ) -> JSONResponse:
+    # Build both repos off the same session so RLS SET LOCAL applies to both
+    # and the two writes share one transaction.
+    suggestion_repo = AssistantSuggestionRepositoryImpl(session)
+    gap_repo = GapFindingRepositoryImpl(session)
     # 1. Read raw body — must happen before Pydantic parsing
     raw_body = await request.body()
 
@@ -102,10 +109,10 @@ async def dundun_callback(
 
     # 5. Route by agent
     if payload.agent == "wm_suggestion_agent":
-        return await _handle_suggestion(payload, suggestion_repo)
+        return await _handle_suggestion(payload, session, suggestion_repo)
 
     if payload.agent == "wm_gap_agent":
-        return await _handle_gap(payload, gap_repo)
+        return await _handle_gap(payload, session, gap_repo)
 
     # wm_quick_action_agent — deferred to EP-04
     return JSONResponse(
@@ -120,8 +127,33 @@ async def dundun_callback(
     )
 
 
+async def _resolve_workspace_id(session: AsyncSession, work_item_id: UUID) -> UUID:
+    """Look up a work item's workspace_id and SET LOCAL for RLS.
+
+    The Dundun callback runs outside user auth, so there's no workspace context
+    from a JWT. We derive it from the referenced work item. Raises 422 if the
+    work item does not exist.
+    """
+    stmt = select(WorkItemORM.workspace_id).where(WorkItemORM.id == work_item_id)
+    workspace_id = (await session.execute(stmt)).scalar_one_or_none()
+    if workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "WORK_ITEM_NOT_FOUND",
+                    "message": f"work_item {work_item_id} not found",
+                    "details": {},
+                }
+            },
+        )
+    await with_workspace(session, workspace_id)
+    return workspace_id
+
+
 async def _handle_suggestion(
     payload: DundunCallbackRequest,
+    session: AsyncSession,
     repo: AssistantSuggestionRepositoryImpl,
 ) -> JSONResponse:
     """Persist suggestion rows for wm_suggestion_agent callbacks."""
@@ -160,12 +192,14 @@ async def _handle_suggestion(
     work_item_id: UUID = payload.work_item_id
     batch_id: UUID = payload.batch_id
     created_by: UUID = payload.user_id
+    workspace_id = await _resolve_workspace_id(session, work_item_id)
     now = datetime.now(UTC)
     expires_at = now + timedelta(hours=_SUGGESTION_EXPIRES_HOURS)
 
     suggestions = [
         AssistantSuggestion(
             id=uuid4(),
+            workspace_id=workspace_id,
             work_item_id=work_item_id,
             thread_id=None,
             section_id=item.section_id,
@@ -197,6 +231,7 @@ async def _handle_suggestion(
 
 async def _handle_gap(
     payload: DundunCallbackRequest,
+    session: AsyncSession,
     repo: GapFindingRepositoryImpl,
 ) -> JSONResponse:
     """Persist gap findings for wm_gap_agent callbacks."""
@@ -216,6 +251,7 @@ async def _handle_gap(
             },
         )
     work_item_id: UUID = payload.work_item_id
+    workspace_id = await _resolve_workspace_id(session, work_item_id)
     now = datetime.now(UTC)
 
     # Idempotency: check if this request_id was already processed
@@ -243,6 +279,7 @@ async def _handle_gap(
     findings = [
         StoredGapFinding(
             id=uuid4(),
+            workspace_id=workspace_id,
             work_item_id=work_item_id,
             dimension=f.dimension,
             severity=GapSeverity(f.severity),
