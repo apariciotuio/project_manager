@@ -85,3 +85,18 @@ def register_event_subscribers(bus: EventBus) -> None:
         logger.exception(
             "register_event_subscribers: failed to register notification subscribers"
         )
+
+    # EP-10 — Validation template auto-seed on work item creation
+    try:
+        from app.application.events.validation_template_subscriber import (
+            register_validation_template_subscribers,
+        )
+
+        register_validation_template_subscribers(bus)
+        logger.info(
+            "register_event_subscribers: validation template subscriber registered"
+        )
+    except Exception:
+        logger.exception(
+            "register_event_subscribers: failed to register validation template subscriber"
+        )
