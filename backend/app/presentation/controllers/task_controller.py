@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel
 
+from app.application.services.completion_rollup_service import CompletionRollupService
 from app.application.services.dependency_service import (
     DependencyCycleError,
     DependencyNotFoundError,
@@ -33,6 +34,8 @@ from app.application.services.task_service import (
 from app.domain.models.task_node import PredecessorNotDoneError, TaskNode
 from app.presentation.dependencies import get_current_user, get_dependency_service, get_task_service
 from app.presentation.middleware.auth_middleware import CurrentUser
+
+_rollup_service = CompletionRollupService()
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +112,14 @@ def _node_payload(node: TaskNode) -> dict[str, Any]:
     }
 
 
-def _build_tree(nodes: list[TaskNode]) -> list[dict[str, Any]]:
-    """Convert flat list (ordered by materialized_path) into nested structure."""
+def _build_tree(
+    nodes: list[TaskNode],
+    rollup_map: dict[UUID, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Convert flat list (ordered by materialized_path) into nested structure.
+
+    rollup_map: optional pre-computed {node_id: rollup_status} injected per node.
+    """
     children_map: dict[UUID | None, list[TaskNode]] = {}
     for node in nodes:
         children_map.setdefault(node.parent_id, []).append(node)
@@ -119,6 +128,8 @@ def _build_tree(nodes: list[TaskNode]) -> list[dict[str, Any]]:
         result = []
         for n in children_map.get(parent_id, []):
             payload = _node_payload(n)
+            if rollup_map is not None:
+                payload["rollup_status"] = rollup_map.get(n.id, "draft")
             payload["children"] = _nest(n.id)
             result.append(payload)
         return result
@@ -138,7 +149,10 @@ async def get_task_tree(
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, Any]:
     nodes = await service.get_tree(work_item_id)
-    return _ok({"work_item_id": str(work_item_id), "tree": _build_tree(nodes)})
+    # Compute rollup_status for each node (pure, on-demand)
+    enriched = _rollup_service.enrich_tree(nodes)
+    rollup_map = {UUID(e["id"]): e["rollup_status"] for e in enriched}
+    return _ok({"work_item_id": str(work_item_id), "tree": _build_tree(nodes, rollup_map)})
 
 
 @router.get("/tasks/{node_id}")
