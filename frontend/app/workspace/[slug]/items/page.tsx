@@ -10,6 +10,7 @@ import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
 import { WorkItemList } from '@/components/work-item/work-item-list';
 import { SearchBar } from '@/components/search/search-bar';
+import { SavedSearchesMenu } from '@/components/search/saved-searches-menu';
 import { useTranslations } from 'next-intl';
 import { PageContainer } from '@/components/layout/page-container';
 import type { WorkItemState, WorkItemType, Priority, WorkItemResponse } from '@/lib/types/work-item';
@@ -300,6 +301,27 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
           <RotateCcw className="mr-1 h-3 w-3" aria-hidden />
           {tFilters('reset')}
         </Button>
+
+        {/* Saved searches */}
+        <SavedSearchesMenu
+          currentFilters={{
+            ...(stateFilter ? { state: stateFilter } : {}),
+            ...(typeFilter ? { type: typeFilter } : {}),
+            ...(priorityFilter ? { priority: priorityFilter } : {}),
+            ...(completenessMin > 0 ? { completeness_min: completenessMin } : {}),
+            ...(updatedAfter ? { updated_after: updatedAfter } : {}),
+            ...(updatedBefore ? { updated_before: updatedBefore } : {}),
+          }}
+          onApply={(qp) => {
+            setStateFilter((qp.state as WorkItemState) ?? '');
+            setTypeFilter((qp.type as WorkItemType) ?? '');
+            setPriorityFilter((qp.priority as Priority) ?? '');
+            setCompletenessMin(typeof qp.completeness_min === 'number' ? qp.completeness_min : 0);
+            setUpdatedAfter(typeof qp.updated_after === 'string' ? qp.updated_after : '');
+            setUpdatedBefore(typeof qp.updated_before === 'string' ? qp.updated_before : '');
+            setPage(1);
+          }}
+        />
       </div>
 
       {/* Content */}
