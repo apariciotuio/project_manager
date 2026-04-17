@@ -1,34 +1,29 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost } from '@/lib/api-client';
-import type {
-  TaskNode,
-  TaskTreeResponse,
-  CreateTaskRequest,
-} from '@/lib/types/work-item-detail';
+import { getTaskTree } from '@/lib/api/tasks';
+import type { TaskTree } from '@/lib/types/task';
 
-interface UseTaskTreeResult {
-  tasks: TaskNode[];
+export interface UseTaskTreeResult {
+  tree: TaskTree;
   isLoading: boolean;
   error: Error | null;
-  createTask: (req: CreateTaskRequest) => Promise<void>;
   refetch: () => void;
 }
 
+const EMPTY_TREE: TaskTree = { nodes: [], edges: [] };
+
 export function useTaskTree(workItemId: string): UseTaskTreeResult {
-  const [tasks, setTasks] = useState<TaskNode[]>([]);
+  const [tree, setTree] = useState<TaskTree>(EMPTY_TREE);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetch = useCallback(async () => {
+  const refetch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await apiGet<TaskTreeResponse>(
-        `/api/v1/work-items/${workItemId}/task-tree`
-      );
-      setTasks(res.data.tree);
+      const data = await getTaskTree(workItemId);
+      setTree(data);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -37,19 +32,8 @@ export function useTaskTree(workItemId: string): UseTaskTreeResult {
   }, [workItemId]);
 
   useEffect(() => {
-    void fetch();
-  }, [fetch]);
+    void refetch();
+  }, [refetch]);
 
-  const createTask = useCallback(
-    async (req: CreateTaskRequest) => {
-      await apiPost<{ data: TaskNode }>(
-        `/api/v1/work-items/${workItemId}/tasks`,
-        req
-      );
-      await fetch();
-    },
-    [workItemId, fetch]
-  );
-
-  return { tasks, isLoading, error, createTask, refetch: fetch };
+  return { tree, isLoading, error, refetch };
 }

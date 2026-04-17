@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTaskTree } from '@/hooks/work-item/use-task-tree';
-import type { TaskNode, TaskStatus } from '@/lib/types/work-item-detail';
+import { useTaskMutations } from '@/hooks/work-item/use-task-mutations';
+import type { TaskNode, TaskStatus } from '@/lib/types/task';
 import { cn } from '@/lib/utils';
 import { ChevronRight, ChevronDown, Plus } from 'lucide-react';
 
@@ -91,12 +92,14 @@ function AddTaskForm({ parentId, onAdd }: AddTaskFormProps) {
 interface TaskRowProps {
   node: TaskNode;
   depth: number;
+  children: TaskNode[];
+  allNodes: TaskNode[];
   onAdd: (title: string, parentId: string | null) => Promise<void>;
 }
 
-function TaskRow({ node, depth, onAdd }: TaskRowProps) {
+function TaskRow({ node, depth, children, allNodes, onAdd }: TaskRowProps) {
   const [expanded, setExpanded] = useState(true);
-  const hasChildren = node.children.length > 0;
+  const hasChildren = children.length > 0;
 
   return (
     <li>
@@ -131,8 +134,15 @@ function TaskRow({ node, depth, onAdd }: TaskRowProps) {
       </div>
       {hasChildren && expanded && (
         <ul role="list">
-          {node.children.map((child) => (
-            <TaskRow key={child.id} node={child} depth={depth + 1} onAdd={onAdd} />
+          {children.map((child) => (
+            <TaskRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              children={allNodes.filter((n) => n.parent_node_id === child.id)}
+              allNodes={allNodes}
+              onAdd={onAdd}
+            />
           ))}
         </ul>
       )}
@@ -150,11 +160,15 @@ interface TasksTabProps {
 }
 
 export function TasksTab({ workItemId }: TasksTabProps) {
-  const { tasks, isLoading, createTask } = useTaskTree(workItemId);
+  const { tree, isLoading, refetch } = useTaskTree(workItemId);
+  const { createTask } = useTaskMutations(refetch);
 
-  async function handleAdd(title: string, parentId: string | null) {
-    await createTask({ title, parent_id: parentId });
-  }
+  const handleAdd = useCallback(
+    async (title: string, parentId: string | null) => {
+      await createTask(workItemId, title, parentId);
+    },
+    [createTask, workItemId],
+  );
 
   if (isLoading) {
     return (
@@ -166,11 +180,20 @@ export function TasksTab({ workItemId }: TasksTabProps) {
     );
   }
 
+  const roots = tree.nodes.filter((n) => n.parent_node_id === null);
+
   return (
     <div className="flex flex-col gap-2">
       <ul role="list" className="flex flex-col">
-        {tasks.map((node) => (
-          <TaskRow key={node.id} node={node} depth={0} onAdd={handleAdd} />
+        {roots.map((node) => (
+          <TaskRow
+            key={node.id}
+            node={node}
+            depth={0}
+            children={tree.nodes.filter((n) => n.parent_node_id === node.id)}
+            allNodes={tree.nodes}
+            onAdd={handleAdd}
+          />
         ))}
       </ul>
       <div className="pl-2">
