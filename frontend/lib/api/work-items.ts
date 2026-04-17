@@ -25,12 +25,36 @@ interface Envelope<T> {
 function buildQuery(filters: WorkItemFilters): string {
   const params = new URLSearchParams();
   if (filters.state !== undefined) params.set('state', filters.state);
+  // multi-value state (EP-09 advanced filters)
+  if (filters.states !== undefined) {
+    for (const s of filters.states) params.append('state', s);
+  }
   if (filters.type !== undefined) params.set('type', filters.type);
+  if (filters.types !== undefined) {
+    for (const t of filters.types) params.append('type', t);
+  }
   if (filters.has_override !== undefined)
     params.set('has_override', String(filters.has_override));
   if (filters.owner_id !== undefined) params.set('owner_id', filters.owner_id);
   if (filters.page !== undefined) params.set('page', String(filters.page));
   if (filters.page_size !== undefined) params.set('page_size', String(filters.page_size));
+  // EP-09 extended params
+  if (filters.priority !== undefined) params.set('priority', filters.priority);
+  if (filters.tag_ids !== undefined) {
+    for (const id of filters.tag_ids) params.append('tag_id', id);
+  }
+  if (filters.completeness_min !== undefined) params.set('completeness_min', String(filters.completeness_min));
+  if (filters.completeness_max !== undefined) params.set('completeness_max', String(filters.completeness_max));
+  if (filters.updated_after !== undefined) params.set('updated_after', filters.updated_after);
+  if (filters.updated_before !== undefined) params.set('updated_before', filters.updated_before);
+  if (filters.creator_id !== undefined) params.set('creator_id', filters.creator_id);
+  if (filters.project_id !== undefined) params.set('project_id', filters.project_id);
+  if (filters.parent_work_item_id !== undefined) params.set('parent_work_item_id', filters.parent_work_item_id);
+  if (filters.q !== undefined && filters.q !== '') params.set('q', filters.q);
+  if (filters.sort !== undefined) params.set('sort', filters.sort);
+  if (filters.cursor !== undefined) params.set('cursor', filters.cursor);
+  if (filters.limit !== undefined) params.set('limit', String(filters.limit));
+  if (filters.use_puppet !== undefined) params.set('use_puppet', String(filters.use_puppet));
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }

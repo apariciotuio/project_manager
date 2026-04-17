@@ -144,4 +144,75 @@ export interface WorkItemFilters {
   owner_id?: string;
   page?: number;
   page_size?: number;
+  // EP-09 advanced filters
+  states?: WorkItemState[];
+  types?: WorkItemType[];
+  priority?: Priority;
+  tag_ids?: string[];
+  completeness_min?: number;
+  completeness_max?: number;
+  updated_after?: string;
+  updated_before?: string;
+  creator_id?: string;
+  project_id?: string;
+  parent_work_item_id?: string;
+  q?: string;
+  sort?: string;
+  cursor?: string;
+  limit?: number;
+  use_puppet?: boolean;
+}
+
+// ─── EP-09 cursor-pagination response ────────────────────────────────────────
+
+export interface CursorPagedWorkItemResponse {
+  items: WorkItemResponse[];
+  total: number;
+  cursor: string | null;
+  has_next: boolean;
+}
+
+// ─── EP-09 saved search ───────────────────────────────────────────────────────
+
+export interface SavedSearch {
+  id: string;
+  user_id: string;
+  workspace_id: string;
+  name: string;
+  query_params: Record<string, unknown>;
+  is_shared: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── EP-09 search result ──────────────────────────────────────────────────────
+
+export interface SearchResult {
+  items: WorkItemResponse[];
+  took_ms: number;
+  source: 'puppet' | 'sql_fallback';
+  total: number;
+}
+
+// ─── EP-09 dashboard ──────────────────────────────────────────────────────────
+
+export interface DashboardWorkItems {
+  total: number;
+  by_state: Record<string, number>;
+  by_type: Record<string, number>;
+  avg_completeness: number;
+}
+
+export interface DashboardActivityItem {
+  work_item_id: string;
+  title: string;
+  event_type: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  occurred_at: string;
+}
+
+export interface WorkspaceDashboard {
+  work_items: DashboardWorkItems;
+  recent_activity: DashboardActivityItem[];
 }

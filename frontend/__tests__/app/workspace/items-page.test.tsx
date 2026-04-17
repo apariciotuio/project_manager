@@ -16,6 +16,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ slug: 'acme' }),
   useSearchParams: () => ({
     get: (key: string) => mockSearchParams[key] ?? null,
+    getAll: (key: string) => (mockSearchParams[key] ? [mockSearchParams[key]] : []),
   }),
 }));
 
@@ -63,10 +64,6 @@ const mockWorkItem: WorkItemResponse = {
   deleted_at: null,
 };
 
-// The page needs a project_id. We stub it via workspace → project lookup.
-// For simplicity the page accepts project_id from route or falls back to workspace_id.
-// We test against the API endpoint used by listWorkItems.
-
 describe('WorkItemsPage', () => {
   it('shows skeleton loading state initially', () => {
     server.use(
@@ -77,7 +74,6 @@ describe('WorkItemsPage', () => {
       ),
     );
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
-    // skeleton should be present before data loads
     expect(document.querySelector('[data-testid="work-items-skeleton"]')).toBeInTheDocument();
   });
 
@@ -104,14 +100,13 @@ describe('WorkItemsPage', () => {
       ),
     );
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    // i18n mock returns key — empty.subtitle
     await waitFor(() =>
-      expect(
-        screen.getByText(/crea tu primer elemento/i),
-      ).toBeInTheDocument(),
+      expect(screen.getByText('empty.subtitle')).toBeInTheDocument(),
     );
   });
 
-  it('renders "Nuevo elemento" button linking to /workspace/acme/items/new', async () => {
+  it('renders new item button linking to /workspace/acme/items/new', async () => {
     server.use(
       http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
@@ -120,7 +115,7 @@ describe('WorkItemsPage', () => {
       ),
     );
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
-    const btn = screen.getByRole('link', { name: /nuevo elemento/i });
+    const btn = screen.getByRole('link', { name: /newButtonAria/i });
     expect(btn).toHaveAttribute('href', '/workspace/acme/items/new');
   });
 
@@ -150,7 +145,8 @@ describe('WorkItemsPage', () => {
     );
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
     await waitFor(() => expect(screen.queryByTestId('work-items-skeleton')).toBeNull());
-    expect(screen.getByRole('combobox', { name: /estado/i })).toBeInTheDocument();
+    // aria-label is translated key: 'stateFilterAria'
+    expect(screen.getByRole('combobox', { name: /stateFilterAria/i })).toBeInTheDocument();
   });
 
   // ─── Pagination ───────────────────────────────────────────────────────────────
@@ -167,10 +163,9 @@ describe('WorkItemsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
-    // Prev button disabled on page 1
-    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
-    // Next button enabled
-    expect(screen.getByRole('button', { name: /siguiente/i })).not.toBeDisabled();
+    // Prev button disabled on page 1 — aria-label is 'pagination.prev'
+    expect(screen.getByRole('button', { name: /pagination.prev/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /pagination.next/i })).not.toBeDisabled();
   });
 
   it('Next button advances page and calls replace with updated search params', async () => {
@@ -186,11 +181,10 @@ describe('WorkItemsPage', () => {
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
 
-    const nextBtn = screen.getByRole('button', { name: /siguiente/i });
+    const nextBtn = screen.getByRole('button', { name: /pagination.next/i });
     await userEvent.click(nextBtn);
 
     expect(mockReplace).toHaveBeenCalled();
-    // Check the last call — initial mount also calls replace with page=1
     const calls = mockReplace.mock.calls;
     const lastCall = calls[calls.length - 1]?.[0] as string | undefined;
     expect(lastCall).toBeDefined();
@@ -209,14 +203,13 @@ describe('WorkItemsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
-    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /pagination.prev/i })).toBeDisabled();
   });
 
   it('Next button is disabled on last page', async () => {
     server.use(
       http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
-          // total=20, page_size=20 → only 1 page
           data: { items: [mockWorkItem], total: 20, page: 1, page_size: 20 },
         }),
       ),
@@ -225,7 +218,7 @@ describe('WorkItemsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
-    expect(screen.getByRole('button', { name: /siguiente/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /pagination.next/i })).toBeDisabled();
   });
 
   it('does not render pagination controls when total <= page_size', async () => {
@@ -238,10 +231,10 @@ describe('WorkItemsPage', () => {
     );
     render(<WorkItemsPage params={{ slug: 'acme' }} />);
     await waitFor(() =>
-      expect(screen.getByText(/crea tu primer elemento/i)).toBeInTheDocument(),
+      expect(screen.getByText('empty.subtitle')).toBeInTheDocument(),
     );
-    expect(screen.queryByRole('button', { name: /anterior/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /siguiente/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /pagination.prev/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /pagination.next/i })).toBeNull();
   });
 
   // ─── URL-sync state filter ─────────────────────────────────────────────────
@@ -259,7 +252,7 @@ describe('WorkItemsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
-    const select = screen.getByRole('combobox', { name: /estado/i });
+    const select = screen.getByRole('combobox', { name: /stateFilterAria/i });
     expect((select as HTMLSelectElement).value).toBe('in_review');
     mockSearchParams = {};
   });
@@ -278,7 +271,7 @@ describe('WorkItemsPage', () => {
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
 
-    const select = screen.getByRole('combobox', { name: /estado/i });
+    const select = screen.getByRole('combobox', { name: /stateFilterAria/i });
     await userEvent.selectOptions(select, 'draft');
 
     const replaceCalls = mockReplace.mock.calls.map((c) => c[0] as string);
@@ -302,7 +295,7 @@ describe('WorkItemsPage', () => {
       expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
     );
 
-    const select = screen.getByRole('combobox', { name: /estado/i });
+    const select = screen.getByRole('combobox', { name: /stateFilterAria/i });
     await userEvent.selectOptions(select, '');
 
     const replaceCalls = mockReplace.mock.calls.map((c) => c[0] as string);
