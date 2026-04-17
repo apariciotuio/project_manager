@@ -29,12 +29,12 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 | F-3 | Frontend refresh after mutation | Frontend | 2 | [x] useTeams.addMember re-fetches list after 2xx; isPendingMutation flag disables button; 2 new hook tests (addMember updates list, error leaves state unchanged) |
 | F-4-be | Error envelope (backend: registry + middleware) | Backend | 1 | [x] domain/errors/codes.py registry + DomainError hierarchy; error_envelope.py middleware; tag_controller uses TagNameTakenError; 12 unit tests |
 | F-4-fe | Error envelope (frontend: ApiError + field mapping) | Frontend | 2 | [x] ApiError.field + fromResponse; lib/errors/{api-error,codes,use-form-errors,toast}.ts; TagsTab maps TAG_NAME_TAKEN to input error; teams addMember uses handleApiError; 25 new tests; admin-page +1 |
-| F-5 | Edit work item modal | Frontend | 3 | [ ] |
+| F-5 | Edit work item modal | Frontend | 3 | [x] WorkItemEditModal (title/desc/priority/type, diff PATCH, field errors, Save disabled when no change); Edit button on detail page (owner + superadmin); 12 modal tests + 2 detail-page tests; commit 781dccc |
 | F-6 | Dundun fake HTTP service | Backend / Infra | 1 | [x] FakeDundunClient promoted to app/infrastructure/fakes/; infra/dundun-fake/ FastAPI app; wired into docker-compose.dev.yml; 9 integration tests |
 | F-7 | User menu dropdown | Frontend | 1 | [x] Radix DropdownMenu behind avatar trigger; ThemeSwitcher+Matrix+Rain+Settings+SignOut; sidebar toolbar removed; 19 tests in user-menu.test.tsx; layout.test.tsx updated |
 | F-8 | Matrix entry cascade | Frontend | 1 | [x] full-viewport canvas overlay (z:9999, pointer-events:none); 10-15 phosphor-green katakana columns, ~1.2s RAF loop; reduced-motion skip; RAF cleanup on abort; wired into UserMenu.handleMatrixToggle; 14 tests |
 | F-9 | Color picker component | Frontend | 1 | [x] components/ui/color-picker.tsx; 12 presets, custom hex + 150ms debounce, validation, keyboard nav, aria-radiogroup; 21 unit tests; 0 new deps |
-| F-10 | Edit tag modal | Frontend | 3 | [ ] |
+| F-10 | Edit tag modal | Frontend | 3 | [x] TagEditModal (name + ColorPicker, diff PATCH, TAG_NAME_TAKEN field error, archived indicator, Save disabled when no change); Pencil icon per tag row; replaceTag() in useTags for local state update; 9 modal tests + 3 admin-page tests; commit 33d2217 |
 
 ## Implementation Waves
 
