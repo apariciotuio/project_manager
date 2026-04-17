@@ -50,15 +50,21 @@ const WORK_ITEM = {
 };
 
 const SPEC = {
+  work_item_id: 'wi-1',
   sections: [
     {
       id: 'sec-1',
+      work_item_id: 'wi-1',
       section_type: 'problem_statement',
       content: 'Login fails on mobile',
-      order: 0,
+      display_order: 1,
       is_required: true,
-      last_updated_at: null,
-      last_updated_by: null,
+      generation_source: 'llm',
+      version: 1,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      created_by: 'user-1',
+      updated_by: 'user-1',
     },
   ],
 };
@@ -91,6 +97,17 @@ function setupHandlers() {
     ),
     http.get('http://localhost/api/v1/work-items/wi-1/gaps', () =>
       HttpResponse.json({ data: [] })
+    ),
+    http.get('http://localhost/api/v1/work-items/wi-1/next-step', () =>
+      HttpResponse.json({
+        data: {
+          next_step: 'improve_content',
+          message: 'Fill in sections.',
+          blocking: false,
+          gaps_referenced: [],
+          suggested_validators: [],
+        },
+      })
     ),
     http.get('http://localhost/api/v1/work-items/wi-1/locks', () =>
       HttpResponse.json({ data: [] })

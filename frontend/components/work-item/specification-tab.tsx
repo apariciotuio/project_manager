@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use SpecificationSectionsEditor + CompletenessPanel + NextStepHint
+ * directly (EP-04). This module is kept for backward compat with import consumers
+ * predating EP-04; it now delegates internally to the new components.
+ */
 'use client';
 
 import { useState } from 'react';

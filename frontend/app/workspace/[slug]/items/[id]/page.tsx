@@ -10,7 +10,9 @@ import { StateTransitionPanel } from '@/components/work-item/state-transition-pa
 import { OwnerPanel } from '@/components/work-item/owner-panel';
 import { TransitionHistory } from '@/components/work-item/transition-history';
 import { OwnershipHistory } from '@/components/work-item/ownership-history';
-import { SpecificationTab } from '@/components/work-item/specification-tab';
+import { SpecificationSectionsEditor } from '@/components/work-item/specification-sections-editor';
+import { CompletenessPanel } from '@/components/work-item/completeness-panel';
+import { NextStepHint } from '@/components/work-item/next-step-hint';
 import { TasksTab } from '@/components/work-item/tasks-tab';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
@@ -131,7 +133,15 @@ export default function WorkItemDetailPage({
         </TabsList>
 
         <TabsContent value="especificacion" className="mt-4">
-          <SpecificationTab workItemId={id} />
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <SpecificationSectionsEditor workItemId={id} canEdit={canEdit} />
+            </div>
+            <div className="flex flex-col gap-4">
+              <CompletenessPanel workItemId={id} />
+              <NextStepHint workItemId={id} />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="clarificacion" className="mt-4">
