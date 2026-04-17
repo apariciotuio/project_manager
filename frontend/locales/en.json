@@ -355,6 +355,18 @@
       "noProjects": "No projects.",
       "createProject": "Create project",
       "newProject": "New",
+      "draft": {
+        "resumeTitle": "You have an unsaved draft",
+        "resumeBody": "Saved {time}. Resume where you left off or start fresh.",
+        "resumeButton": "Resume",
+        "discardButton": "Discard"
+      },
+      "conflict": {
+        "banner": "There is a more recent draft on another device.",
+        "overwriteButton": "Overwrite",
+        "keepMineButton": "Keep mine",
+        "lastServerUpdate": "Last updated {time}"
+      },
       "conflictBanner": "There is a more recent draft on another device.",
       "overwrite": "Overwrite",
       "errorCreate": "Failed to create item",

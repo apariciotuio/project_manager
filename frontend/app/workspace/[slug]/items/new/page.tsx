@@ -31,6 +31,7 @@ import type { WorkItemType, WorkItemResponse } from '@/lib/types/work-item';
 import type { Template } from '@/lib/types/api';
 import type { DraftData } from '@/hooks/use-pre-creation-draft';
 import { PageContainer } from '@/components/layout/page-container';
+import { DraftResumeBanner } from '@/components/capture/draft-resume-banner';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -113,10 +114,16 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
   }, []);
 
   const workspaceId = user?.workspace_id ?? '';
-  const { draftId, conflictError, save, discard, resolveConflict } = usePreCreationDraft(
-    workspaceId,
-    handleHydrate,
-  );
+  const {
+    draftId,
+    conflictError,
+    pendingServerDraft,
+    save,
+    discard,
+    resolveConflict,
+    applyPendingDraft,
+    discardPendingDraft,
+  } = usePreCreationDraft(workspaceId, handleHydrate);
 
   // ─── Auto-save on form changes ───────────────────────────────────────────────
   useEffect(() => {
@@ -205,6 +212,13 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
           Crea un elemento de trabajo. Podrás editar los detalles tras crearlo.
         </p>
       </header>
+
+      {/* Draft resume banner — shown before the form when a server draft exists */}
+      <DraftResumeBanner
+        pendingDraft={pendingServerDraft}
+        onResume={applyPendingDraft}
+        onDiscard={() => void discardPendingDraft()}
+      />
 
       {/* Conflict banner */}
       {conflictError && (

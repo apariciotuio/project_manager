@@ -6,6 +6,12 @@ import { server } from '../../msw/server';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
+// next-intl mock — DraftResumeBanner and StalenessWarning use useTranslations
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
@@ -355,9 +361,9 @@ describe('NewItemPage', () => {
     });
   });
 
-  // ─── Draft hydration ──────────────────────────────────────────────────────────
+  // ─── Draft resume banner ──────────────────────────────────────────────────────
 
-  it('draft hydration populates form on mount', async () => {
+  it('shows DraftResumeBanner when a server draft exists', async () => {
     setupHandlers({
       draftData: {
         title: 'Hydrated title',
@@ -370,6 +376,32 @@ describe('NewItemPage', () => {
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
+    // Banner appears once the draft is fetched
+    await waitFor(() => {
+      expect(screen.getByText('workspace.newItem.draft.resumeButton')).toBeTruthy();
+    });
+    // Form title is still empty — no auto-hydration
+    const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
+    expect(titleInput.value).toBe('');
+  });
+
+  it('draft hydration populates form when user clicks Resume', async () => {
+    setupHandlers({
+      draftData: {
+        title: 'Hydrated title',
+        type: 'bug',
+        description: 'Hydrated desc',
+        project_id: 'p1',
+        tags: ['frontend'],
+      },
+    });
+    const NewItemPage = await importPage();
+    render(<NewItemPage params={{ slug: 'acme' }} />);
+
+    // Wait for banner
+    const resumeBtn = await screen.findByText('workspace.newItem.draft.resumeButton');
+    await userEvent.click(resumeBtn);
+
     await waitFor(() => {
       const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
       expect(titleInput.value).toBe('Hydrated title');
@@ -377,6 +409,34 @@ describe('NewItemPage', () => {
 
     const descInput = screen.getByPlaceholderText(/descripción opcional/i) as HTMLTextAreaElement;
     expect(descInput.value).toBe('Hydrated desc');
+  });
+
+  it('discards server draft and keeps form blank when user clicks Discard', async () => {
+    let deleteCalled = false;
+    setupHandlers({
+      draftData: { title: 'Old draft', type: 'task' },
+    });
+    server.use(
+      http.delete('http://localhost/api/v1/work-item-drafts/draft1', () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const NewItemPage = await importPage();
+    render(<NewItemPage params={{ slug: 'acme' }} />);
+
+    const discardBtn = await screen.findByText('workspace.newItem.draft.discardButton');
+    await userEvent.click(discardBtn);
+
+    await waitFor(() => {
+      // Banner gone
+      expect(screen.queryByText('workspace.newItem.draft.resumeButton')).toBeNull();
+    });
+    expect(deleteCalled).toBe(true);
+    // Form is still blank
+    const titleInput = screen.getByPlaceholderText(/título/i) as HTMLInputElement;
+    expect(titleInput.value).toBe('');
   });
 
   // ─── Draft save trigger ───────────────────────────────────────────────────────

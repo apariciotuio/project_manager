@@ -355,6 +355,18 @@
       "noProjects": "Sin proyectos.",
       "createProject": "Crear proyecto",
       "newProject": "Nuevo",
+      "draft": {
+        "resumeTitle": "Tienes un borrador sin guardar",
+        "resumeBody": "Guardado {time}. Continúa donde lo dejaste o empieza de nuevo.",
+        "resumeButton": "Continuar",
+        "discardButton": "Descartar"
+      },
+      "conflict": {
+        "banner": "Hay un borrador más reciente en otro dispositivo.",
+        "overwriteButton": "Sobreescribir",
+        "keepMineButton": "Conservar el mío",
+        "lastServerUpdate": "Última actualización {time}"
+      },
       "conflictBanner": "Hay un borrador más reciente en otro dispositivo.",
       "overwrite": "Sobreescribir",
       "errorCreate": "Error al crear el elemento",
