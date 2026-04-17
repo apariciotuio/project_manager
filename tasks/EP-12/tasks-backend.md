@@ -75,7 +75,7 @@ THEN a single log line is emitted containing: `method`, `path`, `status_code`, `
 ### RequestLoggingMiddleware
 - [x] [RED] Test: logs `method`, `path`, `status_code`, `duration_ms` after each request — 7 tests in `tests/unit/presentation/middleware/test_request_logging.py`
 - [x] [GREEN] Implement `RequestLoggingMiddleware` in `app/presentation/middleware/request_logging.py` — commit 82b1e6d
-- [ ] [GREEN] Document middleware chain order in `app/main.py` with comments — deferred to phase 9 wiring pass
+- [x] [GREEN] Document middleware chain order in `app/main.py` with comments — wired in phase 9 pass (2026-04-17): RequestLoggingMiddleware, BodySizeLimitMiddleware, CORSPolicyMiddleware, SecurityHeadersMiddleware added; old CORSMiddleware removed
 
 ---
 
@@ -108,6 +108,7 @@ THEN the response includes `Access-Control-Max-Age: 600`
 - [x] [RED] Test: CORS middleware rejects origin not in `ALLOWED_ORIGINS` — 9 tests in `tests/unit/presentation/middleware/test_cors_policy.py`
 - [ ] [RED] Test: app startup raises `ConfigurationError` when `ALLOWED_ORIGINS` is empty in non-dev env — pending (settings validation)
 - [x] [GREEN] Implement `CORSPolicyMiddleware` in `app/presentation/middleware/cors_policy.py` — commit 1dcddcb (wildcard-in-prod raises ValueError at startup)
+- [x] [GREEN] Wire `CORSPolicyMiddleware` into `app/main.py` replacing FastAPI `CORSMiddleware` — commit 6a4d1c4 (2026-04-17)
 - [ ] [GREEN] Add startup validation for `ALLOWED_ORIGINS` in settings — pending (settings layer)
 
 ### Acceptance Criteria — Rate Limiting
@@ -150,6 +151,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 - [x] [RED] Test: all HTML responses include CSP header with required directives (default-src, script-src, etc.) — 8 tests in `tests/unit/presentation/middleware/test_security_headers.py`
 - [ ] [GREEN] Implement `/api/v1/csp-report` endpoint — logs at WARN, returns 204 — pending
 - [x] [GREEN] Add `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` headers — `app/presentation/middleware/security_headers.py` commit 1e3d5c0
+- [x] [GREEN] Wire `SecurityHeadersMiddleware` into `app/main.py` — commit 6a4d1c4 (2026-04-17); `csp_overrides` reads from `settings.app.csp_overrides`
 
 ### Audit Log Integration
 - [ ] [RED] Test: login success writes audit record with required fields
@@ -318,6 +320,14 @@ Shipped today (all adjacent to EP-12 concerns, most outside the plan's explicit 
 - **Migration 0033** — workspace scoping (column + FK + btree index + RLS policy) on `conversation_threads`, `assistant_suggestions`, `gap_findings`. Backfill via work-item join; orphan threads dropped.
 
 Gaps intentionally left un-ticked — **the entire middleware chain** in Group 1 (CorrelationID, RequestLogging), all CORS/CSP/CSRF enforcement, the Pydantic `extra="forbid"` sweep, full rate limiter middleware, cursor pagination, Redis cache-aside proper, N+1 detection middleware, SSE infrastructure. These are the bulk of EP-12 and none of them have started. When EP-12 enters formal delivery, the plan text is still accurate — most of it just hasn't been executed.
+
+## EP-12 middleware wiring (2026-04-17) — phase 9 pass complete
+
+Commits: 585072a (settings), 6a4d1c4 (wiring).
+
+- `AppSettings` extended: `max_body_bytes: int = 1_048_576` (env `APP_MAX_BODY_BYTES`), `csp_overrides: dict[str,str] = {}` (env `APP_CSP_OVERRIDES` as `key=value,...`). 7 unit tests.
+- `main.py`: old `CORSMiddleware` removed; `RequestLoggingMiddleware`, `BodySizeLimitMiddleware`, `CORSPolicyMiddleware`, `SecurityHeadersMiddleware` wired in LIFO order. 10 integration tests.
+- Test delta: +17 tests (7 unit settings + 10 integration chain). Full unit suite: 1260 passed.
 
 ## EP-12 middleware scaffold (2026-04-17) — 6 modules shipped, un-wired
 
