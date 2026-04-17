@@ -18,16 +18,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.errors.codes import TagNameTakenError
+from app.domain.errors.codes import NotFoundError, TagArchivedDomainError, TagNameTakenError, InvalidInputError
 from app.domain.models.tag import Tag, TagArchivedError, WorkItemTag
 from app.infrastructure.persistence.tag_repository_impl import (
     TagRepositoryImpl,
     WorkItemTagRepositoryImpl,
 )
+from app.infrastructure.persistence.models.orm import WorkItemORM
 from app.presentation.dependencies import get_current_user, get_scoped_session
 from app.presentation.middleware.auth_middleware import CurrentUser
 
@@ -63,17 +64,60 @@ def _work_item_tag_payload(wit: WorkItemTag) -> dict[str, Any]:
     }
 
 
+def _no_workspace() -> HTTPException:
+    return HTTPException(
+        status_code=http_status.HTTP_401_UNAUTHORIZED,
+        detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+    )
+
+
 class CreateTagRequest(BaseModel):
     name: str
     color: str | None = None
 
 
-class RenameTagRequest(BaseModel):
-    name: str
+class UpdateTagRequest(BaseModel):
+    name: str | None = None
+    color: str | None = None
+    archived: bool | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "UpdateTagRequest":
+        if self.name is None and self.color is None and self.archived is None:
+            raise ValueError("at least one of name, color, or archived must be provided")
+        return self
 
 
 class AddTagToWorkItemRequest(BaseModel):
     tag_id: UUID
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+async def _get_tag_scoped(
+    tag_id: UUID,
+    workspace_id: UUID,
+    repo: TagRepositoryImpl,
+) -> Tag:
+    """Fetch tag and verify workspace ownership. Raises NotFoundError on miss or scope violation."""
+    tag = await repo.get(tag_id)
+    if tag is None or tag.workspace_id != workspace_id:
+        raise NotFoundError("tag not found")
+    return tag
+
+
+async def _assert_work_item_scoped(
+    work_item_id: UUID,
+    workspace_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Assert work item exists and belongs to this workspace. Raises NotFoundError otherwise."""
+    row = await session.get(WorkItemORM, work_item_id)
+    if row is None or row.workspace_id != workspace_id:
+        raise NotFoundError("work item not found")
 
 
 # ---------------------------------------------------------------------------
@@ -88,10 +132,7 @@ async def create_tag(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
-        )
+        raise _no_workspace()
     tag = Tag.create(
         workspace_id=current_user.workspace_id,
         name=body.name,
@@ -113,10 +154,7 @@ async def list_tags(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
-        )
+        raise _no_workspace()
     repo = TagRepositoryImpl(session)
     if prefix:
         tags = await repo.search_by_prefix(current_user.workspace_id, prefix)
@@ -126,46 +164,49 @@ async def list_tags(
 
 
 @router.patch("/tags/{tag_id}")
-async def rename_tag(
+async def update_tag(
     tag_id: UUID,
-    body: RenameTagRequest,
+    body: UpdateTagRequest,
+    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise _no_workspace()
     repo = TagRepositoryImpl(session)
-    tag = await repo.get(tag_id)
-    if tag is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "tag not found", "details": {}}},
-        )
+    tag = await _get_tag_scoped(tag_id, current_user.workspace_id, repo)
+
+    # Apply only fields that were provided
+    if body.name is not None:
+        try:
+            tag.rename(body.name)
+        except TagArchivedError as exc:
+            raise TagArchivedDomainError(str(exc)) from exc
+        except ValueError as exc:
+            raise InvalidInputError(str(exc)) from exc
+    if body.color is not None:
+        if tag.is_archived:
+            raise TagArchivedDomainError("Cannot update color of an archived tag")
+        tag.color = body.color
+    if body.archived is True:
+        tag.archive()
+
     try:
-        tag.rename(body.name)
-    except TagArchivedError as exc:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "TAG_ARCHIVED", "message": str(exc), "details": {}}},
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail={"error": {"code": "INVALID_INPUT", "message": str(exc), "details": {}}},
-        ) from exc
-    saved = await repo.save(tag)
+        saved = await repo.save(tag)
+    except IntegrityError as exc:
+        raise TagNameTakenError(body.name or "") from exc
     return _ok(_tag_payload(saved))
 
 
 @router.delete("/tags/{tag_id}", status_code=http_status.HTTP_200_OK)
 async def archive_tag(
     tag_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise _no_workspace()
     repo = TagRepositoryImpl(session)
-    tag = await repo.get(tag_id)
-    if tag is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "tag not found", "details": {}}},
-        )
+    tag = await _get_tag_scoped(tag_id, current_user.workspace_id, repo)
     tag.archive()
     await repo.save(tag)
     return _ok({"id": str(tag_id)}, "tag archived")
@@ -183,25 +224,16 @@ async def add_tag_to_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
-    # Verify tag exists and is not archived
+    if current_user.workspace_id is None:
+        raise _no_workspace()
+    await _assert_work_item_scoped(work_item_id, current_user.workspace_id, session)
+
+    # Verify tag exists, is not archived, and belongs to same workspace
     tag_repo = TagRepositoryImpl(session)
-    tag = await tag_repo.get(body.tag_id)
-    if tag is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "tag not found", "details": {}}},
-        )
+    tag = await _get_tag_scoped(body.tag_id, current_user.workspace_id, tag_repo)
     if tag.is_archived:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": {
-                    "code": "TAG_ARCHIVED",
-                    "message": "cannot attach archived tag",
-                    "details": {},
-                }
-            },
-        )
+        raise TagArchivedDomainError("cannot attach archived tag")
+
     wit = WorkItemTag.create(
         work_item_id=work_item_id,
         tag_id=body.tag_id,
@@ -219,8 +251,12 @@ async def add_tag_to_work_item(
 async def remove_tag_from_work_item(
     work_item_id: UUID,
     tag_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise _no_workspace()
+    await _assert_work_item_scoped(work_item_id, current_user.workspace_id, session)
     repo = WorkItemTagRepositoryImpl(session)
     await repo.remove_tag(work_item_id, tag_id)
     return _ok({"work_item_id": str(work_item_id), "tag_id": str(tag_id)}, "tag removed")
@@ -229,8 +265,12 @@ async def remove_tag_from_work_item(
 @router.get("/work-items/{work_item_id}/tags")
 async def list_work_item_tags(
     work_item_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise _no_workspace()
+    await _assert_work_item_scoped(work_item_id, current_user.workspace_id, session)
     repo = WorkItemTagRepositoryImpl(session)
     wits = await repo.list_for_work_item(work_item_id)
     return _ok([_work_item_tag_payload(w) for w in wits])
