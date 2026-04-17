@@ -5,6 +5,10 @@
 
 // ─── Specification ────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Use `Section` from `@/lib/types/specification` (EP-04 contract).
+ * Kept for backward compat with callers predating EP-04.
+ */
 export interface Section {
   id: string;
   section_type: string;
@@ -15,6 +19,9 @@ export interface Section {
   last_updated_by: string | null;
 }
 
+/**
+ * @deprecated Use `SpecificationApiResponse` from `@/lib/types/specification`.
+ */
 export interface SpecificationResponse {
   data: {
     sections: Section[];
@@ -23,37 +30,60 @@ export interface SpecificationResponse {
 
 // ─── Completeness ─────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Use `CompletenessLevel` from `@/lib/types/specification`.
+ */
 export type CompletenessLevel = 'low' | 'medium' | 'high' | 'ready';
 
+/**
+ * @deprecated Use `CompletenessDimension` from `@/lib/types/specification`.
+ * Note: `score` here is 0.0–1.0 float (per-dimension), matching the EP-04 backend contract.
+ */
 export interface CompletenessDimension {
   dimension: string;
-  score: number;
+  score: number;    // 0.0–1.0 float
   weight: number;
   applicable: boolean;
   filled: boolean;
   message: string | null;
 }
 
+/**
+ * @deprecated Use `CompletenessReport` from `@/lib/types/specification`.
+ */
 export interface CompletenessData {
-  score: number;
+  score: number;    // 0–100 int (overall)
   level: CompletenessLevel;
   dimensions: CompletenessDimension[];
+  cached?: boolean;
 }
 
+/**
+ * @deprecated Use `CompletenessApiResponse` from `@/lib/types/specification`.
+ */
 export interface CompletenessResponse {
   data: CompletenessData;
 }
 
 // ─── Gaps ─────────────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Use `GapSeverity` from `@/lib/types/specification`.
+ */
 export type GapSeverity = 'blocking' | 'warning' | 'info';
 
+/**
+ * @deprecated Use `GapItem` from `@/lib/types/specification`.
+ */
 export interface Gap {
   dimension: string;
   message: string;
   severity: GapSeverity;
 }
 
+/**
+ * @deprecated Use `GapsApiResponse` from `@/lib/types/specification`.
+ */
 export interface GapsResponse {
   data: Gap[];
 }

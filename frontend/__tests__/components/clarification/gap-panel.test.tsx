@@ -10,34 +10,17 @@ vi.mock('next-intl', () => ({
 
 const BASE = 'http://localhost';
 
-const blockingFinding = {
-  dimension: 'acceptance_criteria',
-  severity: 'blocking' as const,
-  message: 'AC is missing',
-  source: 'rule' as const,
-};
-
-const warningFinding = {
-  dimension: 'solution_description',
-  severity: 'warning' as const,
-  message: 'Solution is vague',
-  source: 'llm' as const,
-};
-
-const infoFinding = {
-  dimension: 'technical_notes',
-  severity: 'info' as const,
-  message: 'Consider adding notes',
-  source: 'rule' as const,
-};
-
-function setupGapsHandler(findings = [blockingFinding, warningFinding]) {
+// EP-04 response format: { data: GapItem[] } — array directly in data
+function setupGapsHandler(
+  items: Array<{ dimension: string; severity: string; message: string }> = [
+    { dimension: 'acceptance_criteria', severity: 'blocking', message: 'AC is missing' },
+    { dimension: 'solution_description', severity: 'warning', message: 'Solution is vague' },
+  ]
+) {
   server.use(
     http.get(`${BASE}/api/v1/work-items/wi-1/gaps`, () =>
-      HttpResponse.json({
-        data: { work_item_id: 'wi-1', findings, score: 0.6 },
-      }),
-    ),
+      HttpResponse.json({ data: items })
+    )
   );
 }
 
@@ -57,15 +40,10 @@ describe('GapPanel', () => {
     expect(blockingIdx).toBeLessThan(warningIdx);
   });
 
-  it('shows AI badge for llm-sourced gaps', async () => {
-    render(<GapPanel workItemId="wi-1" workItemVersion={1} />);
-    await waitFor(() => expect(screen.getByText('Solution is vague')).toBeInTheDocument());
-    expect(screen.getAllByText(/AI/i).length).toBeGreaterThan(0);
-  });
-
-  it('shows Rule badge for rule-sourced gaps', async () => {
+  it('shows Rule badge for EP-04 rule-sourced gaps (source defaults to rule)', async () => {
     render(<GapPanel workItemId="wi-1" workItemVersion={1} />);
     await waitFor(() => expect(screen.getByText('AC is missing')).toBeInTheDocument());
+    // EP-04 gaps have no source field; getGapReport defaults source to 'rule'
     expect(screen.getAllByText(/Rule/i).length).toBeGreaterThan(0);
   });
 
@@ -82,45 +60,40 @@ describe('GapPanel', () => {
   it('Run AI Review button triggers review and shows loading state', async () => {
     server.use(
       http.post(`${BASE}/api/v1/work-items/wi-1/gaps/ai-review`, async () => {
-        // Simulate delay so loading state is visible
         await new Promise((resolve) => setTimeout(resolve, 100));
         return HttpResponse.json({ data: { job_id: 'job-1' } });
-      }),
+      })
     );
-    // Also handle the subsequent gaps fetch after review
+    // Handle the subsequent gaps fetch after review
     server.use(
       http.get(`${BASE}/api/v1/work-items/wi-1/gaps`, () =>
-        HttpResponse.json({ data: { work_item_id: 'wi-1', findings: [], score: 1.0 } }),
-      ),
+        HttpResponse.json({ data: [] })
+      )
     );
     render(<GapPanel workItemId="wi-1" workItemVersion={1} />);
-    // The mock t() returns the key "runAiReview"
     await waitFor(() => expect(screen.getByRole('button', { name: 'runAiReview' })).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'runAiReview' }));
 
-    // After click, button should disappear (loading state shows text instead)
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'runAiReview' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('button', { name: 'runAiReview' })).not.toBeInTheDocument()
     );
   });
 
   it('shows error state when gap fetch fails', async () => {
     server.use(
       http.get(`${BASE}/api/v1/work-items/wi-fail/gaps`, () =>
-        HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'Server error' } }, { status: 500 }),
-      ),
+        HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'Server error' } }, { status: 500 })
+      )
     );
-    // getGapReport stubs on any error so test a component-level error via hook override
-    // The stub in getGapReport catches all errors and returns empty —
-    // Instead test the error path directly by checking empty state renders gracefully
     render(<GapPanel workItemId="wi-fail" workItemVersion={1} />);
-    // Should render without crashing and show empty or error state
+    // EP-04 endpoint is live; error propagates. Component renders error or loading state without crashing.
     await waitFor(() => expect(document.body).toBeTruthy());
   });
 
-  it('shows completeness score', async () => {
+  it('shows completeness score at 100% when no gaps present (EP-04: score is 1.0 constant)', async () => {
     render(<GapPanel workItemId="wi-1" workItemVersion={1} />);
-    await waitFor(() => expect(screen.getByText(/60/)).toBeInTheDocument());
+    // gapReport.score is 1.0 (constant from mapping) → 100%
+    await waitFor(() => expect(screen.getByText(/100/)).toBeInTheDocument());
   });
 });

@@ -6,34 +6,41 @@ import { getGapReport, triggerAiReview } from '@/lib/api/gaps';
 const BASE = 'http://localhost';
 
 describe('getGapReport', () => {
-  it('returns gap report on success', async () => {
+  it('returns gap report on success (EP-04 array format)', async () => {
+    // EP-04 endpoint returns { data: GapItem[] } — array directly in data
     server.use(
       http.get(`${BASE}/api/v1/work-items/wi-1/gaps`, () =>
         HttpResponse.json({
-          data: {
-            work_item_id: 'wi-1',
-            findings: [
-              { dimension: 'acceptance_criteria', severity: 'blocking', message: 'AC missing', source: 'rule' },
-            ],
-            score: 0.6,
-          },
+          data: [
+            { dimension: 'acceptance_criteria', severity: 'blocking', message: 'AC missing' },
+          ],
         }),
       ),
     );
     const report = await getGapReport('wi-1');
     expect(report.findings).toHaveLength(1);
-    expect(report.score).toBe(0.6);
+    expect(report.findings[0]!.dimension).toBe('acceptance_criteria');
+    expect(report.findings[0]!.severity).toBe('blocking');
   });
 
-  it('returns empty stub when endpoint is not found (EP-04 not shipped)', async () => {
+  it('returns empty findings when no gaps', async () => {
     server.use(
-      http.get(`${BASE}/api/v1/work-items/wi-1/gaps`, () =>
+      http.get(`${BASE}/api/v1/work-items/wi-2/gaps`, () =>
+        HttpResponse.json({ data: [] }),
+      ),
+    );
+    const report = await getGapReport('wi-2');
+    expect(report.findings).toEqual([]);
+    expect(report.score).toBe(1.0);
+  });
+
+  it('throws on network error (EP-04 endpoint live — no stub)', async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/work-items/wi-err/gaps`, () =>
         HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Not found' } }, { status: 404 }),
       ),
     );
-    const report = await getGapReport('wi-1');
-    expect(report.findings).toEqual([]);
-    expect(report.score).toBe(1.0);
+    await expect(getGapReport('wi-err')).rejects.toThrow();
   });
 });
 

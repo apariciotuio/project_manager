@@ -39,8 +39,9 @@ describe('ClarificationTab', () => {
       http.get(`${BASE}/api/v1/threads/thread-1/history`, () =>
         HttpResponse.json({ data: [] }),
       ),
+      // EP-04 format: { data: GapItem[] }
       http.get(`${BASE}/api/v1/work-items/wi-1/gaps`, () =>
-        HttpResponse.json({ data: { work_item_id: 'wi-1', findings: [], score: 1.0 } }),
+        HttpResponse.json({ data: [] }),
       ),
       http.get(`${BASE}/api/v1/work-items/wi-1/suggestion-sets`, () =>
         HttpResponse.json({ data: [] }),
