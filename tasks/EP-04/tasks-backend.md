@@ -116,11 +116,11 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 ### Repository Interfaces
 
-- [ ] Refactor: all repository methods must accept `workspace_id` as a required parameter — `get(section_id, workspace_id)`, `get_by_work_item(work_item_id, workspace_id)`, etc. Queries must include `WHERE workspace_id = :workspace_id`. Return `None` (not 403) on workspace mismatch to avoid existence disclosure (CRIT-2).
-- [ ] Implement `domain/repositories/section_repository.py` — `ISectionRepository` ABC: `get_by_work_item(work_item_id, workspace_id) -> list[Section]`, `get(section_id, workspace_id) -> Section | None`, `save(section) -> Section`, `bulk_save(sections: list[Section]) -> list[Section]`
-- [ ] Implement `domain/repositories/section_version_repository.py` — `ISectionVersionRepository` ABC: `append(section, actor_id) -> None`, `get_history(section_id) -> list[SectionVersion]`
-- [ ] Implement `domain/repositories/validator_repository.py` — `IValidatorRepository` ABC: `get_by_work_item(work_item_id) -> list[Validator]`, `assign(validator) -> Validator`, `update_status(validator_id, status) -> Validator`
-- [ ] Implement `domain/repositories/work_item_version_repository.py` — `IWorkItemVersionRepository` ABC: `append(work_item_id, snapshot, created_by) -> None`, `get_latest(work_item_id) -> WorkItemVersion | None`
+- [ ] Refactor: all repository methods must accept `workspace_id` as a required parameter — DEFERRED. Workspace isolation is currently provided by RLS via SET LOCAL on every scoped session. The explicit `workspace_id` param on repo methods is defense-in-depth (CRIT-2 existence disclosure) — deferring to the same migration batch as the EP-03 Phase 8 RLS follow-up (see decisions.log.md 2026-04-16).
+- [x] `domain/repositories/section_repository.py` — `ISectionRepository` ABC implemented (2026-04-16)
+- [x] `domain/repositories/section_version_repository.py` — implemented (2026-04-16)
+- [x] `domain/repositories/validator_repository.py` — implemented (2026-04-16)
+- [x] `domain/repositories/work_item_version_repository.py` — implemented (2026-04-16)
 
 ---
 
