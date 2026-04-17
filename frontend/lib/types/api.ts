@@ -106,6 +106,20 @@ export interface TeamAddMemberRequest {
   user_id: string;
 }
 
+// ─── Workspace Members ────────────────────────────────────────────────────────
+
+export interface WorkspaceMember {
+  id: string;
+  email: string;
+  full_name: string;
+  avatar_url: string | null;
+  role: string;
+}
+
+export interface WorkspaceMembersResponse {
+  data: WorkspaceMember[];
+}
+
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
 export interface Project {
@@ -125,6 +139,11 @@ export interface ProjectResponse {
 
 export interface ProjectCreateRequest {
   name: string;
+  description?: string;
+}
+
+export interface ProjectUpdateRequest {
+  name?: string;
   description?: string;
 }
 

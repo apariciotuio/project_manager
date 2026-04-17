@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import type {
   AuditEvent,
   AuditEventsResponse,
   WorkspaceHealthResponse,
+  WorkspaceMember,
+  WorkspaceMembersResponse,
   Project,
   ProjectsResponse,
   ProjectResponse,
   ProjectCreateRequest,
+  ProjectUpdateRequest,
   IntegrationConfig,
   IntegrationConfigsResponse,
   IntegrationConfigResponse,
@@ -20,18 +23,16 @@ import type {
   TagCreateRequest,
 } from '@/lib/types/api';
 
-// ─── Audit ─────────────────────────────────────────────────────────────────────
+// ─── Members ───────────────────────────────────────────────────────────────────
 
-interface UseAuditEventsResult {
-  events: AuditEvent[];
-  total: number;
+interface UseWorkspaceMembersResult {
+  members: WorkspaceMember[];
   isLoading: boolean;
   error: Error | null;
 }
 
-export function useAuditEvents(): UseAuditEventsResult {
-  const [events, setEvents] = useState<AuditEvent[]>([]);
-  const [total, setTotal] = useState(0);
+export function useWorkspaceMembers(): UseWorkspaceMembersResult {
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -39,10 +40,65 @@ export function useAuditEvents(): UseAuditEventsResult {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await apiGet<AuditEventsResponse>('/api/v1/admin/audit-events');
+        const res = await apiGet<WorkspaceMembersResponse>('/api/v1/workspaces/members');
+        if (!cancelled) setMembers(res.data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { members, isLoading, error };
+}
+
+// ─── Audit ─────────────────────────────────────────────────────────────────────
+
+export interface AuditFilters {
+  action?: string;
+  category?: string;
+  page?: number;
+}
+
+interface UseAuditEventsResult {
+  events: AuditEvent[];
+  total: number;
+  page: number;
+  pageSize: number;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export function useAuditEvents(filters: AuditFilters = {}): UseAuditEventsResult {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { action, category, page: filterPage = 1 } = filters;
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('page', String(filterPage));
+        if (action) params.set('action', action);
+        if (category) params.set('category', category);
+        const res = await apiGet<AuditEventsResponse>(
+          `/api/v1/admin/audit-events?${params.toString()}`
+        );
         if (!cancelled) {
           setEvents(res.data.items);
           setTotal(res.data.total);
+          setPage(res.data.page);
+          setPageSize(res.data.page_size);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
@@ -50,12 +106,10 @@ export function useAuditEvents(): UseAuditEventsResult {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true; };
+  }, [action, category, filterPage]);
 
-  return { events, total, isLoading, error };
+  return { events, total, page, pageSize, isLoading, error };
 }
 
 // ─── Health (workspace work item summary) ────────────────────────────────────
@@ -83,9 +137,7 @@ export function useHealth(): UseHealthResult {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   return { health, isLoading, error };
@@ -98,6 +150,8 @@ interface UseProjectsResult {
   isLoading: boolean;
   error: Error | null;
   createProject: (req: ProjectCreateRequest) => Promise<Project>;
+  updateProject: (id: string, req: ProjectUpdateRequest) => Promise<Project>;
+  deleteProject: (id: string) => Promise<void>;
 }
 
 export function useProjects(): UseProjectsResult {
@@ -117,9 +171,7 @@ export function useProjects(): UseProjectsResult {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const createProject = useCallback(async (req: ProjectCreateRequest): Promise<Project> => {
@@ -128,7 +180,21 @@ export function useProjects(): UseProjectsResult {
     return res.data;
   }, []);
 
-  return { projects, isLoading, error, createProject };
+  const updateProject = useCallback(
+    async (id: string, req: ProjectUpdateRequest): Promise<Project> => {
+      const res = await apiPatch<ProjectResponse>(`/api/v1/projects/${id}`, req);
+      setProjects((prev) => prev.map((p) => (p.id === id ? res.data : p)));
+      return res.data;
+    },
+    []
+  );
+
+  const deleteProject = useCallback(async (id: string): Promise<void> => {
+    await apiDelete(`/api/v1/projects/${id}`);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  return { projects, isLoading, error, createProject, updateProject, deleteProject };
 }
 
 // ─── Integrations ──────────────────────────────────────────────────────────────
@@ -138,6 +204,7 @@ interface UseIntegrationsResult {
   isLoading: boolean;
   error: Error | null;
   createIntegration: (req: IntegrationConfigCreateRequest) => Promise<IntegrationConfig>;
+  deleteIntegration: (id: string) => Promise<void>;
 }
 
 export function useIntegrations(): UseIntegrationsResult {
@@ -157,9 +224,7 @@ export function useIntegrations(): UseIntegrationsResult {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const createIntegration = useCallback(
@@ -171,7 +236,12 @@ export function useIntegrations(): UseIntegrationsResult {
     []
   );
 
-  return { configs, isLoading, error, createIntegration };
+  const deleteIntegration = useCallback(async (id: string): Promise<void> => {
+    await apiDelete(`/api/v1/integrations/configs/${id}`);
+    setConfigs((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  return { configs, isLoading, error, createIntegration, deleteIntegration };
 }
 
 // ─── Tags ──────────────────────────────────────────────────────────────────────
@@ -202,9 +272,7 @@ export function useTags(): UseTagsResult {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const createTag = useCallback(async (req: TagCreateRequest): Promise<Tag> => {
