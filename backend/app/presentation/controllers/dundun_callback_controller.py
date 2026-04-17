@@ -1,10 +1,15 @@
-"""Dundun async callback controller — EP-03 Phase 3b.
+"""Dundun async callback controller — EP-03 Phase 3b + EP-04 spec-gen.
 
 Dundun POSTs agent results here after async invocation.
 Authentication is HMAC-SHA256 over the raw request body using the shared
 DUNDUN_CALLBACK_SECRET.  No JWT / no get_current_user.
 
 POST /api/v1/dundun/callback
+
+Agents handled:
+  wm_suggestion_agent  — EP-03
+  wm_gap_agent         — EP-03
+  wm_spec_gen_agent    — EP-04 (upserts sections, invalidates completeness cache)
 """
 from __future__ import annotations
 
@@ -21,6 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.settings import get_settings
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
 from app.domain.models.gap_finding import GapSeverity, StoredGapFinding
+from app.domain.models.section import Section
+from app.domain.models.section_catalog import catalog_for
+from app.domain.models.section_type import GenerationSource, SectionType
 from app.infrastructure.adapters.dundun_callback_verifier import verify_dundun_signature
 from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
     AssistantSuggestionRepositoryImpl,
@@ -29,6 +37,10 @@ from app.infrastructure.persistence.gap_finding_repository_impl import (
     GapFindingRepositoryImpl,
 )
 from app.infrastructure.persistence.models.orm import WorkItemORM
+from app.infrastructure.persistence.section_repository_impl import (
+    SectionRepositoryImpl,
+    SectionVersionRepositoryImpl,
+)
 from app.infrastructure.persistence.session_context import with_workspace
 from app.presentation.dependencies import get_callback_session
 from app.presentation.schemas.dundun_callback_schemas import DundunCallbackRequest
@@ -114,7 +126,10 @@ async def dundun_callback(
     if payload.agent == "wm_gap_agent":
         return await _handle_gap(payload, session, gap_repo)
 
-    # wm_quick_action_agent — deferred to EP-04
+    if payload.agent == "wm_spec_gen_agent":
+        return await _handle_spec_gen(payload, session)
+
+    # wm_quick_action_agent — deferred
     return JSONResponse(
         status_code=http_status.HTTP_501_NOT_IMPLEMENTED,
         content={
@@ -300,3 +315,138 @@ async def _handle_gap(
         payload.request_id,
     )
     return _ok(payload.agent, len(persisted))
+
+
+async def _handle_spec_gen(
+    payload: DundunCallbackRequest,
+    session: AsyncSession,
+) -> JSONResponse:
+    """Upsert sections returned by wm_spec_gen_agent and invalidate completeness cache.
+
+    Each item in payload.sections carries a `dimension` (matching SectionType enum values)
+    and `content`. Unknown dimension values are skipped with a warning — the agent may
+    return sections that don't exist in the current catalog.
+    """
+    if payload.work_item_id is None:
+        logger.warning(
+            "dundun_callback: spec_gen missing work_item_id request_id=%s",
+            payload.request_id,
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "MISSING_IDS",
+                    "message": "work_item_id is required for spec_gen",
+                    "details": {},
+                }
+            },
+        )
+
+    work_item_id: UUID = payload.work_item_id
+    await _resolve_workspace_id(session, work_item_id)
+
+    raw_sections = payload.sections or []
+    if not raw_sections:
+        return _ok(payload.agent, 0, "no sections in payload")
+
+    section_repo = SectionRepositoryImpl(session)
+    version_repo = SectionVersionRepositoryImpl(session)
+
+    # Fetch all existing sections for the work item (one query)
+    existing: list[Section] = await section_repo.get_by_work_item(work_item_id)
+    existing_by_type: dict[str, Section] = {s.section_type.value: s for s in existing}
+
+    # Fetch work item metadata: type + creator_id (used as actor for FK integrity)
+    # The callback has no user auth — we attribute writes to the work item creator.
+    stmt = select(WorkItemORM.type, WorkItemORM.creator_id).where(WorkItemORM.id == work_item_id)
+    row = (await session.execute(stmt)).one_or_none()
+    work_item_type_str = row[0] if row else None
+    # FK-safe actor: work item creator always exists; falls back to a random UUID only
+    # if the work item somehow has no creator (should never happen given DB constraints).
+    agent_actor_id: UUID = row[1] if row else uuid4()
+
+    saved = 0
+    skipped = 0
+
+    for item in raw_sections:
+        # Validate dimension is a known SectionType
+        try:
+            section_type = SectionType(item.dimension)
+        except ValueError:
+            logger.warning(
+                "dundun_callback: spec_gen unknown dimension=%s work_item=%s — skipping",
+                item.dimension,
+                work_item_id,
+            )
+            skipped += 1
+            continue
+
+        if section_type.value in existing_by_type:
+            # Update existing section
+            section = existing_by_type[section_type.value]
+            section.update_content(item.content, agent_actor_id, source=GenerationSource.LLM)
+            await section_repo.save(section)
+            await version_repo.append(section, agent_actor_id)
+        else:
+            # Create a new section with display_order from catalog if available
+            display_order = 99  # fallback
+            if work_item_type_str is not None:
+                try:
+                    from app.domain.value_objects.work_item_type import WorkItemType
+                    wt = WorkItemType(work_item_type_str)
+                    configs = catalog_for(wt)
+                    for cfg in configs:
+                        if cfg.section_type == section_type:
+                            display_order = cfg.display_order
+                            break
+                except (ValueError, KeyError):
+                    pass
+
+            section = Section.create(
+                work_item_id=work_item_id,
+                section_type=section_type,
+                display_order=display_order,
+                is_required=False,
+                created_by=agent_actor_id,
+                content=item.content,
+                generation_source=GenerationSource.LLM,
+            )
+            await section_repo.save(section)
+            await version_repo.append(section, agent_actor_id)
+
+        saved += 1
+
+    # Invalidate completeness cache so the next GET /completeness recomputes.
+    # The callback has no FastAPI DI cache dep, so we build it directly from settings.
+    # On cache connection failure we log a warning and continue — stale data for up
+    # to 60s is acceptable for an async background callback.
+    try:
+        _settings = get_settings()
+        cache_key = f"completeness:{work_item_id}"
+        if _settings.redis.use_fake:
+            from app.presentation.dependencies import _IN_MEMORY_CACHE as _fake_cache
+            if _fake_cache is not None:
+                await _fake_cache.delete(cache_key)
+        else:
+            from app.infrastructure.adapters.redis_cache_adapter import RedisCacheAdapter
+            _rc = RedisCacheAdapter(url=_settings.redis.url)
+            try:
+                await _rc.delete(cache_key)
+            finally:
+                await _rc.close()
+    except Exception as _cache_err:
+        logger.warning(
+            "dundun_callback: spec_gen cache invalidation failed work_item=%s err=%s",
+            work_item_id,
+            _cache_err,
+        )
+
+    logger.info(
+        "dundun_callback: spec_gen upserted=%d skipped=%d work_item=%s request_id=%s",
+        saved,
+        skipped,
+        work_item_id,
+        payload.request_id,
+    )
+    return _ok(payload.agent, saved)

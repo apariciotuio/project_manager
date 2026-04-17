@@ -143,6 +143,16 @@ Depends on: EP-01 backend (work_items, WorkItem entity), EP-03 backend (LLM adap
 
 **Status: BASE IMPLEMENTATION LANDED** (2026-04-16) — 14 new unit tests on the quality engine; full regression 954 passed + 1 skip; ruff + mypy --strict clean on new files.
 
+**EP-04 Phase 4+5+spec-gen callback update** (2026-04-17):
+- 44 triangulated unit tests for all 9 dimension checkers (`tests/unit/domain/ep04/test_dimension_checkers.py`)
+- 10 unit tests for ScoreCalculator (band assignment, renormalization, ZeroDivisionError guard)
+- 8 unit tests for CompletenessService (cache hit/miss/invalidate) + GapService (blocking/warning/empty)
+- 2 unit tests for SectionService cache invalidation on update
+- `SectionService.update_section` now accepts optional `ICache` dep and calls `cache.delete(completeness:{work_item_id})` post-save
+- `wm_spec_gen_agent` callback handler implemented in `dundun_callback_controller.py`: upserts sections by section_type, writes SectionVersion rows, invalidates completeness cache (best-effort)
+- 7 integration tests for spec-gen callback (`tests/integration/test_spec_gen_callback.py`)
+- Full regression: 1174 passed, 1 skipped
+
 What shipped:
 - `domain/quality/dimension_checkers.py` — 9 pure-function checkers (problem_clarity, objective, scope, acceptance_criteria, dependencies, risks, breakdown, ownership, validations) + `DIMENSION_WEIGHTS` table + `check_all()` orchestrator
 - `domain/quality/score_calculator.py` — weight renormalisation, 0-100 score, level band mapping, ALG-4 guard against ZeroDivisionError when every dimension is marked inapplicable
@@ -154,7 +164,7 @@ What shipped:
 - `main.py` — routers wired under `/api/v1`
 
 What is NOT yet done (deferred within EP-04 — still to be picked up):
-- POST `/work-items/{id}/specification/generate` (Dundun `wm_spec_gen_agent` dispatch) — needs the same Celery + callback plumbing used by EP-03 suggestions
+- POST `/work-items/{id}/specification/generate` (Dundun `wm_spec_gen_agent` dispatch) — trigger side; callback handler IS now implemented (see 2026-04-17 below)
 - PATCH `/work-items/{id}/sections` bulk endpoint
 - GET `/work-items/{id}/sections/{section_id}/versions` history endpoint
 - `NextStepService` + GET `/work-items/{id}/next-step`
@@ -167,18 +177,18 @@ What is NOT yet done (deferred within EP-04 — still to be picked up):
 
 All dimension checkers are pure functions: `(WorkItem, list[Section], list[Validator]) -> DimensionResult`. No I/O.
 
-- [ ] [RED] Write tests for `check_problem_clarity()`: filled when `summary` + `context` combined >= 100 chars; not filled below threshold; returns `applicable=False` for Task, Sub-task, Spike
-- [ ] [RED] Write tests for `check_objective()`: filled when `objective` section non-empty >= 50 chars; triangulate with 3 inputs: 0 chars, 49 chars, 50 chars
-- [ ] [RED] Write tests for `check_scope()`: applicable for Initiative, Epic, Feature; not applicable for Bug, Task, Spike
-- [ ] [RED] Write tests for `check_acceptance_criteria()`: filled when section has >= 2 bullet points (lines starting with `-` or `*`); 1 bullet does not count; applicable for User Story, Bug, Enhancement
-- [ ] [RED] Write tests for `check_dependencies()`: filled when `dependencies` section non-empty OR content = "none" (case-insensitive); empty section is not filled
-- [ ] [RED] Write tests for `check_risks()`: same pattern as `check_dependencies()`
-- [ ] [RED] Write tests for `check_breakdown()`: filled when `breakdown` section has >= 1 line; applicable for Initiative, Epic, Feature
-- [ ] [RED] Write tests for `check_ownership()`: filled when `work_item.owner_id` is set and `work_item.owner_suspended_flag = False`
-- [ ] [RED] Write tests for `check_validations()`: filled when at least 1 `Validator` with status `approved` or `pending`; filled when `validation_status = 'acknowledged'` on work item
-- [ ] [RED] Write tests for `check_next_step_clarity()`: filled when at least one other dimension returns a defined next step; not filled when all dimensions pass (item is ready)
-- [ ] [GREEN] Implement all dimension checker functions in `domain/quality/dimension_checkers.py`
-- [ ] [REFACTOR] 100% branch coverage on all dimension checkers; no imports from infrastructure layer
+- [x] [RED] Write tests for `check_problem_clarity()`: filled when `summary` + `context` combined >= 100 chars; not filled below threshold; returns `applicable=False` for Task, Sub-task, Spike (2026-04-17 — test_dimension_checkers.py)
+- [x] [RED] Write tests for `check_objective()`: filled when `objective` section non-empty >= 50 chars; triangulate with 3 inputs: 0 chars, 49 chars, 50 chars (2026-04-17)
+- [x] [RED] Write tests for `check_scope()`: applicable for Initiative, Epic, Feature; not applicable for Bug, Task, Spike (2026-04-17)
+- [x] [RED] Write tests for `check_acceptance_criteria()`: filled when section has >= 2 bullet points; 1 bullet does not count (2026-04-17)
+- [x] [RED] Write tests for `check_dependencies()`: filled when `dependencies` section non-empty OR content = "none" (case-insensitive); empty section is not filled (2026-04-17)
+- [x] [RED] Write tests for `check_risks()`: same pattern as `check_dependencies()` (2026-04-17)
+- [x] [RED] Write tests for `check_breakdown()`: filled when `breakdown` section has >= 1 line; applicable for Initiative, Epic, Feature (2026-04-17)
+- [x] [RED] Write tests for `check_ownership()`: filled when `work_item.owner_id` is set and `owner_suspended_flag = False` (2026-04-17)
+- [x] [RED] Write tests for `check_validations()`: filled when at least 1 `Validator` with status `approved` or `pending` (2026-04-17)
+- [ ] [RED] Write tests for `check_next_step_clarity()`: deferred (checker not yet implemented)
+- [x] [GREEN] Implement all dimension checker functions in `domain/quality/dimension_checkers.py` (2026-04-16)
+- [x] [REFACTOR] 100% branch coverage on all dimension checkers; no imports from infrastructure layer (2026-04-17 — 44 tests in test_dimension_checkers.py)
 
 ### Acceptance Criteria — Dimension Checkers
 
@@ -217,46 +227,32 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 
 ### ScoreCalculator
 
-- [ ] [RED] Write unit tests for `ScoreCalculator.compute()`:
-  - Weight renormalization: applicable dimensions' weights sum to 1.0
-  - Score = 0 when all applicable dimensions unfilled
-  - Score = 100 when all applicable dimensions filled
-  - Inapplicable dimensions excluded and remaining weights renormalized
-  - Band assignment: 0–39 = `low`, 40–69 = `medium`, 70–89 = `high`, 90–100 = `ready`
-  - **WHEN all dimensions are inapplicable (total weight = 0.0) THEN score=0, level='low', dimensions=[] and no ZeroDivisionError is raised** (Fixed per backend_review.md ALG-4)
-- [ ] [GREEN] Implement `domain/quality/score_calculator.py` — `ScoreCalculator.compute(dimension_results, work_item_type) -> CompletenessResult` and `renormalize_weights()`; guard: if `renormalize_weights` returns `{}` return `CompletenessResult(score=0, level='low', dimensions=[])`
+- [x] [RED] Write unit tests for `ScoreCalculator.compute()`: renormalization, 0/100 boundaries, band assignment, ZeroDivisionError guard (2026-04-17 — test_completeness_service.py: 10 tests)
+- [x] [GREEN] Implement `domain/quality/score_calculator.py` (2026-04-16)
 
 ### CompletenessCache
 
-- [ ] [RED] Write tests for `CompletenessCache`: `get(work_item_id)` returns None on miss, `set` + `get` round-trip returns same value, `invalidate(work_item_id)` removes key
-- [ ] [GREEN] Implement `infrastructure/cache/completeness_cache.py` — thin wrapper around Redis; cache key `completeness:{work_item_id}`, TTL 60 seconds
+- [x] [RED] Write tests for CompletenessService cache hit/miss/invalidate with fake cache (2026-04-17 — test_completeness_service.py: 4 tests)
+- [x] [GREEN] Cache is in `CompletenessService` using `ICache` port; key = `completeness:{work_item_id}`, TTL 60s (2026-04-16)
 
 ### CompletenessService
 
-- [ ] [RED] Write unit tests using fake cache + fake repos:
-  - Cache hit: skips DB calls entirely (verify fake repo not called)
-  - Cache miss: calls `SectionRepository`, `ValidatorRepository`, `WorkItemRepository`, runs dimension checkers, populates cache
-  - Result `dimensions` array contains correct `DimensionResult` entries
-  - `cached: true` flag set when served from cache
-- [ ] [GREEN] Implement `application/services/completeness_service.py` — `compute(work_item_id) -> CompletenessResult`
+- [x] [RED] Write unit tests using fake cache + fake repos: cache hit skips DB, cache miss calls repos, cached flag set (2026-04-17)
+- [x] [GREEN] Implement `application/services/completeness_service.py` — `compute(work_item_id) -> CompletenessResult` (2026-04-16)
 
 ### GapService
 
-- [ ] [RED] Write unit tests:
-  - Returns only unfilled, applicable dimensions
-  - Blocking gaps ordered before warnings before info
-  - Empty list returned when all dimensions filled
-  - Gap messages are static strings (not LLM-generated) from `domain/quality/gap_messages.py`
-- [ ] [GREEN] Implement `application/services/gap_service.py` — `list(work_item_id) -> list[GapResult]`
-- [ ] Implement `domain/quality/gap_messages.py` — static `dict[str, str]` mapping dimension name to human-readable gap message
+- [x] [RED] Write unit tests: returns only unfilled applicable dims, empty when all filled, blocking severity for high-weight gaps (2026-04-17 — test_completeness_service.py: 3 tests)
+- [x] [GREEN] Implement `GapService` in `application/services/completeness_service.py` (2026-04-16)
+- [ ] Implement `domain/quality/gap_messages.py` — static dict (gap messages currently inline in dimension_checkers.py; deferred)
 
 ### Cache Invalidation Hooks
 
-- [ ] [RED] Write test: `SectionService.save()` calls `CompletenessCache.invalidate(work_item_id)` after DB commit
-- [ ] [GREEN] Hook cache invalidation in `SectionService.save()` as post-commit callback
+- [x] [RED] Write test: `SectionService.update_section()` calls cache.delete(completeness:{work_item_id}) (2026-04-17 — test_section_service_cache.py)
+- [x] [GREEN] Hook cache invalidation in `SectionService.update_section()` (2026-04-17)
 - [ ] [RED] Write test: `WorkItemService.transition_state()` invalidates completeness cache
-- [ ] [GREEN] Hook cache invalidation in `WorkItemService.transition_state()` post-commit
-- [ ] [GREEN] Hook cache invalidation in `ValidatorService.update_status()` post-commit
+- [ ] [GREEN] Hook cache invalidation in `WorkItemService.transition_state()` post-commit — deferred
+- [ ] [GREEN] Hook cache invalidation in `ValidatorService.update_status()` post-commit — deferred
 
 ---
 

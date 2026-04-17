@@ -2,6 +2,7 @@
 
 Thin orchestration over Section + SectionVersion repos. Wraps the Section
 mutation + append-only SectionVersion write inside a single DB transaction.
+Cache is invalidated after DB commit so stale completeness scores are evicted.
 """
 from __future__ import annotations
 
@@ -10,11 +11,14 @@ from uuid import UUID
 from app.domain.models.section import RequiredSectionEmptyError, Section
 from app.domain.models.section_catalog import catalog_for
 from app.domain.models.section_type import GenerationSource, SectionType
+from app.domain.ports.cache import ICache
 from app.domain.repositories.section_repository import ISectionRepository
 from app.domain.repositories.section_version_repository import (
     ISectionVersionRepository,
 )
 from app.domain.repositories.work_item_repository import IWorkItemRepository
+
+_COMPLETENESS_CACHE_PREFIX = "completeness:"
 
 
 class SectionNotFoundError(LookupError):
@@ -32,10 +36,16 @@ class SectionService:
         section_repo: ISectionRepository,
         section_version_repo: ISectionVersionRepository,
         work_item_repo: IWorkItemRepository,
+        cache: ICache | None = None,
     ) -> None:
         self._sections = section_repo
         self._versions = section_version_repo
         self._work_items = work_item_repo
+        self._cache = cache
+
+    async def _invalidate(self, work_item_id: UUID) -> None:
+        if self._cache is not None:
+            await self._cache.delete(f"{_COMPLETENESS_CACHE_PREFIX}{work_item_id}")
 
     async def list_for_work_item(
         self, work_item_id: UUID, workspace_id: UUID
@@ -92,6 +102,7 @@ class SectionService:
         section.update_content(new_content, actor_id, source=GenerationSource.MANUAL)
         await self._sections.save(section)
         await self._versions.append(section, actor_id)
+        await self._invalidate(work_item_id)
         return section
 
 

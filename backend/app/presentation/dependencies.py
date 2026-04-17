@@ -456,6 +456,7 @@ def get_clarification_service(
 
 def get_section_service(
     session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
 ) -> SectionService:
     from app.application.services.section_service import SectionService
     from app.infrastructure.persistence.section_repository_impl import (
@@ -467,6 +468,7 @@ def get_section_service(
         section_repo=SectionRepositoryImpl(session),
         section_version_repo=SectionVersionRepositoryImpl(session),
         work_item_repo=WorkItemRepositoryImpl(session),
+        cache=cache,
     )
 
 

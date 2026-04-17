@@ -25,8 +25,20 @@ class QuickActionResult(BaseModel):
     new_content: str
 
 
+class SectionPayload(BaseModel):
+    """One section returned by the spec-gen agent."""
+
+    dimension: str
+    content: str
+
+
 class DundunCallbackRequest(BaseModel):
-    agent: Literal["wm_suggestion_agent", "wm_gap_agent", "wm_quick_action_agent"]
+    agent: Literal[
+        "wm_suggestion_agent",
+        "wm_gap_agent",
+        "wm_quick_action_agent",
+        "wm_spec_gen_agent",
+    ]
     request_id: str
     status: Literal["success", "error"]
     work_item_id: UUID | None = None
@@ -36,4 +48,6 @@ class DundunCallbackRequest(BaseModel):
     suggestions: list[SuggestionItem] | None = None
     gap_findings: list[GapFindingPayload] | None = None
     quick_action_result: QuickActionResult | None = None
+    # wm_spec_gen_agent
+    sections: list[SectionPayload] | None = None
     error_message: str | None = None
