@@ -136,7 +136,7 @@ export interface Comment {
   body: string;
   parent_id: string | null;
   created_at: string;
-  replies: Comment[];
+  replies?: Comment[];
 }
 
 export interface CommentsResponse {

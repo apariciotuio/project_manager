@@ -107,9 +107,9 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
         </div>
       </div>
 
-      {comment.replies.length > 0 && (
+      {(comment.replies?.length ?? 0) > 0 && (
         <div className="mt-3 flex flex-col gap-3">
-          {comment.replies.map((reply) => (
+          {comment.replies?.map((reply) => (
             <CommentItem key={reply.id} comment={reply} onReply={onReply} isReply />
           ))}
         </div>
