@@ -8,14 +8,17 @@ import { TasksTab } from '@/components/work-item/tasks-tab';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
+import { ChildItemsTab } from '@/components/work-item/child-items-tab';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
+import { isSessionExpired } from '@/lib/types/auth';
+import { PageContainer } from '@/components/layout/page-container';
 
 interface WorkItemDetailPageProps {
   params: { slug: string; id: string };
 }
 
 export default function WorkItemDetailPage({
-  params: { id },
+  params: { slug, id },
 }: WorkItemDetailPageProps) {
   const { workItem, isLoading, error } = useWorkItem(id);
 
@@ -36,6 +39,7 @@ export default function WorkItemDetailPage({
   }
 
   if (error) {
+    if (isSessionExpired(error)) return null;
     return (
       <div className="p-6" role="alert" aria-live="assertive">
         <p className="text-destructive text-sm">
@@ -48,8 +52,8 @@ export default function WorkItemDetailPage({
   if (!workItem) return null;
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto">
-      <WorkItemHeader workItem={workItem} />
+    <PageContainer variant="wide" className="flex flex-col gap-6">
+      <WorkItemHeader workItem={workItem} slug={slug} />
 
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
@@ -58,6 +62,7 @@ export default function WorkItemDetailPage({
           <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="subitems">Sub-items</TabsTrigger>
         </TabsList>
 
         <TabsContent value="especificacion" className="mt-4">
@@ -79,7 +84,11 @@ export default function WorkItemDetailPage({
         <TabsContent value="historial" className="mt-4">
           <TimelineTab workItemId={id} />
         </TabsContent>
+
+        <TabsContent value="subitems" className="mt-4">
+          <ChildItemsTab workItemId={id} slug={slug} />
+        </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

@@ -13,6 +13,8 @@ import {
   Bell,
 } from 'lucide-react';
 import type { NotificationType } from '@/lib/types/api';
+import { isSessionExpired } from '@/lib/types/auth';
+import { PageContainer } from '@/components/layout/page-container';
 
 const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
   mention: AtSign,
@@ -33,19 +35,23 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <h1 className="mb-6 text-h3 font-semibold">Bandeja de entrada</h1>
+      <PageContainer variant="narrow">
+        <h1 className="mb-6 text-h2 font-semibold">Bandeja de entrada</h1>
         <p className="text-body-sm text-muted-foreground">Cargando...</p>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error) {
+    // El modal global de sesión caducada cubre este caso — no duplicamos el error.
+    if (isSessionExpired(error)) return null;
     return (
-      <div className="p-6">
-        <h1 className="mb-6 text-h3 font-semibold">Bandeja de entrada</h1>
-        <p className="text-body-sm text-destructive">Error al cargar las notificaciones.</p>
-      </div>
+      <PageContainer variant="narrow">
+        <h1 className="mb-6 text-h2 font-semibold">Bandeja de entrada</h1>
+        <p className="text-body-sm text-destructive">
+          No se pudo cargar la bandeja: {error.message}
+        </p>
+      </PageContainer>
     );
   }
 
@@ -57,8 +63,8 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-6 text-h3 font-semibold">Bandeja de entrada</h1>
+    <PageContainer variant="narrow">
+      <h1 className="mb-6 text-h2 font-semibold">Bandeja de entrada</h1>
 
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
@@ -98,7 +104,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
           })}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

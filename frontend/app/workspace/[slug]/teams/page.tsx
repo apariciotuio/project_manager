@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTeams } from '@/hooks/use-teams';
+import { useWorkspaceMembers } from '@/hooks/use-workspace-members';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +24,8 @@ import {
 } from '@/components/ui/dialog';
 import { Users, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import type { Team } from '@/lib/types/api';
+import { isSessionExpired } from '@/lib/types/auth';
+import { PageContainer } from '@/components/layout/page-container';
 
 interface TeamsPageProps {
   params: { slug: string };
@@ -23,6 +33,7 @@ interface TeamsPageProps {
 
 export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
   const { teams, isLoading, error, createTeam, addMember } = useTeams();
+  const { members: workspaceMembers } = useWorkspaceMembers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -34,6 +45,18 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
   const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null);
   const [memberUserId, setMemberUserId] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState<string | null>(null);
+
+  const targetTeam = useMemo(
+    () => teams.find((t) => t.id === addMemberTeamId) ?? null,
+    [teams, addMemberTeamId],
+  );
+
+  const availableMembers = useMemo(() => {
+    if (!targetTeam) return workspaceMembers;
+    const existingIds = new Set(targetTeam.members.map((m) => m.user_id));
+    return workspaceMembers.filter((m) => !existingIds.has(m.id));
+  }, [targetTeam, workspaceMembers]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -54,14 +77,15 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
 
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
-    if (!addMemberTeamId || !memberUserId.trim()) return;
+    if (!addMemberTeamId || !memberUserId) return;
     setAddingMember(true);
+    setAddMemberError(null);
     try {
-      await addMember(addMemberTeamId, { user_id: memberUserId.trim() });
+      await addMember(addMemberTeamId, { user_id: memberUserId });
       setAddMemberTeamId(null);
       setMemberUserId('');
-    } catch {
-      // silently ignore for now
+    } catch (err) {
+      setAddMemberError(err instanceof Error ? err.message : 'Error al añadir miembro');
     } finally {
       setAddingMember(false);
     }
@@ -79,26 +103,29 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <h1 className="mb-4 text-h3 font-semibold">Equipos</h1>
+      <PageContainer variant="wide">
+        <h1 className="mb-4 text-h2 font-semibold">Equipos</h1>
         <p className="text-body-sm text-muted-foreground">Cargando...</p>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error) {
+    if (isSessionExpired(error)) return null;
     return (
-      <div className="p-6">
-        <h1 className="mb-4 text-h3 font-semibold">Equipos</h1>
-        <p className="text-body-sm text-destructive">Error al cargar los equipos.</p>
-      </div>
+      <PageContainer variant="wide">
+        <h1 className="mb-4 text-h2 font-semibold">Equipos</h1>
+        <p className="text-body-sm text-destructive">
+          No se pudieron cargar los equipos: {error.message}
+        </p>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <PageContainer variant="wide">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-h3 font-semibold">Equipos</h1>
+        <h1 className="text-h2 font-semibold">Equipos</h1>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-1.5 h-4 w-4" />
           Crear equipo
@@ -222,33 +249,56 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
       </Dialog>
 
       {/* Add member dialog */}
-      <Dialog open={addMemberTeamId !== null} onOpenChange={(o) => !o && setAddMemberTeamId(null)}>
+      <Dialog
+        open={addMemberTeamId !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setAddMemberTeamId(null);
+            setMemberUserId('');
+            setAddMemberError(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Añadir miembro</DialogTitle>
+            <DialogTitle>Añadir miembro{targetTeam ? ` a ${targetTeam.name}` : ''}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => void handleAddMember(e)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="member-id">ID de usuario *</Label>
-              <Input
-                id="member-id"
-                placeholder="UUID del usuario"
-                value={memberUserId}
-                onChange={(e) => setMemberUserId(e.target.value)}
-                required
-              />
+            <div className="space-y-2">
+              <Label htmlFor="member-user">Usuario</Label>
+              {availableMembers.length === 0 ? (
+                <p className="text-body-sm text-muted-foreground">
+                  No hay más usuarios del workspace disponibles para este equipo.
+                </p>
+              ) : (
+                <Select value={memberUserId} onValueChange={setMemberUserId}>
+                  <SelectTrigger id="member-user" className="h-11">
+                    <SelectValue placeholder="Selecciona un miembro del workspace" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name} · {m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+            {addMemberError && (
+              <p className="text-body-sm text-destructive">{addMemberError}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddMemberTeamId(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!memberUserId.trim() || addingMember}>
+              <Button type="submit" disabled={!memberUserId || addingMember}>
                 {addingMember ? 'Añadiendo...' : 'Añadir'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

@@ -7,12 +7,14 @@ import { Plus, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/providers/auth-provider';
+import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
 import { StateBadge } from '@/components/domain/state-badge';
 import { TypeBadge } from '@/components/domain/type-badge';
 import { CompletenessBar } from '@/components/domain/completeness-bar';
 import { RelativeTime } from '@/components/domain/relative-time';
 import { t } from '@/lib/i18n';
+import { PageContainer } from '@/components/layout/page-container';
 import type { WorkItemState, WorkItemType } from '@/lib/types/work-item';
 import type { CompletenessLevel } from '@/components/domain/level-badge';
 import type { WorkitemState } from '@/components/domain/state-badge';
@@ -86,7 +88,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
     : items;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <PageContainer variant="wide" className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-h2 font-semibold text-foreground">
@@ -127,11 +129,11 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
       {/* Content */}
       {isLoading ? (
         <WorkItemsSkeleton />
-      ) : error ? (
+      ) : error && !isSessionExpired(error) ? (
         <div role="alert" className="text-body-sm text-destructive">
-          {t('workitem.list.errorBanner')}
+          {t('workitem.list.errorBanner')}: {error.message}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : error ? null : filtered.length === 0 ? (
         <EmptyState slug={slug} />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">
@@ -204,7 +206,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
           </table>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
