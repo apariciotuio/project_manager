@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from app.application.services.versioning_service import VersioningService
     from app.application.services.saved_search_service import SavedSearchService
     from app.application.services.search_service import SearchService
+    from app.application.services.dashboard_service import DashboardService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -908,6 +909,14 @@ def get_saved_search_service(
     )
 
     return SavedSearchService(repo=SavedSearchRepositoryImpl(session))
+
+
+def get_dashboard_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: "ICache" = Depends(get_cache_adapter),
+) -> "DashboardService":
+    from app.application.services.dashboard_service import DashboardService
+    return DashboardService(session=session, cache=cache)
 
 
 def get_search_service() -> "SearchService":
