@@ -38,30 +38,32 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
   const tItems = useTranslations('workspace.items');
 
   const { user } = useAuth();
-  const [stateFilter, setStateFilter] = useState<WorkItemState | ''>('');
-  const [search, setSearch] = useState('');
 
-  // ─── Pagination — URL-synced ─────────────────────────────────────────────────
+  // ─── URL-synced filter + pagination ──────────────────────────────────────────
+  const [stateFilter, setStateFilter] = useState<WorkItemState | ''>(() => {
+    const s = searchParams.get('state');
+    return (s as WorkItemState) ?? '';
+  });
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(() => {
     const p = parseInt(searchParams.get('page') ?? '1', 10);
     return isNaN(p) || p < 1 ? 1 : p;
   });
 
-  // Sync page → URL
+  // Sync state + page → URL
   useEffect(() => {
     const params = new URLSearchParams();
-    // Carry over existing params (state filter etc.)
-    const stateVal = searchParams.get('state');
-    if (stateVal) params.set('state', stateVal);
+    if (stateFilter) params.set('state', stateFilter);
     params.set('page', String(page));
     router.replace(`?${params.toString()}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [stateFilter, page]);
 
   // Reset to page 1 when filter changes
-  useEffect(() => {
+  const handleStateFilterChange = (value: WorkItemState | '') => {
+    setStateFilter(value);
     setPage(1);
-  }, [stateFilter]);
+  };
 
   // Use workspace_id as project_id for now (1-workspace : 1-project assumption)
   const projectId = user?.workspace_id ?? null;
@@ -99,7 +101,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
         <select
           aria-label="Estado"
           value={stateFilter}
-          onChange={(e) => setStateFilter(e.target.value as WorkItemState | '')}
+          onChange={(e) => handleStateFilterChange(e.target.value as WorkItemState | '')}
           className="h-9 rounded-md border border-input bg-background px-3 text-body-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos los estados</option>

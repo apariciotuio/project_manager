@@ -243,4 +243,71 @@ describe('WorkItemsPage', () => {
     expect(screen.queryByRole('button', { name: /anterior/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /siguiente/i })).toBeNull();
   });
+
+  // ─── URL-sync state filter ─────────────────────────────────────────────────
+
+  it('pre-selects state filter from URL ?state=in_review', async () => {
+    mockSearchParams = { state: 'in_review' };
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+    const select = screen.getByRole('combobox', { name: /estado/i });
+    expect((select as HTMLSelectElement).value).toBe('in_review');
+    mockSearchParams = {};
+  });
+
+  it('changing state filter calls router.replace with ?state= and resets page to 1', async () => {
+    mockReplace.mockClear();
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 45, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+
+    const select = screen.getByRole('combobox', { name: /estado/i });
+    await userEvent.selectOptions(select, 'draft');
+
+    const replaceCalls = mockReplace.mock.calls.map((c) => c[0] as string);
+    const stateCall = replaceCalls.find((u) => u.includes('state=draft'));
+    expect(stateCall).toBeDefined();
+    expect(stateCall).toContain('page=1');
+  });
+
+  it('selecting "all states" removes ?state from URL', async () => {
+    mockSearchParams = { state: 'in_review' };
+    mockReplace.mockClear();
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json({
+          data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
+        }),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() =>
+      expect(screen.getByText('Implement login flow')).toBeInTheDocument(),
+    );
+
+    const select = screen.getByRole('combobox', { name: /estado/i });
+    await userEvent.selectOptions(select, '');
+
+    const replaceCalls = mockReplace.mock.calls.map((c) => c[0] as string);
+    const noStateCall = replaceCalls.find((u) => !u.includes('state='));
+    expect(noStateCall).toBeDefined();
+    mockSearchParams = {};
+  });
 });
