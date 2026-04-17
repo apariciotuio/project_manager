@@ -155,3 +155,51 @@ describe('StateTransitionPanel', () => {
     expect(onTransition).not.toHaveBeenCalled();
   });
 });
+
+// ReadyGateBlockers integration with StateTransitionPanel
+describe('StateTransitionPanel — ReadyGateBlockers integration', () => {
+  const IN_CLARIFICATION_ITEM: WorkItemResponse = {
+    ...WORK_ITEM,
+    state: 'in_clarification',
+  };
+
+  it('shows ReadyGateBlockers inline when state has ready transition and gate is blocked', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items/wi-1/ready-gate', () =>
+        HttpResponse.json({
+          data: {
+            ok: false,
+            blockers: [
+              { code: 'VALIDATION_REQUIRED', rule_id: 'r1', label: 'Has AC', status: 'pending' },
+            ],
+          },
+        }),
+      ),
+    );
+    render(<StateTransitionPanel workItem={IN_CLARIFICATION_ITEM} onTransition={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ready-gate-blockers')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('blocker-item-r1')).toBeInTheDocument();
+  });
+
+  it('does not render ReadyGateBlockers when gate is ok', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items/wi-1/ready-gate', () =>
+        HttpResponse.json({ data: { ok: true, blockers: [] } }),
+      ),
+    );
+    const { container } = render(
+      <StateTransitionPanel workItem={IN_CLARIFICATION_ITEM} onTransition={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-testid="ready-gate-blockers"]')).toBeNull(),
+    );
+  });
+
+  it('does not render ReadyGateBlockers when current state has no ready transition', async () => {
+    // draft → in_clarification only, no ready
+    render(<StateTransitionPanel workItem={WORK_ITEM} onTransition={vi.fn()} />);
+    expect(screen.queryByTestId('ready-gate-blockers')).not.toBeInTheDocument();
+  });
+});

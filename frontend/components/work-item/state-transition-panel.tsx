@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { getAvailableTransitions } from '@/lib/state-machine';
 import { useTransitionState } from '@/hooks/work-item/use-transition-state';
 import { ForceReadyModal } from '@/components/work-item/force-ready-modal';
+import { ReadyGateBlockers } from '@/components/work-item/ready-gate-blockers';
 import type { WorkItemResponse, WorkItemState } from '@/lib/types/work-item';
 
 export interface StateTransitionPanelProps {
@@ -73,6 +74,11 @@ export function StateTransitionPanel({ workItem, onTransition, canForceReady = f
           {t(workItem.state)}
         </span>
       </div>
+
+      {/* ReadyGate blockers — only shown when "ready" is an available transition */}
+      {available.includes('ready') && (
+        <ReadyGateBlockers workItemId={workItem.id} />
+      )}
 
       {available.length === 0 && !forceReadyAvailable ? (
         <p className="text-caption text-muted-foreground">{t('noneAvailable')}</p>
