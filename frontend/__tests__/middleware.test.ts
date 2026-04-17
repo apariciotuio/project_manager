@@ -43,9 +43,9 @@ describe('middleware', () => {
     expect(res.status).not.toBe(307);
   });
 
-  it('matcher config declares /api/v1/auth/ as excluded', () => {
+  it('matcher config excludes all API routes', () => {
     const matchers = config.matcher as string[];
-    expect(matchers[0]).toContain('api/v1/auth/');
+    expect(matchers[0]).toContain('api/');
   });
 
   it('returnTo encodes the full path', () => {

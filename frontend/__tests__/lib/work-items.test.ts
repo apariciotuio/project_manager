@@ -127,7 +127,7 @@ describe('getWorkItem', () => {
 describe('listWorkItems', () => {
   it('returns paged response on 200', async () => {
     server.use(
-      http.get(`${BASE}/api/v1/projects/:projectId/work-items`, () =>
+      http.get(`${BASE}/api/v1/work-items`, () =>
         HttpResponse.json({
           data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
         }),
@@ -142,7 +142,7 @@ describe('listWorkItems', () => {
   it('passes filter params in query string', async () => {
     let capturedUrl: string | null = null;
     server.use(
-      http.get(`${BASE}/api/v1/projects/:projectId/work-items`, ({ request }) => {
+      http.get(`${BASE}/api/v1/work-items`, ({ request }) => {
         capturedUrl = request.url;
         return HttpResponse.json({
           data: { items: [], total: 0, page: 1, page_size: 20 },

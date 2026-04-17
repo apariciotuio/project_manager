@@ -30,7 +30,7 @@ const mockItem: WorkItemResponse = {
 describe('useWorkItems', () => {
   it('returns loading=true initially', () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({ data: { items: [mockItem], total: 1, page: 1, page_size: 20 } }),
       ),
     );
@@ -40,7 +40,7 @@ describe('useWorkItems', () => {
 
   it('returns items after fetch resolves', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({ data: { items: [mockItem], total: 1, page: 1, page_size: 20 } }),
       ),
     );
@@ -54,7 +54,7 @@ describe('useWorkItems', () => {
 
   it('returns empty items when API returns empty list', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({ data: { items: [], total: 0, page: 1, page_size: 20 } }),
       ),
     );
@@ -66,7 +66,7 @@ describe('useWorkItems', () => {
 
   it('returns error on API failure', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json(
           { error: { code: 'FORBIDDEN', message: 'Not allowed' } },
           { status: 403 },

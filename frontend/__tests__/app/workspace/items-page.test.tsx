@@ -65,7 +65,7 @@ const mockWorkItem: WorkItemResponse = {
 describe('WorkItemsPage', () => {
   it('shows skeleton loading state initially', () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
         }),
@@ -78,7 +78,7 @@ describe('WorkItemsPage', () => {
 
   it('renders work item rows after loading', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
         }),
@@ -92,7 +92,7 @@ describe('WorkItemsPage', () => {
 
   it('shows empty state when no items', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [], total: 0, page: 1, page_size: 20 },
         }),
@@ -108,7 +108,7 @@ describe('WorkItemsPage', () => {
 
   it('renders "Nuevo elemento" button linking to /workspace/acme/items/new', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [], total: 0, page: 1, page_size: 20 },
         }),
@@ -121,7 +121,7 @@ describe('WorkItemsPage', () => {
 
   it('navigates to item detail on row click', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [mockWorkItem], total: 1, page: 1, page_size: 20 },
         }),
@@ -137,7 +137,7 @@ describe('WorkItemsPage', () => {
 
   it('renders state filter dropdown', async () => {
     server.use(
-      http.get('http://localhost/api/v1/projects/:projectId/work-items', () =>
+      http.get('http://localhost/api/v1/work-items', () =>
         HttpResponse.json({
           data: { items: [], total: 0, page: 1, page_size: 20 },
         }),

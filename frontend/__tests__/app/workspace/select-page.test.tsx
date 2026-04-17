@@ -59,6 +59,9 @@ describe('WorkspaceSelectPage', () => {
       http.post('http://localhost/api/v1/workspaces/select', () =>
         HttpResponse.json({ data: null }),
       ),
+      http.post('http://localhost/api/v1/auth/refresh', () =>
+        HttpResponse.json({ data: null }),
+      ),
     );
     render(<WorkspaceSelectPage />);
     await waitFor(() =>
@@ -66,7 +69,7 @@ describe('WorkspaceSelectPage', () => {
     );
     await userEvent.click(screen.getByText('Acme Corp'));
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith('/workspace/acme'),
+      expect(mockReplace).toHaveBeenCalledWith('/workspace/acme/items'),
     );
   });
 });
