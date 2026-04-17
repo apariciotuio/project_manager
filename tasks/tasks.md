@@ -24,6 +24,8 @@
 | **EP-17** | **Edit Locking + Collaboration Control** | EP-01, EP-08, EP-10, EP-12 | Medium-High | ✅ Done (repos + controllers) | ✅ Lock indicators in spec tab | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend [x] Frontend |
 | **EP-18** | **MCP Server: Read & Query Interface** | EP-00..EP-19 | Medium | ✅ Skeleton (15 tools, stdio+SSE) | N/A | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Backend |
 | **EP-19** | **Design System & Frontend Foundations** | EP-12 | Medium | N/A | ✅ Done (shadcn + tokens + i18n) | [x] Proposal [x] Specs [x] Design [x] Tasks [x] Frontend |
+| **EP-20** | **Theme System: Light / Dark / Matrix** | EP-19 | Low-Medium | N/A | ⬜ Pending (3 themes + red/blue pill) | [x] Proposal [x] Specs [x] Design [x] Tasks [ ] Frontend |
+| **EP-21** | **Post-MVP Feedback Batch** (layouts, seed inbox, UI refresh, errors, edit item, dundun-fake) | EP-19, EP-08, EP-03 | Medium | ⬜ Pending | ⬜ Pending | [x] Proposal [ ] Specs [ ] Design [ ] Tasks [ ] Backend [ ] Frontend |
 
 ## Implementation Order (Suggested)
 
