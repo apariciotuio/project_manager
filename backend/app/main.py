@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
@@ -23,6 +22,8 @@ from app.presentation.controllers.dundun_callback_controller import (
 )
 from app.presentation.controllers.health import router as health_router
 from app.presentation.controllers.integration_controller import router as integration_router
+from app.presentation.controllers.routing_rule_controller import router as routing_rule_router
+from app.presentation.controllers.validation_rule_template_controller import router as vrt_router
 from app.presentation.controllers.lock_controller import router as lock_router
 from app.presentation.controllers.next_step_controller import router as next_step_router
 from app.presentation.controllers.notification_controller import router as notification_router
@@ -50,9 +51,13 @@ from app.presentation.controllers.work_item_draft_controller import (
 from app.presentation.controllers.workspace_controller import (
     router as workspace_router,
 )
+from app.presentation.middleware.body_size_limit import BodySizeLimitMiddleware
 from app.presentation.middleware.correlation_id import CorrelationIDMiddleware
+from app.presentation.middleware.cors_policy import CORSPolicyMiddleware
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 from app.presentation.middleware.error_middleware import register_error_handlers
+from app.presentation.middleware.request_logging import RequestLoggingMiddleware
+from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.rate_limit import build_limiter
 
 
@@ -99,20 +104,34 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
     register_domain_error_handler(app)
 
-    app.add_middleware(CorrelationIDMiddleware)
-    cors_origins = settings.app.cors_allowed_origins
-    if "*" in cors_origins:
-        raise RuntimeError(
-            "CORS misconfiguration: allow_credentials=True is incompatible with "
-            "wildcard allow_origins. Set explicit origins in CORS_ALLOWED_ORIGINS."
-        )
+    # Middleware registration — Starlette add_middleware is LIFO:
+    # last added = outermost (runs first on request, last on response).
+    #
+    # Execution order outermost → innermost:
+    #   CorrelationIDMiddleware       — generates/passes X-Correlation-ID ContextVar
+    #   RequestLoggingMiddleware      — structured log line per request
+    #   BodySizeLimitMiddleware       — early 413 before auth/CORS cost
+    #   CORSPolicyMiddleware          — strict allowlist; handles preflight
+    #   SecurityHeadersMiddleware     — CSP, X-Frame-Options, HSTS on every response
+    #
+    # Add in reverse order so CorrelationID is outermost.
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        SecurityHeadersMiddleware,
+        csp_overrides=settings.app.csp_overrides,
     )
+    app.add_middleware(
+        CORSPolicyMiddleware,
+        allowed_origins=settings.app.cors_allowed_origins,
+        env=settings.app.env,
+    )
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_body_bytes=settings.app.max_body_bytes,
+        large_body_prefixes=["/api/v1/attachments"],
+        large_body_limit=10 * 1024 * 1024,
+    )
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(CorrelationIDMiddleware)
 
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
@@ -154,9 +173,11 @@ def create_app() -> FastAPI:
     app.include_router(saved_search_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
     app.include_router(dashboard_router, prefix="/api/v1")
-    # EP-10 — projects + admin
+    # EP-10 — projects + admin + routing rules + validation templates
     app.include_router(project_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(routing_rule_router, prefix="/api/v1")
+    app.include_router(vrt_router, prefix="/api/v1")
     # EP-11 — integrations
     app.include_router(integration_router, prefix="/api/v1")
     # EP-13 — Puppet ingest callback + search + admin
