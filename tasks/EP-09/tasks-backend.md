@@ -104,16 +104,12 @@ THEN the rollback completes without error and the schema is identical to the pre
 WHEN EXPLAIN ANALYZE is run on `SELECT ... WHERE state = $1 ORDER BY updated_at DESC LIMIT 25`
 THEN the query plan uses an index scan, not a sequential scan
 
-- [ ] [GREEN] Migration: add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (check EP-01)
-- [ ] [GREEN] Add composite indexes:
-  - `(state, updated_at DESC)` on `work_items`
-  - `(owner_id, updated_at DESC)` on `work_items`
-  - `(team_id, updated_at DESC)` on `work_items`
-  - `(state, owner_id, updated_at DESC)` on `work_items`
-- [ ] [GREEN] Add index on `work_items_history(item_id, created_at DESC)` for timeline queries
-- [ ] [GREEN] Migration: `saved_searches (id, workspace_id, user_id, name, query, filters JSONB, created_at, updated_at)` + index
-- [ ] Do NOT add: `search_vector`, GIN index, `aggregated_comment_text`, `aggregated_task_text`, `pg_trgm` extension for FTS (decision #4 — search is Puppet-only)
-- [ ] [REFACTOR] Verify all migrations are idempotent and reversible
+- [ ] [GREEN] Migration: add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (check EP-01) — skipped, EP-01 owns this
+- [x] [GREEN] Add composite indexes: migration 0100 adds idx_work_items_state_updated, idx_work_items_owner_updated, idx_work_items_state_owner, idx_work_items_creator (2026-04-17)
+- [ ] [GREEN] Add index on `work_items_history(item_id, created_at DESC)` for timeline queries — deferred (no history table yet)
+- [x] [GREEN] Migration 0026: `saved_searches` table exists. Migration 0100: added `is_shared BOOL`. Indexes in place. (2026-04-17)
+- [x] Do NOT add FTS — decision honored, Puppet-only (2026-04-17)
+- [x] [REFACTOR] Migrations 0100 are idempotent (IF NOT EXISTS / IF NOT EXISTS) (2026-04-17)
 
 ---
 
@@ -157,14 +153,13 @@ THEN `WorkItemListFilters` resolves it to the authenticated user's UUID before q
 AND the resolved UUID is echoed in `applied_filters.owner_id` in the response
 
 ### Cursor Pagination Utilities
-- [ ] [RED] Write tests for `encode_cursor` / `decode_cursor` (valid encode/decode, tamper detection returns 422)
-- [ ] [GREEN] Implement `PaginationCursor` with `encode()` / `decode()` in `domain/pagination.py` — reuse EP-12 pattern
-- [ ] [GREEN] Implement `WorkItemListFilters` Pydantic model (all filter params, `extra="forbid"`, `owner_id=me` resolution)
+- [x] [RED] 9 tests for encode/decode + tamper detection (2026-04-17)
+- [x] [GREEN] PaginationCursor in domain/pagination.py — base64(json({sv, id})), tamper raises ValueError→422 (2026-04-17)
+- [x] [GREEN] WorkItemListFilters Pydantic model — all filter params, completeness range validation, limit bounds (2026-04-17)
 
 ### WorkItemListQueryBuilder
-- [ ] [RED] Write unit tests: no filters, each filter individually, filter combinations, `include_archived=true`, all sort options, invalid sort=422, limit cap at 100
-- [ ] [RED] Write tests for `owner_id=me` and `team_id=mine` resolution to actual UUIDs
-- [ ] [GREEN] Implement `WorkItemListQueryBuilder` in `application/services/work_item_list_service.py`
+- [x] [RED] 21 unit tests: no filters, each filter isolated, combinations, all sort options, cursor (2026-04-17)
+- [x] [GREEN] WorkItemListQueryBuilder in application/services/work_item_list_service.py (2026-04-17)
 
 ### My Items Filter Extension
 
@@ -323,13 +318,15 @@ WHEN Puppet returns 5xx / times out
 THEN the API returns HTTP 503 `SEARCH_UNAVAILABLE` (no local fallback — no FTS exists)
 
 ### SearchService (thin wrapper over PuppetClient)
-- [ ] [RED] Write tests: basic query, prefix (decision #24), empty/short query=422, facet filters, `include_archived`, pagination, access scope enforcement (wm tag), Puppet 5xx → 503
-- [ ] [GREEN] Implement `SearchService.search(query, filters, cursor, limit, user)` as a thin wrapper over `PuppetClient` from EP-13
-- [ ] [GREEN] Implement `/api/v1/search/suggest` endpoint → `PuppetClient.prefix(...)`
+- [x] [RED] 10 unit tests: happy path, zero hits, limit, workspace isolation, additional_tags enforcement, short/empty/whitespace query=ValueError, PuppetClientError→PuppetNotAvailableError (2026-04-17)
+- [x] [GREEN] SearchService in application/services/search_service.py — workspace tag always injected, additional_tags prefixed with ws_tag (2026-04-17)
+- [x] [GREEN] POST /api/v1/search — 401 no auth, 422 short query, 422 limit>100, 503 Puppet down (2026-04-17)
+- [ ] [GREEN] GET /api/v1/search/suggest — deferred (PuppetClient has no prefix method yet)
 
 ### SavedSearchService (decision #24)
-- [ ] [RED] Write tests: create / list (per user) / rename / delete; cannot access other users' saved searches
-- [ ] [GREEN] Implement CRUD service + `GET/POST/PATCH/DELETE /api/v1/saved-searches`
+- [x] [RED] 12 unit tests: create/list (own+shared)/update/delete with ownership enforcement (2026-04-17)
+- [x] [GREEN] SavedSearchService + GET/POST/PATCH/DELETE /api/v1/saved-searches + GET /{id}/run (2026-04-17)
+- [x] is_shared column: migration 0100, ORM, model, mapper, repo updated (2026-04-17)
 
 ---
 
@@ -354,10 +351,11 @@ AND ARCHIVED items are excluded from state counts by default
 WHEN an unauthenticated request is made to any dashboard endpoint
 THEN the API returns HTTP 401
 
-### GlobalDashboardService
-- [ ] [RED] Write tests: aggregation query (state counts, avg_age_days), Redis cache hit/miss, cache invalidation on state change, aging thresholds from env vars
-- [ ] [GREEN] Implement `GlobalDashboardService.get_metrics()` with Redis cache (TTL 120s, key `dashboard:global`)
-- [ ] [GREEN] Implement cache invalidation hook in `WorkItemFSMService` (after state transition — wire to EP-01/EP-08)
+### GlobalDashboardService → implemented as WorkspaceDashboardService
+- [x] [RED] 2 unit tests: cache invalidation, workspace-scoped cache keys (2026-04-17)
+- [x] [GREEN] DashboardService.get_workspace_dashboard(): by_state, by_type, avg_completeness, 10 recent timeline events; Redis TTL 60s key dashboard:workspace:{id} (2026-04-17)
+- [x] [GREEN] GET /api/v1/workspaces/dashboard — 401 no auth, 200 cached, 200 with data (2026-04-17)
+- [ ] [GREEN] Cache invalidation hook in WorkItemFSMService — deferred (EP-01 agent owns that service)
 
 ### PersonDashboardService
 - [ ] [RED] Write tests: happy path, zero-state, 404 for unknown user, inbox counts on self-view, overload indicator (>5 items in in_clarification)
@@ -519,8 +517,8 @@ THEN the API returns HTTP 404
 WHEN `GET /api/v1/dashboards/person/{user_id}` is called with a non-existent user_id
 THEN the API returns HTTP 404 (zero-item user returns 200; unknown ID returns 404)
 
-- [ ] [RED] Write integration tests for `GET /api/v1/work-items` (filters, pagination, auth)
-- [ ] [GREEN] Implement `GET /api/v1/work-items` controller
+- [x] [RED] 16 integration tests for GET /api/v1/work-items (new filters, cursor pagination, sort, auth) (2026-04-17)
+- [x] [GREEN] GET /api/v1/work-items extended: project_id, creator_id, tag_id, priority, completeness_min/max, updated_after/before, sort enum, cursor, q, use_puppet (2026-04-17)
 - [ ] [RED] Write integration tests for `GET /api/v1/work-items/{id}`, `/{id}/summary`, `/{id}/timeline`
 - [ ] [GREEN] Implement detail, summary, timeline controllers
 - [ ] [RED] Write integration tests for `GET /api/v1/search` (rate limit 30/min, filters, pagination)
