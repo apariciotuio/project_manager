@@ -179,6 +179,7 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 - [ ] A2.4 [GREEN] Create Alembic migration: `team_memberships` table with both indexes
 - [ ] A2.5 [RED] Write repository tests: `create`, `add_member`, `remove_member` (soft), `get` with members, `list_by_workspace` excludes deleted
 - [ ] A2.6 [GREEN] Implement `infrastructure/persistence/team_repository_impl.py` — async SQLAlchemy
+  - [x] **Partial (N+1 fix):** `list_active_members_with_users(team_ids)` batch-fetch method added (`backend/app/infrastructure/persistence/team_repository_impl.py:131`, interface in `backend/app/domain/repositories/team_repository.py:44`) — replaces per-team member resolve loop
 
 ### A3. Application Service
 
@@ -189,12 +190,14 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 - [ ] A3.5 [RED] Test `TeamService.delete`: soft delete (`status=deleted`); team with open pending reviews → raises `ConflictError`
 - [ ] A3.6 [GREEN] Publish domain events after each mutation: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged`, `TeamDeleted`
 - [ ] A3.7 [GREEN] Implement `application/services/team_service.py`
+  - [x] **Partial:** `TeamService.get(team_id, *, workspace_id)` now returns `TeamNotFoundError` for both missing AND cross-workspace (IDOR mitigation, `backend/app/application/services/team_service.py:65`). `TeamService.list_members_for_teams(team_ids)` batch helper exists (`backend/app/application/services/team_service.py:80`)
 
 ### A4. Controllers
 
 - [ ] A4.1 [RED] Integration tests: `POST /api/v1/teams` 201; duplicate name → 409; `GET /api/v1/teams` list (workspace-scoped); `GET /api/v1/teams/{id}` with members; `PATCH /api/v1/teams/{id}`; `DELETE /api/v1/teams/{id}`
 - [ ] A4.2 [RED] Integration tests: `POST /api/v1/teams/{id}/members`; `DELETE /api/v1/teams/{id}/members/{user_id}`; `PATCH /api/v1/teams/{id}/members/{user_id}/role`; last lead removal → 409
 - [ ] A4.3 [GREEN] Implement `presentation/controllers/team_controller.py`
+  - [x] **Partial:** list_teams + get_team embed `members` via batch query (`backend/app/presentation/controllers/team_controller.py:124-131, 145-153`); workspace scoping enforced on `get_team`; `NO_WORKSPACE` 401 replacing prior `assert` pattern
 - [ ] A4.4 [REFACTOR] Extract input validation to `TeamValidator` — enum allowlist, UUID validation
 
 ---
@@ -283,6 +286,7 @@ GET /api/v1/notifications/stream:
 - [ ] B1.4 [RED] Test idempotency key: `sha256(recipient_id + domain_event_id)` deterministic
 - [ ] B1.5 [GREEN] Implement `domain/models/notification.py`
 - [ ] B1.6 [GREEN] Define `domain/repositories/notification_repository.py` interface: `bulk_insert_idempotent`, `find_by_recipient`, `unread_count`, `mark_read`, `mark_all_read`, `find_by_id`
+  - [x] **Partial:** `INotificationRepository.create` now documents the seed idempotency contract (new key persists; duplicate returns pre-existing row, `backend/app/domain/repositories/notification_repository.py:13-21`). Bulk-insert and other methods still pending.
 
 ### B2. Migration & Persistence
 
@@ -483,6 +487,7 @@ POST /api/v1/items/bulk-assign:
 ### E2. Security
 
 - [ ] E2.1 [RED] Test: all team endpoints enforce workspace-scoped access — user from workspace B cannot read/modify workspace A teams → 403
+  - [x] **Partial:** `TeamService.get` enforces workspace scoping (cross-workspace read → `TeamNotFoundError` → 404, IDOR-safe) — `backend/app/application/services/team_service.py:65-75`
 - [ ] E2.2 [RED] Test: `GET /notifications` — user A cannot read user B's notifications (IDOR check) → 403
 - [ ] E2.3 [RED] Test: `GET /inbox` — strictly user-scoped, no cross-user data leakage
 - [ ] E2.4 [GREEN] Verify all external inputs validated at controller boundary (enum allowlist, UUID format validation, string length limits)
@@ -494,3 +499,17 @@ POST /api/v1/items/bulk-assign:
 - [ ] E3.2 [GREEN] Structured log on every quick action executed: `notification_id`, `action_type`, `actor_id`, `result`
 - [ ] E3.3 [GREEN] Celery dead-letter queue configured; task failures logged with full payload
 - [ ] E3.4 [GREEN] Histogram metric: `notification_fan_out_duration_ms` per `notification_type`
+
+---
+
+## Reconciliation notes (2026-04-17)
+
+**Opportunistic EP-08 slice; full backend still pending.** EP-08 was not formally delivered. Today's pass only touched pieces adjacent to EP-12/EP-10 hardening work. Specifically shipped:
+
+- **`GET /api/v1/workspaces/members`** — workspace member picker endpoint with 500-row hard cap (`backend/app/presentation/controllers/workspace_controller.py:75-120`). Used by frontend pickers that previously required pasting UUIDs. Out of scope for EP-08's plan text (belongs to EP-00/EP-10 member surface) but relevant context for the `?teamless=bool` filter mentioned in the contract above.
+- **N+1 fix on team list/get** — `list_active_members_with_users(team_ids)` batch query in repository; `TeamService.list_members_for_teams` helper; controller uses it for both single-team and list endpoints. Addresses a performance regression introduced when the team picker went live.
+- **Workspace scoping on `get_team`** — closes an IDOR: cross-workspace reads return `TeamNotFoundError` instead of leaking the team payload.
+- **Partial index `idx_team_memberships_team_active`** — migration 0032 (`backend/migrations/versions/0032_team_memberships_idx.py`). Backs the `_resolve_members` query under the N+1 fix.
+- **`INotificationRepository.create` idempotency contract** — documented on the interface docstring; existing behaviour, now explicit. Consumed by the seed path; full `bulk_insert_idempotent` is still missing.
+
+Everything else in Groups A/B/C/D/E (full notification fan-out, inbox UNION query, assignment service, routing rules, SSE stream, Celery dead-letter wiring) remains un-ticked and un-shipped. Over half the plan is untouched. When EP-08 goes into formal delivery, re-plan against current schema — the notification/inbox tables may need revisiting.
