@@ -148,6 +148,24 @@
         "timeline": "Timeline",
         "subItems": "Sub-items"
       },
+      "audit": {
+        "tab": "Audit",
+        "transitions": {
+          "heading": "State transitions",
+          "empty": "No transitions recorded.",
+          "errorPrefix": "Could not load transitions history",
+          "override": "Override",
+          "actor": "by {actor}",
+          "reasonPrefix": "Reason"
+        },
+        "ownership": {
+          "heading": "Ownership changes",
+          "empty": "No ownership changes.",
+          "errorPrefix": "Could not load ownership history",
+          "changedBy": "changed by {actor}",
+          "reasonPrefix": "Reason"
+        }
+      },
       "reassign": {
         "heading": "Owner",
         "unassigned": "Unassigned",

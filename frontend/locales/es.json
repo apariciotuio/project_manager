@@ -148,6 +148,24 @@
         "timeline": "Historial",
         "subItems": "Sub-items"
       },
+      "audit": {
+        "tab": "Auditoría",
+        "transitions": {
+          "heading": "Transiciones de estado",
+          "empty": "Sin transiciones registradas.",
+          "errorPrefix": "No se pudo cargar el historial de transiciones",
+          "override": "Override",
+          "actor": "por {actor}",
+          "reasonPrefix": "Motivo"
+        },
+        "ownership": {
+          "heading": "Cambios de propietario",
+          "empty": "Sin cambios de propietario.",
+          "errorPrefix": "No se pudo cargar el historial de propietarios",
+          "changedBy": "cambiado por {actor}",
+          "reasonPrefix": "Motivo"
+        }
+      },
       "reassign": {
         "heading": "Propietario",
         "unassigned": "Sin asignar",

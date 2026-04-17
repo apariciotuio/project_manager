@@ -8,6 +8,8 @@ import { WorkItemHeader } from '@/components/work-item/work-item-header';
 import { WorkItemEditModal } from '@/components/work-item/work-item-edit-modal';
 import { StateTransitionPanel } from '@/components/work-item/state-transition-panel';
 import { OwnerPanel } from '@/components/work-item/owner-panel';
+import { TransitionHistory } from '@/components/work-item/transition-history';
+import { OwnershipHistory } from '@/components/work-item/ownership-history';
 import { SpecificationTab } from '@/components/work-item/specification-tab';
 import { TasksTab } from '@/components/work-item/tasks-tab';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
@@ -123,6 +125,7 @@ export default function WorkItemDetailPage({
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="subitems">Sub-items</TabsTrigger>
+          {canEdit && <TabsTrigger value="auditoria">Auditoría</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="especificacion" className="mt-4">
@@ -148,6 +151,15 @@ export default function WorkItemDetailPage({
         <TabsContent value="subitems" className="mt-4">
           <ChildItemsTab workItemId={id} slug={slug} />
         </TabsContent>
+
+        {canEdit && (
+          <TabsContent value="auditoria" className="mt-4">
+            <div className="flex flex-col gap-6">
+              <TransitionHistory workItemId={id} />
+              <OwnershipHistory workItemId={id} />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </PageContainer>
   );
