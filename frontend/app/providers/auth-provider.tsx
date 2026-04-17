@@ -9,9 +9,10 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiGet, apiPost } from '@/lib/api-client';
+import { apiGet, apiPost, onSessionExpired } from '@/lib/api-client';
 import { UnauthenticatedError } from '@/lib/types/auth';
 import type { AuthMeResponse, AuthUser } from '@/lib/types/auth';
+import { SessionExpiredModal } from '@/components/auth/session-expired-modal';
 
 interface AuthState {
   user: AuthUser | null;
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -47,6 +49,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(false);
       }
     })();
+  }, []);
+
+  // Subscribe to session-expired notifications from api-client.
+  // Show the modal only for users who had an active session (avoids the login page flashing a modal).
+  useEffect(() => {
+    return onSessionExpired(() => {
+      setUser((current) => {
+        if (current !== null) setSessionExpired(true);
+        return null;
+      });
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -70,6 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }}
     >
       {children}
+      <SessionExpiredModal open={sessionExpired} />
     </AuthContext.Provider>
   );
 }
