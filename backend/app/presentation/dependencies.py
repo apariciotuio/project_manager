@@ -34,7 +34,10 @@ if TYPE_CHECKING:
     from app.application.services.suggestion_service import SuggestionService
     from app.application.services.task_service import TaskService
     from app.application.services.team_service import NotificationService, TeamService
+    from app.application.services.diff_service import DiffService
     from app.application.services.template_service import TemplateService
+    from app.application.services.timeline_service import TimelineService
+    from app.application.services.versioning_service import VersioningService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -552,11 +555,13 @@ def get_task_service(
     from app.infrastructure.persistence.task_node_repository_impl import (
         TaskDependencyRepositoryImpl,
         TaskNodeRepositoryImpl,
+        TaskSectionLinkRepositoryImpl,
     )
 
     return TaskService(
         node_repo=TaskNodeRepositoryImpl(session),
         dep_repo=TaskDependencyRepositoryImpl(session),
+        link_repo=TaskSectionLinkRepositoryImpl(session),
     )
 
 
@@ -607,8 +612,14 @@ def get_comment_service(
     from app.infrastructure.persistence.comment_repository_impl import (
         CommentRepositoryImpl,
     )
+    from app.infrastructure.persistence.timeline_repository_impl import (
+        TimelineEventRepositoryImpl,
+    )
 
-    return CommentService(comment_repo=CommentRepositoryImpl(session))
+    return CommentService(
+        comment_repo=CommentRepositoryImpl(session),
+        timeline_repo=TimelineEventRepositoryImpl(session),
+    )
 
 
 def get_timeline_repo(
@@ -789,3 +800,51 @@ def get_integration_service(
         config_repo=IntegrationConfigRepositoryImpl(session),
         export_repo=IntegrationExportRepositoryImpl(session),
     )
+
+
+# ---------------------------------------------------------------------------
+# EP-07 — Versioning + DiffService + TimelineService
+# ---------------------------------------------------------------------------
+
+
+def get_versioning_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "VersioningService":
+    from app.application.services.versioning_service import VersioningService
+    from app.infrastructure.persistence.section_repository_impl import (
+        SectionRepositoryImpl,
+    )
+    from app.infrastructure.persistence.task_node_repository_impl import (
+        TaskNodeRepositoryImpl,
+    )
+    from app.infrastructure.persistence.work_item_repository_impl import (
+        WorkItemRepositoryImpl,
+    )
+    from app.infrastructure.persistence.work_item_version_repository_impl import (
+        WorkItemVersionRepositoryImpl,
+    )
+
+    return VersioningService(
+        session=session,
+        repo=WorkItemVersionRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+        section_repo=SectionRepositoryImpl(session),
+        task_node_repo=TaskNodeRepositoryImpl(session),
+    )
+
+
+def get_diff_service() -> "DiffService":
+    from app.application.services.diff_service import DiffService
+
+    return DiffService()
+
+
+def get_timeline_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "TimelineService":
+    from app.application.services.timeline_service import TimelineService
+    from app.infrastructure.persistence.timeline_repository_impl import (
+        TimelineEventRepositoryImpl,
+    )
+
+    return TimelineService(timeline_repo=TimelineEventRepositoryImpl(session))

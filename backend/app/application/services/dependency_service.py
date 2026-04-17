@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from app.domain.models.task_node import TaskDependency
+from app.domain.models.task_node import TaskDependency, TaskStatus
 from app.domain.quality.cycle_detection import has_cycle_after_add
 from app.domain.repositories.task_node_repository import (
     ITaskDependencyRepository,
@@ -67,4 +67,41 @@ class DependencyService:
         return await self._deps.add(dep)
 
     async def remove(self, dep_id: UUID) -> None:
+        dep = await self._deps.get(dep_id)
+        if dep is None:
+            raise DependencyNotFoundError(f"dependency {dep_id} not found")
         await self._deps.remove(dep_id)
+
+    async def get_blocked_tasks(self, work_item_id: UUID) -> list[dict]:
+        """Return tasks that have at least one non-done predecessor.
+
+        Each result dict: { "id": UUID, "title": str, "status": str, "blocked_by": [UUID] }
+        """
+        nodes = await self._nodes.get_by_work_item(work_item_id)
+        node_map = {n.id: n for n in nodes}
+        edges = await self._deps.get_edges_for_work_item(work_item_id)
+
+        # Map source -> list of target node ids
+        from collections import defaultdict
+        source_to_targets: dict[UUID, list[UUID]] = defaultdict(list)
+        for edge in edges:
+            source_to_targets[edge.source_id].append(edge.target_id)
+
+        result = []
+        for node in nodes:
+            targets = source_to_targets.get(node.id, [])
+            if not targets:
+                continue
+            blockers = [
+                t for t in targets
+                if node_map.get(t) is not None
+                and node_map[t].status is not TaskStatus.DONE  # type: ignore[comparison-overlap]
+            ]
+            if blockers:
+                result.append({
+                    "id": node.id,
+                    "title": node.title,
+                    "status": node.status.value,
+                    "blocked_by": blockers,
+                })
+        return result

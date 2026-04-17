@@ -1,8 +1,8 @@
 """EP-05 — TaskService.
 
-Orchestrates TaskNode lifecycle: create, update, delete, move, and status FSM.
-All tree mutations maintain materialized_path. Status transitions check predecessor
-dependencies before allowing mark_done.
+Orchestrates TaskNode lifecycle: create, update, delete, move, split, merge,
+reorder, and status FSM. All tree mutations maintain materialized_path. Status
+transitions check predecessor dependencies before allowing mark_done.
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from app.domain.models.task_node import (
 from app.domain.repositories.task_node_repository import (
     ITaskDependencyRepository,
     ITaskNodeRepository,
+    ITaskSectionLinkRepository,
 )
 
 
@@ -33,9 +34,11 @@ class TaskService:
         *,
         node_repo: ITaskNodeRepository,
         dep_repo: ITaskDependencyRepository,
+        link_repo: ITaskSectionLinkRepository | None = None,
     ) -> None:
         self._nodes = node_repo
         self._deps = dep_repo
+        self._links = link_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -183,3 +186,180 @@ class TaskService:
 
     async def get_tree(self, work_item_id: UUID) -> list[TaskNode]:
         return await self._nodes.get_tree_recursive(work_item_id)
+
+    # ------------------------------------------------------------------
+    # Split
+    # ------------------------------------------------------------------
+
+    async def split(
+        self,
+        *,
+        task_id: UUID,
+        title_a: str,
+        title_b: str,
+        actor_id: UUID,
+        description_a: str = "",
+        description_b: str = "",
+    ) -> tuple[TaskNode, TaskNode]:
+        """Split source into two siblings. Source is deleted."""
+        if not title_a or not title_a.strip():
+            raise ValueError("title_a must not be empty")
+        if not title_b or not title_b.strip():
+            raise ValueError("title_b must not be empty")
+
+        source = await self._get_or_404(task_id)
+        section_ids: list[UUID] = []
+        if self._links is not None:
+            section_ids = await self._links.get_by_task(task_id)
+
+        from datetime import UTC, datetime
+        now = datetime.now(UTC)
+
+        node_a = TaskNode.create(
+            work_item_id=source.work_item_id,
+            parent_id=source.parent_id,
+            title=title_a.strip(),
+            display_order=source.display_order,
+            created_by=actor_id,
+            description=description_a,
+            source=TaskGenerationSource.MANUAL,
+        )
+        node_a.materialized_path = self._build_path(
+            self._parent_path(source), node_a.id
+        )
+
+        node_b = TaskNode.create(
+            work_item_id=source.work_item_id,
+            parent_id=source.parent_id,
+            title=title_b.strip(),
+            display_order=source.display_order + 1,
+            created_by=actor_id,
+            description=description_b,
+            source=TaskGenerationSource.MANUAL,
+        )
+        node_b.materialized_path = self._build_path(
+            self._parent_path(source), node_b.id
+        )
+
+        await self._nodes.save(node_a)
+        await self._nodes.save(node_b)
+
+        if self._links is not None and section_ids:
+            await self._links.create_bulk(node_a.id, section_ids)
+            await self._links.create_bulk(node_b.id, section_ids)
+
+        await self._nodes.delete(task_id)
+
+        return node_a, node_b
+
+    def _parent_path(self, node: TaskNode) -> str:
+        """Return the materialized_path of the parent by stripping the last segment."""
+        if not node.materialized_path:
+            return ""
+        parts = node.materialized_path.rsplit(".", 1)
+        return parts[0] if len(parts) > 1 else ""
+
+    # ------------------------------------------------------------------
+    # Merge
+    # ------------------------------------------------------------------
+
+    async def merge(
+        self,
+        *,
+        source_ids: list[UUID],
+        title: str,
+        actor_id: UUID,
+        description: str = "",
+    ) -> TaskNode:
+        """Merge sources (same parent) into one new node. Sources are deleted."""
+        if len(source_ids) < 2:
+            raise ValueError("merge requires at least 2 source_ids")
+
+        sources: list[TaskNode] = []
+        for sid in source_ids:
+            node = await self._nodes.get(sid)
+            if node is None:
+                raise TaskNodeNotFoundError(f"task node {sid} not found")
+            sources.append(node)
+
+        # Validate same parent
+        parent_ids = {n.parent_id for n in sources}
+        if len(parent_ids) > 1:
+            raise ValueError(
+                "cannot merge nodes with different parents (MERGE_CROSS_PARENT_FORBIDDEN)"
+            )
+
+        # Collect + deduplicate section links
+        all_section_ids: list[UUID] = []
+        if self._links is not None:
+            seen: set[UUID] = set()
+            for src in sources:
+                for sid in await self._links.get_by_task(src.id):
+                    if sid not in seen:
+                        seen.add(sid)
+                        all_section_ids.append(sid)
+
+        min_order = min(n.display_order for n in sources)
+        common_parent_id = next(iter(parent_ids))
+        sample = sources[0]
+
+        # Compute parent path from sample node
+        merged_parent_path = self._parent_path(sample)
+
+        merged = TaskNode.create(
+            work_item_id=sample.work_item_id,
+            parent_id=common_parent_id,
+            title=title,
+            display_order=min_order,
+            created_by=actor_id,
+            description=description,
+            source=TaskGenerationSource.MANUAL,
+        )
+        merged.materialized_path = self._build_path(merged_parent_path, merged.id)
+        await self._nodes.save(merged)
+
+        if self._links is not None and all_section_ids:
+            await self._links.create_bulk(merged.id, all_section_ids)
+
+        for src in sources:
+            await self._nodes.delete(src.id)
+
+        return merged
+
+    # ------------------------------------------------------------------
+    # Reorder
+    # ------------------------------------------------------------------
+
+    async def reorder(
+        self,
+        *,
+        work_item_id: UUID,
+        ordered_ids: list[UUID],
+        actor_id: UUID,
+    ) -> list[TaskNode]:
+        """Reassign display_order to ordered_ids (1-indexed, gapless).
+        All IDs must exist in work_item and share the same parent_id.
+        """
+        from datetime import UTC, datetime
+        nodes_by_id: dict[UUID, TaskNode] = {}
+        for nid in ordered_ids:
+            node = await self._nodes.get(nid)
+            if node is None or node.work_item_id != work_item_id:
+                raise TaskNodeNotFoundError(f"task node {nid} not found in work item")
+            nodes_by_id[nid] = node
+
+        parent_ids = {n.parent_id for n in nodes_by_id.values()}
+        if len(parent_ids) > 1:
+            raise ValueError("all reordered nodes must share the same parent_id")
+
+        now = datetime.now(UTC)
+        result: list[TaskNode] = []
+        for i, nid in enumerate(ordered_ids, start=1):
+            node = nodes_by_id[nid]
+            node.display_order = i
+            node.updated_at = now
+            node.updated_by = actor_id
+            await self._nodes.save(node)
+            result.append(node)
+
+        return result
