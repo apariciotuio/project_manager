@@ -13,8 +13,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUnreadCount } from '@/hooks/use-unread-count';
 import { NotificationItem } from './notification-item';
+import { NotificationSheet } from './notification-sheet';
 import { listNotifications, markRead as apiMarkRead } from '@/lib/api/notifications';
 import type { NotificationV2 } from '@/lib/types/api';
+
+const DND_KEY = 'notifications.muted';
 
 const MAX_PREVIEW = 10;
 
@@ -29,6 +32,7 @@ export function NotificationBell({ slug }: NotificationBellProps) {
   const [items, setItems] = useState<NotificationV2[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [sheetNotification, setSheetNotification] = useState<NotificationV2 | null>(null);
 
   async function loadNotifications() {
     setIsLoading(true);
@@ -71,6 +75,7 @@ export function NotificationBell({ slug }: NotificationBellProps) {
   const badgeText = count >= 100 ? '99+' : String(count);
 
   return (
+    <>
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
@@ -131,11 +136,29 @@ export function NotificationBell({ slug }: NotificationBellProps) {
                 key={n.id}
                 notification={n}
                 onMarkRead={(id) => void handleMarkRead(id)}
+                onOpenSheet={(notif) => {
+                  setOpen(false);
+                  setSheetNotification(notif);
+                }}
               />
             ))
           )}
         </div>
       </PopoverContent>
     </Popover>
+
+    <NotificationSheet
+      notification={sheetNotification}
+      open={sheetNotification !== null}
+      onClose={() => setSheetNotification(null)}
+      onMarkActioned={(id) => {
+        setItems((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, state: 'actioned' as const } : n)),
+        );
+        setSheetNotification(null);
+        refetchCount();
+      }}
+    />
+  </>
   );
 }
