@@ -37,6 +37,7 @@ from app.presentation.controllers.task_controller import router as task_router
 from app.presentation.controllers.team_controller import router as team_router
 from app.presentation.controllers.template_controller import router as template_router
 from app.presentation.controllers.timeline_controller import router as timeline_router
+from app.presentation.controllers.version_controller import router as version_router
 from app.presentation.controllers.work_item_controller import router as work_item_router
 from app.presentation.controllers.work_item_draft_controller import (
     router as work_item_draft_router,
@@ -124,9 +125,10 @@ def create_app() -> FastAPI:
     app.include_router(task_router, prefix="/api/v1")
     # EP-06 — reviews + validation
     app.include_router(review_router, prefix="/api/v1")
-    # EP-07 — comments + timeline
+    # EP-07 — comments + timeline + versions
     app.include_router(comment_router, prefix="/api/v1")
     app.include_router(timeline_router, prefix="/api/v1")
+    app.include_router(version_router, prefix="/api/v1")
     # EP-15 — tags
     app.include_router(tag_router, prefix="/api/v1")
     # EP-16 — attachments
