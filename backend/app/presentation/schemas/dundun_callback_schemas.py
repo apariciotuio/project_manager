@@ -32,12 +32,21 @@ class SectionPayload(BaseModel):
     content: str
 
 
+class BreakdownItem(BaseModel):
+    """One task node emitted by wm_breakdown_agent."""
+
+    title: str
+    parent_title: str | None = None
+    description: str = ""
+
+
 class DundunCallbackRequest(BaseModel):
     agent: Literal[
         "wm_suggestion_agent",
         "wm_gap_agent",
         "wm_quick_action_agent",
         "wm_spec_gen_agent",
+        "wm_breakdown_agent",
     ]
     request_id: str
     status: Literal["success", "error"]
@@ -50,4 +59,6 @@ class DundunCallbackRequest(BaseModel):
     quick_action_result: QuickActionResult | None = None
     # wm_spec_gen_agent
     sections: list[SectionPayload] | None = None
+    # wm_breakdown_agent
+    breakdown: list[BreakdownItem] | None = None
     error_message: str | None = None

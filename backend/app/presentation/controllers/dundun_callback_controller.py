@@ -1,4 +1,4 @@
-"""Dundun async callback controller — EP-03 Phase 3b + EP-04 spec-gen.
+"""Dundun async callback controller — EP-03 Phase 3b + EP-04 spec-gen + EP-05 breakdown.
 
 Dundun POSTs agent results here after async invocation.
 Authentication is HMAC-SHA256 over the raw request body using the shared
@@ -10,6 +10,7 @@ Agents handled:
   wm_suggestion_agent  — EP-03
   wm_gap_agent         — EP-03
   wm_spec_gen_agent    — EP-04 (upserts sections, invalidates completeness cache)
+  wm_breakdown_agent   — EP-05 (creates task nodes from LLM breakdown)
 """
 from __future__ import annotations
 
@@ -128,6 +129,9 @@ async def dundun_callback(
 
     if payload.agent == "wm_spec_gen_agent":
         return await _handle_spec_gen(payload, session)
+
+    if payload.agent == "wm_breakdown_agent":
+        return await _handle_breakdown_callback(payload, session)
 
     # wm_quick_action_agent — deferred
     return JSONResponse(
@@ -450,3 +454,162 @@ async def _handle_spec_gen(
         payload.request_id,
     )
     return _ok(payload.agent, saved)
+
+
+# ---------------------------------------------------------------------------
+# EP-05 — wm_breakdown_agent handler
+# ---------------------------------------------------------------------------
+
+
+async def _handle_breakdown(
+    *,
+    session: AsyncSession,
+    work_item_id: UUID,
+    workspace_id: UUID,
+    breakdown: list[dict],
+    request_id: str,
+    task_service: object,
+    actor_id: UUID,
+) -> dict:
+    """Pure breakdown logic — extracted for unit testing.
+
+    Args:
+        session: async DB session (unused directly; provided for symmetry/future use)
+        work_item_id: target work item
+        workspace_id: resolved workspace (RLS already applied before this call)
+        breakdown: list of dicts with 'title', optional 'parent_title', optional 'description'
+        request_id: Dundun request id (for idempotency logging only here)
+        task_service: TaskService instance
+        actor_id: UUID to attribute created nodes to
+
+    Returns:
+        dict with created_count and skipped_count
+    """
+    # title → created TaskNode, built incrementally so forward refs in the
+    # breakdown list resolve to nodes created earlier in this batch.
+    title_to_node: dict[str, object] = {}
+    created_count = 0
+    skipped_count = 0
+
+    for i, item in enumerate(breakdown):
+        title = item.get("title") if isinstance(item, dict) else getattr(item, "title", None)
+        if not title:
+            skipped_count += 1
+            continue
+
+        parent_title = (
+            item.get("parent_title") if isinstance(item, dict) else getattr(item, "parent_title", None)
+        )
+        description = (
+            item.get("description", "") if isinstance(item, dict) else getattr(item, "description", "")
+        ) or ""
+
+        # Resolve parent: look up in title_to_node built so far.
+        # Unknown parent_title → fall back to root (parent_id=None).
+        parent_id: UUID | None = None
+        if parent_title:
+            parent_node = title_to_node.get(parent_title)
+            if parent_node is not None:
+                parent_id = parent_node.id  # type: ignore[attr-defined]
+            else:
+                logger.warning(
+                    "dundun_callback: breakdown parent_title=%r not found in batch — "
+                    "falling back to root for title=%r request_id=%s",
+                    parent_title,
+                    title,
+                    request_id,
+                )
+
+        node = await task_service.create_node(  # type: ignore[union-attr]
+            work_item_id=work_item_id,
+            parent_id=parent_id,
+            title=title,
+            display_order=i,
+            actor_id=actor_id,
+            description=description,
+        )
+        title_to_node[title] = node
+        created_count += 1
+
+    return {"created_count": created_count, "skipped_count": skipped_count}
+
+
+async def _handle_breakdown_callback(
+    payload: DundunCallbackRequest,
+    session: AsyncSession,
+) -> JSONResponse:
+    """Route handler for wm_breakdown_agent — EP-05.
+
+    Idempotency: Dundun guarantees at-least-once delivery. We rely on
+    request_id uniqueness logged at INFO level. A re-delivered request_id
+    produces duplicate task nodes — acceptable at current scale; callers
+    should check task count before triggering generate again.
+    Future: store processed request_ids in a lightweight table (migration 0121).
+    """
+    if payload.work_item_id is None:
+        logger.warning(
+            "dundun_callback: breakdown missing work_item_id request_id=%s",
+            payload.request_id,
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "MISSING_IDS",
+                    "message": "work_item_id is required for breakdown",
+                    "details": {},
+                }
+            },
+        )
+
+    work_item_id: UUID = payload.work_item_id
+    workspace_id = await _resolve_workspace_id(session, work_item_id)
+
+    breakdown_items = payload.breakdown or []
+    if not breakdown_items:
+        return _ok(payload.agent, 0, "no breakdown items in payload")
+
+    # Fetch work item creator as actor (callback has no user auth)
+    actor_actor_id: UUID
+    stmt = select(WorkItemORM.creator_id).where(WorkItemORM.id == work_item_id)
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None:
+        actor_actor_id = uuid4()
+    else:
+        actor_actor_id = row
+
+    from app.application.services.task_service import TaskService
+    from app.infrastructure.persistence.task_node_repository_impl import (
+        TaskDependencyRepositoryImpl,
+        TaskNodeRepositoryImpl,
+        TaskSectionLinkRepositoryImpl,
+    )
+
+    task_service = TaskService(
+        node_repo=TaskNodeRepositoryImpl(session),
+        dep_repo=TaskDependencyRepositoryImpl(session),
+        link_repo=TaskSectionLinkRepositoryImpl(session),
+    )
+
+    result = await _handle_breakdown(
+        session=session,
+        work_item_id=work_item_id,
+        workspace_id=workspace_id,
+        breakdown=[
+            {"title": item.title, "parent_title": item.parent_title, "description": item.description}
+            for item in breakdown_items
+        ],
+        request_id=payload.request_id,
+        task_service=task_service,
+        actor_id=actor_actor_id,
+    )
+
+    logger.info(
+        "dundun_callback: breakdown created=%d skipped=%d work_item=%s request_id=%s",
+        result["created_count"],
+        result["skipped_count"],
+        work_item_id,
+        payload.request_id,
+    )
+    return _ok(payload.agent, result["created_count"],
+               f"created={result['created_count']} skipped={result['skipped_count']}")
