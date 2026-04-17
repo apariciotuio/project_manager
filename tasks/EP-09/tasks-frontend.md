@@ -1,5 +1,39 @@
 # EP-09 Frontend Subtasks — Listings, Dashboards, Search & Workspace
 
+**Status: PHASE 1 COMPLETED (2026-04-17)**
+
+## EP-09 Implementation — 4 commits shipped
+
+| Commit | SHA | Description | Tests |
+|--------|-----|-------------|-------|
+| feat(items): advanced filters | HEAD~3 | URL-synced type/priority/completeness_min/date-range filters + Reset. i18n keys (workspace.search, savedSearches, dashboard, items.filters) | 10 new tests |
+| feat(search): search bar | HEAD~2 | SearchBar wired to POST /api/v1/search (Puppet). Debounce 300ms, min 2 chars. Results replace list. took_ms + source metadata. | 12 new tests |
+| feat(saved-searches): presets | HEAD~1 | SavedSearchesMenu: list/save/apply/delete. useSavedSearches hook. Optimistic remove. | 8 new tests |
+| feat(dashboard): dashboard page | HEAD | /workspace/{slug}/dashboard. Summary cards, StateDistributionChart, TypeDistributionChart (pure CSS divided bars), RecentActivityFeed. useDashboard polls 5min. | 26 new tests |
+
+**Test delta: +128 files (+17 test files), +896 tests (+112 new tests)**
+
+### Files created
+- `frontend/lib/api/saved-searches.ts` — CRUD for saved searches
+- `frontend/lib/api/search.ts` — POST /api/v1/search wrapper
+- `frontend/lib/api/dashboard.ts` — GET /api/v1/workspaces/dashboard wrapper
+- `frontend/hooks/use-search.ts` — debounced search hook
+- `frontend/hooks/use-saved-searches.ts` — saved searches CRUD hook
+- `frontend/hooks/use-dashboard.ts` — dashboard polling hook
+- `frontend/components/search/search-bar.tsx` — SearchBar component
+- `frontend/components/search/saved-searches-menu.tsx` — SavedSearchesMenu component
+- `frontend/components/dashboard/dashboard-summary.tsx` — summary cards
+- `frontend/components/dashboard/state-distribution-chart.tsx` — CSS divided bar
+- `frontend/components/dashboard/type-distribution-chart.tsx` — CSS divided bar
+- `frontend/app/workspace/[slug]/dashboard/page.tsx` — dashboard route
+
+### BE contract gaps noted
+- `GET /api/v1/workspaces/dashboard` exists in `dashboard_controller.py` (not workspace_controller.py as stated in task brief — route matches)
+- `POST /api/v1/search` returns `source: 'puppet' | 'sql_fallback'` but BE always raises 503 if Puppet unavailable (no sql_fallback in practice per search_controller.py)
+- Sidebar nav link for dashboard not added (workspace-sidebar.tsx is in strict off-limits lane)
+
+---
+
 > **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge`/`TypeBadge`/`OwnerAvatar`/`CompletenessBar`/`JiraBadge` uniformly in list rows and kanban cards. Top-bar search uses `CommandPalette`. `HumanError` for API errors, `EmptyStateWithCTA` for no-results. Semantic tokens, i18n `i18n/es/workspace.ts`. Kanban drag-drop, filters, pipeline board columns remain feature-specific. See `tasks/extensions.md#EP-19`.
 
 **Stack**: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS, React Query (@tanstack/react-query)
