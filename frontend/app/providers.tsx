@@ -18,6 +18,8 @@ export function Providers({ children, locale, messages }: ProvidersProps) {
       attribute="class"
       defaultTheme="system"
       enableSystem
+      themes={['light', 'dark', 'matrix']}
+      value={{ light: 'light', dark: 'dark', matrix: 'matrix' }}
       disableTransitionOnChange
     >
       <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">

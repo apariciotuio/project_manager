@@ -29,7 +29,7 @@
 
   /* --- Muted --- */
   --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
+  --muted-foreground: 240 3.8% 45%;
 
   /* --- Accent --- */
   --accent: 240 4.8% 95.9%;
@@ -48,7 +48,7 @@
   --warning-foreground: 0 0% 0%;
 
   /* --- Info --- */
-  --info: 199 89% 48%;
+  --info: 199 89% 40%;
   --info-foreground: 0 0% 100%;
 
   /* --- Border / Input / Ring --- */
@@ -140,7 +140,7 @@
   --destructive-foreground: 0 0% 98%;
 
   /* --- Success --- */
-  --success: 142.1 70.6% 45.3%;
+  --success: 142.1 70.6% 37%;
   --success-foreground: 0 0% 98%;
 
   /* --- Warning --- */
@@ -148,7 +148,7 @@
   --warning-foreground: 0 0% 0%;
 
   /* --- Info --- */
-  --info: 199 89% 55%;
+  --info: 199 89% 44%;
   --info-foreground: 0 0% 100%;
 
   /* --- Border / Input / Ring --- */
@@ -197,6 +197,110 @@
   --level-high-foreground: 0 0% 100%;
   --level-ready: 142.1 70.6% 45.3%;
   --level-ready-foreground: 0 0% 98%;
+}
+
+/* ============================================================
+   SEMANTIC DESIGN TOKENS — matrix mode
+   Mirror of every token above (parity enforced by test)
+   ============================================================ */
+.matrix {
+  /* --- Base --- */
+  --background: 120 20% 4%;
+  --foreground: 135 100% 50%;
+
+  /* --- Card --- */
+  --card: 120 20% 6%;
+  --card-foreground: 135 100% 50%;
+
+  /* --- Popover --- */
+  --popover: 120 20% 6%;
+  --popover-foreground: 135 100% 50%;
+
+  /* --- Primary --- */
+  --primary: 135 100% 50%;
+  --primary-foreground: 120 20% 4%;
+
+  /* --- Secondary --- */
+  --secondary: 135 30% 12%;
+  --secondary-foreground: 135 100% 50%;
+
+  /* --- Muted --- */
+  --muted: 135 30% 10%;
+  --muted-foreground: 135 60% 70%;
+
+  /* --- Accent --- */
+  --accent: 135 30% 14%;
+  --accent-foreground: 135 100% 50%;
+
+  /* --- Destructive --- */
+  --destructive: 0 100% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* --- Success --- */
+  --success: 135 100% 50%;
+  --success-foreground: 120 20% 4%;
+
+  /* --- Warning --- */
+  --warning: 45 100% 60%;
+  --warning-foreground: 120 20% 4%;
+
+  /* --- Info --- */
+  --info: 180 100% 50%;
+  --info-foreground: 120 20% 4%;
+
+  /* --- Border / Input / Ring --- */
+  --border: 135 60% 20%;
+  --input: 135 60% 20%;
+  --ring: 135 100% 50%;
+
+  /* --- Radius (unchanged) --- */
+  --radius: 0.5rem;
+
+  /* --- Domain: State colors --- */
+  --state-draft: 135 30% 12%;
+  --state-draft-foreground: 135 60% 70%;
+  --state-in-review: 180 100% 50%;
+  --state-in-review-foreground: 120 20% 4%;
+  --state-ready: 135 100% 50%;
+  --state-ready-foreground: 120 20% 4%;
+  --state-blocked: 0 100% 55%;
+  --state-blocked-foreground: 0 0% 100%;
+  --state-archived: 135 30% 35%;
+  --state-archived-foreground: 120 20% 4%;
+  --state-exported: 180 100% 50%;
+  --state-exported-foreground: 120 20% 4%;
+
+  /* --- Domain: Severity --- */
+  --severity-blocking: 0 100% 55%;
+  --severity-blocking-foreground: 0 0% 100%;
+  --severity-warning: 45 100% 60%;
+  --severity-warning-foreground: 120 20% 4%;
+  --severity-info: 180 100% 50%;
+  --severity-info-foreground: 120 20% 4%;
+
+  /* --- Domain: Tier (inbox priority) --- */
+  --tier-1: 0 100% 55%;
+  --tier-1-foreground: 0 0% 100%;
+  --tier-2: 45 100% 60%;
+  --tier-2-foreground: 120 20% 4%;
+  --tier-3: 180 100% 50%;
+  --tier-3-foreground: 120 20% 4%;
+  --tier-4: 135 30% 12%;
+  --tier-4-foreground: 135 60% 70%;
+
+  /* --- Domain: Level (completeness) --- */
+  --level-low: 0 100% 55%;
+  --level-low-foreground: 0 0% 100%;
+  --level-medium: 45 100% 60%;
+  --level-medium-foreground: 120 20% 4%;
+  --level-high: 180 100% 50%;
+  --level-high-foreground: 120 20% 4%;
+  --level-ready: 135 100% 50%;
+  --level-ready-foreground: 120 20% 4%;
+}
+
+.matrix body {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ============================================================
