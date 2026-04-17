@@ -524,3 +524,44 @@ interface BulkAssignDialogProps {
 - [ ] 8.7 [GREEN] Implement `InboxTierSkeleton`
 - [ ] 8.8 [RED] Test: error state on inbox fetch shows retry; partial tier failure shows tier with error state while others render normally
 - [ ] 8.9 [GREEN] Implement per-tier error states in `InboxPage`
+
+---
+
+## EP-08 FE Inbox Polish — Completed 2026-04-17
+
+**Status: COMPLETED** (2026-04-17)
+
+### Commit 1 — Inbox filter bar (feat(inbox): filter bar with unread / mentions / reviews tabs + search)
+- [x] `InboxFilterBar`: tab-based filter (All / Unread / Mentions / Reviews) + free-text search input
+- [x] `InboxFilterBarWithUrlSync`: URL-synced via useSearchParams + router.replace
+- [x] Client-side search filters by summary/actor_name from extra field
+- [x] Unread tab sends `only_unread=true` to API; Mentions/Reviews use type-filter client-side
+- [x] `Sheet` UI primitive (Radix Dialog styled as right-side drawer) — `components/ui/sheet.tsx`
+- [x] Inbox page wired: InboxFilterBarWithUrlSync above list, NotificationSheet stub included
+- [x] Locale keys added: `workspace.inbox.filter.*`, `workspace.inbox.searchPlaceholder`, `workspace.inbox.sheet.*`, `workspace.inbox.{errorBanner,retry,prev,next,pageOf,markAllRead,onlyUnread}`, `workspace.notificationBell.{dnd,dndOff}` (en + es)
+- [x] 5 filter-bar tests; existing inbox-page test updated (checkbox→tab change)
+
+### Commit 2 — Notification sheet (feat(notifications): right-drawer sheet for action-required notifications)
+- [x] `NotificationSheet`: summary, actor, created_at; "Mark actioned" button for quick_action notifications
+- [x] PATCH `/notifications/{id}/actioned` on button click; calls `onMarkActioned` callback
+- [x] Inbox page: rows without deeplink call `handleOpenSheet` instead of navigating
+- [x] `NotificationBell`: adds `onOpenSheet` prop to `NotificationItem`; renders `NotificationSheet` sibling
+- [x] `NotificationItem`: `onOpenSheet?: (notification) => void` prop added
+- [x] 4 NotificationSheet tests: render, conditional button, PATCH happy path, onOpenSheet prop
+
+### Commit 3 — markActioned + DND toggle (feat(notifications): mark-actioned + DND toggle)
+- [x] `useUnreadCount` extended: `{paused}` option stops polling and skips fetches
+- [x] `NotificationBell`: reads `localStorage('notifications.muted')` on mount; `toggleDnd` persists
+- [x] DND button in popover header (`data-testid=dnd-toggle`, `data-dnd-active` attr); BellOff icon when active
+- [x] `useNotifications` hook unchanged — markActioned available via `lib/api/notifications.ts` already
+- [x] 4 DND tests: markActioned PATCH, localStorage persist, polling pause, persist across remounts
+
+### EP-06 Gap — Version ID wiring (fix(reviews): wire real version_id from detail page)
+- [x] `RequestReviewDialog`: `versionId: string | null` prop — null disables submit + shows "Generating first version…" hint
+- [x] `ReviewsTab`: forwards `versionId` to `RequestReviewDialog`
+- [x] Detail page: `useVersions(id)` on mount; `latestVersionId = versions[0]?.id ?? null` passed to `<ReviewsTab>`
+- [x] Existing dialog tests updated to pass `versionId="v-1"` for submit-path tests
+- [x] 2 new versionId tests: null disables + shows hint; real id in POST body
+- [x] `workspace.itemDetail.reviews.requestDialog.versionPending` locale key added (en + es)
+
+**Test count delta: +901 → 911 (+10 net new tests)**
