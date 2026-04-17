@@ -15,21 +15,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { getAvailableTransitions } from '@/lib/state-machine';
 import { useTransitionState } from '@/hooks/work-item/use-transition-state';
+import { ForceReadyModal } from '@/components/work-item/force-ready-modal';
 import type { WorkItemResponse, WorkItemState } from '@/lib/types/work-item';
 
 export interface StateTransitionPanelProps {
   workItem: WorkItemResponse;
   /** Called with the updated work item after a successful transition so the parent can refetch / re-render. */
   onTransition: (updated: WorkItemResponse) => void;
+  /** User can force-ready only if owner or superadmin. Parent decides. */
+  canForceReady?: boolean;
 }
 
-export function StateTransitionPanel({ workItem, onTransition }: StateTransitionPanelProps) {
+export function StateTransitionPanel({ workItem, onTransition, canForceReady = false }: StateTransitionPanelProps) {
   const t = useTranslations('workspace.itemDetail.transitions');
+  const tForce = useTranslations('workspace.itemDetail.forceReady');
   const tCommon = useTranslations('common');
 
   const [target, setTarget] = useState<WorkItemState | null>(null);
   const [reason, setReason] = useState('');
+  const [forceOpen, setForceOpen] = useState(false);
   const { transition, isPending, error } = useTransitionState(workItem.id);
+
+  const forceReadyAvailable =
+    canForceReady && workItem.state !== 'ready' && workItem.state !== 'exported';
 
   const available = getAvailableTransitions(workItem.state);
 
@@ -66,7 +74,7 @@ export function StateTransitionPanel({ workItem, onTransition }: StateTransition
         </span>
       </div>
 
-      {available.length === 0 ? (
+      {available.length === 0 && !forceReadyAvailable ? (
         <p className="text-caption text-muted-foreground">{t('noneAvailable')}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -82,8 +90,28 @@ export function StateTransitionPanel({ workItem, onTransition }: StateTransition
               {`${t('buttonPrefix')} ${t(next)}`}
             </Button>
           ))}
+          {forceReadyAvailable && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setForceOpen(true)}
+            >
+              {tForce('button')}
+            </Button>
+          )}
         </div>
       )}
+
+      <ForceReadyModal
+        open={forceOpen}
+        workItem={workItem}
+        onClose={() => setForceOpen(false)}
+        onForced={(updated) => {
+          setForceOpen(false);
+          onTransition(updated);
+        }}
+      />
 
       <Dialog open={target !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent>

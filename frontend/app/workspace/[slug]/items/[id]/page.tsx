@@ -101,7 +101,11 @@ export default function WorkItemDetailPage({
         />
       )}
 
-      <StateTransitionPanel workItem={workItem} onTransition={() => void refetch()} />
+      <StateTransitionPanel
+        workItem={workItem}
+        onTransition={() => void refetch()}
+        canForceReady={canEdit}
+      />
 
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">

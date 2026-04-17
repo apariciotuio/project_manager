@@ -148,6 +148,16 @@
         "timeline": "Timeline",
         "subItems": "Sub-items"
       },
+      "forceReady": {
+        "button": "Force to Ready",
+        "dialogTitle": "Force transition to Ready",
+        "dialogDescription": "Skipping pending validations is recorded in the audit trail. Only the owner or an admin can do this.",
+        "justificationLabel": "Justification",
+        "justificationPlaceholder": "Why you are forcing — kept in the audit log",
+        "typeToConfirmLabel": "Type the item title to confirm",
+        "confirm": "Force to Ready",
+        "errorPrefix": "Could not force to Ready"
+      },
       "transitions": {
         "heading": "State",
         "noneAvailable": "This item no longer supports manual transitions.",

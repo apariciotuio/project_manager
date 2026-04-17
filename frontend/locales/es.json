@@ -148,6 +148,16 @@
         "timeline": "Historial",
         "subItems": "Sub-items"
       },
+      "forceReady": {
+        "button": "Forzar a Listo",
+        "dialogTitle": "Forzar transición a Listo",
+        "dialogDescription": "Saltar las validaciones pendientes deja constancia en el historial. Solo el propietario o un administrador puede hacerlo.",
+        "justificationLabel": "Justificación",
+        "justificationPlaceholder": "Por qué se fuerza — queda registrado en auditoría",
+        "typeToConfirmLabel": "Escribe el título del elemento para confirmar",
+        "confirm": "Forzar a Listo",
+        "errorPrefix": "No se pudo forzar a Listo"
+      },
       "transitions": {
         "heading": "Estado",
         "noneAvailable": "Este elemento ya no admite transiciones manuales.",
