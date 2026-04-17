@@ -85,7 +85,9 @@ async def list_routing_rules(
     current_user: CurrentUser = Depends(require_admin),
     service: ProjectService = Depends(get_project_service),
 ) -> dict[str, Any]:
-    rules = await service.list_routing_rules(current_user.workspace_id)  # type: ignore[arg-type]
+    # require_admin raises 401 when workspace_id is None — workspace_id is guaranteed here
+    assert current_user.workspace_id is not None
+    rules = await service.list_routing_rules(current_user.workspace_id)
     return _ok([_rule_payload(r) for r in rules])
 
 
@@ -95,8 +97,9 @@ async def create_routing_rule(
     current_user: CurrentUser = Depends(require_admin),
     service: ProjectService = Depends(get_project_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     rule = await service.create_routing_rule(
-        workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
+        workspace_id=current_user.workspace_id,
         work_item_type=body.work_item_type,
         created_by=current_user.id,
         project_id=body.project_id,
@@ -114,9 +117,10 @@ async def get_routing_rule(
     current_user: CurrentUser = Depends(require_admin),
     service: ProjectService = Depends(get_project_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     try:
         rule = await service.get_routing_rule(
-            rule_id, workspace_id=current_user.workspace_id  # type: ignore[arg-type]
+            rule_id, workspace_id=current_user.workspace_id
         )
     except RoutingRuleNotFoundError as exc:
         raise _not_found() from exc
@@ -130,10 +134,11 @@ async def patch_routing_rule(
     current_user: CurrentUser = Depends(require_admin),
     service: ProjectService = Depends(get_project_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     try:
         rule = await service.update_routing_rule(
             rule_id,
-            workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
+            workspace_id=current_user.workspace_id,
             suggested_team_id=body.suggested_team_id,
             suggested_owner_id=body.suggested_owner_id,
             suggested_validators=body.suggested_validators,
@@ -151,9 +156,10 @@ async def delete_routing_rule(
     current_user: CurrentUser = Depends(require_admin),
     service: ProjectService = Depends(get_project_service),
 ) -> None:
+    assert current_user.workspace_id is not None
     try:
         await service.delete_routing_rule(
-            rule_id, workspace_id=current_user.workspace_id  # type: ignore[arg-type]
+            rule_id, workspace_id=current_user.workspace_id
         )
     except RoutingRuleNotFoundError as exc:
         raise _not_found() from exc

@@ -90,7 +90,9 @@ async def list_validation_rule_templates(
     current_user: CurrentUser = Depends(require_admin),
     service: ValidationRuleTemplateService = Depends(get_validation_rule_template_service),
 ) -> dict[str, Any]:
-    templates = await service.list_for_workspace(current_user.workspace_id)  # type: ignore[arg-type]
+    # require_admin raises 401 when workspace_id is None — workspace_id is guaranteed here
+    assert current_user.workspace_id is not None
+    templates = await service.list_for_workspace(current_user.workspace_id)
     return _ok([_template_payload(t) for t in templates])
 
 
@@ -100,6 +102,7 @@ async def create_validation_rule_template(
     current_user: CurrentUser = Depends(require_admin),
     service: ValidationRuleTemplateService = Depends(get_validation_rule_template_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     try:
         template = await service.create(
             name=body.name,
@@ -124,6 +127,7 @@ async def get_validation_rule_template(
     current_user: CurrentUser = Depends(require_admin),
     service: ValidationRuleTemplateService = Depends(get_validation_rule_template_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     try:
         template = await service.get(
             template_id, workspace_id=current_user.workspace_id
@@ -140,6 +144,7 @@ async def patch_validation_rule_template(
     current_user: CurrentUser = Depends(require_admin),
     service: ValidationRuleTemplateService = Depends(get_validation_rule_template_service),
 ) -> dict[str, Any]:
+    assert current_user.workspace_id is not None
     try:
         template = await service.update(
             template_id,
@@ -169,6 +174,7 @@ async def delete_validation_rule_template(
     current_user: CurrentUser = Depends(require_admin),
     service: ValidationRuleTemplateService = Depends(get_validation_rule_template_service),
 ) -> None:
+    assert current_user.workspace_id is not None
     try:
         await service.delete(template_id, workspace_id=current_user.workspace_id)
     except ValidationRuleTemplateNotFoundError as exc:
