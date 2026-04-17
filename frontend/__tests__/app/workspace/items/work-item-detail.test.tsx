@@ -9,6 +9,16 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
+// Default auth: owner of the work item (owner_id = 'user-1')
+vi.mock('@/app/providers/auth-provider', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1', full_name: 'Ada Lovelace', workspace_id: 'ws1', workspace_slug: 'acme', email: 'ada@co.com', avatar_url: null, is_superadmin: false },
+    isLoading: false,
+    isAuthenticated: true,
+    logout: vi.fn(),
+  }),
+}));
+
 const WORK_ITEM = {
   id: 'wi-1',
   title: 'Fix login bug',
@@ -26,6 +36,7 @@ const WORK_ITEM = {
   has_override: false,
   override_justification: null,
   owner_suspended_flag: false,
+  parent_work_item_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   deleted_at: null,
@@ -48,7 +59,16 @@ const SPEC = {
 const COMPLETENESS = {
   score: 45,
   level: 'medium',
-  dimensions: [{ name: 'problem', score: 70, weight: 0.3, label: 'Problema' }],
+  dimensions: [
+    {
+      dimension: 'problem',
+      score: 0.7,
+      weight: 0.3,
+      applicable: true,
+      filled: true,
+      message: null,
+    },
+  ],
 };
 
 function setupHandlers() {
@@ -69,7 +89,7 @@ function setupHandlers() {
       HttpResponse.json({ data: [] })
     ),
     http.get('http://localhost/api/v1/work-items/wi-1/task-tree', () =>
-      HttpResponse.json({ data: [] })
+      HttpResponse.json({ data: { work_item_id: 'wi-1', tree: [] } })
     ),
     http.get('http://localhost/api/v1/work-items/wi-1/reviews', () =>
       HttpResponse.json({ data: [] })
@@ -78,7 +98,16 @@ function setupHandlers() {
       HttpResponse.json({ data: [] })
     ),
     http.get('http://localhost/api/v1/work-items/wi-1/timeline', () =>
-      HttpResponse.json({ data: [], total: 0, page: 1, page_size: 20 })
+      HttpResponse.json({ data: { events: [], next_cursor: null } })
+    ),
+    http.get('http://localhost/api/v1/work-items/wi-1/tags', () =>
+      HttpResponse.json({ data: [] })
+    ),
+    http.get('http://localhost/api/v1/tags', () =>
+      HttpResponse.json({ data: [] })
+    ),
+    http.get('http://localhost/api/v1/work-items', () =>
+      HttpResponse.json({ data: { items: [], total: 0, page: 1, page_size: 50 } })
     )
   );
 }
@@ -114,6 +143,7 @@ describe('WorkItemDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Revisiones' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Comentarios' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Historial' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Sub-items' })).toBeInTheDocument();
   });
 
   it('default tab is Especificación and shows section content', async () => {
@@ -165,5 +195,29 @@ describe('WorkItemDetailPage', () => {
 
     await waitFor(() => screen.getByText('Fix login bug'));
     expect(screen.getByLabelText('Completitud: 45%')).toBeInTheDocument();
+  });
+
+  it('shows Edit button for owner (user.id === owner_id)', async () => {
+    setupHandlers();
+    render(<WorkItemDetailPage params={{ slug: 'acme', id: 'wi-1' }} />);
+
+    await waitFor(() => screen.getByText('Fix login bug'));
+    expect(screen.getByRole('button', { name: /editar elemento/i })).toBeInTheDocument();
+  });
+
+  it('opens edit modal when Edit button is clicked', async () => {
+    setupHandlers();
+    const user = userEvent.setup();
+    render(<WorkItemDetailPage params={{ slug: 'acme', id: 'wi-1' }} />);
+
+    await waitFor(() => screen.getByText('Fix login bug'));
+    await user.click(screen.getByRole('button', { name: /editar elemento/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    // The modal's title input (not the header's inline edit button)
+    const titleInput = screen.getByRole('textbox', { name: /título \*/i });
+    expect(titleInput).toHaveValue('Fix login bug');
   });
 });
