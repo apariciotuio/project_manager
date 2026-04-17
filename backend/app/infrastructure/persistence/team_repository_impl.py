@@ -46,6 +46,7 @@ class TeamRepositoryImpl(ITeamRepository):
         return team_to_domain(row) if row else None
 
     async def list_active_for_workspace(self, workspace_id: UUID) -> list[Team]:
+        # Hard cap to keep unbounded queries safe until pagination ships.
         stmt = (
             select(TeamORM)
             .where(
@@ -53,6 +54,7 @@ class TeamRepositoryImpl(ITeamRepository):
                 TeamORM.deleted_at.is_(None),
             )
             .order_by(TeamORM.name)
+            .limit(500)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [team_to_domain(r) for r in rows]

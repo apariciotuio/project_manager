@@ -34,6 +34,7 @@ class ProjectRepositoryImpl(IProjectRepository):
         return project_to_domain(row) if row else None
 
     async def list_active_for_workspace(self, workspace_id: UUID) -> list[Project]:
+        # Hard cap to keep unbounded queries safe until pagination ships.
         stmt = (
             select(ProjectORM)
             .where(
@@ -41,6 +42,7 @@ class ProjectRepositoryImpl(IProjectRepository):
                 ProjectORM.deleted_at.is_(None),
             )
             .order_by(ProjectORM.name)
+            .limit(500)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [project_to_domain(r) for r in rows]

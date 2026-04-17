@@ -22,7 +22,7 @@ from app.infrastructure.persistence.models.orm import (
     WorkspaceMembershipORM,
     WorkspaceORM,
 )
-from app.presentation.dependencies import get_current_user
+from app.presentation.dependencies import get_current_user, get_scoped_session
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
@@ -75,38 +75,35 @@ async def list_my_workspaces(
 @router.get("/members")
 async def list_workspace_members(
     current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     """Return active members of the current user's workspace.
 
     Used by frontend pickers (assign owner, add team member) so users
-    don't have to paste UUIDs.
+    don't have to paste UUIDs. Uses the DI-managed scoped session so
+    the query runs inside the same transaction boundary as the rest
+    of the request.
     """
-    if current_user.workspace_id is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+    stmt = (
+        select(
+            UserORM.id,
+            UserORM.email,
+            UserORM.full_name,
+            UserORM.avatar_url,
+            WorkspaceMembershipORM.role,
         )
-    factory = get_session_factory()
-    async with factory() as session:
-        stmt = (
-            select(
-                UserORM.id,
-                UserORM.email,
-                UserORM.full_name,
-                UserORM.avatar_url,
-                WorkspaceMembershipORM.role,
-            )
-            .join(
-                WorkspaceMembershipORM,
-                WorkspaceMembershipORM.user_id == UserORM.id,
-            )
-            .where(
-                WorkspaceMembershipORM.workspace_id == current_user.workspace_id,
-                WorkspaceMembershipORM.state == "active",
-            )
-            .order_by(UserORM.full_name.asc())
+        .join(
+            WorkspaceMembershipORM,
+            WorkspaceMembershipORM.user_id == UserORM.id,
         )
-        rows = (await session.execute(stmt)).all()
+        .where(
+            WorkspaceMembershipORM.workspace_id == current_user.workspace_id,
+            WorkspaceMembershipORM.state == "active",
+        )
+        .order_by(UserORM.full_name.asc())
+        .limit(500)  # hard cap — pickers don't need more; raise if enterprise tenants hit it
+    )
+    rows = (await session.execute(stmt)).all()
 
     return {
         "data": [

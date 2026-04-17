@@ -115,8 +115,11 @@ class TemplateRepositoryImpl(ITemplateRepository):
         await self._session.flush()
 
     async def list_for_workspace(self, workspace_id: UUID) -> list[Template]:
-        stmt = select(TemplateORM).where(
-            TemplateORM.workspace_id == workspace_id,
+        # Hard cap to keep unbounded queries safe until pagination ships.
+        stmt = (
+            select(TemplateORM)
+            .where(TemplateORM.workspace_id == workspace_id)
+            .limit(500)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_to_domain(r) for r in rows]
