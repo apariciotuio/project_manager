@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "Work Maturation Platform"
+  },
+  "theme": {
+    "toggle": "Cambiar tema"
+  },
+  "health": {
+    "ok": "OK",
+    "degraded": "Degradado",
+    "unknown": "Desconocido"
+  },
+  "auth": {
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "logout": "Cerrar sesión",
+    "errors": {
+      "oauth_failed": "No pudimos completar el inicio de sesión. Inténtalo de nuevo.",
+      "session_expired": "Tu sesión expiró. Inicia sesión de nuevo.",
+      "invalid_state": "Solicitud inválida. Inténtalo de nuevo.",
+      "cancelled": "Cancelaste el inicio de sesión.",
+      "no_workspace": "Tu cuenta no tiene acceso a ningún workspace."
+    }
+  }
+}
