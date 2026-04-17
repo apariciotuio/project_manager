@@ -148,6 +148,20 @@
         "timeline": "Historial",
         "subItems": "Sub-items"
       },
+      "reassign": {
+        "heading": "Propietario",
+        "unassigned": "Sin asignar",
+        "button": "Reasignar",
+        "dialogTitle": "Reasignar propietario",
+        "dialogDescription": "El nuevo propietario heredará las acciones que requieran rol de propietario (transiciones, forzar a Listo).",
+        "newOwnerLabel": "Nuevo propietario",
+        "newOwnerPlaceholder": "Selecciona un miembro del workspace",
+        "reasonLabel": "Razón (opcional)",
+        "reasonPlaceholder": "Contexto del cambio",
+        "confirm": "Reasignar",
+        "errorPrefix": "No se pudo reasignar",
+        "loading": "Cargando miembros..."
+      },
       "forceReady": {
         "button": "Forzar a Listo",
         "dialogTitle": "Forzar transición a Listo",

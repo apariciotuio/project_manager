@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { WorkItemHeader } from '@/components/work-item/work-item-header';
 import { WorkItemEditModal } from '@/components/work-item/work-item-edit-modal';
 import { StateTransitionPanel } from '@/components/work-item/state-transition-panel';
+import { OwnerPanel } from '@/components/work-item/owner-panel';
 import { SpecificationTab } from '@/components/work-item/specification-tab';
 import { TasksTab } from '@/components/work-item/tasks-tab';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
@@ -101,11 +102,18 @@ export default function WorkItemDetailPage({
         />
       )}
 
-      <StateTransitionPanel
-        workItem={workItem}
-        onTransition={() => void refetch()}
-        canForceReady={canEdit}
-      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <StateTransitionPanel
+          workItem={workItem}
+          onTransition={() => void refetch()}
+          canForceReady={canEdit}
+        />
+        <OwnerPanel
+          workItem={workItem}
+          canReassign={canEdit}
+          onReassigned={() => void refetch()}
+        />
+      </div>
 
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">

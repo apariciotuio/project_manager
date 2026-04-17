@@ -148,6 +148,20 @@
         "timeline": "Timeline",
         "subItems": "Sub-items"
       },
+      "reassign": {
+        "heading": "Owner",
+        "unassigned": "Unassigned",
+        "button": "Reassign",
+        "dialogTitle": "Reassign owner",
+        "dialogDescription": "The new owner inherits actions that require the owner role (transitions, force-ready).",
+        "newOwnerLabel": "New owner",
+        "newOwnerPlaceholder": "Pick a workspace member",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "Context for the change",
+        "confirm": "Reassign",
+        "errorPrefix": "Could not reassign",
+        "loading": "Loading members..."
+      },
       "forceReady": {
         "button": "Force to Ready",
         "dialogTitle": "Force transition to Ready",
