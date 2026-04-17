@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.models.orm import (
     SessionORM,
+    UserORM,
     WorkspaceMembershipORM,
     WorkspaceORM,
 )
@@ -63,6 +64,57 @@ async def list_my_workspaces(
                 "id": str(row.id),
                 "name": row.name,
                 "slug": row.slug,
+                "role": row.role,
+            }
+            for row in rows
+        ],
+        "message": "ok",
+    }
+
+
+@router.get("/members")
+async def list_workspace_members(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return active members of the current user's workspace.
+
+    Used by frontend pickers (assign owner, add team member) so users
+    don't have to paste UUIDs.
+    """
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+        )
+    factory = get_session_factory()
+    async with factory() as session:
+        stmt = (
+            select(
+                UserORM.id,
+                UserORM.email,
+                UserORM.full_name,
+                UserORM.avatar_url,
+                WorkspaceMembershipORM.role,
+            )
+            .join(
+                WorkspaceMembershipORM,
+                WorkspaceMembershipORM.user_id == UserORM.id,
+            )
+            .where(
+                WorkspaceMembershipORM.workspace_id == current_user.workspace_id,
+                WorkspaceMembershipORM.state == "active",
+            )
+            .order_by(UserORM.full_name.asc())
+        )
+        rows = (await session.execute(stmt)).all()
+
+    return {
+        "data": [
+            {
+                "id": str(row.id),
+                "email": row.email,
+                "full_name": row.full_name,
+                "avatar_url": row.avatar_url,
                 "role": row.role,
             }
             for row in rows
