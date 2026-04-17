@@ -3,20 +3,28 @@
 Thin orchestration over Section + SectionVersion repos. Wraps the Section
 mutation + append-only SectionVersion write inside a single DB transaction.
 Cache is invalidated after DB commit so stale completeness scores are evicted.
+
+EP-07 phase 3.6: VersioningService injected optionally. When present,
+update_section calls create_version after a successful content change.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.domain.models.section import RequiredSectionEmptyError, Section
 from app.domain.models.section_catalog import catalog_for
 from app.domain.models.section_type import GenerationSource, SectionType
+from app.domain.models.work_item_version import VersionActorType, VersionTrigger
 from app.domain.ports.cache import ICache
 from app.domain.repositories.section_repository import ISectionRepository
 from app.domain.repositories.section_version_repository import (
     ISectionVersionRepository,
 )
 from app.domain.repositories.work_item_repository import IWorkItemRepository
+
+if TYPE_CHECKING:
+    from app.application.services.versioning_service import VersioningService
 
 _COMPLETENESS_CACHE_PREFIX = "completeness:"
 
@@ -37,11 +45,13 @@ class SectionService:
         section_version_repo: ISectionVersionRepository,
         work_item_repo: IWorkItemRepository,
         cache: ICache | None = None,
+        versioning_service: "VersioningService | None" = None,
     ) -> None:
         self._sections = section_repo
         self._versions = section_version_repo
         self._work_items = work_item_repo
         self._cache = cache
+        self._versioning = versioning_service
 
     async def _invalidate(self, work_item_id: UUID) -> None:
         if self._cache is not None:
@@ -99,10 +109,20 @@ class SectionService:
         section = await self._sections.get(section_id)
         if section is None or section.work_item_id != work_item_id:
             raise SectionNotFoundError(f"section {section_id} not found")
+        previous_content = section.content
         section.update_content(new_content, actor_id, source=GenerationSource.MANUAL)
         await self._sections.save(section)
         await self._versions.append(section, actor_id)
         await self._invalidate(work_item_id)
+        if self._versioning is not None and new_content != previous_content:
+            await self._versioning.create_version(
+                work_item_id=work_item_id,
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                trigger=VersionTrigger.CONTENT_EDIT,
+                actor_type=VersionActorType.HUMAN,
+                commit_message=f"Updated {section.section_type.value}",
+            )
         return section
 
 

@@ -372,3 +372,63 @@ async def test_get_next_step_nonexistent_returns_404(http, seeded):
         cookies={"access_token": token},
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# EP-07 phase 3.6 — PATCH /sections creates a version
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_patch_section_creates_version(http, seeded, migrated_database):
+    """After PATCH /sections/{id}, GET /versions returns a new entry."""
+    user_id, _, wi_id, token = seeded
+
+    # Bootstrap a section via spec-gen callback
+    import hashlib
+    import hmac as _hmac
+    import json
+
+    payload = {
+        "agent": "wm_spec_gen_agent",
+        "request_id": str(uuid4()),
+        "status": "success",
+        "work_item_id": str(wi_id),
+        "sections": [{"dimension": "summary", "content": "initial version content here"}],
+    }
+    raw = json.dumps(payload).encode()
+    sig = _hmac.new(b"dev-callback-secret", raw, hashlib.sha256).hexdigest()
+    await http.post(
+        "/api/v1/dundun/callback",
+        content=raw,
+        headers={"Content-Type": "application/json", "X-Dundun-Signature": sig},
+    )
+
+    spec_resp = await http.get(
+        f"/api/v1/work-items/{wi_id}/specification",
+        cookies={"access_token": token},
+    )
+    section_id = spec_resp.json()["data"]["sections"][0]["id"]
+
+    # Versions before patch
+    v_before = await http.get(
+        f"/api/v1/work-items/{wi_id}/versions",
+        cookies={"access_token": token},
+    )
+    count_before = len(v_before.json()["data"])
+
+    # Patch section with new content
+    patch_resp = await http.patch(
+        f"/api/v1/work-items/{wi_id}/sections/{section_id}",
+        json={"content": "updated content that is clearly different"},
+        cookies={"access_token": token},
+    )
+    assert patch_resp.status_code == 200
+
+    # Versions after patch — should have one more
+    v_after = await http.get(
+        f"/api/v1/work-items/{wi_id}/versions",
+        cookies={"access_token": token},
+    )
+    count_after = len(v_after.json()["data"])
+    assert count_after == count_before + 1
