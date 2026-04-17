@@ -147,6 +147,24 @@
         "comments": "Comentarios",
         "timeline": "Historial",
         "subItems": "Sub-items"
+      },
+      "transitions": {
+        "heading": "Estado",
+        "noneAvailable": "Este elemento ya no admite transiciones manuales.",
+        "buttonPrefix": "Pasar a",
+        "dialogTitle": "Pasar a {target}",
+        "dialogDescription": "El cambio se aplicará al estado del elemento. Puedes indicar una razón para el historial.",
+        "reasonLabel": "Razón (opcional)",
+        "reasonPlaceholder": "Contexto o motivo del cambio",
+        "confirm": "Confirmar transición",
+        "errorPrefix": "No se pudo cambiar el estado",
+        "draft": "Borrador",
+        "in_clarification": "En aclaración",
+        "in_review": "En revisión",
+        "changes_requested": "Cambios solicitados",
+        "partially_validated": "Parcialmente validado",
+        "ready": "Listo",
+        "exported": "Exportado"
       }
     },
     "newItem": {

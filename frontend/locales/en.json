@@ -147,6 +147,24 @@
         "comments": "Comments",
         "timeline": "Timeline",
         "subItems": "Sub-items"
+      },
+      "transitions": {
+        "heading": "State",
+        "noneAvailable": "This item no longer supports manual transitions.",
+        "buttonPrefix": "Move to",
+        "dialogTitle": "Move to {target}",
+        "dialogDescription": "The item state will change. You can record a reason for the audit trail.",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "Context or motive for the change",
+        "confirm": "Confirm transition",
+        "errorPrefix": "Could not change state",
+        "draft": "Draft",
+        "in_clarification": "In clarification",
+        "in_review": "In review",
+        "changes_requested": "Changes requested",
+        "partially_validated": "Partially validated",
+        "ready": "Ready",
+        "exported": "Exported"
       }
     },
     "newItem": {

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { WorkItemHeader } from '@/components/work-item/work-item-header';
 import { WorkItemEditModal } from '@/components/work-item/work-item-edit-modal';
+import { StateTransitionPanel } from '@/components/work-item/state-transition-panel';
 import { SpecificationTab } from '@/components/work-item/specification-tab';
 import { TasksTab } from '@/components/work-item/tasks-tab';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
@@ -99,6 +100,8 @@ export default function WorkItemDetailPage({
           onSaved={handleSaved}
         />
       )}
+
+      <StateTransitionPanel workItem={workItem} onTransition={() => void refetch()} />
 
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
