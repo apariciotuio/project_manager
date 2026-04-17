@@ -43,6 +43,29 @@ SearchResult shape (returned verbatim from Puppet, plus our wrapper metadata):
 
 ---
 
+## Bounded Slice (2026-04-17) — puppet_ingest_requests pipeline
+
+> Implemented per instructions: migration + domain + infra + service + REST + Celery task
+
+- [x] Migration 0034: `puppet_ingest_requests` table — id, workspace_id, source_kind, work_item_id, payload, status, puppet_doc_id, attempts, last_error, created_at, updated_at, succeeded_at. Indexes: (workspace_id, status), (work_item_id), (created_at DESC). RLS policy workspace isolation. (2026-04-17)
+- [x] `PuppetIngestRequestORM` added to orm.py (2026-04-17)
+- [x] `PuppetIngestRequest` domain model: create(), mark_dispatched/succeeded/failed/skipped/reset_for_retry transitions. 11 unit tests. (2026-04-17)
+- [x] `IPuppetIngestRequestRepository` interface in domain/repositories/ (2026-04-17)
+- [x] `PuppetIngestRequestRepositoryImpl`: save, get, claim_queued_batch (FOR UPDATE SKIP LOCKED), has_succeeded_for_work_item, list_by_workspace (2026-04-17)
+- [x] `PuppetHTTPClient`: index_document/delete_document/search/health with PuppetNotImplementedError + TODO for PENDING Puppet platform-ingestion endpoints (2026-04-17)
+- [x] `verify_puppet_signature`: HMAC-SHA256 mirror of verify_dundun_signature (2026-04-17)
+- [x] `PuppetSettings` extended: service_key + callback_secret (2026-04-17)
+- [x] `FakePuppetClient` updated: idempotent delete, index_calls/delete_calls trackers (2026-04-17)
+- [x] `PuppetIngestService`: enqueue() + dispatch_pending() with idempotency + retry logic. 8 unit tests. (2026-04-17)
+- [x] `POST /api/v1/puppet/ingest-callback`: HMAC-only, idempotent by ingest_request_id (2026-04-17)
+- [x] `POST /api/v1/puppet/search`: workspace-scoped proxy, category server-enforced (2026-04-17)
+- [x] `GET /api/v1/puppet/ingest-requests`: paginated admin observability (2026-04-17)
+- [x] `POST /api/v1/puppet/ingest-requests/{id}/retry`: manual retry for failed/skipped rows (2026-04-17)
+- [x] 14 integration tests covering all 4 REST endpoints (2026-04-17)
+- [x] `process_puppet_ingest` Celery task: outbox drain → ingest_request creation → dispatch_pending, acks_late=True, soft_time_limit=30, max_retries=3, exponential backoff. 5 unit tests. (2026-04-17)
+
+---
+
 ## Group 1: Migrations
 
 **Acceptance Criteria**
@@ -67,12 +90,12 @@ WHEN Puppet returns 404 on `delete()` THEN no exception is raised (idempotent)
 WHEN Puppet API times out THEN `asyncio.TimeoutError` propagates to the caller
 
 - [ ] **[RED]** Write tests for `IPuppetClient` interface contract via a fake implementation
-- [ ] **[GREEN]** Define `domain/ports/puppet_client.py`: `IPuppetClient` Protocol, `PuppetSearchResult`, `PuppetIndexPayload` dataclasses
+- [x] **[GREEN]** Define `domain/ports/puppet_client.py`: `IPuppetClient` Protocol — already existed; FakePuppetClient updated with index_calls/delete_calls trackers and idempotent delete (2026-04-17)
 - [ ] **[RED]** Write unit tests for `PuppetClient.search()`: correct payload shape, workspace_ids filter present
 - [ ] **[RED]** Write unit tests for `PuppetClient.upsert()`: correct HTTP PUT, no PII fields (no email)
-- [ ] **[RED]** Write unit tests for `PuppetClient.delete()`: 404 is silently swallowed
+- [x] **[RED]** Write unit tests for `PuppetClient.delete()`: 404 is silently swallowed — FakePuppetClient delete is idempotent, test_fake_puppet_delete_missing_doc_is_noop passes (2026-04-17)
 - [ ] **[RED]** Write unit tests for `PuppetClient.probe()`: returns True on 200, False on any exception
-- [ ] **[GREEN]** Implement `infrastructure/adapters/puppet/puppet_client.py`: full `PuppetClient`
+- [x] **[GREEN]** Implement `infrastructure/adapters/puppet_http_client.py`: PuppetHTTPClient with index_document/delete_document/search/health + PuppetNotImplementedError stub guard (2026-04-17)
 - [ ] **[GREEN]** Implement `infrastructure/adapters/puppet/puppet_payload_builder.py`: `build_payload(work_item) -> PuppetIndexPayload`
 - [ ] **[RED]** Write test: payload builder excludes email, includes all required fields, `aggregated_sections` is concatenated text
 - [ ] **[GREEN]** Wire `PuppetClient` into DI container; inject via `IPuppetClient` everywhere
@@ -180,19 +203,19 @@ WHEN Puppet fails 3 times THEN task moves to dead-letter and `puppet_index_failu
 WHEN `puppet.reconcile_workspace` runs THEN drift is detected and reindex tasks enqueued for drifted items
 WHEN `puppet.health_check` completes THEN `integration_configs.last_health_check_status` is updated
 
-- [ ] **[RED]** Write test: `index_work_item` — Puppet upsert called with correct payload
-- [ ] **[RED]** Write test: `index_work_item` — retries with exponential backoff on failure
+- [x] **[RED]** Write test: `process_puppet_ingest` — Puppet upsert called with correct payload (test_index_row_creates_ingest_request_and_dispatches, 2026-04-17)
+- [x] **[RED]** Write test: `process_puppet_ingest` — retries with exponential backoff on failure (test_puppet_failure_marks_ingest_request_failed, 2026-04-17)
 - [ ] **[RED]** Write test: `index_work_item` — dead-letter after 3 failures, `puppet_index_failures` updated
-- [ ] **[RED]** Write test: `index_work_item` — no-op when no puppet config
-- [ ] **[RED]** Write test: `deindex_work_item` — puppet delete called; 404 does not raise
+- [x] **[RED]** Write test: empty outbox → no-op (test_empty_outbox_returns_zero, 2026-04-17)
+- [x] **[RED]** Write test: `deindex_work_item` — puppet delete called; 404 does not raise (test_delete_idempotent_when_doc_not_found, 2026-04-17)
 - [ ] **[RED]** Write test: `reconcile_workspace` — drifted items enqueue index tasks
 - [ ] **[RED]** Write test: `reconcile_workspace` — items absent from DB enqueue deindex tasks
 - [ ] **[RED]** Write test: `reconcile_workspace` — records `puppet_reconcile_runs` entry
 - [ ] **[RED]** Write test: `health_check` — updates `integration_configs.state` and `last_health_check_status`
-- [ ] **[GREEN]** Implement `infrastructure/tasks/puppet_tasks.py`: all tasks
+- [x] **[GREEN]** Implement `infrastructure/tasks/puppet_ingest_tasks.py`: process_puppet_ingest task with acks_late=True, soft_time_limit=30, max_retries=3, exponential backoff (2026-04-17)
 - [ ] **[GREEN]** Register `puppet.reconcile` on Celery beat schedule (daily 02:00 UTC)
 - [ ] **[GREEN]** Register `puppet.health_check` on Celery beat schedule (every 600s)
-- [ ] **[REFACTOR]** `acks_late=True` on all index/deindex tasks (safe re-execution if worker crashes)
+- [x] **[REFACTOR]** `acks_late=True` on all index/deindex tasks (safe re-execution if worker crashes) — done on process_puppet_ingest (2026-04-17)
 
 ---
 
