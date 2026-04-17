@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from app.application.services.saved_search_service import SavedSearchService
     from app.application.services.search_service import SearchService
     from app.application.services.dashboard_service import DashboardService
+    from app.application.services.validation_rule_template_service import ValidationRuleTemplateService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -937,6 +938,63 @@ def get_search_service() -> "SearchService":
 
 
 # ---------------------------------------------------------------------------
+# EP-10 — Admin auth helpers
+# ---------------------------------------------------------------------------
+
+
+async def require_admin(
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> CurrentUser:
+    """Require the current user to have admin role or is_superadmin.
+
+    Loads the workspace membership from the DB to check role — JWT does not carry role.
+    Returns the CurrentUser on success. Raises HTTP 403 on failure.
+    This is a FastAPI dependency — testable via dependency_overrides.
+    """
+    from fastapi import HTTPException
+    from fastapi import status as http_status
+    from sqlalchemy import select
+
+    from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
+
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": {
+                    "code": "NO_WORKSPACE",
+                    "message": "no workspace in token",
+                    "details": {},
+                }
+            },
+        )
+    # Superadmin bypasses all role checks
+    if current_user.is_superadmin:
+        return current_user
+
+    # Check membership role from DB
+    stmt = select(WorkspaceMembershipORM).where(
+        WorkspaceMembershipORM.workspace_id == current_user.workspace_id,
+        WorkspaceMembershipORM.user_id == current_user.id,
+        WorkspaceMembershipORM.state == "active",
+    )
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None or row.role not in ("admin", "workspace_admin"):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "ADMIN_REQUIRED",
+                    "message": "admin role required",
+                    "details": {},
+                }
+            },
+        )
+    return current_user
+
+
+# ---------------------------------------------------------------------------
 # EP-10 — Projects + Routing Rules
 # ---------------------------------------------------------------------------
 
@@ -953,6 +1011,21 @@ def get_project_service(
     return ProjectService(
         project_repo=ProjectRepositoryImpl(session),
         routing_rule_repo=RoutingRuleRepositoryImpl(session),
+    )
+
+
+def get_validation_rule_template_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "ValidationRuleTemplateService":
+    from app.application.services.validation_rule_template_service import (
+        ValidationRuleTemplateService,
+    )
+    from app.infrastructure.persistence.validation_rule_template_repository_impl import (
+        ValidationRuleTemplateRepositoryImpl,
+    )
+
+    return ValidationRuleTemplateService(
+        repo=ValidationRuleTemplateRepositoryImpl(session)
     )
 
 

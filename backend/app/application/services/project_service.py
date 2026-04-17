@@ -119,8 +119,45 @@ class ProjectService:
     ) -> RoutingRule | None:
         return await self._rules.match(workspace_id, work_item_type, project_id)
 
-    async def delete_routing_rule(self, rule_id: UUID) -> None:
+    async def get_routing_rule(
+        self, rule_id: UUID, *, workspace_id: UUID
+    ) -> RoutingRule:
         rule = await self._rules.get(rule_id)
-        if rule is None:
+        if rule is None or rule.workspace_id != workspace_id:
+            raise RoutingRuleNotFoundError(f"routing rule {rule_id} not found")
+        return rule
+
+    async def update_routing_rule(
+        self,
+        rule_id: UUID,
+        *,
+        workspace_id: UUID,
+        suggested_team_id: UUID | None = None,
+        suggested_owner_id: UUID | None = None,
+        suggested_validators: list | None = None,
+        priority: int | None = None,
+        active: bool | None = None,
+    ) -> RoutingRule:
+        from datetime import UTC, datetime
+
+        rule = await self.get_routing_rule(rule_id, workspace_id=workspace_id)
+        if suggested_team_id is not None:
+            rule.suggested_team_id = suggested_team_id
+        if suggested_owner_id is not None:
+            rule.suggested_owner_id = suggested_owner_id
+        if suggested_validators is not None:
+            rule.suggested_validators = suggested_validators
+        if priority is not None:
+            rule.priority = priority
+        if active is not None:
+            rule.active = active
+        rule.updated_at = datetime.now(UTC)
+        return await self._rules.save(rule)
+
+    async def delete_routing_rule(
+        self, rule_id: UUID, *, workspace_id: UUID
+    ) -> None:
+        rule = await self._rules.get(rule_id)
+        if rule is None or rule.workspace_id != workspace_id:
             raise RoutingRuleNotFoundError(f"routing rule {rule_id} not found")
         await self._rules.delete(rule_id)
