@@ -33,7 +33,7 @@ interface TeamsPageProps {
 }
 
 export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
-  const { teams, isLoading, error, createTeam, addMember } = useTeams();
+  const { teams, isLoading, error, isPendingMutation, createTeam, addMember } = useTeams();
   const { members: workspaceMembers } = useWorkspaceMembers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -296,7 +296,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
               <Button type="button" variant="outline" onClick={() => setAddMemberTeamId(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!memberUserId || addingMember}>
+              <Button type="submit" disabled={!memberUserId || addingMember || isPendingMutation}>
                 {addingMember ? 'Añadiendo...' : 'Añadir'}
               </Button>
             </DialogFooter>
