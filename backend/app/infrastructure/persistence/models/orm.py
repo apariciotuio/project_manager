@@ -435,7 +435,7 @@ class ConversationThreadORM(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-_SUGGESTION_STATUSES = "'pending','accepted','rejected','expired'"
+_SUGGESTION_STATUSES = "'pending','accepted','rejected','expired','applied'"
 
 
 class AssistantSuggestionORM(Base):
@@ -839,7 +839,23 @@ class ValidationRequirementORM(Base):
     rule_id: Mapped[str] = mapped_column(String(100), primary_key=True)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Legacy text column kept for backwards compat with 0023 migration
     applies_to: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    # Columns added by 0060 migration
+    workspace_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True
+    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class ReviewRequestORM(Base):

@@ -5,9 +5,7 @@ Routes:
   GET   /api/v1/work-items/{id}/suggestion-sets  — list pending+accepted batches
   GET   /api/v1/suggestion-sets/{batch_id}        — get batch + items
   PATCH /api/v1/suggestion-items/{item_id}        — accept/reject a single item
-
-Deferred (needs EP-04+EP-07):
-  POST /api/v1/suggestion-sets/{id}/apply         — apply partial suggestions
+  POST  /api/v1/suggestion-sets/{batch_id}/apply  — apply accepted suggestions (EP-03 phase 3.7)
 """
 from __future__ import annotations
 
@@ -135,3 +133,43 @@ async def patch_suggestion_item(
         raise _not_found() from exc
 
     return _ok(SuggestionItemResponse.from_domain(updated).model_dump(mode="json"))
+
+
+@router.post("/suggestion-sets/{batch_id}/apply", status_code=http_status.HTTP_200_OK)
+async def apply_suggestion_batch(
+    batch_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: SuggestionService = Depends(get_suggestion_service),
+) -> dict[str, Any]:
+    """Apply all accepted suggestions in the batch to their target sections.
+
+    Idempotent: already-applied suggestions are skipped.
+
+    Returns applied_count, skipped_count, and latest_version_id (if available).
+
+    404 — batch not found
+    422 — batch exists but has no accepted suggestions to apply
+    """
+    try:
+        result = await service.apply_accepted_batch(batch_id=batch_id, actor_id=current_user.id)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "NO_ACCEPTED_SUGGESTIONS", "message": str(exc), "details": {}}},
+        ) from exc
+
+    latest = result["latest_version"]
+    return _ok(
+        {
+            "applied_count": result["applied_count"],
+            "skipped_count": result["skipped_count"],
+            "latest_version_id": str(latest.id) if latest is not None else None,
+            "latest_version_number": latest.version_number if latest is not None else None,
+        },
+        "batch applied",
+    )

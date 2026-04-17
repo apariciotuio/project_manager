@@ -1,23 +1,26 @@
 """SuggestionService — suggestion lifecycle (generate + status management) — EP-03.
 
-# TODO: EP-04+EP-07 — implement apply_partial when sections/versioning land
-#   apply_partial(batch_id, accepted_suggestion_ids) requires:
-#     - work_item_sections table (EP-04)
-#     - VersioningService.create_version (EP-07)
-#     - SELECT FOR UPDATE on work_item row to serialize concurrent applies (TC-1)
+Phase 3.7: apply_accepted_batch writes accepted suggestions to sections and
+triggers versioning. Requires SectionService + VersioningService injected.
 """
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
+from app.domain.models.work_item_version import VersionActorType, VersionTrigger, WorkItemVersion
 from app.domain.ports.dundun import DundunClient
 from app.domain.repositories.assistant_suggestion_repository import (
     IAssistantSuggestionRepository,
 )
+
+if TYPE_CHECKING:
+    from app.application.services.section_service import SectionService
+    from app.application.services.versioning_service import VersioningService
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +37,17 @@ class SuggestionService:
         dundun_client: DundunClient,
         callback_url: str,
         now: Callable[[], datetime] = _utcnow,
+        section_service: "SectionService | None" = None,
+        versioning_service: "VersioningService | None" = None,
+        workspace_id: UUID | None = None,
     ) -> None:
         self._suggestion_repo = suggestion_repo
         self._dundun_client = dundun_client
         self._callback_url = callback_url
         self._now = now
+        self._section_service = section_service
+        self._versioning_service = versioning_service
+        self._workspace_id = workspace_id
 
     async def generate(
         self,
@@ -102,3 +111,94 @@ class SuggestionService:
             "suggestion_status_updated id=%s status=%s", item_id, new_status.value
         )
         return updated
+
+    async def apply_accepted_batch(
+        self,
+        batch_id: UUID,
+        actor_id: UUID,
+    ) -> dict[str, Any]:
+        """Apply all accepted suggestions in the batch to their target sections.
+
+        For each accepted suggestion (status=accepted, section_id set):
+          - calls SectionService.update_section with proposed_content
+          - marks suggestion status as applied
+
+        Idempotent: already-applied suggestions are counted as skipped.
+
+        Returns:
+          applied_count: number of suggestions successfully applied
+          skipped_count: number skipped (pending/rejected/expired/applied/no section_id)
+          latest_version: the most recently created WorkItemVersion for the work item,
+                          or None if VersioningService is not injected
+
+        Raises:
+          LookupError: batch_id not found
+          ValueError: batch found but contains no accepted suggestions to apply
+        """
+        suggestions = await self._suggestion_repo.get_by_batch_id(batch_id)
+        if not suggestions:
+            raise LookupError(f"Suggestion batch {batch_id} not found")
+
+        now = self._now()
+        # Suggestions eligible for this apply pass: accepted + have a section_id
+        to_apply = [
+            s for s in suggestions
+            if s.status == SuggestionStatus.ACCEPTED and s.section_id is not None
+        ]
+        # Already applied are skipped (idempotency) but don't trigger the "nothing to do" error
+        already_applied = [s for s in suggestions if s.status == SuggestionStatus.APPLIED]
+        skipped = len(suggestions) - len(to_apply)
+
+        if not to_apply and not already_applied:
+            raise ValueError(
+                f"no accepted suggestions in batch {batch_id} — "
+                "accept at least one suggestion before applying"
+            )
+
+        workspace_id = self._workspace_id or suggestions[0].workspace_id
+        work_item_id = suggestions[0].work_item_id
+
+        applied_ids: list[UUID] = []
+        for s in to_apply:
+            if self._section_service is not None:
+                await self._section_service.update_section(
+                    section_id=s.section_id,  # type: ignore[arg-type]
+                    work_item_id=s.work_item_id,
+                    workspace_id=workspace_id,
+                    actor_id=actor_id,
+                    new_content=s.proposed_content,
+                )
+            applied_ids.append(s.id)
+
+        if applied_ids:
+            await self._suggestion_repo.update_status(applied_ids, SuggestionStatus.APPLIED, now)
+
+        # Create a single batch-apply version record so callers always get a version back
+        latest_version: WorkItemVersion | None = None
+        if self._versioning_service is not None and applied_ids:
+            n = len(applied_ids)
+            latest_version = await self._versioning_service.create_version(  # type: ignore[assignment]
+                work_item_id=work_item_id,
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                trigger=VersionTrigger.AI_SUGGESTION,
+                actor_type=VersionActorType.AI_SUGGESTION,
+                commit_message=f"Applied {n} AI suggestion{'s' if n != 1 else ''} from batch",
+            )
+        elif self._versioning_service is not None:
+            # Nothing new applied — return the current latest
+            latest_version = await self._versioning_service.get_latest(  # type: ignore[assignment]
+                work_item_id, workspace_id
+            )
+
+        logger.info(
+            "apply_accepted_batch complete batch_id=%s applied=%d skipped=%d",
+            batch_id,
+            len(applied_ids),
+            skipped,
+        )
+        return {
+            "applied_count": len(applied_ids),
+            "skipped_count": skipped,
+            "latest_version": latest_version,
+        }

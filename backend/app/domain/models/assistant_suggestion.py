@@ -14,9 +14,10 @@ class SuggestionStatus(Enum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     EXPIRED = "expired"
+    APPLIED = "applied"
 
 
-_TERMINAL = frozenset({SuggestionStatus.ACCEPTED, SuggestionStatus.REJECTED})
+_TERMINAL = frozenset({SuggestionStatus.ACCEPTED, SuggestionStatus.REJECTED, SuggestionStatus.APPLIED})
 
 
 def _now() -> datetime:

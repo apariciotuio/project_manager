@@ -110,6 +110,11 @@ class VersioningService:
         )
         return version
 
+    async def get_latest(
+        self, work_item_id: UUID, workspace_id: UUID
+    ) -> WorkItemVersion | None:
+        return await self._repo.get_latest(work_item_id, workspace_id)
+
     async def get_by_number(
         self, work_item_id: UUID, version_number: int, workspace_id: UUID
     ) -> WorkItemVersion | None:

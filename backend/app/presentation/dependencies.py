@@ -419,18 +419,45 @@ def get_conversation_service(
 def get_suggestion_service(
     session: AsyncSession = Depends(get_scoped_session),
     dundun: DundunClient = Depends(get_dundun_client),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> SuggestionService:
+    from app.application.services.section_service import SectionService
     from app.application.services.suggestion_service import SuggestionService
+    from app.application.services.versioning_service import VersioningService
     from app.config.settings import get_settings
     from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
         AssistantSuggestionRepositoryImpl,
     )
+    from app.infrastructure.persistence.section_repository_impl import (
+        SectionRepositoryImpl,
+        SectionVersionRepositoryImpl,
+    )
+    from app.infrastructure.persistence.task_node_repository_impl import TaskNodeRepositoryImpl
+    from app.infrastructure.persistence.work_item_version_repository_impl import (
+        WorkItemVersionRepositoryImpl,
+    )
 
+    versioning = VersioningService(
+        session=session,
+        repo=WorkItemVersionRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+        section_repo=SectionRepositoryImpl(session),
+        task_node_repo=TaskNodeRepositoryImpl(session),
+    )
+    section_svc = SectionService(
+        section_repo=SectionRepositoryImpl(session),
+        section_version_repo=SectionVersionRepositoryImpl(session),
+        work_item_repo=WorkItemRepositoryImpl(session),
+        versioning_service=versioning,
+    )
     s = get_settings()
     return SuggestionService(
         suggestion_repo=AssistantSuggestionRepositoryImpl(session),
         dundun_client=dundun,
         callback_url=s.dundun.callback_url,
+        section_service=section_svc,
+        versioning_service=versioning,
+        workspace_id=current_user.workspace_id,
     )
 
 
