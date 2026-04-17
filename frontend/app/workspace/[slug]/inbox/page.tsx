@@ -1,41 +1,71 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Bell, CheckCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageContainer } from '@/components/layout/page-container';
 import { NotificationItem } from '@/components/notifications/notification-item';
-import { listNotifications, markRead as apiMarkRead, markAllRead as apiMarkAllRead } from '@/lib/api/notifications';
+import { InboxFilterBarWithUrlSync } from '@/components/notifications/inbox-filter-bar';
+import { NotificationSheet } from '@/components/notifications/notification-sheet';
+import {
+  listNotifications,
+  markRead as apiMarkRead,
+  markAllRead as apiMarkAllRead,
+} from '@/lib/api/notifications';
 import { isSessionExpired } from '@/lib/types/auth';
 import type { NotificationV2 } from '@/lib/types/api';
+import type { InboxFilter } from '@/components/notifications/inbox-filter-bar';
 
 interface InboxPageProps {
   params: { slug: string };
 }
 
+// Map filter tab to API params
+function filterToApiParams(filter: InboxFilter): {
+  onlyUnread: boolean;
+  typeFilter: string | null;
+} {
+  switch (filter) {
+    case 'unread':
+      return { onlyUnread: true, typeFilter: null };
+    case 'mentions':
+      return { onlyUnread: false, typeFilter: 'mention' };
+    case 'reviews':
+      return { onlyUnread: false, typeFilter: 'review_request' };
+    default:
+      return { onlyUnread: false, typeFilter: null };
+  }
+}
+
 export default function InboxPage({ params: { slug } }: InboxPageProps) {
   const t = useTranslations('workspace.inbox');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const activeFilter = (searchParams.get('filter') ?? 'all') as InboxFilter;
+  const searchTerm = (searchParams.get('search') ?? '').toLowerCase();
 
   const [notifications, setNotifications] = useState<NotificationV2[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [onlyUnread, setOnlyUnread] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [sheetNotification, setSheetNotification] = useState<NotificationV2 | null>(null);
 
   const PAGE_SIZE = 20;
 
+  const { onlyUnread } = filterToApiParams(activeFilter);
+
   const fetchNotifications = useCallback(
-    async (pg = 1, unreadOnly = onlyUnread) => {
+    async (pg = 1) => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await listNotifications(pg, PAGE_SIZE, unreadOnly);
+        const res = await listNotifications(pg, PAGE_SIZE, onlyUnread);
         setNotifications(res.data.items);
         setTotal(res.data.total);
         setPage(pg);
@@ -45,41 +75,50 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
         setIsLoading(false);
       }
     },
-    [onlyUnread]
+    [onlyUnread],
   );
 
   useEffect(() => {
-    void fetchNotifications(1, onlyUnread);
-  }, [fetchNotifications, onlyUnread]);
+    void fetchNotifications(1);
+  }, [fetchNotifications]);
 
-  const handleMarkRead = useCallback(
-    async (id: string) => {
-      // Optimistic update
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, state: 'read' as const } : n))
-      );
-      try {
-        await apiMarkRead(id);
-      } catch {
-        // Revert
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, state: 'unread' as const } : n))
-        );
+  // Client-side search + type filter
+  const visibleNotifications = useMemo(() => {
+    const { typeFilter } = filterToApiParams(activeFilter);
+    return notifications.filter((n) => {
+      // Type filter (mentions/reviews)
+      if (typeFilter && n.type !== typeFilter) return false;
+      // Search filter: match summary or actor
+      if (searchTerm) {
+        const summary = String(n.extra['summary'] ?? n.type).toLowerCase();
+        const actor = String(n.extra['actor_name'] ?? '').toLowerCase();
+        if (!summary.includes(searchTerm) && !actor.includes(searchTerm)) return false;
       }
-    },
-    []
-  );
+      return true;
+    });
+  }, [notifications, activeFilter, searchTerm]);
+
+  const handleMarkRead = useCallback(async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, state: 'read' as const } : n)),
+    );
+    try {
+      await apiMarkRead(id);
+    } catch {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, state: 'unread' as const } : n)),
+      );
+    }
+  }, []);
 
   const handleMarkAllRead = useCallback(async () => {
     setIsMarkingAll(true);
-    // Optimistic
     setNotifications((prev) =>
-      prev.map((n) => (n.state === 'unread' ? { ...n, state: 'read' as const } : n))
+      prev.map((n) => (n.state === 'unread' ? { ...n, state: 'read' as const } : n)),
     );
     try {
       await apiMarkAllRead();
     } catch {
-      // Reload on failure
       void fetchNotifications(page);
     } finally {
       setIsMarkingAll(false);
@@ -92,18 +131,18 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
     }
     if (notification.deeplink) {
       router.push(notification.deeplink);
+    } else {
+      // No deeplink — open the sheet
+      setSheetNotification(notification);
     }
   }
 
-  function handleToggleUnread() {
-    const next = !onlyUnread;
-    setOnlyUnread(next);
-    // fetchNotifications will be called via useEffect when onlyUnread changes
+  function handleOpenSheet(notification: NotificationV2) {
+    setSheetNotification(notification);
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  // Loading skeleton
   if (isLoading) {
     return (
       <PageContainer variant="narrow">
@@ -131,7 +170,10 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
     return (
       <PageContainer variant="narrow">
         <h1 className="mb-6 text-h2 font-semibold">{t('title')}</h1>
-        <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3">
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3"
+        >
           <p className="text-body-sm text-destructive">
             {t('errorBanner')}: {error.message}
           </p>
@@ -157,21 +199,6 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleToggleUnread}
-            className="flex items-center gap-1.5"
-          >
-            <input
-              type="checkbox"
-              checked={onlyUnread}
-              readOnly
-              aria-label={t('onlyUnread')}
-              className="pointer-events-none"
-            />
-            <span>{t('onlyUnread')}</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => void handleMarkAllRead()}
             disabled={isMarkingAll}
             aria-label={t('markAllRead')}
@@ -182,7 +209,11 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
         </div>
       </div>
 
-      {notifications.length === 0 ? (
+      <div className="mb-4">
+        <InboxFilterBarWithUrlSync />
+      </div>
+
+      {visibleNotifications.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
           <Bell className="h-10 w-10 opacity-30" />
           <p className="text-body">{t('empty')}</p>
@@ -190,7 +221,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
       ) : (
         <>
           <div className="flex flex-col gap-1">
-            {notifications.map((n) => (
+            {visibleNotifications.map((n) => (
               <div
                 key={n.id}
                 className="cursor-pointer rounded-md"
@@ -200,6 +231,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
                 <NotificationItem
                   notification={n}
                   onMarkRead={(id) => void handleMarkRead(id)}
+                  onOpenSheet={handleOpenSheet}
                 />
               </div>
             ))}
@@ -230,6 +262,20 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
           )}
         </>
       )}
+
+      <NotificationSheet
+        notification={sheetNotification}
+        open={sheetNotification !== null}
+        onClose={() => setSheetNotification(null)}
+        onMarkActioned={(id) => {
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === id ? { ...n, state: 'actioned' as const } : n,
+            ),
+          );
+          setSheetNotification(null);
+        }}
+      />
     </PageContainer>
   );
 }

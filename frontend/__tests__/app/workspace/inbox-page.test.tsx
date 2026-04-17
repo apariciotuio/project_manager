@@ -6,8 +6,9 @@ import { server } from '../../msw/server';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
   useParams: () => ({ slug: 'acme' }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/app/providers/auth-provider', () => ({
@@ -152,7 +153,7 @@ describe('InboxPage', () => {
     expect(screen.getByRole('button', { name: /workspace\.inbox\.markAllRead/i })).toBeTruthy();
   });
 
-  it('shows unread-only toggle filter', async () => {
+  it('shows filter tabs including unread', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
         HttpResponse.json({ data: { items: mockV2Notifications, total: 2, page: 1, page_size: 20 } })
@@ -166,9 +167,9 @@ describe('InboxPage', () => {
     render(<InboxPage params={{ slug: 'acme' }} />);
 
     await screen.findByText('Alice mentioned you');
-    // Filter checkbox or button should be visible
-    const filter = screen.getByRole('checkbox', { name: /workspace\.inbox\.onlyUnread/i });
-    expect(filter).toBeTruthy();
+    // Filter tabs should be visible
+    expect(screen.getByRole('tab', { name: /workspace\.inbox\.filter\.all/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /workspace\.inbox\.filter\.unread/i })).toBeTruthy();
   });
 
   it('shows loading skeleton while fetching', async () => {

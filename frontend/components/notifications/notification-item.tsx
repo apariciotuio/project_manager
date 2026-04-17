@@ -43,6 +43,7 @@ export interface NotificationItemProps {
   notification: NotificationV2;
   onMarkRead: (id: string) => void;
   onExecuteAction?: (id: string, action: QuickAction) => void;
+  onOpenSheet?: (notification: NotificationV2) => void;
   isLoading?: boolean;
 }
 
@@ -50,6 +51,7 @@ export function NotificationItem({
   notification,
   onMarkRead,
   onExecuteAction,
+  onOpenSheet,
   isLoading = false,
 }: NotificationItemProps) {
   const Icon = getIcon(notification.type);
