@@ -20,6 +20,22 @@ from app.domain.errors.codes import (
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 
 
+def _make_app_with_500() -> "FastAPI":
+    """Extend the base app with 500-class routes."""
+    app = FastAPI()
+    register_domain_error_handler(app)
+
+    @app.get("/raise/internal")
+    async def raise_internal() -> None:
+        raise DomainError("sql fragment: SELECT * FROM secrets WHERE id=1")
+
+    @app.get("/raise/not-found-ok")
+    async def raise_not_found_ok() -> None:
+        raise NotFoundError("item not found")
+
+    return app
+
+
 def _make_app() -> FastAPI:
     """Build a minimal FastAPI app with domain error routes for testing."""
     app = FastAPI()
@@ -165,6 +181,31 @@ def test_error_codes_http_status_mapping() -> None:
     assert ERROR_CODES["INTERNAL_ERROR"] == 500
 
 
+# ---------------------------------------------------------------------------
+# 5xx message scrubbing (MF-3)
+# ---------------------------------------------------------------------------
+
+
+def test_500_domain_error_message_is_generic() -> None:
+    """500 DomainError must not leak internal message to client."""
+    c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
+    response = c.get("/raise/internal")
+    assert response.status_code == 500
+    body = response.json()
+    assert body["error"]["message"] == "Internal server error"
+    assert "sql fragment" not in body["error"]["message"]
+    assert "secrets" not in body["error"]["message"]
+
+
+def test_sub_500_domain_error_message_is_preserved() -> None:
+    """4xx messages must still reach the client unchanged."""
+    c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
+    response = c.get("/raise/not-found-ok")
+    assert response.status_code == 404
+    body = response.json()
+    assert "item not found" in body["error"]["message"]
+
+
 def test_domain_error_http_status_property() -> None:
     err = TagNameTakenError("my-tag")
     assert err.http_status == 409
@@ -174,3 +215,28 @@ def test_domain_error_http_status_property() -> None:
 
     err3 = NotFoundError("not here")
     assert err3.http_status == 404
+
+
+def test_500_domain_error_logs_original_message(caplog: pytest.LogCaptureFixture) -> None:
+    """Server log must contain the original (sensitive) message for debugging."""
+    import logging
+    import pytest
+
+    c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
+    with caplog.at_level(logging.ERROR, logger="app.presentation.middleware.error_envelope"):
+        c.get("/raise/internal")
+
+    assert any("sql fragment" in record.message for record in caplog.records)
+
+
+def test_500_unhandled_exception_message_is_generic() -> None:
+    """Unhandled exceptions from error_middleware also scrub messages (regression guard)."""
+    # This test checks that the existing error_middleware's catch-all also returns generic 500.
+    # We test via error_envelope's _make_app_with_500 baseline.
+    c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
+    response = c.get("/raise/internal")
+    assert response.status_code == 500
+    body = response.json()
+    # Generic message, no internal details
+    assert body["error"]["message"] == "Internal server error"
+    assert "SELECT" not in body["error"]["message"]

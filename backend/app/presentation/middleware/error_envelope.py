@@ -10,12 +10,19 @@ over the catch-all Exception handler.
 """
 from __future__ import annotations
 
+import logging
+import traceback
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.config.logging import correlation_id_var
 from app.domain.errors.codes import DomainError
+
+logger = logging.getLogger(__name__)
+
+_GENERIC_SERVER_ERROR = "Internal server error"
 
 
 def _envelope(
@@ -34,11 +41,25 @@ def _envelope(
 
 
 async def _domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:  # noqa: ARG001
-    return JSONResponse(
-        status_code=exc.http_status,
-        content=_envelope(
+    status = exc.http_status
+    if status >= 500:
+        correlation_id = correlation_id_var.get("")
+        logger.error(
+            "DomainError 5xx: code=%s message=%r correlation_id=%s\n%s",
             exc.code,
             exc.message,
+            correlation_id,
+            "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+        )
+        client_message = _GENERIC_SERVER_ERROR
+    else:
+        client_message = exc.message
+
+    return JSONResponse(
+        status_code=status,
+        content=_envelope(
+            exc.code,
+            client_message,
             field=exc.field,
             details=exc.details if exc.details else None,
         ),
