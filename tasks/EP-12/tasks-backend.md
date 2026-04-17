@@ -237,6 +237,7 @@ Cache key strategy (non-negotiable — must match exactly):
 - [ ] Create migration for any missing indexes
   - [x] **Partial:** Migration 0032 adds partial index `idx_team_memberships_team_active ON team_memberships(team_id, joined_at) WHERE removed_at IS NULL` (`backend/migrations/versions/0032_team_memberships_idx.py`) — backs the EP-08 team-picker N+1 fix.
   - [x] **Partial:** Migration 0033 adds `workspace_id` + btree index + RLS policy to `conversation_threads`, `assistant_suggestions`, `gap_findings` (`backend/migrations/versions/0033_ep03_rls.py`) — closes EP-03 cross-workspace leakage.
+  - [x] **MF-1 SHIPPED:** Migration 0112 adds `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY <table>_workspace_isolation` to 9 tables: `teams`, `notifications`, `saved_searches`, `projects`, `routing_rules`, `integration_configs`, `integration_exports`, `work_item_drafts`, `validation_rule_templates`. Special policy for `validation_rule_templates` permits `workspace_id IS NULL` (global templates). Drops `vrt_global_allowed` placeholder CHECK. 8 integration tests in `tests/integration/test_migration_0112_rls.py`. (2026-04-17)
 - [ ] Document in project CLAUDE.md: all new migrations must include EXPLAIN ANALYZE output for 3 most frequent queries
 
 ### Acceptance Criteria — SSE Infrastructure
