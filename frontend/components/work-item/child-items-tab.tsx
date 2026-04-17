@@ -5,6 +5,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TypeBadge } from '@/components/domain/type-badge';
 import { StateBadge } from '@/components/domain/state-badge';
 import { useChildItems } from '@/hooks/work-item/use-child-items';
+import { useTaskTree } from '@/hooks/work-item/use-task-tree';
+import { TaskTree } from '@/components/work-item/task-tree';
+import { ParentBreadcrumb } from '@/components/work-item/parent-breadcrumb';
 import type { WorkItemResponse } from '@/lib/types/work-item';
 import type { WorkitemState } from '@/components/domain/state-badge';
 import type { WorkitemType } from '@/components/domain/type-badge';
@@ -60,15 +63,21 @@ function ChildItemRow({ item, slug }: ChildItemRowProps) {
 
 interface ChildItemsTabProps {
   workItemId: string;
+  /** Full work item — needed for parent breadcrumb. Optional for backward compatibility. */
+  workItem?: WorkItemResponse;
   slug: string;
 }
 
-export function ChildItemsTab({ workItemId, slug }: ChildItemsTabProps) {
-  const { children, isLoading } = useChildItems(workItemId);
+export function ChildItemsTab({ workItemId, workItem, slug }: ChildItemsTabProps) {
+  const { children, isLoading: childrenLoading } = useChildItems(workItemId);
+  const { tree, isLoading: treeLoading, refetch } = useTaskTree(workItemId);
+
+  const isLoading = childrenLoading || treeLoading;
 
   if (isLoading) {
     return (
       <div className="flex flex-col gap-2">
+        <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
       </div>
@@ -76,27 +85,39 @@ export function ChildItemsTab({ workItemId, slug }: ChildItemsTabProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-h3">Sub-items</h3>
-        <Link
-          href={`/workspace/${slug}/items/new?parent=${workItemId}`}
-          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          aria-label="Añadir sub-item"
-        >
-          + Añadir sub-item
-        </Link>
+    <div className="flex flex-col gap-6">
+      {/* Breadcrumb — renders nothing when no parent or workItem not yet loaded */}
+      {workItem && <ParentBreadcrumb workItem={workItem} slug={slug} />}
+
+      {/* Sub-tasks section */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-h3">Sub-tasks</h3>
+        <TaskTree tree={tree} workItemId={workItemId} onRefetch={refetch} />
       </div>
 
-      {children.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin sub-items aún</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border" aria-label="Sub-items">
-          {children.map((child) => (
-            <ChildItemRow key={child.id} item={child} slug={slug} />
-          ))}
-        </ul>
-      )}
+      {/* Sub-items section */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-h3">Sub-items</h3>
+          <Link
+            href={`/workspace/${slug}/items/new?parent=${workItemId}`}
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            aria-label="Añadir sub-item"
+          >
+            + Añadir sub-item
+          </Link>
+        </div>
+
+        {children.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin sub-items aún</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border" aria-label="Sub-items">
+            {children.map((child) => (
+              <ChildItemRow key={child.id} item={child} slug={slug} />
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
