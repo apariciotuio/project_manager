@@ -16,6 +16,8 @@
 
 **Fix:** Add `current_user: CurrentUser = Depends(get_current_user)` to all four endpoints. Verify `tag.workspace_id == current_user.workspace_id` to prevent cross-workspace IDOR.
 
+[FIXED in commit 005d3d7]
+
 ---
 
 ### MF-2 -- Tag PATCH endpoint only accepts `name`, frontend sends `name` + `color` [FIXED in commit 0f22d14]
@@ -42,6 +44,8 @@ When a `DomainError("something went wrong internally")` is raised, the envelope 
 
 **Fix:** In `_domain_error_handler`, when `exc.http_status >= 500`, replace `exc.message` with a generic string and log the real message server-side.
 
+[FIXED in commit c39d8dc]
+
 ---
 
 ## Should Fix
@@ -54,6 +58,8 @@ When a `DomainError("something went wrong internally")` is raised, the envelope 
 The comment says "manual sync required" and "consider codegen at ~50 codes." Currently 9 codes. TS has an extra `UNKNOWN` synthetic code. The Python `ERROR_CODES` dict also has `TAG_ARCHIVED` and `INVALID_INPUT` used in `tag_controller.py:146,151` but these are NOT in the registry -- they are inline strings in `HTTPException.detail`. This means the TS side has no way to match them.
 
 **Fix:** Add `TAG_ARCHIVED` and `INVALID_INPUT` to both registries. Or, raise `DomainError` subclasses instead of `HTTPException` with inline codes in the tag controller.
+
+[FIXED in commit cafaaf9 — controller now raises TagArchivedDomainError/InvalidInputError; both codes were already in registry]
 
 ---
 
@@ -89,6 +95,8 @@ Even after MF-1 is fixed, the endpoints fetch a tag by `tag_id` alone without ve
 
 **Fix:** After `repo.get(tag_id)`, assert `tag.workspace_id == current_user.workspace_id`.
 
+[FIXED in commit 005d3d7 — _get_tag_scoped() checks workspace_id, returns 404 on violation]
+
 ---
 
 ### SF-5 -- `onComplete` in useEffect dependency array risks infinite loop [FIXED in commit 3bef712]
@@ -123,6 +131,8 @@ if settings.dundun.use_fake:
 The import is conditional on a settings flag, which is fine for dev. But `FakeDundunClient` now lives in `app.infrastructure.fakes` (production package tree) rather than `tests/`. This means the fake is shipped with the production image. Not a security issue, but it bloats the image and someone will eventually flip `use_fake=True` in prod by accident.
 
 **Fix:** Guard the import with an `APP_ENV != "production"` check, or keep the fake in `tests/` and let `dundun_tasks.py` import from there only in dev/test.
+
+[FIXED in commit b654457]
 
 ---
 
