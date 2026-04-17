@@ -259,7 +259,8 @@ class TestRisks:
 class TestBreakdown:
     def test_applicable_for_initiative(self) -> None:
         wi = _WI(WorkItemType.INITIATIVE)
-        r = dc.check_breakdown(wi, [_s(SectionType.BREAKDOWN, "- child 1")], [])
+        # 3+ tasks → filled (EP-04+EP-05 scoring bands)
+        r = dc.check_breakdown(wi, [], [], task_count=3)
         assert r.applicable is True
         assert r.filled is True
 
@@ -267,14 +268,15 @@ class TestBreakdown:
         r = dc.check_breakdown(_WI(WorkItemType.BUG), [], [])
         assert r.applicable is False
 
-    def test_empty_breakdown_not_filled(self) -> None:
+    def test_zero_tasks_not_filled(self) -> None:
         wi = _WI(WorkItemType.INITIATIVE)
-        r = dc.check_breakdown(wi, [_s(SectionType.BREAKDOWN, "")], [])
+        r = dc.check_breakdown(wi, [], [], task_count=0)
         assert r.filled is False
 
     def test_single_line_counts(self) -> None:
         wi = _WI(WorkItemType.BUSINESS_CHANGE)
-        r = dc.check_breakdown(wi, [_s(SectionType.BREAKDOWN, "at least one line")], [])
+        # 3+ tasks → filled (replaces old section-content check)
+        r = dc.check_breakdown(wi, [], [], task_count=3)
         assert r.filled is True
 
 
@@ -337,7 +339,8 @@ class TestCheckAll:
     def test_returns_9_results(self) -> None:
         wi = _WI(WorkItemType.BUG, owner_id=uuid4())
         results = dc.check_all(wi, [], [])
-        assert len(results) == len(dc.ALL_CHECKERS)
+        # ALL_CHECKERS has 8 entries; check_all adds breakdown separately → 9 total
+        assert len(results) == 9
 
     def test_all_dimensions_have_names(self) -> None:
         wi = _WI(WorkItemType.BUG, owner_id=uuid4())

@@ -5,6 +5,12 @@ DimensionResult. No I/O. No framework imports.
 
 Weights come from DIMENSION_WEIGHTS — they are renormalised per WorkItemType
 in ScoreCalculator.compute().
+
+Breakdown scoring bands (EP-04 + EP-05 cross-EP wiring):
+  0 tasks   → score 0.0  (not filled)
+  1-2 tasks → score 0.4  (partial — shows intent but no real decomposition)
+  3-5 tasks → score 0.8  (good decomposition)
+  6+ tasks  → score 1.0  (fully filled)
 """
 from __future__ import annotations
 
@@ -213,21 +219,37 @@ def check_risks(
     )
 
 
+def _breakdown_score(task_count: int) -> float:
+    """Map task_count to a continuous score using the breakdown bands."""
+    if task_count == 0:
+        return 0.0
+    if task_count <= 2:
+        return 0.4
+    if task_count <= 5:
+        return 0.8
+    return 1.0
+
+
 def check_breakdown(
     work_item: _WorkItemLike,
     sections: list[Section],
     _validators: list[Validator],
+    *,
+    task_count: int = 0,
 ) -> DimensionResult:
     applicable = work_item.type in _TYPES_NEEDING_BREAKDOWN
     if not applicable:
         return _result("breakdown", applicable=False, filled=False)
-    content = _content(sections, SectionType.BREAKDOWN)
-    filled = any(line.strip() for line in content.splitlines())
-    return _result(
-        "breakdown",
+    score = _breakdown_score(task_count)
+    filled = score >= 0.8
+    weight = DIMENSION_WEIGHTS.get("breakdown", 0.0)
+    return DimensionResult(
+        dimension="breakdown",
+        weight=weight,
         applicable=True,
         filled=filled,
-        message="Provide a breakdown of child items",
+        score=score,
+        message=None if filled else "Provide a breakdown of child items (at least 3 tasks)",
     )
 
 
@@ -269,7 +291,6 @@ ALL_CHECKERS = (
     check_acceptance_criteria,
     check_dependencies,
     check_risks,
-    check_breakdown,
     check_ownership,
     check_validations,
 )
@@ -279,5 +300,9 @@ def check_all(
     work_item: _WorkItemLike,
     sections: list[Section],
     validators: list[Validator],
+    *,
+    task_count: int = 0,
 ) -> list[DimensionResult]:
-    return [chk(work_item, sections, validators) for chk in ALL_CHECKERS]
+    results = [chk(work_item, sections, validators) for chk in ALL_CHECKERS]
+    results.insert(6, check_breakdown(work_item, sections, validators, task_count=task_count))
+    return results
