@@ -9,7 +9,17 @@ from app.domain.models.team import Notification
 
 class INotificationRepository(ABC):
     @abstractmethod
-    async def create(self, notification: Notification) -> Notification: ...
+    async def create(self, notification: Notification) -> Notification:
+        """Create a notification; no-op if `idempotency_key` already exists.
+
+        Contract:
+            - New key: persist `notification` unchanged and return it (same `id`).
+            - Duplicate key: return the pre-existing row (its `id` differs from
+              the supplied `notification.id`).
+
+        Callers may use `returned.id == notification.id` to detect new rows.
+        """
+        ...
 
     @abstractmethod
     async def get(self, notification_id: UUID) -> Notification | None: ...

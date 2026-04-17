@@ -67,8 +67,9 @@ async def seed_notifications(
             notification.mark_read()
 
         existing = await repo.create(notification)
-        # If idempotency_key was fresh we get back our notification;
-        # detect new vs skip by comparing ids
+        # INotificationRepository.create contract: returns the supplied
+        # notification (same id) on insert, or the pre-existing row
+        # (different id) when idempotency_key collides.
         if existing.id == notification.id:
             created += 1
 
