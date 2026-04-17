@@ -38,6 +38,11 @@ class WorkItemStateChangedEvent(Event):
     actor_id: UUID | None  # None when actor is the system
     is_override: bool
     reason: str | None
+    # Optional: populated when the emitter knows the work item owner.
+    # NotificationSubscriber uses this to fan-out; if None the notification is skipped.
+    # TODO(EP-08): update WorkItemService.transition_state to include owner_id once EP-06
+    # lane restrictions are lifted.
+    owner_id: UUID | None = None
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=_now)
 
@@ -110,5 +115,64 @@ class WorkspaceMemberSuspendedWithActiveItemsEvent(Event):
     workspace_id: UUID
     user_id: UUID
     active_item_count: int
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=_now)
+
+
+# ---------------------------------------------------------------------------
+# EP-08 — Notification trigger events
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReviewRequestedEvent(Event):
+    """Emitted when a review is requested on a work item.
+
+    EP-06 is the canonical producer. If review_events.py exists at import time,
+    that version takes precedence. This definition is here so the notification
+    subscriber can register without depending on EP-06 being deployed first.
+    TODO(EP-08/EP-06): consolidate into a single canonical definition.
+    """
+
+    work_item_id: UUID
+    review_request_id: UUID
+    requester_id: UUID
+    reviewer_id: UUID
+    workspace_id: UUID
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
+class ReviewRespondedEvent(Event):
+    """Emitted when a reviewer responds to a review request.
+
+    TODO(EP-08/EP-06): consolidate with EP-06 canonical definition.
+    """
+
+    work_item_id: UUID
+    review_request_id: UUID
+    requester_id: UUID
+    reviewer_id: UUID
+    workspace_id: UUID
+    decision: str  # "approved" | "changes_requested" | "rejected"
+    response_content: str | None = None
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
+class CommentAddedEvent(Event):
+    """Emitted when a comment is posted on a work item.
+
+    Subscriber notifies the work item owner (fan-out to reviewers is deferred
+    to a later iteration when reviewer list resolution is cheap).
+    """
+
+    work_item_id: UUID
+    workspace_id: UUID
+    comment_id: UUID
+    author_id: UUID
+    owner_id: UUID  # who owns the work item — pre-resolved by the emitter
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=_now)
