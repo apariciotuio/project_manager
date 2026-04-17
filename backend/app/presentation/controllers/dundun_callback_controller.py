@@ -215,6 +215,16 @@ async def _handle_suggestion(
     now = datetime.now(UTC)
     expires_at = now + timedelta(hours=_SUGGESTION_EXPIRES_HOURS)
 
+    # Resolve version_number_target from the versioning repo (EP-07).
+    # latest.version_number + 1 is the version this suggestion targets.
+    # Falls back to 1 when no versions exist yet (fresh work item).
+    from app.infrastructure.persistence.work_item_version_repository_impl import (
+        WorkItemVersionRepositoryImpl,
+    )
+    version_repo = WorkItemVersionRepositoryImpl(session)
+    latest_version = await version_repo.get_latest(work_item_id, workspace_id)
+    version_number_target = (latest_version.version_number if latest_version else 0) + 1
+
     suggestions = [
         AssistantSuggestion(
             id=uuid4(),
@@ -226,7 +236,7 @@ async def _handle_suggestion(
             current_content=item.current_content,
             rationale=item.rationale,
             status=SuggestionStatus.PENDING,
-            version_number_target=1,  # TODO EP-07: fetch current version from work_item
+            version_number_target=version_number_target,
             batch_id=batch_id,
             dundun_request_id=payload.request_id,
             created_by=created_by,
