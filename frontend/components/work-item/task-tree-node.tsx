@@ -6,6 +6,7 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTaskMutations } from '@/hooks/work-item/use-task-mutations';
 import { TaskTreeAddDialog } from '@/components/work-item/task-tree-add-dialog';
+import { DependencyBadge } from '@/components/work-item/dependency-badge';
 import type { TaskNode, TaskEdge, TaskStatus } from '@/lib/types/task';
 
 const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
@@ -48,15 +49,6 @@ export function TaskTreeNode({
   const { renameTask, setStatus } = useTaskMutations(onRefetch);
 
   const hasChildren = children.length > 0;
-
-  // Outgoing "blocks" edges from this node
-  const outgoingBlocks = edges.filter(
-    (e) => e.from_node_id === node.id && e.kind === 'blocks',
-  );
-
-  const blockedNodeTitles = outgoingBlocks
-    .map((e) => allNodes.find((n) => n.id === e.to_node_id)?.title)
-    .filter((t): t is string => t !== undefined);
 
   const handleToggle = useCallback(() => {
     setExpanded((v) => !v);
@@ -160,15 +152,7 @@ export function TaskTreeNode({
         )}
 
         {/* Dependency badge */}
-        {outgoingBlocks.length > 0 && (
-          <span
-            title={`${t('dependencyTooltipTitle')} ${blockedNodeTitles.join(', ')}`}
-            aria-label={t('dependencyBadgeAria').replace('{count}', String(outgoingBlocks.length))}
-            className="shrink-0 text-xs font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-full cursor-default"
-          >
-            →{outgoingBlocks.length}
-          </span>
-        )}
+        <DependencyBadge nodeId={node.id} edges={edges} allNodes={allNodes} />
 
         {/* Add child button */}
         <button
