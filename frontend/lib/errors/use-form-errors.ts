@@ -23,7 +23,7 @@ export function useFormErrors(): UseFormErrorsResult {
   const handleApiError = useCallback((err: unknown): void => {
     if (err instanceof ApiError) {
       if (err.field) {
-        setFieldErrors({ [err.field]: err.message });
+        setFieldErrors((prev) => ({ ...prev, [err.field]: err.message }));
       } else {
         showErrorToast(err.code, err.message);
       }

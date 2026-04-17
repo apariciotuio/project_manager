@@ -94,6 +94,41 @@ describe('useFormErrors', () => {
     });
   });
 
+  describe('handleApiError — multiple field errors accumulate', () => {
+    it('merges field errors across consecutive calls without clearing', () => {
+      const { result } = renderHook(() => useFormErrors());
+      const err1 = new ApiError(422, { code: 'VALIDATION_ERROR', message: 'Required', field: 'name' });
+      const err2 = new ApiError(422, { code: 'VALIDATION_ERROR', message: 'Too short', field: 'description' });
+
+      act(() => {
+        result.current.handleApiError(err1);
+      });
+      act(() => {
+        result.current.handleApiError(err2);
+      });
+
+      expect(result.current.fieldErrors).toEqual({
+        name: 'Required',
+        description: 'Too short',
+      });
+    });
+
+    it('overwrites same field with latest message', () => {
+      const { result } = renderHook(() => useFormErrors());
+      const err1 = new ApiError(422, { code: 'VALIDATION_ERROR', message: 'First', field: 'name' });
+      const err2 = new ApiError(422, { code: 'VALIDATION_ERROR', message: 'Second', field: 'name' });
+
+      act(() => {
+        result.current.handleApiError(err1);
+      });
+      act(() => {
+        result.current.handleApiError(err2);
+      });
+
+      expect(result.current.fieldErrors).toEqual({ name: 'Second' });
+    });
+  });
+
   describe('clearErrors', () => {
     it('clears field errors', () => {
       const { result } = renderHook(() => useFormErrors());
