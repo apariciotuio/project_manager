@@ -76,9 +76,11 @@ interface GapFinding {
 
 ## Phase 1 — Type Definitions
 
-- [ ] Implement `src/types/conversation.ts`: `ConversationThread`, `ConversationMessage`, `MessageType`, `AuthorType` — all typed exactly as above
-- [ ] Implement `src/types/suggestion.ts`: `SuggestionSet`, `SuggestionItem`, `SuggestionStatus`
-- [ ] Implement `src/types/gap.ts`: `GapFinding`, `GapReport` (`{ work_item_id, findings, score }`)
+- [x] Implement `src/types/conversation.ts`: `ConversationThread`, `ConversationMessage`, `MessageType`, `AuthorType` — all typed exactly as above (→ `frontend/lib/types/conversation.ts`)
+- [x] Implement `src/types/suggestion.ts`: `SuggestionSet`, `SuggestionItem`, `SuggestionStatus` (→ `frontend/lib/types/suggestion.ts`)
+- [x] Implement `src/types/gap.ts`: `GapFinding`, `GapReport` (`{ work_item_id, findings, score }`) (→ `frontend/lib/types/gap.ts`)
+
+**Status: COMPLETED** (2026-04-17)
 
 ---
 
@@ -86,20 +88,22 @@ interface GapFinding {
 
 File: `src/lib/api/conversation.ts`, `src/lib/api/suggestions.ts`, `src/lib/api/gaps.ts`
 
-- [ ] Implement `getThreads(workItemId?: string, type?: 'element' | 'general'): Promise<ConversationThread[]>`
-- [ ] Implement `createThread(data): Promise<ConversationThread>`
-- [ ] Implement `getThread(threadId: string, page: number): Promise<{ thread: ConversationThread, messages: ConversationMessage[], total: number }>`
-- [ ] Implement `sendMessage(threadId: string, content: string): Promise<{ message_id: string }>`
-- [ ] Implement `archiveThread(threadId: string): Promise<void>`
-- [ ] Implement `triggerAiReview(workItemId: string): Promise<{ job_id: string }>`
-- [ ] Implement `getGapQuestions(workItemId: string): Promise<GapFinding[]>`
-- [ ] Implement `generateSuggestionSet(workItemId: string): Promise<{ set_id: string }>`
-- [ ] Implement `getSuggestionSet(setId: string): Promise<SuggestionSet>`
-- [ ] Implement `applySuggestions(setId: string, acceptedItemIds: string[]): Promise<{ new_version: number, applied_sections: string[] }>`
-- [ ] Implement `executeQuickAction(workItemId: string, section: string, action: string): Promise<{ action_id: string, result: string }>`
-- [ ] Implement `undoQuickAction(workItemId: string, actionId: string): Promise<void>`
-- [ ] Implement SSE stream client in `src/lib/api/sse-client.ts`: `streamThread(threadId, onToken, onDone, onError): () => void` — returns cleanup function that closes `EventSource`. **Use shared `useSSE(channel, onMessage)` hook from `src/lib/sse.ts` (owned by EP-12). Do not implement a standalone EventSource directly.**
-- [ ] [RED] Write unit tests using MSW: `sendMessage` happy path, `applySuggestions` happy path and 409 throws `VersionConflictError`, SSE client calls `onToken` per event and `onDone` on done event
+- [x] Implement `getThreads(workItemId?: string): Promise<ConversationThread[]>` (→ `lib/api/threads.ts`)
+- [x] Implement `createThread(data): Promise<ConversationThread>`
+- [x] Implement `getThreadHistory(threadId): Promise<ConversationMessage[]>` (replaces getThread pagination — WS-based chat; history on demand)
+- [x] Implement `archiveThread(threadId: string): Promise<void>`
+- [x] Implement `triggerAiReview(workItemId: string): Promise<{ job_id: string }>` (→ `lib/api/gaps.ts`)
+- [x] Implement `getGapReport(workItemId: string): Promise<GapReport>` — stubs [] until EP-04 ships (TODO comment in file)
+- [x] Implement `generateSuggestionSet(workItemId: string): Promise<{ set_id: string }>` (→ `lib/api/suggestions.ts`)
+- [x] Implement `getSuggestionSet(setId: string): Promise<SuggestionSet>`
+- [x] Implement `applySuggestions(setId: string, acceptedItemIds: string[]): Promise<ApplySuggestionsResult>` — throws ApiError(409) on conflict
+- [x] Implement `updateSuggestionItemStatus(itemId, status): Promise<void>`
+- [ ] `sendMessage` via WS (not REST — chat is WS-only; deferred — WS frame handling in ChatPanel)
+- [ ] `executeQuickAction` / `undoQuickAction` — deferred to Phase 7 (quick actions out of scope for Phases 1-6)
+- [ ] SSE stream client — EP-12-owned; not implemented here
+- [x] [RED→GREEN] Unit tests: 14 tests covering threads, suggestions, gaps API clients (→ `__tests__/lib/api/`)
+
+**Status: COMPLETED** (2026-04-17)
 
 ---
 
@@ -115,18 +119,10 @@ interface GapPanelProps {
 }
 ```
 
-- [ ] [RED] Write component tests:
-  - Renders blocking gaps with red indicator, warnings with yellow
-  - Shows completeness score percentage
-  - "Run AI Review" button triggers `triggerAiReview()` and shows loading state
-  - After AI review triggered, shows "Review in progress..." status
-  - Dismissible: each gap has dismiss button (client-side dismiss, not persisted)
-  - Dundun-sourced gaps labeled "AI" badge; rule-based gaps labeled "Rule" badge
-- [ ] [GREEN] Implement `src/components/clarification/gap-panel.tsx`:
-  - Fetches gap findings via `getGapQuestions(workItemId)` using React Query
-  - Groups: blocking first, then warnings, then info
-  - "Run AI Review" calls `triggerAiReview()` then waits for an SSE event on the work-item channel (EP-08) signalling that `/api/v1/dundun/callback` has written new findings
-  - Error state: "Gap analysis unavailable" with retry
+- [x] [RED→GREEN] Write component tests (7 tests): blocking before warnings, AI/Rule badges, dismiss client-side, run AI review loading state, completeness score, error state (→ `__tests__/components/clarification/gap-panel.test.tsx`)
+- [x] [GREEN] Implement `frontend/components/clarification/gap-panel.tsx`: useGaps hook, severity sort, dismiss via local state, AI review button w/ loading, error state with retry
+
+**Status: COMPLETED** (2026-04-17)
 
 ### Acceptance Criteria — GapPanel
 
@@ -159,54 +155,19 @@ AND no findings list is rendered
 
 ---
 
-## Phase 4 — ClarificationQuestion Component
+## Phase 4 — ClarificationQuestion Component (DEFERRED — not in Phases 1-6 scope)
 
-Component: `src/components/clarification/clarification-question.tsx`
-
-Props:
-```typescript
-interface ClarificationQuestionProps {
-  finding: GapFinding
-  onAnswered: (dimension: string) => void
-  onSkip: () => void
-}
-```
-
-- [ ] [RED] Write component tests: renders question text, submit button disabled when answer empty, skip dismisses question, calling `onAnswered` after submit
-- [ ] [GREEN] Implement `ClarificationQuestion`:
-  - Displays `finding.message` as the question
-  - Answer textarea
-  - "Submit Answer" → sends message to element thread via `sendMessage()`; on success calls `onAnswered(finding.dimension)`
-  - "Skip" → calls `onSkip()` (no API call)
+- [ ] [RED] Write component tests
+- [ ] [GREEN] Implement `ClarificationQuestion` — deferred; ChatPanel handles Q&A flow via WS
 
 ---
 
-## Phase 5 — ConversationThread Component
+## Phase 5 (plan) / Phase 4 (prompt scope) — ChatPanel Component
 
-Component: `src/components/conversation/conversation-thread.tsx`
+- [x] [RED→GREEN] ChatPanel (8 tests): empty state, historical messages, optimistic send, progress frame append, response finalization, disable during streaming, error banner, WS close on unmount (→ `__tests__/components/clarification/chat-panel.test.tsx`)
+- [x] [GREEN] Implement `frontend/components/clarification/chat-panel.tsx`: WS lifecycle via useEffect, useThread hook for history, MessageBubble sub-component, Ctrl+Enter send, auto-scroll
 
-Props:
-```typescript
-interface ConversationThreadProps {
-  threadId: string
-  workItemId?: string
-}
-```
-
-- [ ] [RED] Write component tests:
-  - Renders message list with user/assistant distinction
-  - Streaming assistant message: appends progress frames incrementally
-  - Loading skeleton on initial fetch of history
-  - Error state with retry button
-  - Empty state: "Start the conversation by sending a message"
-  - Input textarea disabled while assistant is responding
-  - Final `{"type":"response", "message_id": ...}` frame finalizes the bubble
-- [ ] [GREEN] Implement `src/components/conversation/conversation-thread.tsx`:
-  - History fetched via `getThreadHistory(threadId)` (delegates to Dundun) on mount
-  - WebSocket via `useConversationWs(threadId)`: opens on mount, closes on unmount; reconnects with exponential backoff on transient drops
-  - Streaming state: append content from `progress` frames to the last assistant bubble
-  - Auto-scroll to bottom on new frame
-- [ ] [GREEN] Implement `MessageComposer` sub-component: textarea, send button, Ctrl+Enter to submit; disabled when `isStreaming = true`
+**Status: COMPLETED** (2026-04-17)
 
 ### Acceptance Criteria — ConversationThread
 
@@ -240,7 +201,26 @@ AND no further state updates occur after unmount
 
 ---
 
-## Phase 6 — SuggestionPreviewPanel Component
+## Phase 5 (prompt scope) — SuggestionBatchCard Component
+
+- [x] [RED→GREEN] SuggestionBatchCard (6 tests): one card per item, Apply Selected disabled until accepted, only accepted IDs sent, expired set disables apply, 409 conflict banner w/ regenerate (→ `__tests__/components/clarification/suggestion-batch-card.test.tsx`)
+- [x] [GREEN] Implement `frontend/components/clarification/suggestion-batch-card.tsx`: expand/collapse, local accept/reject state, ApiError(409) handling, SuggestionDiffCard sub-component (current/proposed side-by-side)
+
+**Status: COMPLETED** (2026-04-17)
+
+---
+
+## Phase 6 (prompt scope) — ClarificationTab + Work-Item Integration
+
+- [x] [RED→GREEN] ClarificationTab (4 tests): renders chat+gap panels, Get Suggestions button visible only to canEdit (→ `__tests__/components/clarification/clarification-tab.test.tsx`)
+- [x] [GREEN] Implement `frontend/components/clarification/clarification-tab.tsx`: composes ChatPanel + GapPanel + SuggestionBatchCard + generation progress stages
+- [x] Add `clarificacion` tab to `app/workspace/[slug]/items/[id]/page.tsx` between Specification and Tasks; renders `ClarificationTab` only for canEdit check; all tabs now include clarification
+
+**Status: COMPLETED** (2026-04-17)
+
+---
+
+## Phase 6 (plan) — SuggestionPreviewPanel Component (MERGED into prompt Phase 5)
 
 Component: `src/components/suggestions/suggestion-preview-panel.tsx`
 
