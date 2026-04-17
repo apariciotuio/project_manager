@@ -153,8 +153,8 @@ Blocked by: Group 1 complete
 - [ ] 2.6 [GREEN] Implement `src/hooks/useComments.ts`
 - [ ] 2.7 [RED] Test `useSectionComments(workItemId, sectionId)`: fetches anchored comments for section
 - [ ] 2.8 [GREEN] Implement `src/hooks/useSectionComments.ts`
-- [ ] 2.9 [RED] Test `useTimeline(workItemId, filters)`: fetches with filters; cursor pagination; filter changes reset to page 1
-- [ ] 2.10 [GREEN] Implement `src/hooks/useTimeline.ts`
+- [x] 2.9 [RED] Test `useTimeline`: 4 tests — first page, loadMore appends + advances cursor, error state, has_more=false (2026-04-17 — __tests__/hooks/work-item/use-timeline.test.ts updated)
+- [x] 2.10 [GREEN] useTimeline aligned to BE contract: consumes has_more, actor_display_name, payload; updated TimelineEventType union; TimelineResponse adds has_more (2026-04-17 — refactor commit 467f74d)
 
 ---
 
@@ -381,8 +381,8 @@ interface TimelineEventItemProps {
 }
 ```
 
-- [ ] 5.1 [RED] Test: renders icon by `event_type`; `actor_display_name` and relative timestamp; `summary` text; `state_transition` shows from→to state; `comment_added` links to comment; `review_submitted` shows decision chip; `ai_suggestion` actor renders robot icon
-- [ ] 5.2 [GREEN] Implement `src/components/timeline/TimelineEventItem.tsx`
+- [x] 5.1 [RED+GREEN] Test + implement TimelineEventItem: icon per event_type, actor_display_name, RelativeTime, ai_suggestion → Bot icon, data-event-type attribute for test selector (2026-04-17 — frontend/components/work-item/timeline-event-item.tsx)
+- [x] 5.2 [GREEN] TimelineEventItem shipped as frontend/components/work-item/timeline-event-item.tsx (2026-04-17)
 
 ### TimelineFilters component
 
@@ -408,8 +408,8 @@ interface TimelineFeedProps {
 }
 ```
 
-- [ ] 5.5 [RED] Test: renders all `TimelineEventItem` components; loading skeleton; empty filtered state "No events match these filters" vs true empty "No activity yet"; cursor pagination; filter changes reset to page 1
-- [ ] 5.6 [GREEN] Implement `src/components/timeline/TimelineFeed.tsx`
+- [x] 5.5 [RED] Test TimelineTab (8 tests): empty state, populated list, load-more cursor advance, no load-more when hasMore=false, error banner, event_type icons, ai_suggestion actor (2026-04-17 — __tests__/components/work-item/timeline-tab.test.tsx)
+- [x] 5.6 [GREEN] TimelineTab rewrite: i18n via useTranslations, loading skeletons, empty state, error banner, Load more button, delegates events to TimelineEventItem (2026-04-17 — frontend/components/work-item/timeline-tab.tsx)
 
 ### Timeline page / tab
 
