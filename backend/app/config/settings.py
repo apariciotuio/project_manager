@@ -81,6 +81,8 @@ class PuppetSettings(BaseSettings):
 
     base_url: str = "http://localhost:17007"
     api_key: str = "dev-fake-key"
+    service_key: str = "dev-service-key"
+    callback_secret: str = "dev-puppet-callback-secret"
     use_fake: bool = True
 
 

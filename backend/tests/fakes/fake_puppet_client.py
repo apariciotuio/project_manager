@@ -1,16 +1,18 @@
 from typing import Any
 
-from app.domain.ports.puppet import PuppetClientError
-
 
 class FakePuppetClient:
     """In-memory fake implementing PuppetClient protocol.
 
     Search does substring match filtered by tags intersection.
+    delete_document is idempotent (404 → no-op) matching PuppetHTTPClient behaviour.
     """
 
     def __init__(self) -> None:
         self._docs: dict[str, dict[str, Any]] = {}
+        # Track calls for test assertions
+        self.index_calls: list[dict[str, Any]] = []
+        self.delete_calls: list[str] = []
 
     def register_doc(self, doc_id: str, content: str, tags: list[str]) -> None:
         self._docs[doc_id] = {"doc_id": doc_id, "content": content, "tags": tags}
@@ -19,6 +21,7 @@ class FakePuppetClient:
         self, doc_id: str, content: str, tags: list[str]
     ) -> dict[str, Any]:
         self._docs[doc_id] = {"doc_id": doc_id, "content": content, "tags": tags}
+        self.index_calls.append({"doc_id": doc_id, "content": content, "tags": tags})
         return {"doc_id": doc_id, "status": "indexed"}
 
     async def search(self, query: str, tags: list[str]) -> list[dict[str, Any]]:
@@ -32,9 +35,9 @@ class FakePuppetClient:
         return results
 
     async def delete_document(self, doc_id: str) -> None:
-        if doc_id not in self._docs:
-            raise PuppetClientError(f"Document '{doc_id}' not found")
-        del self._docs[doc_id]
+        """Idempotent — silently ignores missing doc_id (mirrors PuppetHTTPClient 404 handling)."""
+        self.delete_calls.append(doc_id)
+        self._docs.pop(doc_id, None)
 
     async def health(self) -> dict[str, Any]:
         return {"status": "ok", "doc_count": len(self._docs)}
