@@ -62,6 +62,12 @@ class IntegrationConfigRepositoryImpl(IIntegrationConfigRepository):
         await self._session.flush()
         return config
 
+    async def delete(self, config_id: UUID) -> None:
+        row = await self._session.get(IntegrationConfigORM, config_id)
+        if row is not None:
+            await self._session.delete(row)
+            await self._session.flush()
+
 
 class IntegrationExportRepositoryImpl(IIntegrationExportRepository):
     def __init__(self, session: AsyncSession) -> None:

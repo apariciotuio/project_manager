@@ -22,6 +22,9 @@ class IIntegrationConfigRepository(ABC):
     @abstractmethod
     async def save(self, config: IntegrationConfig) -> IntegrationConfig: ...
 
+    @abstractmethod
+    async def delete(self, config_id: UUID) -> None: ...
+
 
 class IIntegrationExportRepository(ABC):
     @abstractmethod

@@ -156,3 +156,34 @@ async def list_exports(
         )
     exports = await service.list_exports(work_item_id)
     return _ok([_export_payload(e) for e in exports])
+
+
+@router.delete(
+    "/integrations/configs/{config_id}",
+    status_code=http_status.HTTP_204_NO_CONTENT,
+)
+async def delete_integration_config(
+    config_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: IntegrationService = Depends(get_integration_service),
+) -> None:
+    """Delete an integration config.
+
+    Owner/admin only. Workspace-scoped — 404 for cross-workspace access (IDOR mitigation).
+    Exported records referencing this config are NOT deleted (CASCADE is intentionally
+    avoided; audit trail must be preserved).
+    """
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+        )
+    try:
+        await service.delete_config(
+            config_id, workspace_id=current_user.workspace_id
+        )
+    except IntegrationConfigNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc

@@ -78,3 +78,22 @@ class IntegrationService:
 
     async def list_exports(self, work_item_id: UUID) -> list[IntegrationExport]:
         return await self._exports.get_by_work_item(work_item_id)
+
+    async def get_config(
+        self, config_id: UUID, *, workspace_id: UUID
+    ) -> IntegrationConfig:
+        """Return config scoped to workspace. Raises IntegrationConfigNotFoundError for
+        missing or cross-workspace access (IDOR mitigation — same error for both cases)."""
+        config = await self._configs.get(config_id)
+        if config is None or config.workspace_id != workspace_id:
+            raise IntegrationConfigNotFoundError(
+                f"integration config {config_id} not found"
+            )
+        return config
+
+    async def delete_config(
+        self, config_id: UUID, *, workspace_id: UUID
+    ) -> None:
+        """Delete (hard delete) an integration config, workspace-scoped."""
+        await self.get_config(config_id, workspace_id=workspace_id)
+        await self._configs.delete(config_id)
