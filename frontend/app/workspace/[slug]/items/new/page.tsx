@@ -32,6 +32,7 @@ import type { Template } from '@/lib/types/api';
 import type { DraftData } from '@/hooks/use-pre-creation-draft';
 import { PageContainer } from '@/components/layout/page-container';
 import { DraftResumeBanner } from '@/components/capture/draft-resume-banner';
+import { StalenessWarning } from '@/components/capture/staleness-warning';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
     save,
     discard,
     resolveConflict,
+    keepMine,
     applyPendingDraft,
     discardPendingDraft,
   } = usePreCreationDraft(workspaceId, handleHydrate);
@@ -222,21 +224,29 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
 
       {/* Conflict banner */}
       {conflictError && (
-        <div className="flex items-center justify-between rounded-md border border-yellow-400 bg-yellow-50 px-4 py-3 text-body-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-200">
-          <span>Hay un borrador más reciente en otro dispositivo.</span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                resolveConflict({ title, type, description, project_id: projectId || undefined, parent_work_item_id: parentId || undefined, tags: selectedTags })
-              }
-            >
-              Sobreescribir
-            </Button>
-          </div>
-        </div>
+        <StalenessWarning
+          lastServerUpdate={conflictError.server_data.updated_at ?? new Date().toISOString()}
+          onOverwrite={() =>
+            resolveConflict({
+              title,
+              type,
+              description,
+              project_id: projectId || undefined,
+              parent_work_item_id: parentId || undefined,
+              tags: selectedTags,
+            })
+          }
+          onKeepMine={() =>
+            keepMine({
+              title,
+              type,
+              description,
+              project_id: projectId || undefined,
+              parent_work_item_id: parentId || undefined,
+              tags: selectedTags,
+            })
+          }
+        />
       )}
 
       {/* Template picker */}
