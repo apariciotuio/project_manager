@@ -8,7 +8,7 @@ describe('useNotifications', () => {
   it('returns loading=true initially', () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: [] }),
+        HttpResponse.json({ data: { items: [], total: 0, page: 1, page_size: 20 } }),
       ),
     );
     const { result } = renderHook(() => useNotifications());
@@ -18,7 +18,7 @@ describe('useNotifications', () => {
   it('returns unreadCount equal to array length', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: [{ id: '1' }, { id: '2' }, { id: '3' }] }),
+        HttpResponse.json({ data: { items: [{ id: '1' }, { id: '2' }, { id: '3' }], total: 3, page: 1, page_size: 20 } }),
       ),
     );
     const { result } = renderHook(() => useNotifications());
@@ -29,7 +29,7 @@ describe('useNotifications', () => {
   it('returns unreadCount 0 on empty array', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: [] }),
+        HttpResponse.json({ data: { items: [], total: 0, page: 1, page_size: 20 } }),
       ),
     );
     const { result } = renderHook(() => useNotifications());

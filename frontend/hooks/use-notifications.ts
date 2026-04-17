@@ -22,7 +22,7 @@ export function useNotifications(): UseNotificationsResult {
     void (async () => {
       try {
         const res = await apiGet<NotificationsResponse>('/api/v1/notifications');
-        if (!cancelled) setNotifications(res.data);
+        if (!cancelled) setNotifications(res.data.items);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
       } finally {

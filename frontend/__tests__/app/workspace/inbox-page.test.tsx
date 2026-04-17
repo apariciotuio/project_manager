@@ -28,7 +28,7 @@ describe('InboxPage', () => {
   it('renders notification summaries', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       )
     );
 
@@ -42,7 +42,7 @@ describe('InboxPage', () => {
   it('shows empty state when no notifications', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: [] })
+        HttpResponse.json({ data: { items: [], total: 0, page: 1, page_size: 20 } })
       )
     );
 
@@ -55,7 +55,7 @@ describe('InboxPage', () => {
   it('unread notification has visual indicator', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       )
     );
 
@@ -71,7 +71,7 @@ describe('InboxPage', () => {
   it('clicking notification marks it read and navigates if deeplink exists', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       ),
       http.patch('http://localhost/api/v1/notifications/n1/read', () =>
         HttpResponse.json({})

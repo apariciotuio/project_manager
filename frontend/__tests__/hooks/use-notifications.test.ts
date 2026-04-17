@@ -29,7 +29,7 @@ describe('useNotifications', () => {
   it('returns notifications on success', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       )
     );
 
@@ -56,7 +56,7 @@ describe('useNotifications', () => {
   it('markRead optimistically sets notification.read=true', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       ),
       http.patch('http://localhost/api/v1/notifications/n1/read', () =>
         HttpResponse.json({}, { status: 200 })
@@ -78,7 +78,7 @@ describe('useNotifications', () => {
   it('unread notifications have read=false', async () => {
     server.use(
       http.get('http://localhost/api/v1/notifications', () =>
-        HttpResponse.json({ data: mockNotifications })
+        HttpResponse.json({ data: { items: mockNotifications, total: mockNotifications.length, page: 1, page_size: 20 } })
       )
     );
 
