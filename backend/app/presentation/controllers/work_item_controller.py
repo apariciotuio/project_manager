@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
@@ -68,7 +68,11 @@ async def create_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None  # guaranteed by get_scoped_session
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = CreateWorkItemCommand(
         title=body.title,
         type=body.type,
@@ -102,7 +106,11 @@ async def get_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     item = await service.get(item_id, current_user.workspace_id)
     return _ok(_response(item, current_user.workspace_id))
 
@@ -119,7 +127,11 @@ async def update_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = UpdateWorkItemCommand(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -146,7 +158,11 @@ async def delete_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> Response:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = DeleteWorkItemCommand(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -168,7 +184,11 @@ async def transition_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = TransitionStateCommand(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -192,7 +212,11 @@ async def force_ready_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = ForceReadyCommand(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -216,7 +240,11 @@ async def reassign_owner(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     cmd = ReassignOwnerCommand(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -239,7 +267,11 @@ async def get_transitions(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     transitions = await service.get_transitions(item_id, current_user.workspace_id)
     return _ok(
         [
@@ -269,7 +301,11 @@ async def get_ownership_history(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     history = await service.get_ownership_history(item_id, current_user.workspace_id)
     return _ok(
         [
@@ -305,7 +341,11 @@ async def save_committed_draft(
 ) -> dict[str, Any]:
     from datetime import UTC, datetime
 
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     await draft_service.save_committed_draft(
         item_id=item_id,
         workspace_id=current_user.workspace_id,
@@ -331,7 +371,11 @@ async def list_work_items(
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     filters = WorkItemFilters(
         state=state,
         type=type,
@@ -372,7 +416,11 @@ async def list_all_work_items(
     RLS ensures only workspace-scoped items are returned.
     Pass `parent_work_item_id` to return direct children of a given parent.
     """
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
 
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession

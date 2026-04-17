@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 
 from app.application.services.template_service import TemplateService
@@ -60,13 +60,15 @@ async def get_template(
     - `type` + `workspace_id` → resolve a single template (workspace-specific, system fallback).
     """
     if type is None and workspace_id is None:
-        assert current_user.workspace_id is not None
+        if current_user.workspace_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            )
         tmpls = await service.list_for_workspace(current_user.workspace_id)
         return _ok([TemplateResponse.from_domain(t).model_dump(mode="json") for t in tmpls])
 
     if type is None or workspace_id is None:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=422,
             detail={
@@ -90,7 +92,11 @@ async def create_template(
     service: TemplateService = Depends(get_template_service),
     membership_repo: WorkspaceMembershipRepositoryImpl = Depends(get_membership_repo_scoped),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 
     result = await service.create_template(
@@ -112,7 +118,11 @@ async def update_template(
     service: TemplateService = Depends(get_template_service),
     membership_repo: WorkspaceMembershipRepositoryImpl = Depends(get_membership_repo_scoped),
 ) -> dict[str, Any]:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 
     result = await service.update_template(
@@ -132,7 +142,11 @@ async def delete_template(
     service: TemplateService = Depends(get_template_service),
     membership_repo: WorkspaceMembershipRepositoryImpl = Depends(get_membership_repo_scoped),
 ) -> Response:
-    assert current_user.workspace_id is not None
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+        )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 
     await service.delete_template(
