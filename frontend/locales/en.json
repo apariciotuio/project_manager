@@ -254,6 +254,84 @@
         "partially_validated": "Partially validated",
         "ready": "Ready",
         "exported": "Exported"
+      },
+      "specification": {
+        "sectionLabels": {
+          "summary": "Summary",
+          "problem_statement": "Problem Statement",
+          "steps_to_reproduce": "Steps to Reproduce",
+          "expected_behavior": "Expected Behavior",
+          "actual_behavior": "Actual Behavior",
+          "acceptance_criteria": "Acceptance Criteria",
+          "solution_description": "Solution Description",
+          "technical_notes": "Technical Notes",
+          "business_justification": "Business Justification",
+          "scope": "Scope",
+          "out_of_scope": "Out of Scope",
+          "dependencies": "Dependencies",
+          "risks": "Risks",
+          "mockups": "Mockups",
+          "definition_of_done": "Definition of Done",
+          "environment": "Environment",
+          "impact": "Impact",
+          "notes": "Notes",
+          "time_box": "Time Box",
+          "output_definition": "Output Definition",
+          "hypothesis": "Hypothesis",
+          "research_questions": "Research Questions",
+          "methodology": "Methodology",
+          "stakeholders": "Stakeholders",
+          "success_metrics": "Success Metrics",
+          "constraints": "Constraints",
+          "test_strategy": "Test Strategy",
+          "rollback_plan": "Rollback Plan"
+        },
+        "saving": "Saving…",
+        "saved": "Saved",
+        "saveFailed": "Save failed",
+        "notApplicable": "Not applicable",
+        "applicable": "Applicable",
+        "generationSource": {
+          "llm": "AI Generated",
+          "manual": "Manual",
+          "revert": "Reverted"
+        },
+        "version": "v{version}",
+        "required": "Required",
+        "optional": "Optional",
+        "placeholder": "Write the content…"
+      },
+      "completeness": {
+        "title": "Completeness",
+        "score": "Score",
+        "cached": "Cached",
+        "dimension": {
+          "acceptance_criteria": "Acceptance Criteria",
+          "solution_description": "Solution Description",
+          "technical_notes": "Technical Notes",
+          "business_justification": "Business Justification",
+          "problem_statement": "Problem Statement",
+          "dependencies": "Dependencies",
+          "risks": "Risks",
+          "definition_of_done": "Definition of Done"
+        },
+        "gapsTitle": "Gaps",
+        "noGaps": "No gaps"
+      },
+      "nextStep": {
+        "title": "Next Step",
+        "blocking": "Blocking",
+        "terminal": "Item is complete",
+        "validatorsTitle": "Suggested Validators",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "setupLink": "Configure",
+        "actions": {
+          "request_review": "Request Review",
+          "mark_ready": "Mark Ready",
+          "open_clarification": "Open Clarification",
+          "open_breakdown": "Open Sub-items"
+        }
       }
     },
     "newItem": {

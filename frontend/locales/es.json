@@ -254,6 +254,84 @@
         "partially_validated": "Parcialmente validado",
         "ready": "Listo",
         "exported": "Exportado"
+      },
+      "specification": {
+        "sectionLabels": {
+          "summary": "Resumen",
+          "problem_statement": "Problema",
+          "steps_to_reproduce": "Pasos para reproducir",
+          "expected_behavior": "Comportamiento esperado",
+          "actual_behavior": "Comportamiento actual",
+          "acceptance_criteria": "Criterios de aceptación",
+          "solution_description": "Descripción de solución",
+          "technical_notes": "Notas técnicas",
+          "business_justification": "Justificación de negocio",
+          "scope": "Alcance",
+          "out_of_scope": "Fuera de alcance",
+          "dependencies": "Dependencias",
+          "risks": "Riesgos",
+          "mockups": "Maquetas",
+          "definition_of_done": "Definición de hecho",
+          "environment": "Entorno",
+          "impact": "Impacto",
+          "notes": "Notas",
+          "time_box": "Caja de tiempo",
+          "output_definition": "Definición de salida",
+          "hypothesis": "Hipótesis",
+          "research_questions": "Preguntas de investigación",
+          "methodology": "Metodología",
+          "stakeholders": "Partes interesadas",
+          "success_metrics": "Métricas de éxito",
+          "constraints": "Restricciones",
+          "test_strategy": "Estrategia de prueba",
+          "rollback_plan": "Plan de rollback"
+        },
+        "saving": "Guardando…",
+        "saved": "Guardado",
+        "saveFailed": "Error al guardar",
+        "notApplicable": "No aplica",
+        "applicable": "Aplicable",
+        "generationSource": {
+          "llm": "Generado por IA",
+          "manual": "Manual",
+          "revert": "Revertido"
+        },
+        "version": "v{version}",
+        "required": "Requerido",
+        "optional": "Opcional",
+        "placeholder": "Escribe el contenido…"
+      },
+      "completeness": {
+        "title": "Completitud",
+        "score": "Puntuación",
+        "cached": "En caché",
+        "dimension": {
+          "acceptance_criteria": "Criterios de aceptación",
+          "solution_description": "Descripción de solución",
+          "technical_notes": "Notas técnicas",
+          "business_justification": "Justificación de negocio",
+          "problem_statement": "Problema",
+          "dependencies": "Dependencias",
+          "risks": "Riesgos",
+          "definition_of_done": "Definición de hecho"
+        },
+        "gapsTitle": "Brechas",
+        "noGaps": "Sin brechas"
+      },
+      "nextStep": {
+        "title": "Siguiente paso",
+        "blocking": "Bloqueante",
+        "terminal": "El elemento está completo",
+        "validatorsTitle": "Validadores sugeridos",
+        "configured": "Configurado",
+        "notConfigured": "No configurado",
+        "setupLink": "Configurar",
+        "actions": {
+          "request_review": "Solicitar revisión",
+          "mark_ready": "Marcar listo",
+          "open_clarification": "Abrir clarificación",
+          "open_breakdown": "Abrir sub-elementos"
+        }
       }
     },
     "newItem": {
