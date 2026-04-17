@@ -3,6 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/__tests__/msw/server';
+
+// next-intl mock — returns `${ns}.${key}` so tests assert against translation keys
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 import { TagEditModal } from '@/components/admin/tag-edit-modal';
 import type { Tag } from '@/lib/types/api';
 
@@ -34,24 +41,30 @@ function renderModal(
   );
 }
 
+// Translation-key regex helpers (mocked next-intl returns `${ns}.${key}`)
+const RX_FIELD_NAME = /modals\.tagEdit\.fields\.name/i;
+const RX_ARCHIVED = /modals\.tagEdit\.archived/i;
+const RX_SAVE = /^common\.save$/i;
+const RX_CANCEL = /^common\.cancel$/i;
+
 describe('TagEditModal', () => {
   it('renders prefilled name input', () => {
     renderModal();
-    expect(screen.getByRole('textbox', { name: /nombre/i })).toHaveValue('urgent');
+    expect(screen.getByRole('textbox', { name: RX_FIELD_NAME })).toHaveValue('urgent');
   });
 
   it('Save button is disabled when no field has changed', () => {
     renderModal();
-    expect(screen.getByRole('button', { name: /guardar/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: RX_SAVE })).toBeDisabled();
   });
 
   it('Save button is enabled when name changes', async () => {
     const user = userEvent.setup();
     renderModal();
-    const input = screen.getByRole('textbox', { name: /nombre/i });
+    const input = screen.getByRole('textbox', { name: RX_FIELD_NAME });
     await user.clear(input);
     await user.type(input, 'critical');
-    expect(screen.getByRole('button', { name: /guardar/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: RX_SAVE })).not.toBeDisabled();
   });
 
   it('calls onClose when Cancel clicked, no request fired', async () => {
@@ -65,7 +78,7 @@ describe('TagEditModal', () => {
       })
     );
     renderModal({ onClose });
-    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+    await user.click(screen.getByRole('button', { name: RX_CANCEL }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(patched).toBe(false);
   });
@@ -84,10 +97,10 @@ describe('TagEditModal', () => {
     );
 
     renderModal({ onSaved });
-    const input = screen.getByRole('textbox', { name: /nombre/i });
+    const input = screen.getByRole('textbox', { name: RX_FIELD_NAME });
     await user.clear(input);
     await user.type(input, 'blocker');
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith(UPDATED);
@@ -108,16 +121,16 @@ describe('TagEditModal', () => {
     );
 
     renderModal();
-    const input = screen.getByRole('textbox', { name: /nombre/i });
+    const input = screen.getByRole('textbox', { name: RX_FIELD_NAME });
     await user.clear(input);
     await user.type(input, 'blocker');
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/already exists/i);
     });
     // Modal stays open
-    expect(screen.getByRole('textbox', { name: /nombre/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: RX_FIELD_NAME })).toBeInTheDocument();
   });
 
   it('enables Save when color changes', async () => {
@@ -130,7 +143,7 @@ describe('TagEditModal', () => {
     await user.type(hexInput, '#00ff00');
     // Wait for debounce (150ms) or just check that save enables after input
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /guardar/i })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: RX_SAVE })).not.toBeDisabled();
     }, { timeout: 500 });
   });
 
@@ -153,10 +166,10 @@ describe('TagEditModal', () => {
     await user.type(hexInput, '#00ff00');
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /guardar/i })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: RX_SAVE })).not.toBeDisabled();
     }, { timeout: 500 });
 
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith(UPDATED);
@@ -173,6 +186,6 @@ describe('TagEditModal', () => {
 
   it('shows archived indicator when tag is archived', () => {
     renderModal({ tag: { ...BASE_TAG, archived: true } });
-    expect(screen.getByText(/archivada/i)).toBeInTheDocument();
+    expect(screen.getByText(RX_ARCHIVED)).toBeInTheDocument();
   });
 });

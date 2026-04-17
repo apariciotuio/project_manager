@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -23,27 +24,25 @@ import { apiPatch } from '@/lib/api-client';
 import { useFormErrors } from '@/lib/errors/use-form-errors';
 import type { WorkItemResponse, WorkItemType, Priority } from '@/lib/types/work-item';
 
-// ─── Label helpers ────────────────────────────────────────────────────────────
+// ─── Option sets (authoritative) ──────────────────────────────────────────────
 
-const PRIORITY_LABELS: Record<Priority, string> = {
-  low: 'Baja',
-  medium: 'Media',
-  high: 'Alta',
-  critical: 'Crítica',
-};
+const PRIORITY_VALUES: readonly Priority[] = ['low', 'medium', 'high', 'critical'];
+const TYPE_VALUES: readonly WorkItemType[] = [
+  'idea',
+  'bug',
+  'enhancement',
+  'task',
+  'initiative',
+  'spike',
+  'business_change',
+  'requirement',
+  'milestone',
+  'story',
+];
 
-const TYPE_LABELS: Record<WorkItemType, string> = {
-  idea: 'Idea',
-  bug: 'Error',
-  enhancement: 'Mejora',
-  task: 'Tarea',
-  initiative: 'Iniciativa',
-  spike: 'Spike',
-  business_change: 'Cambio de negocio',
-  requirement: 'Requisito',
-  milestone: 'Hito',
-  story: 'Historia',
-};
+const isPriority = (v: string): v is Priority => (PRIORITY_VALUES as readonly string[]).includes(v);
+const isWorkItemType = (v: string): v is WorkItemType =>
+  (TYPE_VALUES as readonly string[]).includes(v);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +63,9 @@ export interface WorkItemEditModalProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItemEditModalProps) {
+  const t = useTranslations('modals.workItemEdit');
+  const tCommon = useTranslations('common');
+
   const [title, setTitle] = useState(workItem.title);
   const [description, setDescription] = useState(workItem.description ?? '');
   const [priority, setPriority] = useState<Priority | null>(workItem.priority);
@@ -118,13 +120,13 @@ export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItem
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar elemento</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-title">Título *</Label>
+            <Label htmlFor="edit-title">{t('fields.title')}</Label>
             <Input
               id="edit-title"
               value={title}
@@ -142,7 +144,7 @@ export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItem
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-description">Descripción</Label>
+            <Label htmlFor="edit-description">{t('fields.description')}</Label>
             <Textarea
               id="edit-description"
               value={description}
@@ -160,18 +162,21 @@ export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItem
 
           {/* Priority */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-priority">Prioridad</Label>
+            <Label htmlFor="edit-priority">{t('fields.priority')}</Label>
             <Select
               value={priority ?? '__none__'}
-              onValueChange={(v) => setPriority(v === '__none__' ? null : (v as Priority))}
+              onValueChange={(v) => {
+                if (v === '__none__') { setPriority(null); return; }
+                if (isPriority(v)) setPriority(v);
+              }}
             >
               <SelectTrigger id="edit-priority">
-                <SelectValue placeholder="Sin prioridad" />
+                <SelectValue placeholder={t('fields.noPriority')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Sin prioridad</SelectItem>
-                {(Object.entries(PRIORITY_LABELS) as [Priority, string][]).map(([val, label]) => (
-                  <SelectItem key={val} value={val}>{label}</SelectItem>
+                <SelectItem value="__none__">{t('fields.noPriority')}</SelectItem>
+                {PRIORITY_VALUES.map((val) => (
+                  <SelectItem key={val} value={val}>{t(`priority.${val}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -179,17 +184,17 @@ export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItem
 
           {/* Type */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-type">Tipo</Label>
+            <Label htmlFor="edit-type">{t('fields.type')}</Label>
             <Select
               value={type}
-              onValueChange={(v) => setType(v as WorkItemType)}
+              onValueChange={(v) => { if (isWorkItemType(v)) setType(v); }}
             >
               <SelectTrigger id="edit-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(TYPE_LABELS) as [WorkItemType, string][]).map(([val, label]) => (
-                  <SelectItem key={val} value={val}>{label}</SelectItem>
+                {TYPE_VALUES.map((val) => (
+                  <SelectItem key={val} value={val}>{t(`type.${val}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -197,10 +202,10 @@ export function WorkItemEditModal({ open, workItem, onClose, onSaved }: WorkItem
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-              Cancelar
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={!hasChanges || saving}>
-              {saving ? 'Guardando...' : 'Guardar'}
+              {saving ? tCommon('saving') : tCommon('save')}
             </Button>
           </DialogFooter>
         </form>

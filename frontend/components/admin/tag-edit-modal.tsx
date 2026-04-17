@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,9 @@ export interface TagEditModalProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TagEditModal({ open, tag, onClose, onSaved }: TagEditModalProps) {
+  const t = useTranslations('modals.tagEdit');
+  const tCommon = useTranslations('common');
+
   const [name, setName] = useState(tag.name);
   const [color, setColor] = useState<string | undefined>(tag.color ?? undefined);
   const [saving, setSaving] = useState(false);
@@ -79,10 +83,10 @@ export function TagEditModal({ open, tag, onClose, onSaved }: TagEditModalProps)
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Editar etiqueta
+            {t('title')}
             {tag.archived && (
               <Badge variant="secondary" className="ml-2 text-xs">
-                Archivada
+                {t('archived')}
               </Badge>
             )}
           </DialogTitle>
@@ -91,7 +95,7 @@ export function TagEditModal({ open, tag, onClose, onSaved }: TagEditModalProps)
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="tag-edit-name">Nombre *</Label>
+            <Label htmlFor="tag-edit-name">{t('fields.name')}</Label>
             <Input
               id="tag-edit-name"
               value={name}
@@ -109,16 +113,16 @@ export function TagEditModal({ open, tag, onClose, onSaved }: TagEditModalProps)
 
           {/* Color */}
           <div className="space-y-1.5">
-            <Label>Color</Label>
+            <Label>{t('fields.color')}</Label>
             <ColorPicker value={color} onChange={setColor} />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-              Cancelar
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={!hasChanges || saving}>
-              {saving ? 'Guardando...' : 'Guardar'}
+              {saving ? tCommon('saving') : tCommon('save')}
             </Button>
           </DialogFooter>
         </form>

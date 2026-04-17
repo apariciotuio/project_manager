@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/__tests__/msw/server';
+
+// next-intl mock — returns `${ns}.${key}` so tests assert against translation keys
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string, _params?: Record<string, unknown>) =>
+    `${ns}.${key}`,
+}));
+
 import { WorkItemEditModal } from '@/components/work-item/work-item-edit-modal';
 import type { WorkItemResponse } from '@/lib/types/work-item';
 
@@ -49,46 +56,53 @@ function renderModal(
   );
 }
 
+// Translation-key regex helpers (mocked next-intl returns `${ns}.${key}`)
+const RX_FIELD_TITLE = /modals\.workItemEdit\.fields\.title/i;
+const RX_FIELD_DESC = /modals\.workItemEdit\.fields\.description/i;
+const RX_PRIORITY_HIGH = /modals\.workItemEdit\.priority\.high/i;
+const RX_TYPE_BUG = /^modals\.workItemEdit\.type\.bug$/i;
+const RX_SAVE = /^common\.save$/i;
+const RX_SAVING = /^common\.saving$/i;
+const RX_CANCEL = /^common\.cancel$/i;
+
 describe('WorkItemEditModal', () => {
   it('renders prefilled title input', () => {
     renderModal();
-    const input = screen.getByLabelText(/título/i);
+    const input = screen.getByLabelText(RX_FIELD_TITLE);
     expect(input).toHaveValue('Fix login bug');
   });
 
   it('renders prefilled description textarea', () => {
     renderModal();
-    const textarea = screen.getByLabelText(/descripción/i);
+    const textarea = screen.getByLabelText(RX_FIELD_DESC);
     expect(textarea).toHaveValue('Broken on mobile');
   });
 
   it('renders priority select prefilled with current value', () => {
     renderModal();
-    // Radix Select renders a span with pointer-events:none for the trigger display value
-    const spans = screen.getAllByText(/alta/i);
+    const spans = screen.getAllByText(RX_PRIORITY_HIGH);
     expect(spans.length).toBeGreaterThan(0);
   });
 
   it('renders type select prefilled with current value', () => {
     renderModal();
-    // 'bug' maps to 'Error' in Spanish
-    const spans = screen.getAllByText(/^error$/i);
+    const spans = screen.getAllByText(RX_TYPE_BUG);
     expect(spans.length).toBeGreaterThan(0);
   });
 
   it('Save button is disabled when no field has changed', () => {
     renderModal();
-    const saveBtn = screen.getByRole('button', { name: /guardar/i });
+    const saveBtn = screen.getByRole('button', { name: RX_SAVE });
     expect(saveBtn).toBeDisabled();
   });
 
   it('Save button is enabled when title changes', async () => {
     const user = userEvent.setup();
     renderModal();
-    const input = screen.getByLabelText(/título/i);
+    const input = screen.getByLabelText(RX_FIELD_TITLE);
     await user.clear(input);
     await user.type(input, 'New title');
-    expect(screen.getByRole('button', { name: /guardar/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: RX_SAVE })).not.toBeDisabled();
   });
 
   it('calls onClose when Cancel is clicked, no request fired', async () => {
@@ -102,7 +116,7 @@ describe('WorkItemEditModal', () => {
       })
     );
     renderModal({ onClose });
-    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+    await user.click(screen.getByRole('button', { name: RX_CANCEL }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(patched).toBe(false);
   });
@@ -122,11 +136,11 @@ describe('WorkItemEditModal', () => {
 
     renderModal({ onSaved });
 
-    const input = screen.getByLabelText(/título/i);
+    const input = screen.getByLabelText(RX_FIELD_TITLE);
     await user.clear(input);
     await user.type(input, 'Updated title');
 
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith(UPDATED);
@@ -148,14 +162,14 @@ describe('WorkItemEditModal', () => {
 
     renderModal();
 
-    const input = screen.getByLabelText(/título/i);
+    const input = screen.getByLabelText(RX_FIELD_TITLE);
     await user.clear(input);
     await user.type(input, 'Changed');
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     // During pending, button should be disabled / show loading text
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /guardando/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: RX_SAVING })).toBeDisabled();
     });
 
     resolve!();
@@ -174,17 +188,17 @@ describe('WorkItemEditModal', () => {
 
     renderModal();
 
-    const input = screen.getByLabelText(/título/i);
+    const input = screen.getByLabelText(RX_FIELD_TITLE);
     await user.clear(input);
     await user.type(input, 'x');
 
-    await user.click(screen.getByRole('button', { name: /guardar/i }));
+    await user.click(screen.getByRole('button', { name: RX_SAVE }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/El título es obligatorio/i);
     });
     // Modal stays open — title input still visible
-    expect(screen.getByLabelText(/título/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(RX_FIELD_TITLE)).toBeInTheDocument();
   });
 
   it('does not render when open=false', () => {
@@ -196,8 +210,8 @@ describe('WorkItemEditModal', () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     renderModal({ onClose });
-    await user.type(screen.getByLabelText(/título/i), ' extra');
-    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+    await user.type(screen.getByLabelText(RX_FIELD_TITLE), ' extra');
+    await user.click(screen.getByRole('button', { name: RX_CANCEL }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
