@@ -17,6 +17,23 @@ const API_BASE = process.env['NEXT_PUBLIC_API_BASE_URL'] ?? '';
 
 export { ApiError, UnauthenticatedError } from './types/auth';
 
+// --- Session-expired notifier ---
+// Subscribers (e.g. AuthProvider) register a callback to show the "sign in again"
+// modal when any in-flight request trips UnauthenticatedError.
+type ExpiredListener = () => void;
+let expiredListeners: ExpiredListener[] = [];
+
+export function onSessionExpired(listener: ExpiredListener): () => void {
+  expiredListeners.push(listener);
+  return () => {
+    expiredListeners = expiredListeners.filter((l) => l !== listener);
+  };
+}
+
+function notifySessionExpired(): void {
+  for (const l of expiredListeners) l();
+}
+
 // --- Refresh concurrency guard ---
 let refreshPromise: Promise<void> | null = null;
 
@@ -31,20 +48,29 @@ async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
   try {
     const json = (await response.json()) as {
       error?: Partial<ApiErrorBody>;
-      message?: string;
+      detail?: string;
     };
+    // New envelope: { error: { code, message, field?, details? } }
     if (json.error && typeof json.error.code === 'string') {
       return {
         code: json.error.code,
         message: json.error.message ?? response.statusText,
+        field: json.error.field,
         details: json.error.details,
+      };
+    }
+    // Legacy shape: { detail: "..." }
+    if (typeof json.detail === 'string') {
+      return {
+        code: 'UNKNOWN',
+        message: json.detail,
       };
     }
   } catch {
     // fall through
   }
   return {
-    code: String(response.status),
+    code: 'UNKNOWN',
     message: response.statusText || `HTTP ${response.status}`,
   };
 }
@@ -59,6 +85,7 @@ async function doRefresh(): Promise<void> {
     credentials: 'include',
   });
   if (res.status === 401) {
+    notifySessionExpired();
     throw new UnauthenticatedError();
   }
   if (!res.ok) {
@@ -115,6 +142,7 @@ async function request<T>(
 
   // 401 on retry or on refresh endpoint itself
   if (response.status === 401) {
+    notifySessionExpired();
     throw new UnauthenticatedError();
   }
 

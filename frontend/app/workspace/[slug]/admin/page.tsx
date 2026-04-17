@@ -29,6 +29,7 @@ import { Plus, Archive } from 'lucide-react';
 import type { ProjectCreateRequest, TagCreateRequest, IntegrationConfigCreateRequest } from '@/lib/types/api';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
+import { useFormErrors } from '@/lib/errors/use-form-errors';
 
 interface AdminPageProps {
   params: { slug: string };
@@ -465,15 +466,19 @@ function TagsTab() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<TagCreateRequest>({ name: '' });
   const [saving, setSaving] = useState(false);
+  const { fieldErrors, handleApiError, clearErrors } = useFormErrors();
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return;
     setSaving(true);
+    clearErrors();
     try {
       await createTag({ name: form.name.trim(), color: form.color });
       setOpen(false);
       setForm({ name: '' });
+    } catch (err) {
+      handleApiError(err);
     } finally {
       setSaving(false);
     }
@@ -533,7 +538,14 @@ function TagsTab() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 required
+                aria-invalid={!!fieldErrors['name']}
+                aria-describedby={fieldErrors['name'] ? 'tag-name-error' : undefined}
               />
+              {fieldErrors['name'] && (
+                <p id="tag-name-error" className="text-body-sm text-destructive" role="alert">
+                  {fieldErrors['name']}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="tag-color">Color (hex)</Label>

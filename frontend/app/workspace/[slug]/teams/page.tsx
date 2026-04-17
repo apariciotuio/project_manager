@@ -26,6 +26,7 @@ import { Users, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import type { Team } from '@/lib/types/api';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
+import { useFormErrors } from '@/lib/errors/use-form-errors';
 
 interface TeamsPageProps {
   params: { slug: string };
@@ -46,6 +47,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
   const [memberUserId, setMemberUserId] = useState('');
   const [addingMember, setAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
+  const { handleApiError: handleAddMemberApiError } = useFormErrors();
 
   const targetTeam = useMemo(
     () => teams.find((t) => t.id === addMemberTeamId) ?? null,
@@ -85,6 +87,8 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
       setAddMemberTeamId(null);
       setMemberUserId('');
     } catch (err) {
+      // Field errors (e.g. TEAM_MEMBER_ALREADY_EXISTS with field=user_id) surface as toast
+      handleAddMemberApiError(err);
       setAddMemberError(err instanceof Error ? err.message : 'Error al añadir miembro');
     } finally {
       setAddingMember(false);

@@ -22,20 +22,56 @@ function setupAllHandlers() {
   server.use(
     http.get('http://localhost/api/v1/admin/audit-events', () =>
       HttpResponse.json({
-        data: [
-          { id: 'e1', actor_id: 'u1', actor_name: 'Ada', action: 'create', resource_type: 'work_item', resource_id: 'wi1', metadata: null, created_at: '2026-04-16T10:00:00Z' },
-        ],
-        total: 1,
+        data: {
+          items: [
+            {
+              id: 'e1',
+              category: 'work_item',
+              action: 'create',
+              actor_id: 'u1',
+              actor_display: 'Ada',
+              entity_type: 'work_item',
+              entity_id: 'wi1',
+              before_value: null,
+              after_value: null,
+              context: null,
+              created_at: '2026-04-16T10:00:00Z',
+            },
+          ],
+          total: 1,
+          page: 1,
+          page_size: 50,
+        },
       })
     ),
     http.get('http://localhost/api/v1/admin/health', () =>
-      HttpResponse.json({ status: 'ok', checks: [{ name: 'db', status: 'ok', latency_ms: 3, message: null }], version: '1.0.0' })
+      HttpResponse.json({
+        data: {
+          workspace_id: 'ws1',
+          work_items_by_state: { draft: 2, in_review: 1 },
+          total_active: 3,
+        },
+      })
     ),
     http.get('http://localhost/api/v1/projects', () =>
       HttpResponse.json({ data: [{ id: 'p1', name: 'Alpha', description: null, created_at: '2026-01-01T00:00:00Z' }] })
     ),
     http.get('http://localhost/api/v1/integrations/configs', () =>
-      HttpResponse.json({ data: [{ id: 'i1', provider: 'jira', enabled: true, config: {}, created_at: '2026-01-01T00:00:00Z' }] })
+      HttpResponse.json({
+        data: [
+          {
+            id: 'i1',
+            workspace_id: 'ws1',
+            integration_type: 'jira',
+            project_id: null,
+            mapping: null,
+            is_active: true,
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+            created_by: 'u1',
+          },
+        ],
+      })
     ),
     http.get('http://localhost/api/v1/tags', () =>
       HttpResponse.json({ data: [{ id: 'tag1', name: 'urgent', color: '#ff0000', archived: false, created_at: '2026-01-01T00:00:00Z' }] })
@@ -87,7 +123,7 @@ describe('AdminPage', () => {
     await userEvent.click(await screen.findByRole('tab', { name: /salud/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/estado general/i)).toBeTruthy();
+      expect(screen.getByText(/activos/i)).toBeTruthy();
     });
   });
 
@@ -115,6 +151,41 @@ describe('AdminPage', () => {
     });
   });
 
+  it('integrations tab — nueva integración dialog shows jira credential fields', async () => {
+    setupAllHandlers();
+    server.use(
+      http.post('http://localhost/api/v1/integrations/configs', () =>
+        HttpResponse.json(
+          {
+            data: {
+              id: 'i2',
+              workspace_id: 'ws1',
+              integration_type: 'jira',
+              project_id: null,
+              mapping: null,
+              is_active: true,
+              created_at: '2026-04-17T00:00:00Z',
+              updated_at: '2026-04-17T00:00:00Z',
+              created_by: 'u1',
+            },
+          },
+          { status: 201 }
+        )
+      )
+    );
+    const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
+    render(<AdminPage params={{ slug: 'acme' }} />);
+
+    await userEvent.click(await screen.findByRole('tab', { name: /integraciones/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /nueva integración/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/url base de jira/i)).toBeTruthy();
+      expect(screen.getByLabelText(/email/i)).toBeTruthy();
+      expect(screen.getByLabelText(/api token/i)).toBeTruthy();
+    });
+  });
+
   it('tags tab shows tag names', async () => {
     setupAllHandlers();
     const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
@@ -124,6 +195,32 @@ describe('AdminPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('urgent')).toBeTruthy();
+    });
+  });
+
+  it('tags tab — create tag shows field error when name is taken', async () => {
+    setupAllHandlers();
+    server.use(
+      http.post('http://localhost/api/v1/tags', () =>
+        HttpResponse.json(
+          { error: { code: 'TAG_NAME_TAKEN', message: 'tag \'urgent\' already exists in this workspace', field: 'name' } },
+          { status: 409 }
+        )
+      )
+    );
+    const { default: AdminPage } = await import('@/app/workspace/[slug]/admin/page');
+    render(<AdminPage params={{ slug: 'acme' }} />);
+
+    await userEvent.click(await screen.findByRole('tab', { name: /etiquetas/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /nueva etiqueta/i }));
+
+    const nameInput = await screen.findByLabelText(/nombre/i);
+    await userEvent.type(nameInput, 'urgent');
+    await userEvent.click(screen.getByRole('button', { name: /^crear$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeTruthy();
+      expect(screen.getByText(/already exists/i)).toBeTruthy();
     });
   });
 });
