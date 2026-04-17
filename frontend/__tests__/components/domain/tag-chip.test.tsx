@@ -26,6 +26,12 @@ describe('TagChip', () => {
     render(<TagChip tag={tag} />);
     expect(screen.queryByRole('button')).toBeNull();
   });
+
+  it('renders without crashing when color is null', () => {
+    const tagNoColor = { id: '2', name: 'untagged', color: null };
+    expect(() => render(<TagChip tag={tagNoColor} />)).not.toThrow();
+    expect(screen.getByText('untagged')).toBeTruthy();
+  });
 });
 
 describe('TagChipList', () => {

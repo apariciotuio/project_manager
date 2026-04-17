@@ -4,7 +4,7 @@ import { pickContrastColor, hexToRgb } from '@/lib/color';
 export interface Tag {
   id: string;
   name: string;
-  color: string;
+  color: string | null;
 }
 
 interface TagChipProps {
@@ -14,7 +14,8 @@ interface TagChipProps {
   className?: string;
 }
 
-function tagBackgroundStyle(color: string): React.CSSProperties {
+function tagBackgroundStyle(color: string | null | undefined): React.CSSProperties {
+  if (!color) return { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' };
   const rgb = hexToRgb(color);
   if (!rgb) return { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' };
 
