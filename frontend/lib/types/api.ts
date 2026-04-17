@@ -71,6 +71,46 @@ export interface NotificationsResponse {
   };
 }
 
+// EP-08 — backend notification shape (state-based, with extra payload)
+export type NotificationState = 'unread' | 'read' | 'actioned';
+
+export interface QuickAction {
+  action: string;
+  endpoint: string;
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  payload_schema: Record<string, unknown>;
+}
+
+export interface NotificationV2 {
+  id: string;
+  workspace_id: string;
+  recipient_id: string;
+  type: string;
+  state: NotificationState;
+  actor_id: string | null;
+  subject_type: 'work_item' | 'review' | 'block' | 'team';
+  subject_id: string;
+  deeplink: string;
+  quick_action: QuickAction | null;
+  extra: Record<string, unknown>;
+  created_at: string;
+  read_at: string | null;
+  actioned_at: string | null;
+}
+
+export interface NotificationsV2Response {
+  data: {
+    items: NotificationV2[];
+    total: number;
+    page: number;
+    page_size: number;
+  };
+}
+
+export interface UnreadCountResponse {
+  data: { count: number };
+}
+
 // ─── Teams ────────────────────────────────────────────────────────────────────
 
 export interface TeamMember {
