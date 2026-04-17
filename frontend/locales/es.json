@@ -56,6 +56,7 @@
     "inbox": "Bandeja de entrada",
     "teams": "Equipos",
     "admin": "Administración",
+    "dashboard": "Panel",
     "workspaceAriaLabel": "Navegación del workspace",
     "unreadNotifications": "{count} notificaciones sin leer"
   },
@@ -556,6 +557,73 @@
           "colorLabel": "Color (hex)"
         }
       }
+    },
+    "myReviews": {
+      "title": "Mis revisiones pendientes",
+      "empty": "Sin revisiones pendientes"
+    },
+    "search": {
+      "placeholder": "Buscar elementos…",
+      "clearSearch": "Limpiar búsqueda",
+      "resultsCount": "{count} resultados",
+      "took": "en {ms}ms",
+      "source": {
+        "puppet": "semántica",
+        "sql_fallback": "palabras clave"
+      },
+      "empty": "Sin resultados para \"{query}\". Prueba otras palabras.",
+      "error": "Búsqueda fallida. Inténtalo de nuevo.",
+      "minChars": "Escribe al menos 2 caracteres para buscar"
+    },
+    "savedSearches": {
+      "title": "Búsquedas guardadas",
+      "saveButton": "Guardar filtros actuales",
+      "namePlaceholder": "Nombre de la búsqueda",
+      "saveConfirm": "Guardar",
+      "deleteAria": "Eliminar búsqueda guardada {name}",
+      "renameAria": "Renombrar búsqueda guardada {name}",
+      "empty": "Sin búsquedas guardadas",
+      "applyAria": "Aplicar búsqueda guardada {name}",
+      "errorSave": "Error al guardar búsqueda",
+      "errorDelete": "Error al eliminar búsqueda",
+      "errorLoad": "Error al cargar búsquedas guardadas"
+    },
+    "dashboard": {
+      "title": "Panel",
+      "loading": "Cargando panel…",
+      "error": "Error al cargar el panel",
+      "retry": "Reintentar",
+      "summary": {
+        "total": "Total elementos",
+        "avgCompleteness": "Completitud media"
+      },
+      "stateDistribution": {
+        "title": "Elementos por estado"
+      },
+      "typeDistribution": {
+        "title": "Elementos por tipo"
+      },
+      "recentActivity": {
+        "title": "Actividad reciente",
+        "empty": "Sin actividad reciente",
+        "viewItem": "Ver elemento"
+      }
+    },
+    "items": {
+      "filters": {
+        "resetAria": "Restablecer filtros",
+        "reset": "Restablecer filtros",
+        "allTypes": "Todos los tipos",
+        "typeFilterAria": "Tipo",
+        "priorityFilterAria": "Prioridad",
+        "allPriorities": "Todas las prioridades",
+        "completenessLabel": "Completitud mínima: {value}%",
+        "completenessAria": "Completitud mínima",
+        "dateFrom": "Actualizado después",
+        "dateTo": "Actualizado antes",
+        "tags": "Etiquetas",
+        "noTags": "Sin etiquetas"
+      }
     }
   },
   "modals": {
@@ -670,13 +738,67 @@
       "decision": {
         "approved": "Aprobado",
         "changes_requested": "Cambios solicitados"
+      },
+      "cancelButton": "Cancelar",
+      "respondButton": "Responder",
+      "outdatedBanner": "Revisión solicitada en la versión {requested} — el item se ha actualizado a la versión {current}",
+      "requestDialog": {
+        "title": "Solicitar revisión",
+        "reviewerLabel": "Revisor",
+        "reviewerPlaceholder": "Selecciona un revisor",
+        "noteLabel": "Nota (opcional)",
+        "notePlaceholder": "Añade una nota para el revisor…",
+        "expiresLabel": "Expira el (opcional)",
+        "submit": "Enviar solicitud",
+        "cancel": "Cancelar",
+        "errorForbidden": "Solo el propietario puede solicitar revisiones"
+      },
+      "respondDialog": {
+        "title": "Enviar respuesta de revisión",
+        "decisionLabel": "Decisión",
+        "approved": "Aprobado",
+        "changesRequested": "Cambios solicitados",
+        "rejected": "Rechazado",
+        "contentLabel": "Comentario",
+        "contentPlaceholder": "Describe los cambios necesarios…",
+        "contentRequired": "Se requiere un comentario para esta decisión",
+        "submit": "Enviar",
+        "cancel": "Cancelar",
+        "errorAlreadyClosed": "Esta revisión ya ha sido enviada"
       }
+    },
+    "validations": {
+      "title": "Validaciones",
+      "requiredSection": "Obligatorio",
+      "recommendedSection": "Recomendado",
+      "mandatoryProgress": "{satisfied}/{total} obligatorio superado",
+      "gateBlocked": "Compuerta preparada: Bloqueada",
+      "gateUnblocked": "Compuerta preparada: Desbloqueada",
+      "waiveButton": "Eximir",
+      "waiveConfirmTitle": "Eximir validación",
+      "waiveConfirmDescription": "¿Seguro que quieres eximir \"{label}\"? Esta acción queda registrada.",
+      "waiveConfirmButton": "Eximir",
+      "status": {
+        "pending": "Pendiente",
+        "passed": "Superado",
+        "waived": "Eximido",
+        "obsolete": "Obsoleto"
+      },
+      "passedAt": "Superado {date}",
+      "waivedBy": "Eximido por {name}"
+    },
+    "readyGate": {
+      "title": "Compuerta preparada",
+      "blocked": "Bloqueada",
+      "unblocked": "Todo correcto",
+      "blockerItem": "{label} ({status})"
     },
     "timeline": {
       "listAria": "Historial de actividad",
       "empty": "Sin actividad todavía.",
       "loadMore": "Cargar más",
-      "loading": "Cargando…"
+      "loading": "Cargando…",
+      "errorBanner": "No se pudo cargar la actividad"
     },
     "children": {
       "subItemsTitle": "Sub-items",

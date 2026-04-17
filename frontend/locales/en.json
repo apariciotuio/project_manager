@@ -56,6 +56,7 @@
     "inbox": "Inbox",
     "teams": "Teams",
     "admin": "Admin",
+    "dashboard": "Dashboard",
     "workspaceAriaLabel": "Workspace navigation",
     "unreadNotifications": "{count} unread notifications"
   },
@@ -556,6 +557,73 @@
           "colorLabel": "Color (hex)"
         }
       }
+    },
+    "myReviews": {
+      "title": "My pending reviews",
+      "empty": "No pending reviews"
+    },
+    "search": {
+      "placeholder": "Search work items…",
+      "clearSearch": "Clear search",
+      "resultsCount": "{count} results",
+      "took": "in {ms}ms",
+      "source": {
+        "puppet": "semantic",
+        "sql_fallback": "keyword"
+      },
+      "empty": "No results for \"{query}\". Try different keywords.",
+      "error": "Search failed. Please try again.",
+      "minChars": "Type at least 2 characters to search"
+    },
+    "savedSearches": {
+      "title": "Saved searches",
+      "saveButton": "Save current filters",
+      "namePlaceholder": "Search name",
+      "saveConfirm": "Save",
+      "deleteAria": "Delete saved search {name}",
+      "renameAria": "Rename saved search {name}",
+      "empty": "No saved searches yet",
+      "applyAria": "Apply saved search {name}",
+      "errorSave": "Failed to save search",
+      "errorDelete": "Failed to delete search",
+      "errorLoad": "Failed to load saved searches"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "loading": "Loading dashboard…",
+      "error": "Failed to load dashboard",
+      "retry": "Retry",
+      "summary": {
+        "total": "Total items",
+        "avgCompleteness": "Avg. completeness"
+      },
+      "stateDistribution": {
+        "title": "Items by state"
+      },
+      "typeDistribution": {
+        "title": "Items by type"
+      },
+      "recentActivity": {
+        "title": "Recent activity",
+        "empty": "No recent activity",
+        "viewItem": "View item"
+      }
+    },
+    "items": {
+      "filters": {
+        "resetAria": "Reset filters",
+        "reset": "Reset filters",
+        "allTypes": "All types",
+        "typeFilterAria": "Type",
+        "priorityFilterAria": "Priority",
+        "allPriorities": "All priorities",
+        "completenessLabel": "Min completeness: {value}%",
+        "completenessAria": "Minimum completeness",
+        "dateFrom": "Updated after",
+        "dateTo": "Updated before",
+        "tags": "Tags",
+        "noTags": "No tags"
+      }
     }
   },
   "modals": {
@@ -670,13 +738,67 @@
       "decision": {
         "approved": "Approved",
         "changes_requested": "Changes requested"
+      },
+      "cancelButton": "Cancel",
+      "respondButton": "Respond",
+      "outdatedBanner": "Review requested on version {requested} — the item has since been updated to version {current}",
+      "requestDialog": {
+        "title": "Request review",
+        "reviewerLabel": "Reviewer",
+        "reviewerPlaceholder": "Select a reviewer",
+        "noteLabel": "Note (optional)",
+        "notePlaceholder": "Add a note for the reviewer…",
+        "expiresLabel": "Expires at (optional)",
+        "submit": "Send request",
+        "cancel": "Cancel",
+        "errorForbidden": "Only the owner can request reviews"
+      },
+      "respondDialog": {
+        "title": "Submit review response",
+        "decisionLabel": "Decision",
+        "approved": "Approved",
+        "changesRequested": "Changes requested",
+        "rejected": "Rejected",
+        "contentLabel": "Comment",
+        "contentPlaceholder": "Describe the changes needed…",
+        "contentRequired": "A comment is required for this decision",
+        "submit": "Submit",
+        "cancel": "Cancel",
+        "errorAlreadyClosed": "This review has already been submitted"
       }
+    },
+    "validations": {
+      "title": "Validations",
+      "requiredSection": "Required",
+      "recommendedSection": "Recommended",
+      "mandatoryProgress": "{satisfied}/{total} required passed",
+      "gateBlocked": "Ready gate: Blocked",
+      "gateUnblocked": "Ready gate: Unblocked",
+      "waiveButton": "Waive",
+      "waiveConfirmTitle": "Waive validation",
+      "waiveConfirmDescription": "Are you sure you want to waive \"{label}\"? This action is recorded.",
+      "waiveConfirmButton": "Waive",
+      "status": {
+        "pending": "Pending",
+        "passed": "Passed",
+        "waived": "Waived",
+        "obsolete": "Obsolete"
+      },
+      "passedAt": "Passed {date}",
+      "waivedBy": "Waived by {name}"
+    },
+    "readyGate": {
+      "title": "Ready gate",
+      "blocked": "Blocked",
+      "unblocked": "All clear",
+      "blockerItem": "{label} ({status})"
     },
     "timeline": {
       "listAria": "Activity history",
       "empty": "No activity yet.",
       "loadMore": "Load more",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "errorBanner": "Could not load activity"
     },
     "children": {
       "subItemsTitle": "Sub-items",
