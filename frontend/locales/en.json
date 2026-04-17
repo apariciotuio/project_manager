@@ -52,6 +52,7 @@
     }
   },
   "nav": {
+    "dashboard": "Dashboard",
     "items": "Items",
     "inbox": "Inbox",
     "teams": "Teams",
@@ -107,15 +108,30 @@
   "workspace": {
     "inbox": {
       "title": "Inbox",
-      "empty": "You're all caught up",
+      "loading": "Loading...",
+      "errorPrefix": "Failed to load inbox",
+      "errorBanner": "Failed to load notifications",
+      "empty": "You have no notifications",
+      "unreadAria": "Unread",
       "onlyUnread": "Unread only",
       "markAllRead": "Mark all read",
-      "errorBanner": "Failed to load inbox",
       "retry": "Retry",
       "prev": "Previous",
       "next": "Next",
       "pageOf": "Page {page} of {total}",
-      "loadError": "Failed to load notifications"
+      "filter": {
+        "all": "All",
+        "unread": "Unread",
+        "mentions": "Mentions",
+        "reviews": "Reviews"
+      },
+      "searchPlaceholder": "Search notifications...",
+      "sheet": {
+        "actor": "From",
+        "received": "Received",
+        "markActioned": "Mark actioned",
+        "close": "Close"
+      }
     },
     "notificationBell": {
       "ariaLabel": "Notifications",
@@ -123,42 +139,24 @@
       "title": "Notifications",
       "viewAll": "View all",
       "empty": "You're all caught up",
-      "loadError": "Failed to load"
+      "loadError": "Failed to load",
+      "dnd": "Do not disturb",
+      "dndOff": "Notifications on"
     },
     "items": {
-      "title": "Work items",
-      "newButton": "New item",
-      "newButtonAria": "New item",
-      "allStates": "All states",
-      "stateFilterAria": "State",
-      "searchPlaceholder": "Search",
-      "errorBanner": "Failed to load items",
-      "empty": {
-        "title": "No work items",
-        "subtitle": "Create your first item to get started",
-        "createButton": "New item"
-      },
-      "listAria": "Work item list",
-      "columns": {
-        "title": "Title",
-        "type": "Type",
-        "state": "State",
-        "completeness": "Completeness",
-        "updatedAt": "Updated"
-      },
-      "pagination": {
-        "prev": "Previous",
-        "next": "Next",
-        "pageOf": "Page {page} of {total}"
-      },
-      "states": {
-        "draft": "Draft",
-        "in_clarification": "In clarification",
-        "in_review": "In review",
-        "changes_requested": "Changes requested",
-        "partially_validated": "Partially validated",
-        "ready": "Ready",
-        "exported": "Exported"
+      "filters": {
+        "resetAria": "Reset filters",
+        "reset": "Reset filters",
+        "allTypes": "All types",
+        "typeFilterAria": "Type",
+        "priorityFilterAria": "Priority",
+        "allPriorities": "All priorities",
+        "completenessLabel": "Min completeness: {value}%",
+        "completenessAria": "Minimum completeness",
+        "dateFrom": "Updated after",
+        "dateTo": "Updated before",
+        "tags": "Tags",
+        "noTags": "No tags"
       }
     },
     "itemDetail": {
@@ -454,13 +452,6 @@
         "story": "Story"
       }
     },
-    "inbox": {
-      "title": "Inbox",
-      "loading": "Loading...",
-      "errorPrefix": "Failed to load inbox",
-      "empty": "You have no notifications",
-      "unreadAria": "Unread"
-    },
     "teams": {
       "title": "Teams",
       "loading": "Loading...",
@@ -613,22 +604,6 @@
         "title": "Recent activity",
         "empty": "No recent activity",
         "viewItem": "View item"
-      }
-    },
-    "items": {
-      "filters": {
-        "resetAria": "Reset filters",
-        "reset": "Reset filters",
-        "allTypes": "All types",
-        "typeFilterAria": "Type",
-        "priorityFilterAria": "Priority",
-        "allPriorities": "All priorities",
-        "completenessLabel": "Min completeness: {value}%",
-        "completenessAria": "Minimum completeness",
-        "dateFrom": "Updated after",
-        "dateTo": "Updated before",
-        "tags": "Tags",
-        "noTags": "No tags"
       }
     }
   },

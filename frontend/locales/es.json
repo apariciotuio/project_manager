@@ -52,11 +52,11 @@
     }
   },
   "nav": {
+    "dashboard": "Panel",
     "items": "Elementos",
     "inbox": "Bandeja de entrada",
     "teams": "Equipos",
     "admin": "Administración",
-    "dashboard": "Panel",
     "workspaceAriaLabel": "Navegación del workspace",
     "unreadNotifications": "{count} notificaciones sin leer"
   },
@@ -107,15 +107,30 @@
   "workspace": {
     "inbox": {
       "title": "Bandeja de entrada",
-      "empty": "Todo al día",
+      "loading": "Cargando...",
+      "errorPrefix": "No se pudo cargar la bandeja",
+      "errorBanner": "Error al cargar las notificaciones",
+      "empty": "No tienes notificaciones",
+      "unreadAria": "No leída",
       "onlyUnread": "Solo no leídas",
-      "markAllRead": "Marcar todo como leído",
-      "errorBanner": "Error al cargar la bandeja",
+      "markAllRead": "Marcar todas como leídas",
       "retry": "Reintentar",
       "prev": "Anterior",
       "next": "Siguiente",
       "pageOf": "Página {page} de {total}",
-      "loadError": "Error al cargar notificaciones"
+      "filter": {
+        "all": "Todas",
+        "unread": "No leídas",
+        "mentions": "Menciones",
+        "reviews": "Revisiones"
+      },
+      "searchPlaceholder": "Buscar notificaciones...",
+      "sheet": {
+        "actor": "De",
+        "received": "Recibido",
+        "markActioned": "Marcar como atendido",
+        "close": "Cerrar"
+      }
     },
     "notificationBell": {
       "ariaLabel": "Notificaciones",
@@ -123,42 +138,24 @@
       "title": "Notificaciones",
       "viewAll": "Ver todas",
       "empty": "Todo al día",
-      "loadError": "Error al cargar"
+      "loadError": "Error al cargar",
+      "dnd": "No molestar",
+      "dndOff": "Notificaciones activas"
     },
     "items": {
-      "title": "Elementos de trabajo",
-      "newButton": "Nuevo elemento",
-      "newButtonAria": "Nuevo elemento",
-      "allStates": "Todos los estados",
-      "stateFilterAria": "Estado",
-      "searchPlaceholder": "Buscar",
-      "errorBanner": "Error al cargar elementos",
-      "empty": {
-        "title": "No hay elementos de trabajo",
-        "subtitle": "Crea tu primer elemento para empezar a trabajar",
-        "createButton": "Nuevo elemento"
-      },
-      "listAria": "Lista de elementos de trabajo",
-      "columns": {
-        "title": "Título",
-        "type": "Tipo",
-        "state": "Estado",
-        "completeness": "Completitud",
-        "updatedAt": "Actualizado"
-      },
-      "pagination": {
-        "prev": "Anterior",
-        "next": "Siguiente",
-        "pageOf": "Página {page} de {total}"
-      },
-      "states": {
-        "draft": "Borrador",
-        "in_clarification": "En aclaración",
-        "in_review": "En revisión",
-        "changes_requested": "Cambios solicitados",
-        "partially_validated": "Parcialmente validado",
-        "ready": "Listo",
-        "exported": "Exportado"
+      "filters": {
+        "resetAria": "Restablecer filtros",
+        "reset": "Restablecer filtros",
+        "allTypes": "Todos los tipos",
+        "typeFilterAria": "Tipo",
+        "priorityFilterAria": "Prioridad",
+        "allPriorities": "Todas las prioridades",
+        "completenessLabel": "Completitud mínima: {value}%",
+        "completenessAria": "Completitud mínima",
+        "dateFrom": "Actualizado después",
+        "dateTo": "Actualizado antes",
+        "tags": "Etiquetas",
+        "noTags": "Sin etiquetas"
       }
     },
     "itemDetail": {
@@ -454,13 +451,6 @@
         "story": "Historia"
       }
     },
-    "inbox": {
-      "title": "Bandeja de entrada",
-      "loading": "Cargando...",
-      "errorPrefix": "No se pudo cargar la bandeja",
-      "empty": "No tienes notificaciones",
-      "unreadAria": "No leída"
-    },
     "teams": {
       "title": "Equipos",
       "loading": "Cargando...",
@@ -613,22 +603,6 @@
         "title": "Actividad reciente",
         "empty": "Sin actividad reciente",
         "viewItem": "Ver elemento"
-      }
-    },
-    "items": {
-      "filters": {
-        "resetAria": "Restablecer filtros",
-        "reset": "Restablecer filtros",
-        "allTypes": "Todos los tipos",
-        "typeFilterAria": "Tipo",
-        "priorityFilterAria": "Prioridad",
-        "allPriorities": "Todas las prioridades",
-        "completenessLabel": "Completitud mínima: {value}%",
-        "completenessAria": "Completitud mínima",
-        "dateFrom": "Actualizado después",
-        "dateTo": "Actualizado antes",
-        "tags": "Etiquetas",
-        "noTags": "Sin etiquetas"
       }
     }
   },

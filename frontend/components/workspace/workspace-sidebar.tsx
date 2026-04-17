@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { List, Bell, Users, Settings } from 'lucide-react';
+import { List, Bell, Users, Settings, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUnreadCount } from '@/hooks/use-unread-count';
 import { MatrixRain } from '@/components/system/matrix-rain';
@@ -27,6 +27,7 @@ export function WorkspaceSidebar({ slug, workspaceName }: WorkspaceSidebarProps)
   const t = useTranslations('nav');
 
   const navItems: NavItem[] = [
+    { href: `/workspace/${slug}/dashboard`, label: t('dashboard'), icon: LayoutDashboard },
     { href: `/workspace/${slug}/items`, label: t('items'), icon: List },
     { href: `/workspace/${slug}/inbox`, label: t('inbox'), icon: Bell },
     { href: `/workspace/${slug}/teams`, label: t('teams'), icon: Users },
