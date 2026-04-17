@@ -60,23 +60,28 @@ describe('WorkspaceLayout', () => {
     expect(screen.getByTestId('child-content')).toBeInTheDocument();
   });
 
-  it('shows user full_name in sidebar footer', () => {
+  it('renders the user menu trigger (avatar) in sidebar footer', () => {
     render(
       <WorkspaceLayout params={{ slug: 'acme' }}>
         <div>content</div>
       </WorkspaceLayout>,
     );
-    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    // Avatar has aria-label with the user name
+    expect(screen.getByRole('img', { name: /ada lovelace/i })).toBeInTheDocument();
   });
 
-  it('calls logout when logout button clicked', async () => {
+  it('calls logout when Sign out is selected from user menu', async () => {
     render(
       <WorkspaceLayout params={{ slug: 'acme' }}>
         <div>content</div>
       </WorkspaceLayout>,
     );
-    const logoutBtn = screen.getByRole('button', { name: /cerrar sesión/i });
-    await userEvent.click(logoutBtn);
+    // Open the user menu via the trigger button (aria-label is the i18n key in this mock)
+    const menuTrigger = screen.getByRole('button', { name: /userMenu\.trigger/i });
+    await userEvent.click(menuTrigger);
+    // In this test, useTranslations returns raw keys — the rendered text is the key
+    const signOutItem = screen.getByRole('menuitem', { name: /signOut/i });
+    await userEvent.click(signOutItem);
     expect(mockLogout).toHaveBeenCalledOnce();
   });
 

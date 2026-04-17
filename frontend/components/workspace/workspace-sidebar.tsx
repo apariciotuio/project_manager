@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { List, Bell, Users, Settings, LogOut } from 'lucide-react';
+import { List, Bell, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { UserAvatar } from '@/components/domain/user-avatar';
-import { useAuth } from '@/app/providers/auth-provider';
 import { useNotifications } from '@/hooks/use-notifications';
+import { MatrixRain } from '@/components/system/matrix-rain';
+import { UserMenu } from '@/components/workspace/user-menu/user-menu';
 
 interface NavItem {
   href: string;
@@ -30,13 +29,14 @@ interface WorkspaceSidebarProps {
 }
 
 export function WorkspaceSidebar({ slug, workspaceName }: WorkspaceSidebarProps) {
-  const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const navItems = buildNavItems(slug);
 
   return (
-    <nav
+    <>
+      <MatrixRain />
+      <nav
       aria-label="Navegación del workspace"
       className="flex h-full w-[280px] shrink-0 flex-col border-r border-border bg-card"
     >
@@ -80,35 +80,14 @@ export function WorkspaceSidebar({ slug, workspaceName }: WorkspaceSidebarProps)
         })}
       </ul>
 
-      {/* User footer */}
+      {/* Announce theme changes */}
+      <div role="status" aria-live="polite" className="sr-only" id="theme-announcer" />
+
+      {/* User footer — avatar opens UserMenu */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3">
-          {user && (
-            <UserAvatar
-              name={user.full_name}
-              avatarUrl={user.avatar_url}
-              size="sm"
-            />
-          )}
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-body-sm font-medium text-foreground">
-              {user?.full_name ?? ''}
-            </span>
-            <span className="truncate text-caption text-muted-foreground">
-              {user?.email ?? ''}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Cerrar sesión"
-            onClick={() => void logout()}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-          </Button>
-        </div>
+        <UserMenu />
       </div>
     </nav>
+    </>
   );
 }
