@@ -114,6 +114,7 @@ class WorkItemService:
             priority=cmd.priority,
             due_date=cmd.due_date,
             tags=list(cmd.tags),
+            parent_work_item_id=cmd.parent_work_item_id,
         )
         # EP-02: set template_id (audit reference — immutable after set)
         if cmd.template_id is not None:

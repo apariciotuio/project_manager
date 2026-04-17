@@ -33,7 +33,7 @@ class WorkItemCreateRequest(BaseModel):
 
     title: Annotated[str, Field(min_length=3, max_length=255)]
     type: WorkItemType
-    project_id: UUID
+    project_id: UUID | None = None
     owner_id: UUID | None = None
     description: str | None = None
     original_input: str | None = None
@@ -42,6 +42,8 @@ class WorkItemCreateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=50)
     # EP-02 additions
     template_id: UUID | None = None  # audit reference; validated server-side
+    # EP-14 hierarchy
+    parent_work_item_id: UUID | None = None
 
 
 class WorkItemUpdateRequest(BaseModel):

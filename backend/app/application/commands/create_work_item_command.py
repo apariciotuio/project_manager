@@ -23,3 +23,4 @@ class CreateWorkItemCommand:
     due_date: date | None = None
     tags: tuple[str, ...] = field(default_factory=tuple)
     template_id: UUID | None = None  # EP-02: audit reference, immutable after set
+    parent_work_item_id: UUID | None = None  # EP-14: hierarchy link (epic > story > task)

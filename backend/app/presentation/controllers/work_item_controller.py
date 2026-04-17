@@ -73,7 +73,10 @@ async def create_work_item(
         title=body.title,
         type=body.type,
         workspace_id=current_user.workspace_id,
-        project_id=body.project_id,
+        # EP-10: project FK not enforced yet; default to workspace_id so single-
+        # project workspaces don't need to pre-create a project. Matches the
+        # workspace-scoped list endpoint which ignores project_id entirely.
+        project_id=body.project_id or current_user.workspace_id,
         creator_id=current_user.id,
         owner_id=body.owner_id,
         description=body.description,
@@ -82,6 +85,7 @@ async def create_work_item(
         due_date=body.due_date,
         tags=tuple(body.tags),
         template_id=body.template_id,
+        parent_work_item_id=body.parent_work_item_id,
     )
     item = await service.create(cmd)
     return _ok(_response(item, current_user.workspace_id), "Work item created")
@@ -355,6 +359,7 @@ async def list_all_work_items(
     state: WorkItemState | None = None,
     type: WorkItemType | None = None,
     owner_id: UUID | None = None,
+    parent_work_item_id: UUID | None = None,
     has_override: bool | None = None,
     include_deleted: bool = False,
     page: int = Query(default=1, ge=1),
@@ -365,6 +370,7 @@ async def list_all_work_items(
     """List all work items in the current workspace (all projects).
 
     RLS ensures only workspace-scoped items are returned.
+    Pass `parent_work_item_id` to return direct children of a given parent.
     """
     assert current_user.workspace_id is not None
 
@@ -387,6 +393,8 @@ async def list_all_work_items(
             stmt = stmt.where(WorkItemORM.type == type.value)
         if owner_id:
             stmt = stmt.where(WorkItemORM.owner_id == owner_id)
+        if parent_work_item_id is not None:
+            stmt = stmt.where(WorkItemORM.parent_work_item_id == parent_work_item_id)
         if not include_deleted:
             stmt = stmt.where(WorkItemORM.deleted_at.is_(None))
         stmt = stmt.order_by(WorkItemORM.updated_at.desc())
