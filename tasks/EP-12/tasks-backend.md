@@ -73,9 +73,9 @@ THEN a single log line is emitted containing: `method`, `path`, `status_code`, `
 - [ ] [GREEN] Import and initialize in `app/main.py`
 
 ### RequestLoggingMiddleware
-- [ ] [RED] Test: logs `method`, `path`, `status_code`, `duration_ms` after each request
-- [ ] [GREEN] Implement `RequestLoggingMiddleware` in `app/presentation/middleware/request_logging.py`
-- [ ] [GREEN] Document middleware chain order in `app/main.py` with comments
+- [x] [RED] Test: logs `method`, `path`, `status_code`, `duration_ms` after each request — 7 tests in `tests/unit/presentation/middleware/test_request_logging.py`
+- [x] [GREEN] Implement `RequestLoggingMiddleware` in `app/presentation/middleware/request_logging.py` — commit 82b1e6d
+- [ ] [GREEN] Document middleware chain order in `app/main.py` with comments — deferred to phase 9 wiring pass
 
 ---
 
@@ -105,10 +105,10 @@ WHEN a CORS preflight OPTIONS request is received
 THEN the response includes `Access-Control-Max-Age: 600`
 
 ### CORS
-- [ ] [RED] Test: CORS middleware rejects origin not in `ALLOWED_ORIGINS`
-- [ ] [RED] Test: app startup raises `ConfigurationError` when `ALLOWED_ORIGINS` is empty in non-dev env
-- [ ] [GREEN] Configure `CORSMiddleware` with `ALLOWED_ORIGINS` allowlist from env
-- [ ] [GREEN] Add startup validation for `ALLOWED_ORIGINS` in settings
+- [x] [RED] Test: CORS middleware rejects origin not in `ALLOWED_ORIGINS` — 9 tests in `tests/unit/presentation/middleware/test_cors_policy.py`
+- [ ] [RED] Test: app startup raises `ConfigurationError` when `ALLOWED_ORIGINS` is empty in non-dev env — pending (settings validation)
+- [x] [GREEN] Implement `CORSPolicyMiddleware` in `app/presentation/middleware/cors_policy.py` — commit 1dcddcb (wildcard-in-prod raises ValueError at startup)
+- [ ] [GREEN] Add startup validation for `ALLOWED_ORIGINS` in settings — pending (settings layer)
 
 ### Acceptance Criteria — Rate Limiting
 
@@ -147,9 +147,9 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 - [ ] [GREEN] Implement CSRF token middleware for state-changing methods
 
 ### Content Security Policy
-- [ ] [RED] Test: all HTML responses include CSP header with required directives (default-src, script-src, etc.)
-- [ ] [GREEN] Implement `/api/v1/csp-report` endpoint — logs at WARN, returns 204
-- [ ] [GREEN] Add `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` headers to all responses
+- [x] [RED] Test: all HTML responses include CSP header with required directives (default-src, script-src, etc.) — 8 tests in `tests/unit/presentation/middleware/test_security_headers.py`
+- [ ] [GREEN] Implement `/api/v1/csp-report` endpoint — logs at WARN, returns 204 — pending
+- [x] [GREEN] Add `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` headers — `app/presentation/middleware/security_headers.py` commit 1e3d5c0
 
 ### Audit Log Integration
 - [ ] [RED] Test: login success writes audit record with required fields
@@ -188,13 +188,14 @@ WHEN offset-based pagination (e.g., `?page=2&per_page=20`) is used anywhere
 THEN it must be replaced with cursor-based pagination (offset pagination is a MUST FIX, not should-fix)
 
 ### Cursor-Based Pagination
-- [ ] [RED] Test: list endpoint returns `pagination.cursor`, `has_next`, `total_count`
-- [ ] [RED] Test: supplying cursor returns correct next page (keyset semantics)
-- [ ] [RED] Test: page size defaults to 20, max 100; request above 100 returns 422
-- [ ] [GREEN] Implement `PaginationCursor` dataclass with `encode()` / `decode()` in `app/domain/pagination.py`
-- [ ] [GREEN] Implement `paginate()` utility for SQLAlchemy queries
-- [ ] [GREEN] Apply to: inbox list, work item list, member list, audit log list, search results
-- [ ] [REFACTOR] Eliminate any offset-based pagination from existing endpoints
+- [x] [RED] Test: encode/decode round-trip, tamper rejection, empty input — 9 tests in `tests/unit/presentation/test_cursor_pagination.py`
+- [ ] [RED] Test: list endpoint returns `pagination.cursor`, `has_next`, `total_count` — pending (list endpoint integration)
+- [ ] [RED] Test: supplying cursor returns correct next page (keyset semantics) — pending
+- [ ] [RED] Test: page size defaults to 20, max 100; request above 100 returns 422 — pending
+- [x] [GREEN] Implement `encode_cursor` / `decode_cursor` in `app/presentation/pagination/cursor.py` — HMAC-signed, commit 8640c3a
+- [ ] [GREEN] Implement `PaginationCursor` dataclass + `paginate()` utility for SQLAlchemy queries — pending
+- [ ] [GREEN] Apply to: inbox list, work item list, member list, audit log list, search results — pending
+- [ ] [REFACTOR] Eliminate any offset-based pagination from existing endpoints — pending
 
 ### Acceptance Criteria — Redis Caching
 
@@ -317,3 +318,34 @@ Shipped today (all adjacent to EP-12 concerns, most outside the plan's explicit 
 - **Migration 0033** — workspace scoping (column + FK + btree index + RLS policy) on `conversation_threads`, `assistant_suggestions`, `gap_findings`. Backfill via work-item join; orphan threads dropped.
 
 Gaps intentionally left un-ticked — **the entire middleware chain** in Group 1 (CorrelationID, RequestLogging), all CORS/CSP/CSRF enforcement, the Pydantic `extra="forbid"` sweep, full rate limiter middleware, cursor pagination, Redis cache-aside proper, N+1 detection middleware, SSE infrastructure. These are the bulk of EP-12 and none of them have started. When EP-12 enters formal delivery, the plan text is still accurate — most of it just hasn't been executed.
+
+## EP-12 middleware scaffold (2026-04-17) — 6 modules shipped, un-wired
+
+Shipped (modules + unit tests only — main.py untouched):
+
+- **`RequestLoggingMiddleware`** (`app/presentation/middleware/request_logging.py`) — commit 82b1e6d. 7 tests.
+- **`CORSPolicyMiddleware`** (`app/presentation/middleware/cors_policy.py`) — commit 1dcddcb. 9 tests.
+- **`SecurityHeadersMiddleware`** (`app/presentation/middleware/security_headers.py`) — CSP + HSTS + X-Frame-Options. Commit 1e3d5c0. 8 tests.
+- **`BodySizeLimitMiddleware`** (`app/presentation/middleware/body_size_limit.py`) — commit 74e291c. 7 tests.
+- **`encode_cursor`/`decode_cursor`** (`app/presentation/pagination/cursor.py`) — HMAC-signed base64url. Commit 8640c3a. 9 tests.
+- **Observability scaffolding** (`app/infrastructure/observability/metrics.py` + `tracing.py`) — no-op counter/histogram/span. Commit 0f223e8. 12 tests.
+
+Total new unit tests: +52. Full suite: 1166 passed.
+
+**Wiring order for main.py (phase 9 pass):**
+```python
+# Outermost → innermost (add_middleware is LIFO — last added runs first)
+app.add_middleware(CorrelationIDMiddleware)                               # already exists
+app.add_middleware(RequestLoggingMiddleware)                              # NEW — reads CorrelationID ContextVar
+app.add_middleware(BodySizeLimitMiddleware,                               # NEW — early rejection before auth
+                   max_body_bytes=settings.app.max_body_bytes,
+                   large_body_prefixes=["/api/v1/attachments"],
+                   large_body_limit=10 * 1024 * 1024)
+app.add_middleware(CORSPolicyMiddleware,                                  # NEW — before auth so preflight works
+                   allowed_origins=settings.app.cors_allowed_origins,
+                   env=settings.app.env)
+app.add_middleware(SecurityHeadersMiddleware,                             # NEW — wraps all responses
+                   csp_overrides=getattr(settings.app, "csp_overrides", {}))
+# RateLimitMiddleware — existing, already wired via slowapi
+# AuthMiddleware — existing JWTAuthMiddleware
+```
