@@ -311,7 +311,7 @@ THEN only root comments appear as `comment_added` events (replies do not generat
 - [x] 3.3 [RED] Test snapshot schema — snapshot_schema_version=1 asserted in test
 - [x] 3.4 [RED] Test navigation — list_reverse_chron + get_by_number tests pass
 - [x] 3.5 [GREEN] `application/services/versioning_service.py` — SET TRANSACTION ISOLATION LEVEL SERIALIZABLE explicit, snapshot build from repos, full trigger/actor_type support
-- [ ] 3.6 [GREEN] Integrate into EP-04 section save — deferred: requires EP-04 SectionService injection refactor
+- [x] 3.6 [GREEN] Integrate into EP-04 section save — SectionService.update_section now accepts optional VersioningService; injected via get_section_service dep; creates version on content change (2026-04-17 — commit cb3cc73)
 - [ ] 3.7 [GREEN] Integrate into EP-01 state transition — deferred: timeline_subscriber handles state_changed events via EventBus (fire-and-forget)
 - [ ] 3.8 [GREEN] Integrate into EP-06 review response — deferred: EP-06 scope
 - [ ] 3.9 [GREEN] Integrate into EP-05 breakdown save — deferred: EP-05 scope

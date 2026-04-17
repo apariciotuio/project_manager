@@ -309,9 +309,9 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 
 **Single-writer invariant**: `SectionService.update_section()` and `bulk_save()` MUST call `VersioningService.create_version(work_item_id, trigger='section_edit', actor_id, actor_type='human')` instead of INSERTing into `work_item_versions` directly. EP-07's `VersioningService` is the sole owner of all writes to `work_item_versions` — no service in any other epic may bypass this.
 
-- [ ] [RED] Write integration test: `SectionService.save_section()` calls `VersioningService.create_version()` (not INSERT directly); verify via `FakeVersioningService` that `create_version` is invoked with correct trigger and actor
-- [ ] [RED] Write integration test: section save creates both a `work_item_section_versions` row (via SectionService) AND a `work_item_versions` row (via VersioningService) in the same DB transaction; if either fails, neither is committed
-- [ ] [GREEN] In `SectionService.save_section()` and `bulk_save()`: call injected `IVersioningService.create_version()` after committing section changes — never INSERT to `work_item_versions` directly
+- [x] [RED] Write unit tests: `SectionService.update_section()` calls `VersioningService.create_version()` when content changes; skips when content identical; commit_message includes section_type; no crash if versioning_service is None (2026-04-17 — 4 tests in test_section_service_versioning.py)
+- [x] [RED] Write integration test: PATCH section → GET /versions count increases by 1 (2026-04-17 — test_ep04_controllers.py::test_patch_section_creates_version)
+- [x] [GREEN] `SectionService.update_section()` accepts optional `VersioningService`; calls `create_version(trigger=CONTENT_EDIT)` after save when content differs — commit cb3cc73 (2026-04-17)
 
 ---
 

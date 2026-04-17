@@ -307,7 +307,7 @@ AND no partial section updates are applied from the losing call
 - [x] [RED+GREEN] `POST /api/v1/work-items/{id}/suggestion-sets` — 202 + batch_id; dispatches `invoke_suggestion_agent.delay(...)` (2026-04-16)
 - [x] [RED+GREEN] `GET /api/v1/suggestion-sets/{batch_id}` + `GET /api/v1/work-items/{id}/suggestion-sets` + `PATCH /api/v1/suggestion-items/{item_id}` (accept/reject) (2026-04-16)
 - [x] [RED+GREEN] `GET /api/v1/work-items/{id}/gaps/questions` — top 3 blocking via ClarificationService (2026-04-16)
-- [ ] [DEFERRED] `POST /api/v1/suggestion-sets/{id}/apply` — needs `SuggestionService.apply_partial` (EP-04 work_item_sections + EP-07 VersioningService)
+- [x] `POST /api/v1/suggestion-sets/{batch_id}/apply` — SuggestionService.apply_accepted_batch; 200 {applied_count, skipped_count, latest_version_id, latest_version_number}; idempotent (2026-04-17 — commit d3a7576)
 - [ ] [DEFERRED] `POST /api/v1/work-items/{id}/quick-actions` + `.../undo` — QuickActionService deferred to EP-04
 - [ ] [DEFERRED] `POST /api/v1/work-items/{id}/gaps/ai-review` — owned by EP-04
 

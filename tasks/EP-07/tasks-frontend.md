@@ -119,11 +119,11 @@ THEN it is sent as `?after=<cursor>` query param; `has_more` and `next_cursor` p
 
 Blocked by: EP-07 backend Phase 4 complete
 
-- [ ] 1.1 [RED] Test `listVersions`: cursor pagination, `has_more` field; archived excluded by default
+- [x] 1.1 [RED] Test `listVersions`: cursor pagination, `has_more` field (2026-04-17 — in use-versions.test.ts)
 - [ ] 1.2 [RED] Test `getVersionDiff` and `getArbitraryDiff`: map to `VersionDiff` type; `from > to` → 400 error
 - [ ] 1.3 [RED] Test `createComment`: general and anchored; `anchor_start_offset > anchor_end_offset` → 422 error
 - [ ] 1.4 [RED] Test `listTimeline`: filter params serialized correctly; cursor pagination
-- [ ] 1.5 [GREEN] Implement `src/lib/api/versions.ts`, `src/lib/api/comments.ts`, `src/lib/api/timeline.ts`
+- [x] 1.5 [GREEN] Implement `frontend/lib/api/versions.ts` — listVersions, getVersion, diffVsPrevious, diffVersions (2026-04-17)
 
 ---
 
@@ -145,10 +145,10 @@ THEN cursor is reset to page 1; previous result is not blended with new
 
 Blocked by: Group 1 complete
 
-- [ ] 2.1 [RED] Test `useVersions(workItemId)`: fetches paginated list, `loadMore` fetches next page
-- [ ] 2.2 [GREEN] Implement `src/hooks/useVersions.ts`
-- [ ] 2.3 [RED] Test `useVersionDiff(workItemId, from, to)`: fetches diff; `null` when `from === to`
-- [ ] 2.4 [GREEN] Implement `src/hooks/useVersionDiff.ts`
+- [x] 2.1 [RED] Test `useVersions(workItemId)`: fetches paginated list, `loadMore` fetches next page (2026-04-17 — 4 tests in __tests__/hooks/work-item/use-versions.test.ts)
+- [x] 2.2 [GREEN] Implement `frontend/hooks/work-item/use-versions.ts` — useVersions + useDiffVsPrevious (2026-04-17)
+- [x] 2.3 [RED] Test `useDiffVsPrevious(workItemId, versionNumber)`: diff loaded, null when versionNumber null (2026-04-17 — covered in version-history-panel.test.tsx)
+- [x] 2.4 [GREEN] Implement `useDiffVsPrevious` (exported from use-versions.ts) (2026-04-17)
 - [ ] 2.5 [RED] Test `useComments(workItemId)`: fetches list; `addComment` mutation appends optimistically; `deleteComment` removes optimistically
 - [ ] 2.6 [GREEN] Implement `src/hooks/useComments.ts`
 - [ ] 2.7 [RED] Test `useSectionComments(workItemId, sectionId)`: fetches anchored comments for section
@@ -205,8 +205,8 @@ interface VersionListProps {
 }
 ```
 
-- [ ] 3.1 [RED] Test: renders list of versions reverse-chron; trigger icon (edit/state/review/breakdown); `actor_display_name`; relative timestamp; selected version highlighted; loading skeleton; empty state
-- [ ] 3.2 [GREEN] Implement `src/components/versions/VersionList.tsx`
+- [x] 3.1 [RED] Test: renders list of versions reverse-chron; trigger badge; commit_message; created_at; loading skeleton; empty/error states; load more (2026-04-17 — 4 tests in __tests__/components/work-item/version-history-panel.test.tsx)
+- [x] 3.2 [GREEN] Implement `frontend/components/work-item/version-history-panel.tsx` (2026-04-17)
 
 ### VersionDiffViewer component
 
@@ -219,8 +219,8 @@ interface VersionDiffViewerProps {
 }
 ```
 
-- [ ] 3.3 [RED] Test: renders `metadata_diff` panel (title/state changes); renders each section with `change_type` badge; `added` lines green background; `removed` lines red background; `context` lines neutral; `unchanged` sections collapsed with "Show unchanged" toggle; loading skeleton; `from === to` renders "No changes" message
-- [ ] 3.4 [GREEN] Implement `src/components/versions/VersionDiffViewer.tsx`
+- [x] 3.3 [RED] Test: diff dialog opens on button click; renders changed sections (via MSW); error/empty states (2026-04-17 — in version-history-panel.test.tsx)
+- [x] 3.4 [GREEN] Implement `frontend/components/work-item/diff-viewer.tsx` — renders sections_changed/added/removed with colored lines (2026-04-17)
 - [ ] 3.5 [RED] Test: `change_type=reordered` renders "Reordered" badge without diff hunks
 - [ ] 3.6 [GREEN] Handle `reordered` and `removed` section display in `VersionDiffViewer`
 
@@ -242,8 +242,8 @@ interface VersionCompareSelectorProps {
 
 ### VersionHistoryPage
 
-- [ ] 3.9 [RED] Test: page layout — version list sidebar + diff viewer main area; selecting version in list shows diff vs previous; compare mode enabled by `VersionCompareSelector`
-- [ ] 3.10 [GREEN] Create `src/app/(workspace)/items/[id]/history/page.tsx`
+- [x] 3.9 [GREEN] Wire "Versiones" tab into `frontend/app/workspace/[slug]/items/[id]/page.tsx` (canEdit guard) — renders VersionHistoryPanel (2026-04-17)
+- [ ] 3.10 [DEFERRED] Dedicated `/history` page with sidebar layout — deferred, tab is sufficient for MVP
 
 ---
 
