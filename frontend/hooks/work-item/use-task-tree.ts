@@ -28,7 +28,7 @@ export function useTaskTree(workItemId: string): UseTaskTreeResult {
       const res = await apiGet<TaskTreeResponse>(
         `/api/v1/work-items/${workItemId}/task-tree`
       );
-      setTasks(res.data);
+      setTasks(res.data.tree);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {

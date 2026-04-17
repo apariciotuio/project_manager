@@ -218,18 +218,19 @@ export function SpecificationTab({ workItemId }: SpecificationTabProps) {
 
             {/* Dimensions */}
             <div className="flex flex-col gap-2">
-              {completeness.dimensions.map((dim) => (
-                <div key={dim.name} className="flex flex-col gap-0.5">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{dim.label}</span>
-                    <span>{dim.score}%</span>
+              {completeness.dimensions.map((dim) => {
+                const pct = Math.round(dim.score * 100);
+                const label = dim.dimension.replace(/_/g, ' ');
+                return (
+                  <div key={dim.dimension} className="flex flex-col gap-0.5">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span className="capitalize">{label}</span>
+                      <span>{pct}%</span>
+                    </div>
+                    <CompletenessBar level={scoreTolevel(pct)} percent={pct} />
                   </div>
-                  <CompletenessBar
-                    level={scoreTolevel(dim.score)}
-                    percent={dim.score}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         ) : null}

@@ -26,10 +26,12 @@ export interface SpecificationResponse {
 export type CompletenessLevel = 'low' | 'medium' | 'high' | 'ready';
 
 export interface CompletenessDimension {
-  name: string;
+  dimension: string;
   score: number;
   weight: number;
-  label: string;
+  applicable: boolean;
+  filled: boolean;
+  message: string | null;
 }
 
 export interface CompletenessData {
@@ -84,7 +86,10 @@ export interface TaskNode {
 }
 
 export interface TaskTreeResponse {
-  data: TaskNode[];
+  data: {
+    work_item_id: string;
+    tree: TaskNode[];
+  };
 }
 
 export interface CreateTaskRequest {
@@ -168,8 +173,8 @@ export interface TimelineEvent {
 }
 
 export interface TimelineResponse {
-  data: TimelineEvent[];
-  total: number;
-  page: number;
-  page_size: number;
+  data: {
+    events: TimelineEvent[];
+    next_cursor: string | null;
+  };
 }

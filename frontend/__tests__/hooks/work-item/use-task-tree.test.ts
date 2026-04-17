@@ -30,7 +30,7 @@ describe('useTaskTree', () => {
   it('returns task nodes on success', async () => {
     server.use(
       http.get('http://localhost/api/v1/work-items/wi-1/task-tree', () =>
-        HttpResponse.json({ data: TASKS })
+        HttpResponse.json({ data: { work_item_id: 'wi-1', tree: TASKS } })
       )
     );
 
@@ -50,7 +50,7 @@ describe('useTaskTree', () => {
 
     server.use(
       http.get('http://localhost/api/v1/work-items/wi-1/task-tree', () =>
-        HttpResponse.json({ data: TASKS })
+        HttpResponse.json({ data: { work_item_id: 'wi-1', tree: TASKS } })
       ),
       http.post('http://localhost/api/v1/work-items/wi-1/tasks', () =>
         HttpResponse.json({ data: updated[1] })
@@ -63,7 +63,7 @@ describe('useTaskTree', () => {
     // After creating a task the hook re-fetches
     server.use(
       http.get('http://localhost/api/v1/work-items/wi-1/task-tree', () =>
-        HttpResponse.json({ data: updated })
+        HttpResponse.json({ data: { work_item_id: 'wi-1', tree: updated } })
       )
     );
 

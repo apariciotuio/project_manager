@@ -22,6 +22,7 @@ const mockItem: WorkItemResponse = {
   has_override: false,
   override_justification: null,
   owner_suspended_flag: false,
+  parent_work_item_id: null,
   created_at: '2026-04-15T00:00:00Z',
   updated_at: '2026-04-15T00:00:00Z',
   deleted_at: null,

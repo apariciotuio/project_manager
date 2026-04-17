@@ -63,7 +63,12 @@ export interface Notification {
 }
 
 export interface NotificationsResponse {
-  data: Notification[];
+  data: {
+    items: Notification[];
+    total: number;
+    page: number;
+    page_size: number;
+  };
 }
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
@@ -127,35 +132,35 @@ export interface ProjectCreateRequest {
 
 export interface AuditEvent {
   id: string;
-  actor_id: string | null;
-  actor_name: string | null;
+  category: string;
   action: string;
-  resource_type: string;
-  resource_id: string | null;
-  metadata: Record<string, unknown> | null;
+  actor_id: string | null;
+  actor_display: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  before_value: Record<string, unknown> | null;
+  after_value: Record<string, unknown> | null;
+  context: Record<string, unknown> | null;
   created_at: string;
 }
 
 export interface AuditEventsResponse {
-  data: AuditEvent[];
-  total: number;
+  data: {
+    items: AuditEvent[];
+    total: number;
+    page: number;
+    page_size: number;
+  };
 }
 
-// ─── Health ───────────────────────────────────────────────────────────────────
+// ─── Health (workspace work item state summary) ───────────────────────────────
 
-export type HealthStatus = 'ok' | 'degraded' | 'down';
-
-export interface HealthCheck {
-  name: string;
-  status: HealthStatus;
-  latency_ms: number | null;
-  message: string | null;
-}
-
-export interface HealthResponse {
-  status: HealthStatus;
-  checks: HealthCheck[];
-  version: string | null;
+export interface WorkspaceHealthResponse {
+  data: {
+    workspace_id: string;
+    work_items_by_state: Record<string, number>;
+    total_active: number;
+  };
 }
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
@@ -185,12 +190,27 @@ export interface TagCreateRequest {
 
 export interface IntegrationConfig {
   id: string;
-  provider: string;
-  enabled: boolean;
-  config: Record<string, unknown>;
+  workspace_id: string;
+  integration_type: string;
+  project_id: string | null;
+  mapping: Record<string, unknown> | null;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
+  created_by: string;
 }
 
 export interface IntegrationConfigsResponse {
   data: IntegrationConfig[];
+}
+
+export interface IntegrationConfigResponse {
+  data: IntegrationConfig;
+}
+
+export interface IntegrationConfigCreateRequest {
+  integration_type: string;
+  encrypted_credentials: string;
+  project_id?: string;
+  mapping?: Record<string, unknown>;
 }
