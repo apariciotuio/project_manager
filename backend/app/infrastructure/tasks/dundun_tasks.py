@@ -55,7 +55,7 @@ async def _build_deps() -> dict[str, Any]:
     settings = get_settings()
 
     if settings.dundun.use_fake:
-        from tests.fakes.fake_dundun_client import FakeDundunClient
+        from app.infrastructure.fakes.fake_dundun_client import FakeDundunClient
 
         dundun_client: Any = FakeDundunClient()
     else:

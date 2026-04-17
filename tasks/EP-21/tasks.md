@@ -30,7 +30,7 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 | F-4-be | Error envelope (backend: registry + middleware) | Backend | 1 | [x] domain/errors/codes.py registry + DomainError hierarchy; error_envelope.py middleware; tag_controller uses TagNameTakenError; 12 unit tests |
 | F-4-fe | Error envelope (frontend: ApiError + field mapping) | Frontend | 2 | [ ] |
 | F-5 | Edit work item modal | Frontend | 3 | [ ] |
-| F-6 | Dundun fake HTTP service | Backend / Infra | 1 | [ ] |
+| F-6 | Dundun fake HTTP service | Backend / Infra | 1 | [x] FakeDundunClient promoted to app/infrastructure/fakes/; infra/dundun-fake/ FastAPI app; wired into docker-compose.dev.yml; 9 integration tests |
 | F-7 | User menu dropdown | Frontend | 1 | [ ] |
 | F-8 | Matrix entry cascade | Frontend | 1 | [ ] |
 | F-9 | Color picker component | Frontend | 1 | [ ] |
