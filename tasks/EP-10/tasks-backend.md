@@ -324,6 +324,7 @@ THEN those members are excluded from `suggested_validators` results
 - [ ] [RED] `test_template_binding` — binding created, default not mandatory
 - [ ] [RED] `test_project_team_deletion_cascade` — team deleted → project team_ids cleaned, alert queued
 - [ ] [GREEN] `application/services/project_service.py` — project CRUD, context source CRUD, preset CRUD, template bindings
+  - [x] **Partial:** Project CRUD shipped with workspace scoping on `get/update/soft_delete` (IDOR mitigation) — `backend/app/application/services/project_service.py:47-85`. `POST /api/v1/projects` maps Postgres `23505` → HTTP 409 `PROJECT_NAME_TAKEN`; other integrity failures → 422 `INVALID_INPUT` (`backend/app/presentation/controllers/project_controller.py:83-104`). Context sources / presets / template bindings NOT shipped.
 - [ ] [GREEN] Audit: all project/preset/source mutations call `AuditService.record()`
 - [ ] [REFACTOR] Confirm context sources used by enrichment service (AI layer integration point)
 
@@ -577,3 +578,17 @@ THEN the API returns HTTP 403
 - [ ] Load test dashboard queries: 500 elements, 30 members, 10 teams — all queries < 200ms
 - [ ] Verify all admin endpoints return 403 (not 401/404) when capability missing
 - [ ] Grep for plaintext credentials in test fixtures and logs
+
+---
+
+## Reconciliation notes (2026-04-17)
+
+**Opportunistic EP-10 slice; full admin backend still pending.** EP-10 is enormous (14 groups, members + rules + projects + Jira/Puppet + audit + dashboard + support + superadmin + tags). Today's pass only touched minor project/template bits adjacent to EP-12 hardening. Specifically shipped:
+
+- **`GET /api/v1/templates` with no params** — lists workspace templates + system defaults (`backend/app/application/services/template_service.py:71`, `backend/app/presentation/controllers/template_controller.py:62-69`). Falls outside the explicit plan text (templates are EP-02) but is an admin-style list surface worth recording here.
+- **`POST /api/v1/projects` IntegrityError handling** — Postgres `23505` → 409 `PROJECT_NAME_TAKEN`; other integrity failures → 422 `INVALID_INPUT` (`backend/app/presentation/controllers/project_controller.py:83-104`).
+- **`PROJECT_NAME_TAKEN` registered** in `ERROR_CODES` (`backend/app/domain/errors/codes.py:27`) and mirrored in `frontend/lib/errors/codes.ts:20,35`.
+- **Workspace scoping on `ProjectService.get/update/soft_delete`** — closes an IDOR: `ProjectNotFoundError` is raised for both missing-project AND cross-workspace cases (`backend/app/application/services/project_service.py:47-85`).
+- **`.limit(500)` safety cap** on project + template repos (`backend/app/infrastructure/persistence/project_repository_impl.py:45`, `template_repository_impl.py:122`).
+
+Nothing else in Groups 0-14 was touched today: no member management, no invitations, no capabilities, no validation/routing rules, no context sources/presets, no Jira/Puppet config surfaces, no audit log endpoint, no admin dashboard, no support tools, no superadmin endpoints. **>95% of the plan is still pending** — when EP-10 goes into formal delivery, re-plan from scratch against current schema.
