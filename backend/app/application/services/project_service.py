@@ -44,9 +44,15 @@ class ProjectService:
         )
         return await self._projects.create(project)
 
-    async def get(self, project_id: UUID) -> Project:
+    async def get(self, project_id: UUID, *, workspace_id: UUID) -> Project:
+        """Return a project scoped to the caller's workspace.
+
+        Raises ProjectNotFoundError when the project does not exist OR
+        belongs to another workspace — caller must not be able to
+        distinguish the two cases (IDOR mitigation).
+        """
         project = await self._projects.get(project_id)
-        if project is None:
+        if project is None or project.workspace_id != workspace_id:
             raise ProjectNotFoundError(f"project {project_id} not found")
         return project
 
@@ -57,14 +63,13 @@ class ProjectService:
         self,
         project_id: UUID,
         *,
+        workspace_id: UUID,
         name: str | None = None,
         description: str | None = None,
     ) -> Project:
         from datetime import UTC, datetime
 
-        project = await self._projects.get(project_id)
-        if project is None:
-            raise ProjectNotFoundError(f"project {project_id} not found")
+        project = await self.get(project_id, workspace_id=workspace_id)
         if name is not None:
             if not name.strip():
                 raise ValueError("project name cannot be empty")
@@ -74,10 +79,8 @@ class ProjectService:
         project.updated_at = datetime.now(UTC)
         return await self._projects.save(project)
 
-    async def soft_delete(self, project_id: UUID) -> Project:
-        project = await self._projects.get(project_id)
-        if project is None:
-            raise ProjectNotFoundError(f"project {project_id} not found")
+    async def soft_delete(self, project_id: UUID, *, workspace_id: UUID) -> Project:
+        project = await self.get(project_id, workspace_id=workspace_id)
         project.soft_delete()
         return await self._projects.save(project)
 

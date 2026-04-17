@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.team import Notification, Team, TeamMembership
@@ -37,6 +39,19 @@ class ITeamMembershipRepository(ABC):
 
     @abstractmethod
     async def list_teams_for_user(self, user_id: UUID, workspace_id: UUID) -> list[Team]: ...
+
+    @abstractmethod
+    async def list_active_members_with_users(
+        self, team_ids: Sequence[UUID]
+    ) -> dict[UUID, list[dict[str, Any]]]:
+        """Batch-load active memberships + user profile fields for N teams.
+
+        Returns a mapping from team_id to an ordered list of member views.
+        Each member view has id, user_id, full_name, email, avatar_url, role,
+        joined_at. Order is joined_at ASC. Teams with no active members map
+        to an empty list.
+        """
+        ...
 
 
 class INotificationRepository(ABC):

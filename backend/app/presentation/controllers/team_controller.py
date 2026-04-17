@@ -17,8 +17,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.team_service import (
     MembershipAlreadyExistsError,
@@ -28,13 +26,8 @@ from app.application.services.team_service import (
     TeamService,
 )
 from app.domain.models.team import TeamRole
-from app.infrastructure.persistence.models.orm import (
-    TeamMembershipORM,
-    UserORM,
-)
 from app.presentation.dependencies import (
     get_current_user,
-    get_scoped_session,
     get_team_service,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
@@ -67,33 +60,6 @@ def _team_payload(
         "member_count": member_count if member_count is not None else len(members or []),
         "members": members or [],
     }
-
-
-async def _resolve_members(
-    session: AsyncSession, team_id: UUID
-) -> list[dict[str, Any]]:
-    stmt = (
-        select(TeamMembershipORM, UserORM)
-        .join(UserORM, TeamMembershipORM.user_id == UserORM.id)
-        .where(
-            TeamMembershipORM.team_id == team_id,
-            TeamMembershipORM.removed_at.is_(None),
-        )
-        .order_by(TeamMembershipORM.joined_at.asc())
-    )
-    rows = (await session.execute(stmt)).all()
-    return [
-        {
-            "id": str(m.id),
-            "user_id": str(m.user_id),
-            "full_name": u.full_name,
-            "email": u.email,
-            "avatar_url": u.avatar_url,
-            "role": m.role,
-            "joined_at": m.joined_at.isoformat(),
-        }
-        for m, u in rows
-    ]
 
 
 def _membership_payload(m: Any) -> dict[str, Any]:
@@ -149,7 +115,6 @@ async def create_team(
 async def list_teams(
     current_user: CurrentUser = Depends(get_current_user),
     service: TeamService = Depends(get_team_service),
-    session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
         raise HTTPException(
@@ -157,10 +122,12 @@ async def list_teams(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     teams = await service.list_for_workspace(current_user.workspace_id)
-    payloads: list[dict[str, Any]] = []
-    for t in teams:
-        members = await _resolve_members(session, t.id)
-        payloads.append(_team_payload(t, members=members))
+    # Single batch query for all teams' members — avoids N+1.
+    members_by_team = await service.list_members_for_teams([t.id for t in teams])
+    payloads = [
+        _team_payload(t, members=members_by_team.get(t.id, []))
+        for t in teams
+    ]
     return _ok(payloads)
 
 
@@ -169,7 +136,6 @@ async def get_team(
     team_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     service: TeamService = Depends(get_team_service),
-    session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
         raise HTTPException(
@@ -177,14 +143,14 @@ async def get_team(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        team = await service.get(team_id)
+        team = await service.get(team_id, workspace_id=current_user.workspace_id)
     except TeamNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
         ) from exc
-    members = await _resolve_members(session, team.id)
-    return _ok(_team_payload(team, members=members))
+    members_by_team = await service.list_members_for_teams([team.id])
+    return _ok(_team_payload(team, members=members_by_team.get(team.id, [])))
 
 
 @router.delete("/teams/{team_id}", status_code=http_status.HTTP_204_NO_CONTENT)

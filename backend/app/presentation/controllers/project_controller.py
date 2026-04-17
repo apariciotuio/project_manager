@@ -81,15 +81,26 @@ async def create_project(
             detail={"error": {"code": "INVALID_INPUT", "message": str(exc), "details": {}}},
         ) from exc
     except IntegrityError as exc:
+        # Distinguish unique violation (23505) from other constraint failures
+        # (FK 23503, not-null 23502, …). Only the former means "name taken".
+        pgcode = getattr(getattr(exc, "orig", None), "sqlstate", None) or getattr(
+            getattr(getattr(exc, "orig", None), "diag", None), "sqlstate", None
+        )
+        if pgcode == "23505":
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "PROJECT_NAME_TAKEN",
+                        "message": f"project name '{body.name}' already exists in this workspace",
+                        "details": {},
+                    }
+                },
+            ) from exc
+        logger.exception("integrity error creating project", extra={"pgcode": pgcode})
         raise HTTPException(
-            status_code=http_status.HTTP_409_CONFLICT,
-            detail={
-                "error": {
-                    "code": "PROJECT_NAME_TAKEN",
-                    "message": f"project name '{body.name}' already exists in this workspace",
-                    "details": {},
-                }
-            },
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "INVALID_INPUT", "message": "project could not be created", "details": {}}},
         ) from exc
     return _ok(_project_payload(project), "project created")
 
@@ -120,7 +131,7 @@ async def get_project(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        project = await service.get(project_id)
+        project = await service.get(project_id, workspace_id=current_user.workspace_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -143,7 +154,10 @@ async def update_project(
         )
     try:
         project = await service.update(
-            project_id, name=body.name, description=body.description
+            project_id,
+            workspace_id=current_user.workspace_id,
+            name=body.name,
+            description=body.description,
         )
     except ProjectNotFoundError as exc:
         raise HTTPException(
@@ -170,7 +184,7 @@ async def delete_project(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        await service.soft_delete(project_id)
+        await service.soft_delete(project_id, workspace_id=current_user.workspace_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

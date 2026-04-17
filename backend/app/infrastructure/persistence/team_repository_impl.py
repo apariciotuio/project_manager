@@ -1,6 +1,8 @@
 """EP-08 — Team, TeamMembership, Notification repository implementations."""
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -26,6 +28,7 @@ from app.infrastructure.persistence.models.orm import (
     NotificationORM,
     TeamMembershipORM,
     TeamORM,
+    UserORM,
 )
 
 
@@ -122,6 +125,38 @@ class TeamMembershipRepositoryImpl(ITeamMembershipRepository):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [team_to_domain(r) for r in rows]
+
+    async def list_active_members_with_users(
+        self, team_ids: Sequence[UUID]
+    ) -> dict[UUID, list[dict[str, Any]]]:
+        """Batch-load active memberships + user profile fields for N teams."""
+        ids = list(team_ids)
+        result: dict[UUID, list[dict[str, Any]]] = {tid: [] for tid in ids}
+        if not ids:
+            return result
+        stmt = (
+            select(TeamMembershipORM, UserORM)
+            .join(UserORM, TeamMembershipORM.user_id == UserORM.id)
+            .where(
+                TeamMembershipORM.team_id.in_(ids),
+                TeamMembershipORM.removed_at.is_(None),
+            )
+            .order_by(TeamMembershipORM.team_id, TeamMembershipORM.joined_at.asc())
+        )
+        rows = (await self._session.execute(stmt)).all()
+        for membership, user in rows:
+            result[membership.team_id].append(
+                {
+                    "id": str(membership.id),
+                    "user_id": str(membership.user_id),
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "avatar_url": user.avatar_url,
+                    "role": membership.role,
+                    "joined_at": membership.joined_at.isoformat(),
+                }
+            )
+        return result
 
 
 class NotificationRepositoryImpl(INotificationRepository):

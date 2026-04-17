@@ -1,6 +1,8 @@
 """EP-08 — TeamService + NotificationService."""
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.team import Notification, Team, TeamMembership, TeamRole
@@ -60,14 +62,30 @@ class TeamService:
         )
         return await self._teams.create(team)
 
-    async def get(self, team_id: UUID) -> Team:
+    async def get(self, team_id: UUID, *, workspace_id: UUID) -> Team:
+        """Return a team scoped to the caller's workspace.
+
+        Raises TeamNotFoundError when the team does not exist OR belongs to
+        another workspace — caller must not be able to distinguish the two
+        cases (IDOR mitigation).
+        """
         team = await self._teams.get(team_id)
-        if team is None:
+        if team is None or team.workspace_id != workspace_id:
             raise TeamNotFoundError(f"team {team_id} not found")
         return team
 
     async def list_for_workspace(self, workspace_id: UUID) -> list[Team]:
         return await self._teams.list_active_for_workspace(workspace_id)
+
+    async def list_members_for_teams(
+        self, team_ids: Sequence[UUID]
+    ) -> dict[UUID, list[dict[str, Any]]]:
+        """Single-query batch fetch of active members (with user details) for N teams.
+
+        Replaces the per-team resolve loop that produced an N+1 read pattern
+        in the team-list endpoint.
+        """
+        return await self._memberships.list_active_members_with_users(team_ids)
 
     async def soft_delete(self, team_id: UUID) -> Team:
         team = await self._teams.get(team_id)
