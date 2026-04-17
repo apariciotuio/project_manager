@@ -12,13 +12,26 @@ Tech stack: Python 3.12+, FastAPI, SQLAlchemy async, PostgreSQL 16+, Celery + Re
 - [x] Pure DFS cycle detection `has_cycle_after_add(edges, new_edge)` in `domain/quality/cycle_detection.py` — O(V+E), handles direct, indirect, self-edge cases
 - [x] 9 unit tests on TaskNode FSM + cycle detection
 
+Progress 2026-04-17 (this session):
+- [x] ORM: `TaskNodeSectionLinkORM` added to orm.py; `TaskNodeORM` + `TaskDependencyORM` already existed
+- [x] Repos: `ITaskSectionLinkRepository` + `ITaskNodeRepository.count_by_work_item` + `ITaskDependencyRepository.get`/`get_by_target` added; `TaskSectionLinkRepositoryImpl` implemented
+- [x] Fakes: `FakeTaskNodeRepository`, `FakeTaskDependencyRepository`, `FakeTaskSectionLinkRepository` in `tests/unit/fakes/fake_task_repositories.py`
+- [x] `TaskService.split()` — creates two siblings, copies section links, deletes source; 5 unit tests (RED→GREEN)
+- [x] `TaskService.merge()` — creates merged node with min order, dedupes section links, deletes sources; cross-parent + single-source validation; 6 unit tests
+- [x] `TaskService.reorder()` — reassigns display_order gaplessly; validates same parent + all IDs in work item; 3 unit tests
+- [x] `DependencyService.remove()` raises `DependencyNotFoundError` when dep not found; 2 unit tests
+- [x] `DependencyService.get_blocked_tasks()` returns nodes with non-done predecessors + blocked_by list; 4 unit tests
+- [x] Controller endpoints added: `POST /tasks/:id/split`, `POST /work-items/:id/tasks/merge`, `PATCH /work-items/:id/tasks/reorder`, `GET /work-items/:id/tasks/blocked`
+- [x] `DELETE /dependencies/:id` now maps `DependencyNotFoundError` → 404
+- [x] 14 integration tests added in `tests/integration/test_task_controller_ep05.py` (all GREEN)
+- [x] Full regression: 1292 passed, 1 pre-existing failure (section_repository unrelated to EP-05)
+
 Remaining within EP-05:
-- [ ] ORM models + repositories (TaskNodeRepository, TaskDependencyRepository, TaskNodeSectionLinkRepository) + mappers
-- [ ] TaskService (split/merge/reorder, materialised_path maintenance) + DependencyService (cycle check before insert)
-- [ ] Tree API: `GET /work-items/:id/task-tree` via WITH RECURSIVE CTE
-- [ ] Task CRUD + dependency add/remove endpoints
-- [ ] Unmark-done endpoint + `task.reopened` event
-- [ ] Dundun `wm_breakdown_agent` dispatch via Celery + callback
+- [ ] Phase 5: `TaskService.update_section_links()` + completeness cache invalidation wiring
+- [ ] Phase 6: `GET /tasks/:id` (single node with section_links + breadcrumb), `GET /work-items/:id/sections/:sid/tasks`
+- [ ] Phase 7: `check_breakdown` update for task_count (currently uses section content — needs task_count injection)
+- [ ] Phase 8: E2E integration tests (generate→tree→split→tree chain)
+- [ ] Dundun `wm_breakdown_agent` dispatch via Celery + callback (phase 6 in original plan)
 
 ---
 
