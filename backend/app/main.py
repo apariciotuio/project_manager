@@ -27,7 +27,9 @@ from app.presentation.controllers.lock_controller import router as lock_router
 from app.presentation.controllers.next_step_controller import router as next_step_router
 from app.presentation.controllers.notification_controller import router as notification_router
 from app.presentation.controllers.project_controller import router as project_router
+from app.presentation.controllers.ready_gate_controller import router as ready_gate_router
 from app.presentation.controllers.review_controller import router as review_router
+from app.presentation.controllers.validation_controller import router as validation_router
 from app.presentation.controllers.saved_search_controller import router as saved_search_router
 from app.presentation.controllers.specification_controller import (
     router as specification_router,
@@ -129,8 +131,10 @@ def create_app() -> FastAPI:
     app.include_router(next_step_router, prefix="/api/v1")
     # EP-05 — task hierarchy + dependencies
     app.include_router(task_router, prefix="/api/v1")
-    # EP-06 — reviews + validation
+    # EP-06 — reviews + validation + ready gate
     app.include_router(review_router, prefix="/api/v1")
+    app.include_router(validation_router, prefix="/api/v1")
+    app.include_router(ready_gate_router, prefix="/api/v1")
     # EP-07 — comments + timeline + versions
     app.include_router(comment_router, prefix="/api/v1")
     app.include_router(timeline_router, prefix="/api/v1")

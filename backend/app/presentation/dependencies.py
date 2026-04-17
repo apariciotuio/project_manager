@@ -18,6 +18,10 @@ from app.application.events.event_bus import EventBus, get_global_bus
 if TYPE_CHECKING:
     from app.application.services.notification_service import ExtendedNotificationService
     from app.application.services.clarification_service import ClarificationService
+    from app.application.services.ready_gate_service import ReadyGateService
+    from app.application.services.review_request_service import ReviewRequestService
+    from app.application.services.review_response_service import ReviewResponseService
+    from app.application.services.validation_service import ValidationService
     from app.application.services.comment_service import CommentService
     from app.application.services.completeness_service import (
         CompletenessService,
@@ -629,6 +633,7 @@ def get_dependency_service(
 def get_review_service(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> ReviewService:
+    """Legacy stub — kept for backward compat with existing controller wiring."""
     from app.application.services.review_service import ReviewService
     from app.infrastructure.persistence.review_repository_impl import (
         ReviewRequestRepositoryImpl,
@@ -638,6 +643,71 @@ def get_review_service(
     return ReviewService(
         review_request_repo=ReviewRequestRepositoryImpl(session),
         review_response_repo=ReviewResponseRepositoryImpl(session),
+    )
+
+
+def get_review_request_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ReviewRequestService:
+    from app.application.services.review_request_service import ReviewRequestService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ReviewRequestRepositoryImpl,
+        ReviewResponseRepositoryImpl,
+    )
+
+    return ReviewRequestService(
+        review_request_repo=ReviewRequestRepositoryImpl(session),
+        review_response_repo=ReviewResponseRepositoryImpl(session),
+        events=EventBus(),
+    )
+
+
+def get_review_response_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ReviewResponseService:
+    from app.application.services.review_response_service import ReviewResponseService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ReviewRequestRepositoryImpl,
+        ReviewResponseRepositoryImpl,
+    )
+
+    return ReviewResponseService(
+        review_request_repo=ReviewRequestRepositoryImpl(session),
+        review_response_repo=ReviewResponseRepositoryImpl(session),
+        events=EventBus(),
+    )
+
+
+def get_validation_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ValidationService:
+    from app.application.services.validation_service import ValidationService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ReviewRequestRepositoryImpl,
+        ValidationRequirementRepositoryImpl,
+        ValidationStatusRepositoryImpl,
+    )
+
+    return ValidationService(
+        requirement_repo=ValidationRequirementRepositoryImpl(session),
+        status_repo=ValidationStatusRepositoryImpl(session),
+        review_request_repo=ReviewRequestRepositoryImpl(session),
+        events=EventBus(),
+    )
+
+
+def get_ready_gate_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> ReadyGateService:
+    from app.application.services.ready_gate_service import ReadyGateService
+    from app.infrastructure.persistence.review_repository_impl import (
+        ValidationRequirementRepositoryImpl,
+        ValidationStatusRepositoryImpl,
+    )
+
+    return ReadyGateService(
+        requirement_repo=ValidationRequirementRepositoryImpl(session),
+        status_repo=ValidationStatusRepositoryImpl(session),
     )
 
 

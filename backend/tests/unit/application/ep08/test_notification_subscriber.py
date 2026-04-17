@@ -61,7 +61,10 @@ def _register(bus: EventBus, svc: FakeNotificationService) -> None:
         register_notification_subscribers,
     )
 
-    register_notification_subscribers(bus, lambda: svc)
+    async def _get_svc() -> FakeNotificationService:
+        return svc
+
+    register_notification_subscribers(bus, _get_svc)
 
 
 # ---------------------------------------------------------------------------
