@@ -3,6 +3,9 @@
 Local dev only. Prints the token to stdout so it can be captured into an
 env var or curl header for smoke-testing the API end-to-end.
 
+Refuses to run unless APP_ENVIRONMENT is development/test/local — refuses
+to mint tokens against a production database even if DB creds are reachable.
+
 Usage:
     cd backend && source .venv/bin/activate
     python scripts/dev_token.py [email]          # default: first superadmin
@@ -10,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from datetime import UTC, datetime, timedelta
 
@@ -24,8 +28,18 @@ from app.infrastructure.persistence.models.orm import (
     WorkspaceORM,
 )
 
+_ALLOWED_ENVS = {"development", "dev", "test", "testing", "local"}
+
 
 async def run(email: str | None) -> int:
+    env = os.environ.get("APP_ENVIRONMENT", "").lower()
+    if env not in _ALLOWED_ENVS:
+        print(
+            f"[dev-token] REFUSED: APP_ENVIRONMENT={env!r} is not in {sorted(_ALLOWED_ENVS)}. "
+            "This script mints arbitrary JWTs and must never run against production.",
+            file=sys.stderr,
+        )
+        return 1
     settings = get_settings()
     factory = get_session_factory()
     async with factory() as session:
