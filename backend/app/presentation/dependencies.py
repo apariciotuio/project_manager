@@ -235,6 +235,13 @@ async def get_scoped_session(
             raise
 
 
+def get_work_item_repo_scoped(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> WorkItemRepositoryImpl:
+    """WorkItemRepositoryImpl bound to the workspace-scoped (RLS-applied) session."""
+    return WorkItemRepositoryImpl(session)
+
+
 def get_work_item_service(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> WorkItemService:
@@ -545,12 +552,14 @@ def get_completeness_service(
         SectionRepositoryImpl,
         ValidatorRepositoryImpl,
     )
+    from app.infrastructure.persistence.task_node_repository_impl import TaskNodeRepositoryImpl
 
     return CompletenessService(
         work_item_repo=WorkItemRepositoryImpl(session),
         section_repo=SectionRepositoryImpl(session),
         validator_repo=ValidatorRepositoryImpl(session),
         cache=cache,
+        task_node_repo=TaskNodeRepositoryImpl(session),
     )
 
 
@@ -572,12 +581,14 @@ def get_next_step_service(
         SectionRepositoryImpl,
         ValidatorRepositoryImpl,
     )
+    from app.infrastructure.persistence.task_node_repository_impl import TaskNodeRepositoryImpl
 
     completeness = CompletenessService(
         work_item_repo=WorkItemRepositoryImpl(session),
         section_repo=SectionRepositoryImpl(session),
         validator_repo=ValidatorRepositoryImpl(session),
         cache=cache,
+        task_node_repo=TaskNodeRepositoryImpl(session),
     )
     gap_svc = GapService(completeness)
     return NextStepService(
@@ -610,6 +621,7 @@ async def get_thread_repo_for_ws() -> AsyncGenerator[ConversationThreadRepositor
 
 def get_task_service(
     session: AsyncSession = Depends(get_scoped_session),
+    cache: ICache = Depends(get_cache_adapter),
 ) -> TaskService:
     from app.application.services.task_service import TaskService
     from app.infrastructure.persistence.task_node_repository_impl import (
@@ -622,6 +634,7 @@ def get_task_service(
         node_repo=TaskNodeRepositoryImpl(session),
         dep_repo=TaskDependencyRepositoryImpl(session),
         link_repo=TaskSectionLinkRepositoryImpl(session),
+        cache=cache,
     )
 
 

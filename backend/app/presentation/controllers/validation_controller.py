@@ -21,7 +21,8 @@ from app.domain.models.review import (
     ValidationStatus,
     WaiveRequiredRuleError,
 )
-from app.presentation.dependencies import get_current_user, get_validation_service
+from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
+from app.presentation.dependencies import get_current_user, get_validation_service, get_work_item_repo_scoped
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)
@@ -67,13 +68,16 @@ async def get_validations(
     work_item_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     service: ValidationService = Depends(get_validation_service),
+    work_item_repo: WorkItemRepositoryImpl = Depends(get_work_item_repo_scoped),
 ) -> dict[str, Any]:
     _require_workspace(current_user)
-    # TODO: fetch work_item.type — for now default to "" (matches all rules)
+    workspace_id = current_user.workspace_id  # narrowed: _require_workspace guarantees non-None
+    work_item = await work_item_repo.get(work_item_id, workspace_id)
+    work_item_type = work_item.type.value if work_item is not None else ""
     result = await service.get_checklist(
         work_item_id=work_item_id,
-        workspace_id=current_user.workspace_id,  # type: ignore[arg-type]
-        work_item_type="",
+        workspace_id=workspace_id,
+        work_item_type=work_item_type,
     )
     return _ok({
         "required": [_rule_status_payload(r, s) for r, s in result.required],
