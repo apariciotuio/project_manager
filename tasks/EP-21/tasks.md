@@ -26,9 +26,9 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 |----|-------|-------|------|--------|
 | F-1 | Layout widths — reclaim wide-monitor space | Frontend | 1 | [x] PageContainer variant="wide|narrow" in components/layout/page-container.tsx; 4 wide pages (items, item-detail, admin, teams) + 2 narrow (inbox, new-item) migrated; 9 unit tests |
 | F-2 | Dev seed → populate inbox | Backend | 1 | [x] wired seed_notifications into seed_sample_data.py; 6 unit tests in test_seed_inbox.py |
-| F-3 | Frontend refresh after mutation | Frontend | 2 | [ ] |
+| F-3 | Frontend refresh after mutation | Frontend | 2 | [x] useTeams.addMember re-fetches list after 2xx; isPendingMutation flag disables button; 2 new hook tests (addMember updates list, error leaves state unchanged) |
 | F-4-be | Error envelope (backend: registry + middleware) | Backend | 1 | [x] domain/errors/codes.py registry + DomainError hierarchy; error_envelope.py middleware; tag_controller uses TagNameTakenError; 12 unit tests |
-| F-4-fe | Error envelope (frontend: ApiError + field mapping) | Frontend | 2 | [ ] |
+| F-4-fe | Error envelope (frontend: ApiError + field mapping) | Frontend | 2 | [x] ApiError.field + fromResponse; lib/errors/{api-error,codes,use-form-errors,toast}.ts; TagsTab maps TAG_NAME_TAKEN to input error; teams addMember uses handleApiError; 25 new tests; admin-page +1 |
 | F-5 | Edit work item modal | Frontend | 3 | [ ] |
 | F-6 | Dundun fake HTTP service | Backend / Infra | 1 | [x] FakeDundunClient promoted to app/infrastructure/fakes/; infra/dundun-fake/ FastAPI app; wired into docker-compose.dev.yml; 9 integration tests |
 | F-7 | User menu dropdown | Frontend | 1 | [x] Radix DropdownMenu behind avatar trigger; ThemeSwitcher+Matrix+Rain+Settings+SignOut; sidebar toolbar removed; 19 tests in user-menu.test.tsx; layout.test.tsx updated |
