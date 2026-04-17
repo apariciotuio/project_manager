@@ -196,6 +196,19 @@
         "proposed": "Propuesto",
         "section": "Sección"
       },
+      "versions": {
+        "tab": "Versiones",
+        "list": "Historial de versiones",
+        "empty": "Sin versiones registradas aún",
+        "loadError": "No se pudo cargar el historial de versiones",
+        "loadMore": "Cargar más",
+        "viewDiff": "Ver cambios vs anterior",
+        "archived": "Archivada",
+        "diffTitle": "Cambios en v{version}",
+        "diffTitleGeneric": "Diferencias",
+        "diffError": "No se pudo cargar las diferencias",
+        "diffEmpty": "Sin cambios entre estas versiones"
+      },
       "audit": {
         "tab": "Auditoría",
         "transitions": {

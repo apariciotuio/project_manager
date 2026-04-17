@@ -19,6 +19,7 @@ import { CommentsTab } from '@/components/work-item/comments-tab';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
 import { ChildItemsTab } from '@/components/work-item/child-items-tab';
 import { ClarificationTab } from '@/components/clarification/clarification-tab';
+import { VersionHistoryPanel } from '@/components/work-item/version-history-panel';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
@@ -128,6 +129,7 @@ export default function WorkItemDetailPage({
           <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          {canEdit && <TabsTrigger value="versiones">Versiones</TabsTrigger>}
           <TabsTrigger value="subitems">Sub-items</TabsTrigger>
           {canEdit && <TabsTrigger value="auditoria">Auditoría</TabsTrigger>}
         </TabsList>
@@ -167,6 +169,12 @@ export default function WorkItemDetailPage({
         <TabsContent value="historial" className="mt-4">
           <TimelineTab workItemId={id} />
         </TabsContent>
+
+        {canEdit && (
+          <TabsContent value="versiones" className="mt-4">
+            <VersionHistoryPanel workItemId={id} />
+          </TabsContent>
+        )}
 
         <TabsContent value="subitems" className="mt-4">
           <ChildItemsTab workItemId={id} slug={slug} />
