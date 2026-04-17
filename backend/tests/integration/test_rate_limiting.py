@@ -12,7 +12,15 @@ from httpx import ASGITransport, AsyncClient
 
 @pytest_asyncio.fixture
 async def app_with_fresh_limiter(migrated_database):
-    """Fresh app per test — slowapi's in-memory backend resets with the app instance."""
+    """Fresh app per test — slowapi's in-memory backend resets with the app instance.
+
+    Pins the limit to 10/min for deterministic assertions. The conftest wires a
+    shared Settings object into get_settings; mutate its auth section so the
+    lazy AUTH_LIMIT callable picks up 10/min regardless of the production default.
+    """
+    original_limit = migrated_database.auth.rate_limit_per_minute
+    migrated_database.auth.rate_limit_per_minute = 10
+
     import app.infrastructure.persistence.database as db_module
 
     db_module._engine = None
@@ -29,6 +37,7 @@ async def app_with_fresh_limiter(migrated_database):
 
     db_module._engine = None
     db_module._session_factory = None
+    migrated_database.auth.rate_limit_per_minute = original_limit
 
 
 @pytest_asyncio.fixture

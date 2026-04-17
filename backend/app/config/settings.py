@@ -52,10 +52,10 @@ class AuthSettings(BaseSettings):
     jwt_issuer: str = "wmp"
     jwt_audience: str = "wmp-web"
     jwt_expire_minutes: int = 60
-    access_token_ttl_seconds: int = 900          # 15 min
+    access_token_ttl_seconds: int = 604_800      # 7 days — internal tool, low risk
     refresh_token_ttl_seconds: int = 2_592_000   # 30 days
     oauth_state_ttl_seconds: int = 300           # 5 min
-    rate_limit_per_minute: int = 10              # slowapi: 10 req/min per IP on /auth/*
+    rate_limit_per_minute: int = 300             # slowapi: 300 req/min per IP on /auth/* (internal tool; tighten if exposed)
     allowed_domains: Annotated[list[str], NoDecode] = Field(default_factory=list)
     seed_superadmin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
@@ -96,6 +96,7 @@ class RedisSettings(BaseSettings):
 
     url: str = "redis://localhost:6379/0"
     template_cache_ttl_seconds: int = 300  # 5 minutes
+    use_fake: bool = False  # dev/test: use in-memory cache instead of Redis
 
 
 class Settings:

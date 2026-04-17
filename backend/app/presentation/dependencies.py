@@ -254,15 +254,29 @@ def get_draft_service_unscoped(
     )
 
 
+_IN_MEMORY_CACHE: ICache | None = None
+
+
 async def get_cache_adapter() -> AsyncGenerator[ICache]:
     """Yield a cache adapter scoped to the request; close the Redis client afterwards.
 
     Tests override this dep with an in-memory FakeCache so they don't need a Redis
-    container. See tests/conftest.py::client.
+    container. In dev, set `REDIS_USE_FAKE=true` to get the same behaviour — no
+    Redis container needed.
     """
+    settings = get_settings()
+    if settings.redis.use_fake:
+        global _IN_MEMORY_CACHE
+        if _IN_MEMORY_CACHE is None:
+            from app.infrastructure.adapters.in_memory_cache_adapter import (
+                InMemoryCacheAdapter,
+            )
+            _IN_MEMORY_CACHE = InMemoryCacheAdapter()
+        yield _IN_MEMORY_CACHE
+        return
+
     from app.infrastructure.adapters.redis_cache_adapter import RedisCacheAdapter
 
-    settings = get_settings()
     cache = RedisCacheAdapter(url=settings.redis.url)
     try:
         yield cache

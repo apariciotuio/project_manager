@@ -16,12 +16,14 @@ from typing import Any
 
 ERROR_CODES: dict[str, int] = {
     "VALIDATION_ERROR": 400,
+    "INVALID_INPUT": 400,
     "UNAUTHORIZED": 401,
     "INVALID_CREDENTIALS": 401,
     "FORBIDDEN": 403,
     "NOT_FOUND": 404,
     "TEAM_MEMBER_ALREADY_EXISTS": 409,
     "TAG_NAME_TAKEN": 409,
+    "TAG_ARCHIVED": 409,
     "WORK_ITEM_INVALID_TRANSITION": 422,
     "INTERNAL_ERROR": 500,
 }
@@ -111,3 +113,21 @@ class WorkItemInvalidTransitionError(DomainError):
             f"invalid transition: {from_state} -> {to_state}",
             details={"from": from_state, "to": to_state},
         )
+
+
+class TagArchivedDomainError(DomainError):
+    """Raised when an operation is attempted on an archived tag."""
+
+    code = "TAG_ARCHIVED"
+
+    def __init__(self, message: str = "tag is archived") -> None:
+        super().__init__(message)
+
+
+class InvalidInputError(DomainError):
+    """Raised when input fails domain-level validation (non-field-specific)."""
+
+    code = "INVALID_INPUT"
+
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message, field=field)
