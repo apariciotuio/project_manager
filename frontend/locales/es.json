@@ -386,7 +386,13 @@
         "dialogSubmit": "Añadir",
         "dialogCancel": "Cancelar",
         "dependencyBadgeAria": "Bloquea {count} tarea(s)",
-        "dependencyTooltipTitle": "Bloquea:"
+        "dependencyTooltipTitle": "Bloquea:",
+        "dependencyManageTitle": "Gestionar dependencias",
+        "dependencyAdd": "Añadir dependencia",
+        "dependencyRemove": "Eliminar",
+        "dependencyTargetLabel": "Bloquea tarea",
+        "dependencyTargetPlaceholder": "Seleccionar tarea…",
+        "dependencyNone": "Sin dependencias"
       },
       "breadcrumb": {
         "parentAria": "Ir al elemento padre",

@@ -6,14 +6,18 @@ import {
   renameTask as apiRenameTask,
   setTaskStatus as apiSetTaskStatus,
   reparentTask as apiReparentTask,
+  createTaskDependency as apiCreateDependency,
+  deleteTaskDependency as apiDeleteDependency,
 } from '@/lib/api/tasks';
-import type { TaskStatus } from '@/lib/types/task';
+import type { TaskEdge, TaskEdgeKind, TaskStatus } from '@/lib/types/task';
 
 export interface UseTaskMutationsResult {
   createTask: (workItemId: string, title: string, parentNodeId?: string | null) => Promise<void>;
   renameTask: (taskId: string, title: string) => Promise<void>;
   setStatus: (taskId: string, status: TaskStatus) => Promise<void>;
   reparent: (taskId: string, newParentId: string | null) => Promise<void>;
+  createDependency: (taskId: string, toNodeId: string, kind: TaskEdgeKind) => Promise<TaskEdge>;
+  deleteDependency: (taskId: string, edgeId: string) => Promise<void>;
   isPending: boolean;
   error: Error | null;
 }
@@ -68,5 +72,22 @@ export function useTaskMutations(onSuccess: () => void): UseTaskMutationsResult 
     [run],
   );
 
-  return { createTask, renameTask, setStatus, reparent, isPending, error };
+  const createDependency = useCallback(
+    async (taskId: string, toNodeId: string, kind: TaskEdgeKind): Promise<TaskEdge> => {
+      let edge!: TaskEdge;
+      await run(async () => {
+        edge = await apiCreateDependency(taskId, { to_node_id: toNodeId, kind });
+      });
+      return edge;
+    },
+    [run],
+  );
+
+  const deleteDependency = useCallback(
+    (taskId: string, edgeId: string) =>
+      run(() => apiDeleteDependency(taskId, edgeId)),
+    [run],
+  );
+
+  return { createTask, renameTask, setStatus, reparent, createDependency, deleteDependency, isPending, error };
 }

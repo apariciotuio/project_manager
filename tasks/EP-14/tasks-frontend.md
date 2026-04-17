@@ -169,6 +169,35 @@ TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean 
 
 ---
 
+## Phase 4: Task Tree Interactions + Dependency Management
+
+> Shipped after Phase 1-3 (commits a2e82d9 TaskTree + cbfccbc ParentBreadcrumb).
+> Components `task-tree.tsx`, `task-tree-node.tsx`, `task-tree-add-dialog.tsx`,
+> `hooks/work-item/use-task-mutations.ts`, `lib/api/tasks.ts` already live.
+
+### FE-14-P4-01: TaskTreeAddDialog tests
+- [x] RED → GREEN: 5 behavioral tests — render, disabled-when-empty, onSuccess POST, parent pre-fill, onCancel
+- [x] Commit: `f7270cd` — `__tests__/components/work-item/task-tree-add-dialog.test.tsx` (+5 tests)
+- Notes: "Add task" (root) and "Add child" (+) buttons already wired in task-tree.tsx / task-tree-node.tsx
+
+### FE-14-P4-02: DependencyBadge component
+- [x] RED: test file `__tests__/components/work-item/dependency-badge.test.tsx` written first (failed — component not found)
+- [x] GREEN: `components/work-item/dependency-badge.tsx` — standalone chip, null when no blocks edges, renders →N, tooltip contains blocked titles, ignores relates_to
+- [x] REFACTOR: extracted from inline badge in `task-tree-node.tsx`; node now imports DependencyBadge
+- [x] Commit: `850e191` — 5 tests, component extracted (+133 lines, -18 inline)
+
+### FE-14-P4-03: DependencyManageDialog (Phase 5)
+- [x] RED: 4 tests — renders existing edges, deleteDependency on remove, createDependency on add, onCancel
+- [x] GREEN: `components/work-item/dependency-manage-dialog.tsx` — lists outgoing blocks edges with remove, native select for adding new blocks edge
+- [x] useTaskMutations extended: `createDependency`, `deleteDependency` added (+2 tests in use-task-mutations.test.ts → 9 total)
+- [x] i18n: added 7 new keys to `workspace.itemDetail.tasks.*` in en.json + es.json
+- [x] Commit: (pending — this commit)
+
+**Status: COMPLETED** (2026-04-17)
+Test delta: +16 tests (22 → 38) across 6 test files.
+
+---
+
 ## Completion Checklist
 
 - [ ] `tsc --noEmit` passes (strict mode, no `any`)

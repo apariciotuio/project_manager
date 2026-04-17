@@ -386,7 +386,13 @@
         "dialogSubmit": "Add",
         "dialogCancel": "Cancel",
         "dependencyBadgeAria": "Blocks {count} task(s)",
-        "dependencyTooltipTitle": "Blocks:"
+        "dependencyTooltipTitle": "Blocks:",
+        "dependencyManageTitle": "Manage dependencies",
+        "dependencyAdd": "Add dependency",
+        "dependencyRemove": "Remove",
+        "dependencyTargetLabel": "Blocks task",
+        "dependencyTargetPlaceholder": "Select a task…",
+        "dependencyNone": "No dependencies yet"
       },
       "breadcrumb": {
         "parentAria": "Go to parent item",

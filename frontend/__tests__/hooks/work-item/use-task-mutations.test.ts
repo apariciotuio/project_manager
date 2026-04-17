@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/__tests__/msw/server';
 import { useTaskMutations } from '@/hooks/work-item/use-task-mutations';
-import type { TaskNode } from '@/lib/types/task';
+import type { TaskEdge, TaskNode } from '@/lib/types/task';
 
 const NODE: TaskNode = {
   id: 'n1',
@@ -159,5 +159,53 @@ describe('useTaskMutations', () => {
 
     expect(result.current.error).not.toBeNull();
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('createDependency POSTs to /tasks/{id}/dependencies and returns edge', async () => {
+    const EDGE: TaskEdge = {
+      id: 'e1',
+      from_node_id: 'n1',
+      to_node_id: 'n2',
+      kind: 'blocks',
+    };
+    let body: unknown;
+    server.use(
+      http.post('http://localhost/api/v1/tasks/n1/dependencies', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ data: EDGE }, { status: 201 });
+      }),
+    );
+
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useTaskMutations(onSuccess));
+
+    let returned: TaskEdge | undefined;
+    await act(async () => {
+      returned = await result.current.createDependency('n1', 'n2', 'blocks');
+    });
+
+    expect(body).toMatchObject({ to_node_id: 'n2', kind: 'blocks' });
+    expect(returned).toMatchObject({ id: 'e1', kind: 'blocks' });
+    expect(onSuccess).toHaveBeenCalledOnce();
+  });
+
+  it('deleteDependency DELETEs /tasks/{id}/dependencies/{edgeId} and calls onSuccess', async () => {
+    let deletedPath = '';
+    server.use(
+      http.delete('http://localhost/api/v1/tasks/n1/dependencies/e1', ({ request }) => {
+        deletedPath = new URL(request.url).pathname;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useTaskMutations(onSuccess));
+
+    await act(async () => {
+      await result.current.deleteDependency('n1', 'e1');
+    });
+
+    expect(deletedPath).toBe('/api/v1/tasks/n1/dependencies/e1');
+    expect(onSuccess).toHaveBeenCalledOnce();
   });
 });
