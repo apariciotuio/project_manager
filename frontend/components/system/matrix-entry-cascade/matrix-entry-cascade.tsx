@@ -9,7 +9,7 @@
  * components stabilise.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 // Duration of the cascade in milliseconds
 const CASCADE_DURATION_MS = 1200;
@@ -69,14 +69,19 @@ interface MatrixEntryCascadeProps {
 export function MatrixEntryCascade({ active, onComplete }: MatrixEntryCascadeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-
+  // Latest-callback pattern: capture onComplete in a ref so the main effect
+  // never needs onComplete in its dependency array, preventing re-triggers when
+  // the parent re-renders with a new inline callback reference.
+  const onCompleteRef = useRef(onComplete);
   useEffect(() => {
-    if (!active) return;
+    onCompleteRef.current = onComplete;
+  });
 
-    // SSR guard + reduced-motion skip
+  const runCascade = useCallback(() => {
+    // SSR guard
     if (typeof window === 'undefined') return;
     if (prefersReducedMotion()) {
-      onComplete?.();
+      onCompleteRef.current?.();
       return;
     }
 
@@ -143,19 +148,22 @@ export function MatrixEntryCascade({ active, onComplete }: MatrixEntryCascadePro
         rafRef.current = requestAnimationFrame(draw);
       } else {
         // Cascade complete — clean up
-        onComplete?.();
+        onCompleteRef.current?.();
       }
     }
 
     rafRef.current = requestAnimationFrame(draw);
+  }, []);
 
+  useEffect(() => {
+    if (!active) return;
+    runCascade();
     return () => {
       cancelAnimationFrame(rafRef.current);
     };
-  }, [active, onComplete]);
+  }, [active, runCascade]);
 
   if (!active) return null;
-  if (typeof window !== 'undefined' && prefersReducedMotion()) return null;
 
   return (
     <canvas

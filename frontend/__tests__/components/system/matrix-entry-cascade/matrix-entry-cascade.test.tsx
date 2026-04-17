@@ -127,10 +127,12 @@ describe('MatrixEntryCascade — RAF scheduling', () => {
 });
 
 describe('MatrixEntryCascade — reduced motion', () => {
-  it('does not render canvas when prefers-reduced-motion is reduce', () => {
+  it('mounts canvas but does not start RAF when prefers-reduced-motion is reduce', () => {
     setReducedMotion(true);
     const { container } = render(<MatrixEntryCascade active={true} />);
-    expect(container.querySelector('canvas')).toBeNull();
+    // Canvas mounts (avoids SSR hydration mismatch); RAF must NOT be scheduled
+    expect(container.querySelector('canvas')).not.toBeNull();
+    expect(mockRaf).not.toHaveBeenCalled();
   });
 
   it('calls onComplete immediately when prefers-reduced-motion is reduce', () => {
@@ -144,6 +146,20 @@ describe('MatrixEntryCascade — reduced motion', () => {
     setReducedMotion(false);
     const { container } = render(<MatrixEntryCascade active={true} />);
     expect(container.querySelector('canvas')).not.toBeNull();
+  });
+
+  it('parent re-render with new onComplete reference while cascade is running does NOT restart cascade', () => {
+    setReducedMotion(false);
+    const onComplete1 = vi.fn();
+    const onComplete2 = vi.fn();
+    const { rerender } = render(<MatrixEntryCascade active={true} onComplete={onComplete1} />);
+    const rafCallsBefore = mockRaf.mock.calls.length;
+    // Simulate parent re-render with new callback reference
+    rerender(<MatrixEntryCascade active={true} onComplete={onComplete2} />);
+    // RAF call count should not have increased (effect did not re-run)
+    expect(mockRaf.mock.calls.length).toBe(rafCallsBefore);
+    expect(onComplete1).not.toHaveBeenCalled();
+    expect(onComplete2).not.toHaveBeenCalled();
   });
 });
 
