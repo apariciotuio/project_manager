@@ -18,7 +18,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,12 +80,6 @@ class UpdateTagRequest(BaseModel):
     name: str | None = None
     color: str | None = None
     archived: bool | None = None
-
-    @model_validator(mode="after")
-    def at_least_one_field(self) -> "UpdateTagRequest":
-        if self.name is None and self.color is None and self.archived is None:
-            raise ValueError("at least one of name, color, or archived must be provided")
-        return self
 
 
 class AddTagToWorkItemRequest(BaseModel):
@@ -172,6 +166,8 @@ async def update_tag(
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
         raise _no_workspace()
+    if body.name is None and body.color is None and body.archived is None:
+        raise InvalidInputError("at least one of name, color, or archived must be provided")
     repo = TagRepositoryImpl(session)
     tag = await _get_tag_scoped(tag_id, current_user.workspace_id, repo)
 

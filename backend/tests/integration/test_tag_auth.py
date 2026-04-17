@@ -22,12 +22,15 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.domain.models.project import Project
 from app.domain.models.tag import Tag, WorkItemTag
 from app.domain.models.user import User
 from app.domain.models.work_item import WorkItem
+from app.domain.value_objects.work_item_type import WorkItemType
 from app.domain.models.workspace import Workspace
 from app.domain.models.workspace_membership import WorkspaceMembership
 from app.infrastructure.adapters.jwt_adapter import JwtAdapter
+from app.infrastructure.persistence.project_repository_impl import ProjectRepositoryImpl
 from app.infrastructure.persistence.tag_repository_impl import (
     TagRepositoryImpl,
     WorkItemTagRepositoryImpl,
@@ -146,14 +149,22 @@ async def _create_work_item(migrated_database, *, workspace_id: UUID, created_by
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
-        repo = WorkItemRepositoryImpl(session)
-        wi = WorkItem.create(
+        project = Project.create(
             workspace_id=workspace_id,
-            title="Test work item for tag auth",
-            type="feature",
+            name=f"tag-auth-project-{uuid4()}",
             created_by=created_by,
         )
-        saved = await repo.create(wi)
+        await ProjectRepositoryImpl(session).create(project)
+
+        repo = WorkItemRepositoryImpl(session)
+        wi = WorkItem.create(
+            title="Test work item for tag auth",
+            type=WorkItemType.TASK,
+            owner_id=created_by,
+            creator_id=created_by,
+            project_id=project.id,
+        )
+        saved = await repo.save(wi, workspace_id)
         await session.commit()
     await engine.dispose()
     return saved
@@ -386,7 +397,7 @@ async def test_patch_tag_multi_field(http, migrated_database) -> None:
     assert data["color"] == "#00ff00"
 
 
-async def test_patch_tag_all_none_returns_422(http, migrated_database) -> None:
+async def test_patch_tag_all_none_returns_400(http, migrated_database) -> None:
     user, ws, token = await _seed_workspace(
         migrated_database, sub="sub-tag-p5", email="p5@test.com", slug="ws-tag-p5"
     )
@@ -397,4 +408,5 @@ async def test_patch_tag_all_none_returns_422(http, migrated_database) -> None:
         json={},
         cookies={"access_token": token},
     )
-    assert resp.status_code == 422
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_INPUT"
