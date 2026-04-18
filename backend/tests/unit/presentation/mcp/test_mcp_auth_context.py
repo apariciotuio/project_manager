@@ -14,7 +14,7 @@ import os
 import time
 from datetime import timedelta
 from unittest.mock import patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from jose import jwt as jose_jwt
@@ -65,9 +65,8 @@ class TestLoadAuthContextFromEnv:
 
         with patch.dict(os.environ, {"MCP_TOKEN": token, "AUTH_JWT_SECRET": _SECRET}):
             result_ws, result_user = load_auth_context_from_env()
-
-        assert result_ws == ws_id
-        assert result_user == user_id
+            assert result_ws == ws_id
+            assert result_user == user_id
 
     def test_workspace_id_matches_token_not_a_fresh_uuid4(self) -> None:
         """The returned workspace_id must equal the one in the token, not a new uuid4."""
@@ -78,16 +77,15 @@ class TestLoadAuthContextFromEnv:
         with patch.dict(os.environ, {"MCP_TOKEN": token, "AUTH_JWT_SECRET": _SECRET}):
             r1_ws, _ = load_auth_context_from_env()
             r2_ws, _ = load_auth_context_from_env()
-
-        # Both calls return the same workspace_id (from token), not fresh uuids
-        assert r1_ws == ws_id
-        assert r2_ws == ws_id
-        assert r1_ws == r2_ws
+            # Both calls return the same workspace_id (from token), not fresh uuids
+            assert r1_ws == ws_id
+            assert r2_ws == ws_id
+            assert r1_ws == r2_ws
 
     def test_raises_when_mcp_token_env_missing(self) -> None:
-        env = {k: v for k, v in os.environ.items() if k != "MCP_TOKEN"}
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(EnvironmentError, match="MCP_TOKEN"):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MCP_TOKEN", None)
+            with pytest.raises(OSError, match="MCP_TOKEN"):
                 load_auth_context_from_env()
 
     def test_raises_when_token_is_expired(self) -> None:
@@ -138,6 +136,19 @@ class TestCreateMcpServerUsesAuthContext:
 
         with patch.dict(os.environ, {"MCP_TOKEN": token, "AUTH_JWT_SECRET": _SECRET}):
             result_ws, result_user = _resolve_auth_context()
+            assert result_ws == ws_id
+            assert result_user == user_id
 
-        assert result_ws == ws_id
-        assert result_user == user_id
+    def test_resolve_auth_context_called_once_at_server_startup(self) -> None:
+        """create_mcp_server() resolves auth context once at startup, not per call."""
+        from apps.mcp_server.server import create_mcp_server, _resolve_auth_context
+
+        ws_id = uuid4()
+        user_id = uuid4()
+        token = _make_jwt(sub=str(user_id), email="x@example.com", workspace_id=str(ws_id))
+
+        with patch.dict(os.environ, {"MCP_TOKEN": token, "AUTH_JWT_SECRET": _SECRET}):
+            with patch("apps.mcp_server.server._resolve_auth_context", wraps=_resolve_auth_context) as mock_resolve:
+                server = create_mcp_server()
+                # _resolve_auth_context was called exactly once (at startup)
+                assert mock_resolve.call_count == 1
