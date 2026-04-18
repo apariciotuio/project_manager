@@ -7,6 +7,7 @@ import { CommentFeedSkeleton } from './skeletons';
 import { OwnerAvatar } from '@/components/domain/owner-avatar';
 import { RelativeTime } from '@/components/domain/relative-time';
 import { useComments } from '@/hooks/work-item/use-comments';
+import { useCommentsContext } from './comments-context';
 import type { Comment, CreateCommentRequest } from '@/lib/types/versions';
 
 function actorDisplay(comment: Comment): string {
@@ -141,9 +142,13 @@ interface CommentsTabProps {
   workItemId: string;
 }
 
-export function CommentsTab({ workItemId }: CommentsTabProps) {
-  const { comments, isLoading, addComment } = useComments(workItemId);
+interface CommentsTabBodyProps {
+  comments: Comment[];
+  isLoading: boolean;
+  addComment: (req: CreateCommentRequest) => Promise<void>;
+}
 
+function CommentsTabBody({ comments, isLoading, addComment }: CommentsTabBodyProps) {
   return (
     <div className="flex flex-col gap-6">
       {isLoading ? (
@@ -168,4 +173,33 @@ export function CommentsTab({ workItemId }: CommentsTabProps) {
       )}
     </div>
   );
+}
+
+function CommentsTabFromContext() {
+  const ctx = useCommentsContext();
+  if (ctx === null) {
+    throw new Error('CommentsTabFromContext rendered without CommentsProvider');
+  }
+  return (
+    <CommentsTabBody
+      comments={ctx.comments}
+      isLoading={ctx.isLoading}
+      addComment={ctx.addComment}
+    />
+  );
+}
+
+function CommentsTabStandalone({ workItemId }: CommentsTabProps) {
+  const { comments, isLoading, addComment } = useComments(workItemId);
+  return (
+    <CommentsTabBody comments={comments} isLoading={isLoading} addComment={addComment} />
+  );
+}
+
+export function CommentsTab({ workItemId }: CommentsTabProps) {
+  const ctx = useCommentsContext();
+  if (ctx !== null) {
+    return <CommentsTabFromContext />;
+  }
+  return <CommentsTabStandalone workItemId={workItemId} />;
 }

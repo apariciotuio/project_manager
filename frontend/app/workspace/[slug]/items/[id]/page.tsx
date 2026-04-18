@@ -19,6 +19,8 @@ import { AttachmentList } from '@/components/attachments/attachment-list';
 import { AttachmentDropZone } from '@/components/attachments/attachment-drop-zone';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
+import { CommentsProvider } from '@/components/work-item/comments-context';
+import { CommentCountBadge } from '@/components/work-item/comment-count-badge';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
 import { ChildItemsTab } from '@/components/work-item/child-items-tab';
 import { VersionHistoryPanel } from '@/components/work-item/version-history-panel';
@@ -141,18 +143,23 @@ export default function WorkItemDetailPage({
         </div>
       </details>
 
+      <CommentsProvider workItemId={id}>
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
           <TabsTrigger value="especificacion">Especificación</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
-          <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
+          <TabsTrigger value="comentarios" className="gap-2">
+            Comentarios
+            <CommentCountBadge />
+          </TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           {canEdit && <TabsTrigger value="versiones">Versiones</TabsTrigger>}
           <TabsTrigger value="subitems">Sub-items</TabsTrigger>
           {canEdit && <TabsTrigger value="auditoria">Auditoría</TabsTrigger>}
           <TabsTrigger value="adjuntos">Adjuntos</TabsTrigger>
         </TabsList>
+        {/* CommentsProvider wraps Tabs so the badge in TabsTrigger and CommentsTab share one useComments instance */}
 
         <TabsContent value="especificacion" className="mt-4">
           <div className="grid gap-6 md:grid-cols-3">
@@ -219,6 +226,7 @@ export default function WorkItemDetailPage({
           </div>
         </TabsContent>
       </Tabs>
+      </CommentsProvider>
 
       <DocPreviewPanel
         docId={previewDocId}
