@@ -157,31 +157,26 @@ describe('ColorPicker — custom hex', () => {
 describe('ColorPicker — keyboard navigation', () => {
   it('navigates right between swatches with ArrowRight', () => {
     setup();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const firstSwatch = screen.getByRole('radio', { name: PRESET_COLORS[0]!.name });
     firstSwatch.focus();
     fireEvent.keyDown(firstSwatch, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       screen.getByRole('radio', { name: PRESET_COLORS[1]!.name }),
     );
   });
 
   it('navigates left between swatches with ArrowLeft', () => {
     setup();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const secondSwatch = screen.getByRole('radio', { name: PRESET_COLORS[1]!.name });
     secondSwatch.focus();
     fireEvent.keyDown(secondSwatch, { key: 'ArrowLeft' });
     expect(document.activeElement).toBe(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       screen.getByRole('radio', { name: PRESET_COLORS[0]!.name }),
     );
   });
 
   it('wraps from last to first on ArrowRight', () => {
     setup();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const lastSwatch = screen.getByRole('radio', { name: PRESET_COLORS[PRESET_COLORS.length - 1]!.name });
     lastSwatch.focus();
     fireEvent.keyDown(lastSwatch, { key: 'ArrowRight' });
@@ -192,22 +187,18 @@ describe('ColorPicker — keyboard navigation', () => {
   it('selects focused swatch on Enter', () => {
     const handler = vi.fn();
     setup(undefined, handler);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const firstSwatch = screen.getByRole('radio', { name: PRESET_COLORS[0]!.name });
     firstSwatch.focus();
     fireEvent.keyDown(firstSwatch, { key: 'Enter' });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(handler).toHaveBeenCalledWith(PRESET_COLORS[0]!.hex);
   });
 
   it('selects focused swatch on Space', () => {
     const handler = vi.fn();
     setup(undefined, handler);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const firstSwatch = screen.getByRole('radio', { name: PRESET_COLORS[0]!.name });
     firstSwatch.focus();
     fireEvent.keyDown(firstSwatch, { key: ' ' });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(handler).toHaveBeenCalledWith(PRESET_COLORS[0]!.hex);
   });
 });

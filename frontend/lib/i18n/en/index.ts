@@ -5,7 +5,6 @@
  * Note: typed as Record to avoid literal-type conflicts with the ES `as const` dict.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const en: Record<string, any> = {
   common: {
     app: {

@@ -20,7 +20,6 @@ export function resolveErrorMessage(code: string): string {
   // If it starts with 'errors.', strip it for flat lookup
   const lookupParts = parts[0] === 'errors' ? parts.slice(1) : parts;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let current: any = es.errors;
   for (const part of lookupParts) {
     if (current == null || typeof current !== 'object') {
@@ -35,7 +34,6 @@ export function resolveErrorMessage(code: string): string {
   }
 
   // Also try workitem errors
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let workitemCurrent: any = es.workitem;
   const workitemParts = parts[0] === 'workitem' ? parts.slice(1) : parts;
   for (const part of workitemParts) {

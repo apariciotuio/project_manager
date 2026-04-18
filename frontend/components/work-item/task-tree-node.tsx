@@ -22,7 +22,7 @@ interface TaskTreeNodeProps {
   node: TaskNode;
   depth: number;
   /** Direct children of this node (pre-filtered by caller) */
-  children: TaskNode[];
+  childNodes: TaskNode[];
   /** All nodes in the tree (for recursive child resolution) */
   allNodes: TaskNode[];
   /** All edges in the tree (for dependency badge) */
@@ -36,7 +36,7 @@ interface TaskTreeNodeProps {
 export function TaskTreeNode({
   node,
   depth,
-  children,
+  childNodes,
   allNodes,
   edges,
   workItemId,
@@ -68,7 +68,7 @@ export function TaskTreeNode({
     disabled: isDragDisabled,
   });
 
-  const hasChildren = children.length > 0;
+  const hasChildren = childNodes.length > 0;
 
   const handleToggle = useCallback(() => {
     setExpanded((v) => !v);
@@ -229,14 +229,14 @@ export function TaskTreeNode({
       {/* Recursive children */}
       {hasChildren && expanded && (
         <ul role="list">
-          {[...children]
+          {[...childNodes]
             .sort((a, b) => a.position - b.position)
             .map((child) => (
               <TaskTreeNode
                 key={child.id}
                 node={child}
                 depth={depth + 1}
-                children={allNodes.filter((n) => n.parent_node_id === child.id)}
+                childNodes={allNodes.filter((n) => n.parent_node_id === child.id)}
                 allNodes={allNodes}
                 edges={edges}
                 workItemId={workItemId}

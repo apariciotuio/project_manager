@@ -150,7 +150,7 @@ export function TaskTree({ tree, workItemId, onRefetch }: TaskTreeProps) {
               key={node.id}
               node={node}
               depth={0}
-              children={nodes.filter((n) => n.parent_node_id === node.id)}
+              childNodes={nodes.filter((n) => n.parent_node_id === node.id)}
               allNodes={nodes}
               edges={tree.edges}
               workItemId={workItemId}

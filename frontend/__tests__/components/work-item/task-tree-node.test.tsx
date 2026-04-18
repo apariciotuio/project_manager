@@ -27,7 +27,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode({ title: 'My Task' })}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -42,7 +42,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -63,7 +63,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={0}
-        children={[child]}
+        childNodes={[child]}
         allNodes={[child]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -82,7 +82,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={0}
-        children={[child]}
+        childNodes={[child]}
         allNodes={[child]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -107,7 +107,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode({ title: 'Old title' })}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -134,7 +134,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[blockedNode]}
         edges={[edge]}
         workItemId="wi-1"
@@ -150,7 +150,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -166,7 +166,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode({ status: 'draft' })}
         depth={0}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"
@@ -182,7 +182,7 @@ describe('TaskTreeNode', () => {
       <TaskTreeNode
         node={makeNode()}
         depth={3}
-        children={NO_CHILDREN}
+        childNodes={NO_CHILDREN}
         allNodes={[]}
         edges={NO_EDGES}
         workItemId="wi-1"

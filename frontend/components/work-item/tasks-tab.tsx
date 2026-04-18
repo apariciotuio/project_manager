@@ -92,14 +92,14 @@ function AddTaskForm({ parentId, onAdd }: AddTaskFormProps) {
 interface TaskRowProps {
   node: TaskNode;
   depth: number;
-  children: TaskNode[];
+  childNodes: TaskNode[];
   allNodes: TaskNode[];
   onAdd: (title: string, parentId: string | null) => Promise<void>;
 }
 
-function TaskRow({ node, depth, children, allNodes, onAdd }: TaskRowProps) {
+function TaskRow({ node, depth, childNodes, allNodes, onAdd }: TaskRowProps) {
   const [expanded, setExpanded] = useState(true);
-  const hasChildren = children.length > 0;
+  const hasChildren = childNodes.length > 0;
 
   return (
     <li>
@@ -134,12 +134,12 @@ function TaskRow({ node, depth, children, allNodes, onAdd }: TaskRowProps) {
       </div>
       {hasChildren && expanded && (
         <ul role="list">
-          {children.map((child) => (
+          {childNodes.map((child) => (
             <TaskRow
               key={child.id}
               node={child}
               depth={depth + 1}
-              children={allNodes.filter((n) => n.parent_node_id === child.id)}
+              childNodes={allNodes.filter((n) => n.parent_node_id === child.id)}
               allNodes={allNodes}
               onAdd={onAdd}
             />
@@ -190,7 +190,7 @@ export function TasksTab({ workItemId }: TasksTabProps) {
             key={node.id}
             node={node}
             depth={0}
-            children={tree.nodes.filter((n) => n.parent_node_id === node.id)}
+            childNodes={tree.nodes.filter((n) => n.parent_node_id === node.id)}
             allNodes={tree.nodes}
             onAdd={handleAdd}
           />
