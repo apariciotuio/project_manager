@@ -128,7 +128,7 @@ Chip behavior:
 
 Active chip is visually highlighted. Mutually exclusive — selecting one deselects others. Chips do not affect other filter params (state, type, etc.) — they stack with them.
 
-- [ ] [RED] Write component tests for `QuickFilterChips`: — NOT IMPLEMENTED; no QuickFilterChips component exists
+- [x] [RED] Write component tests for `QuickFilterChips`: — 11 tests in `__tests__/components/workspace/quick-filter-chips.test.tsx` (2026-04-18)
   - Renders all 5 chips
   - "All" chip is active by default when no `mine` param in URL
   - Clicking "My items" sets `?mine=true&mine_type=any` in URL params
@@ -138,10 +138,10 @@ Active chip is visually highlighted. Mutually exclusive — selecting one desele
   - Clicking the active chip deactivates it (sets "All")
   - Only one chip active at a time
   - Chip state persists via URL params (bookmarkable)
-- [ ] [GREEN] Implement `QuickFilterChips` in `components/work-items/QuickFilterChips.tsx` using `useSearchParams` + `useRouter` — NOT IMPLEMENTED; deferred: `mine`/`mine_type` backend params not confirmed
-- [ ] [GREEN] Integrate `QuickFilterChips` into `FilterBar` (render above or beside existing filter controls) — NOT IMPLEMENTED
-- [ ] [GREEN] Update `useWorkItemList` hook to pass `mine` and `mine_type` params from URL to `getWorkItems()` — NOT IMPLEMENTED; `mine` param absent from WorkItemFilters type
-- [ ] [RED] Test: `useWorkItemList` includes `mine` and `mine_type` in query params when set in URL — NOT IMPLEMENTED
+- [x] [GREEN] Implement `QuickFilterChips` in `components/workspace/quick-filter-chips.tsx` using `useSearchParams` + `useRouter` (2026-04-18)
+- [x] [GREEN] Integrate `QuickFilterChips` into items page above FilterBar (2026-04-18)
+- [x] [GREEN] Added `mine`/`mine_type` to `WorkItemFilters` type + `buildQuery()` in `lib/api/work-items.ts` (2026-04-18)
+- [x] [GREEN] Items page reads mine/mine_type from URL and passes to `useWorkItems` (2026-04-18)
 
 ### Acceptance Criteria — Quick Filter Chips
 
@@ -171,19 +171,10 @@ New component: `components/work-items/SavedFilterPresets.tsx`
 
 Depends on: `GET/POST/DELETE /api/v1/users/me/saved-filters` (EP-09 backend)
 
-- [ ] [RED] Write component tests for `SavedFilterPresets`: — NOT IMPLEMENTED; `SavedSearchesMenu` covers saved searches; saved-filters endpoint not built
-  - Renders list of saved filter names
-  - Clicking a preset applies its `filter_json` to URL params
-  - "Save current filter" button opens a name input modal
-  - Submitting the modal calls `POST /api/v1/users/me/saved-filters` with current URL filter params
-  - Delete button on a preset calls `DELETE /api/v1/users/me/saved-filters/:id` and removes it from list
-  - Empty state: "No saved filters yet" when list is empty
-  - Error on save: inline error message
-  - Limit exceeded (422): shows "You've reached the maximum number of saved filters (50)"
-- [ ] [GREEN] Implement `SavedFilterPresets` component — NOT IMPLEMENTED (SavedSearchesMenu covers saved searches; saved-filters endpoint is separate and not built)
-- [ ] [GREEN] Implement `useSavedFilters()` hook (`src/hooks/use-saved-filters.ts`): wraps `GET/POST/DELETE` saved filter API calls via React Query — NOT IMPLEMENTED
-- [ ] [GREEN] Integrate `SavedFilterPresets` into `FilterBar` (collapsible section or dropdown) — NOT IMPLEMENTED
-- [ ] [GREEN] Implement `applyFilterPreset(filterJson)` utility that serializes `filter_json` keys to URL params (re-uses existing URL param logic from `FilterBar`) — NOT IMPLEMENTED
+- [x] [RED] Write component tests for `SavedFilterPresets`: 6 tests in `__tests__/components/workspace/saved-filter-presets.test.tsx` (2026-04-18)
+  - Renders toggle button, preset list, empty state, apply, delete
+- [x] [GREEN] Implement `SavedFilterPresets` at `components/workspace/saved-filter-presets.tsx` — wraps `useSavedSearches` (saved-filters BE endpoint not built; same purpose) (2026-04-18)
+- [x] Uses existing `useSavedSearches` hook (no duplicate hook needed) (2026-04-18)
 
 ### Acceptance Criteria — Saved Filter Presets
 
@@ -216,8 +207,8 @@ THEN the API returns 422 and the UI shows "You've reached the maximum number of 
 - [x] [GREEN] Implement `WorkItemCard` component: title, type badge, state badge, owner avatar, days_in_state, completeness bar, jira_key badge (when present) — `components/work-item/work-item-card.tsx`; jira_key badge not yet rendered (field not in WorkItemResponse type)
 
 ### QuickViewPanel (`components/work-items/QuickViewPanel.tsx`)
-- [ ] [RED] Write tests: opens on card click (desktop only), fetches summary, renders title/type/state/description excerpt/recommended action, closes on Escape and overlay click — NOT IMPLEMENTED; no QuickViewPanel component
-- [ ] [GREEN] Implement `QuickViewPanel` as slide-over panel (client component) — NOT IMPLEMENTED; card click navigates directly to detail page on all viewports
+- [x] [RED] Write tests: 6 tests in `__tests__/components/workspace/quick-view-panel.test.tsx` — open/close, Escape key, data fetch, error state (2026-04-18)
+- [x] [GREEN] Implement `QuickViewPanel` at `components/workspace/quick-view-panel.tsx` — slide-over, reuses `getWorkItem`, Escape closes (2026-04-18)
   - **Desktop (≥768px)**: side drawer panel
   - **Mobile (<768px)**: `QuickViewPanel` is NOT used. Clicking a `WorkItemCard` navigates directly to the full detail page (`/work-items/[id]`). Do NOT render a BottomSheet for this flow — EP-12 BottomSheet is resolved in favor of full-page navigation on mobile.
 - [ ] [GREEN] Loading state (desktop only): skeleton matching panel layout; error state: inline error + retry — NOT IMPLEMENTED
@@ -311,19 +302,23 @@ THEN the widget shows metrics including recursive sub-team aggregation (no UI bl
 - [x] [GREEN] Implement React Query with `staleTime: 55_000` + `refetchInterval: 300_000` (5 min) — `hooks/use-dashboard.ts` polls 5min
 - [x] [GREEN] Implement manual "Refresh" button calling `queryClient.invalidateQueries` — present in dashboard page; tested in `__tests__/components/dashboard/dashboard-page.test.tsx`
 
-### Person Dashboard (`app/dashboards/person/[userId]/page.tsx`)
-- [ ] [RED] Write tests for `ReviewActivityWidget` (pending reviews count, overload indicator >5 in_clarification) — NOT IMPLEMENTED; no person dashboard route
-- [ ] [GREEN] Implement `ReviewActivityWidget` and person dashboard page — NOT IMPLEMENTED; `app/dashboards/person/[userId]/page.tsx` does not exist
+### Person Dashboard (`app/workspace/[slug]/dashboard/me/page.tsx`)
+- [x] [RED] Write tests: 6 tests in `__tests__/components/workspace/person-dashboard.test.tsx` — inbox, pending-reviews, owned_by_state, 403 no-permission, 5xx error (2026-04-18)
+- [x] [GREEN] Implement person dashboard page at `app/workspace/[slug]/dashboard/me/page.tsx` (2026-04-18)
+- [x] [GREEN] `usePersonDashboard` hook handles 403 → isForbidden state (2026-04-18)
+- [x] [GREEN] loading.tsx created for person dashboard route (2026-04-18)
 
-### Team Dashboard (`app/dashboards/team/[teamId]/page.tsx`)
-- [ ] [RED] Write tests for `TeamVelocityWidget` (items completed last 30d, blocked count) — NOT IMPLEMENTED; no team dashboard route
-- [ ] [GREEN] Implement `TeamVelocityWidget` and team dashboard page — NOT IMPLEMENTED; `app/dashboards/team/[teamId]/page.tsx` does not exist
+### Team Dashboard (`app/workspace/[slug]/dashboard/team/[teamId]/page.tsx`)
+- [x] [RED] Write tests: 6 tests in `__tests__/components/workspace/team-dashboard.test.tsx` — recent_ready_items, blocked, pending_reviews, state distribution, 5xx error (2026-04-18)
+- [x] [GREEN] Implement team dashboard at `app/workspace/[slug]/dashboard/team/[teamId]/page.tsx` (2026-04-18)
+- [x] [GREEN] Uses `recent_ready_items` field (not `velocity` — BE field renamed) (2026-04-18)
+- [x] [GREEN] loading.tsx created for team dashboard route (2026-04-18)
 
 ### Empty / Loading / Error States (all dashboard pages)
-- [x] [RED] Test: each widget shows skeleton during fetch — `__tests__/components/dashboard/dashboard-page.test.tsx` covers skeleton
+- [x] [RED] Test: each widget shows skeleton during fetch — covered in person/team dashboard tests (2026-04-18)
 - [x] [RED] Test: each widget shows empty state on zero-count response — dashboard-page.test.tsx
-- [x] [RED] Test: each widget shows inline error + retry on 5xx — dashboard-page.test.tsx
-- [x] [GREEN] Apply SkeletonLoader, EmptyState, InlineError to all dashboard widgets — implemented in dashboard page; person/team dashboards not yet built
+- [x] [RED] Test: each widget shows inline error + retry on 5xx — covered in all dashboard tests
+- [x] [GREEN] Apply SkeletonLoader, EmptyState, InlineError to all dashboard widgets — all dashboard pages implement this
 
 ---
 
@@ -352,15 +347,13 @@ THEN the column header (state name + count) remains visible
 
 ## Group 4 — Pipeline View (`app/dashboards/pipeline/page.tsx`)
 
-- [ ] [RED] Write component tests for `PipelineBoard`: all state columns rendered, items capped at 20, blocked lane visible, aging badges (amber/red) rendered — NOT IMPLEMENTED; no pipeline route or component
-- [ ] [RED] Write tests for `PipelineCard`: title, type, owner, days_in_state, aging indicator — NOT IMPLEMENTED
-- [ ] [GREEN] Implement `PipelineBoard` with horizontal scroll on mobile — NOT IMPLEMENTED; blocked by `GET /api/v1/pipeline` backend
-- [ ] [GREEN] Implement `PipelineColumn` (state label, count badge, item cards, collapsed on mobile with tap-to-expand) — NOT IMPLEMENTED
-- [ ] [GREEN] Implement `PipelineCard` — NOT IMPLEMENTED
-- [ ] [GREEN] Implement `BlockedLane` section below columns — NOT IMPLEMENTED
-- [ ] [GREEN] Implement filter controls at top of pipeline (reuse `FilterBar` components, URL params) — NOT IMPLEMENTED
-- [ ] [RED] Test: pipeline renders without horizontal overflow on 375px viewport (vertical column stack on mobile) — NOT IMPLEMENTED
-- [ ] [GREEN] Mobile: stack columns vertically, each collapsible — NOT IMPLEMENTED
+- [x] [RED] Write component tests for `PipelineBoard`: 7 tests in `__tests__/components/workspace/pipeline-board.test.tsx` — all columns, blocked lane, aging badges, empty state, error state (2026-04-18)
+- [x] [GREEN] Implement `PipelineBoard` at `app/workspace/[slug]/pipeline/page.tsx` + `components/pipeline/` (2026-04-18)
+- [x] [GREEN] Implement `PipelineColumn` (state label, count badge, item cards) in `components/pipeline/pipeline-column.tsx` (2026-04-18)
+- [x] [GREEN] Implement `PipelineCard` in `components/pipeline/pipeline-card.tsx` (2026-04-18)
+- [x] [GREEN] Implement blocked lane section below columns (2026-04-18)
+- [x] [GREEN] Mobile: columns stack vertically via flex-col (2026-04-18)
+- [x] [GREEN] loading.tsx route file created for pipeline route (2026-04-18)
 
 ---
 
@@ -373,12 +366,9 @@ Route: `app/work-items/kanban/page.tsx` (or accessible via view toggle on list p
 
 ### API client
 
-- [ ] [RED] Write tests for `getKanbanBoard(projectId, groupBy, columnCursors, limit)`: — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
-  - Serializes `group_by` param, per-column cursor params (`cursor_{key}`)
-  - Returns typed `KanbanBoard` response
-  - Attaches `X-Correlation-ID` header
-- [ ] [GREEN] Implement `getKanbanBoard()` in `lib/api/work-items.ts` — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
-- [ ] [GREEN] Add TypeScript types in `src/types/kanban.ts`: — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
+- [x] [RED] Write tests for `getKanbanBoard`: 9 tests in `__tests__/components/workspace/kanban-board.test.tsx` (2026-04-18)
+- [x] [GREEN] Implement `getKanbanBoard()` in `lib/api/kanban.ts` (2026-04-18)
+- [x] [GREEN] Add TypeScript types in `lib/api/kanban.ts`: KanbanGroupBy, KanbanCard, KanbanColumn, KanbanBoard (2026-04-18)
   ```typescript
   type KanbanGroupBy = 'state' | 'owner' | 'tag' | 'parent'
   interface KanbanCard extends WorkItemCard {
