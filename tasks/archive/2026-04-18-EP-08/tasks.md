@@ -1,6 +1,41 @@
 # EP-08 — Implementation Tasks
 
-## Status: IN PROGRESS (2026-04-18) — 44/93 items shipped (audit + guards). Remaining: Inbox full (Group C), AssignmentService, SSE /notifications/stream, QuickActionDispatcher, TeamService unit tests. See `tasks-backend.md`.
+**Epic**: EP-08 — Teams, Assignments, Notifications & Inbox
+**Status (archived 2026-04-18)**: ✅ COMPLETE (MVP scope) — Teams CRUD + membership + guards (LastLeadError, idempotency, role update, soft-delete), NotificationService (enqueue + list + mark-read + mark-actioned), SSE stream-token + /notifications/stream endpoint (JWT-auth, PgNotificationBus channel), Inbox list + unread count + mark-all-read.
+
+### MVP Scope Shipped
+- Backend: 44+ core items incl. team CRUD + guards + audit, notification enqueue/list/mark/action endpoints, SSE stream wiring (PgNotificationBus `sse:notification:{user_id}` channel + JwtAdapter-signed stream token).
+- Frontend: Teams admin page + Inbox page.
+
+### Known Deferrals (intentional, not blockers)
+
+**Scope-cut** (post-MVP, test/observability debt):
+- Migration tests (unique constraint re-add / partial index) — schema correct in mig 0032.
+- TeamValidator input validation — Pydantic handles allowlisting; YAGNI.
+- Deterministic sha256 idempotency key — caller-provided string key sufficient for MVP.
+- Dead-letter queue + fan-out histogram — observability deferred per decision #27 (EP-12); Celery removed 2026-04-18.
+
+**Re-homed to other epics**:
+- `QuickActionDispatcher` / `execute_action` endpoint → **EP-04** (quality engine owns quick-action dispatch per EP-03 archive).
+- SSE observability extras → **EP-12** (already shipped — SseHandler reused here).
+- Team domain event publishing + AssignmentService event fan-out → cross-feature debt; routing suggestions covered by EP-10 `RoutingRuleService`.
+- Per-endpoint rate-limit adoption → transversal (PgRateLimiter shipped in EP-12, pending per-endpoint sweep).
+
+**Follow-up slice** (not MVP-blocking):
+- `TeamService` unit tests (implementation 100% shipped; tests not yet written).
+- Team controller integration tests (controller + guards shipped; integration-level tests need Docker harness).
+- Full AssignmentService (the bulk-assign + suggest features): `RoutingRuleService` (EP-10) already covers suggest-only, which is the MVP shape.
+
+### Cross-Epic Pointers
+- SSE infrastructure: `app/infrastructure/sse/sse_handler.py` + `pg_notification_bus.py` (EP-12)
+- Quick-action execute: EP-04
+- RBP gate: EP-21 (archived with deferred gate)
+
+---
+
+**Old checklist below is the pre-MVP plan (2026-04-13). Kept for historical traceability only — unchecked boxes are either scope-cut or re-homed per the above.**
+
+Dependencies were: EP-00 (auth, JWT sessions), EP-01 (work_items), EP-06 (review_requests, review_responses).
 
 Dependencies: EP-00 (auth, JWT sessions), EP-01 (work_items), EP-06 (review_requests, review_responses)
 
