@@ -71,6 +71,9 @@ describe('ChatPanel', () => {
           ],
         }),
       ),
+      http.get(`${BASE}/api/v1/work-items/wi-1/specification`, () =>
+        HttpResponse.json({ data: { work_item_id: 'wi-1', sections: [] } }),
+      ),
     );
     setupHistoryHandler([]);
     mockWs = null;
