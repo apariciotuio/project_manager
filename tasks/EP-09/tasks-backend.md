@@ -476,6 +476,13 @@ THEN HTTP 422 is returned with valid group_by options listed
 - [x] [GREEN] KanbanService.get_board(): dict-keyed strategy dispatch (state/owner/tag/parent); SHA-256 cache key kanban:{ws}:{group_by}:{hash} TTL 30s (2026-04-18)
 - [x] [GREEN] GET /api/v1/work-items/kanban controller + route registered in main.py (2026-04-18)
 - [x] [REFACTOR] Clean strategy dispatch — no if/elif chain (2026-04-18)
+- [x] [FIX MF-1] Cache key now hashes project_id + limit — cross-project cache leak closed; integration regression test in test_ep09_security_fixes.py (2026-04-18)
+- [x] [FIX MF-2] PersonDashboardService cache key changed to dashboard:person:{workspace_id}:{user_id} — cross-workspace cache collision closed (2026-04-18)
+- [x] [FIX MF-3] Pending reviews query JOINs WorkItemORM to enforce workspace_id scope — cross-workspace data leak closed; integration regression test (2026-04-18)
+- [x] [FIX MF-4] PipelineQueryService: team_id now applied as owner_id IN (team_memberships subquery) in both agg + item fetch queries; removed unused `text` import (SF-5) (2026-04-18)
+- [x] [FIX SF-2] build_count_stmt now applies mine filter — total_count was unfiltered when mine=true (2026-04-18)
+- [x] [FIX SF-3] GET /dashboards/person/{user_id} enforces self-check: 403 unless caller is owner or superadmin (2026-04-18)
+- [x] [FIX SF-4] TeamDashboardService velocity field renamed velocity_last_30d → recent_ready_items with approximation documented in code (2026-04-18)
 
 ---
 
