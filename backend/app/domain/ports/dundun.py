@@ -89,10 +89,11 @@ class DundunClient(Protocol):
         Bidirectional — client frames go upstream via .send(), Dundun frames
         come back via .recv() (None on upstream close).
 
-        NOTE: Dundun's public OpenAPI v0.1.1 does not document a WS endpoint.
-        This method is specified in design.md §2.2 (WS proxy) for a future
-        Dundun WS transport. Implementations SHOULD raise NotImplementedError
-        until Dundun publishes the WS contract.
+        NOTE: Dundun's public OpenAPI does not document a WS endpoint, but the
+        WS handler is live at `/api/v1/morpheo/ws/chat` (see
+        `dundun-specifications.md` §2.2). EP-22 uses this transport on the
+        BE→Dundun hop via the conversation WS proxy (see `design.md` §3 and
+        `conversation_controller.py`).
         """
         ...
 
