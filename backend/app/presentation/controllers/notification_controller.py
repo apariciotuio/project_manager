@@ -14,21 +14,27 @@ the existence of the notification.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
+from fastapi.responses import StreamingResponse
 
 from app.application.services.notification_service import ExtendedNotificationService
 from app.application.services.team_service import (
     NotificationNotFoundError,
     NotificationService,
+    StaleActionError,
 )
 from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
+from app.infrastructure.sse.pg_notification_bus import PgNotificationBus
+from app.infrastructure.sse.sse_handler import SseHandler
 from app.presentation.dependencies import (
     get_current_user,
     get_extended_notification_service,
+    get_jwt_adapter,
     get_notification_service,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
@@ -36,6 +42,9 @@ from app.presentation.middleware.auth_middleware import CurrentUser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["notifications"])
+
+_STREAM_TOKEN_TTL_SECONDS = 300  # 5 minutes
+_SSE_NOTIFICATION_CHANNEL_PREFIX = "sse:notification:"
 
 _NOT_FOUND_DETAIL = {"error": {"code": "NOT_FOUND", "message": "notification not found", "details": {}}}
 
@@ -176,3 +185,102 @@ async def mark_actioned(
             detail=_NOT_FOUND_DETAIL,
         )
     return _ok(_notification_payload(notification))
+
+
+@router.post("/notifications/{notification_id}/action")
+async def execute_action(
+    notification_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: NotificationService = Depends(get_notification_service),
+) -> dict[str, Any]:
+    """Execute a quick action on a notification.
+
+    Returns 409 STALE_ACTION when the notification is already actioned.
+    """
+    _require_workspace(current_user)
+    try:
+        result = await service.execute_action(
+            notification_id=notification_id,
+            actor_id=current_user.id,
+        )
+    except NotificationNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=_NOT_FOUND_DETAIL,
+        ) from exc
+    except StaleActionError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "STALE_ACTION", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(result)
+
+
+# ---------------------------------------------------------------------------
+# SSE notifications stream
+# ---------------------------------------------------------------------------
+
+
+@router.post("/notifications/stream-token")
+async def get_stream_token(
+    current_user: CurrentUser = Depends(get_current_user),
+    jwt_adapter=Depends(get_jwt_adapter),
+) -> dict[str, Any]:
+    """Issue a short-lived (5-minute) JWT for authenticating the SSE stream.
+
+    The token carries the user_id and workspace_id so the stream endpoint
+    can validate identity without reading cookies (EventSource doesn't send
+    cookies cross-origin in all browsers).
+    """
+    _require_workspace(current_user)
+    payload = {
+        "sub": str(current_user.id),
+        "workspace_id": str(current_user.workspace_id),
+        "purpose": "sse_notifications",
+        "exp": int(time.time()) + _STREAM_TOKEN_TTL_SECONDS,
+    }
+    token = jwt_adapter.encode(payload)
+    return _ok({"token": token, "expires_in": _STREAM_TOKEN_TTL_SECONDS})
+
+
+@router.get("/notifications/stream")
+async def stream_notifications(
+    token: str = Query(..., description="Short-lived stream token from /stream-token"),
+    jwt_adapter=Depends(get_jwt_adapter),
+) -> StreamingResponse:
+    """SSE stream for real-time inbox updates.
+
+    Events:
+      notification_created  — new notification for the user
+      inbox_count_updated   — per-tier counts changed
+
+    Auth: requires a valid short-lived token from POST /notifications/stream-token.
+    Returns 401 when token is missing, expired, or invalid.
+    """
+    from app.infrastructure.adapters.jwt_adapter import TokenExpiredError, TokenInvalidError
+
+    try:
+        claims = jwt_adapter.decode(token)
+    except (TokenExpiredError, TokenInvalidError) as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "INVALID_STREAM_TOKEN", "message": str(exc), "details": {}}},
+        ) from exc
+
+    if claims.get("purpose") != "sse_notifications":
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "INVALID_STREAM_TOKEN", "message": "wrong token purpose", "details": {}}},
+        )
+
+    user_id = claims["sub"]
+    channel = f"{_SSE_NOTIFICATION_CHANNEL_PREFIX}{user_id}"
+
+    from app.config.settings import get_settings
+
+    db_url = get_settings().database.url.replace(
+        "postgresql+asyncpg://", "postgresql://"
+    )
+    bus = PgNotificationBus(dsn=db_url)
+    handler = SseHandler(bus)
+    return handler.stream(channel)

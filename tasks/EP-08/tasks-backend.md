@@ -182,7 +182,7 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 
 ### A3. Application Service
 
-- [ ] A3.1 [RED] Test `TeamService.create`: name unique per workspace; `created_by` required — no unit tests for TeamService found
+- [x] A3.1 [RED+GREEN] Test `TeamService.create` + `get`: create returns team, empty name raises ValueError, get returns team in workspace, get cross-workspace raises TeamNotFoundError — 4 tests in `TestCreate` (`backend/tests/unit/application/test_team_service.py`)
 - [x] A3.2 [RED+GREEN] `add_member`: suspended user raises `ValueError`; removed user re-added → idempotent reactivation (removed_at cleared); active member → returns existing (no conflict); 2 tests in `test_team_service.py`
 - [x] A3.3 [RED+GREEN] `remove_member` last-lead guard implemented; 3 tests (last lead raises, two leads ok, remove non-lead ok)
 - [x] A3.4 [RED+GREEN] `update_role(team_id, user_id, new_role) -> TeamMembership` implemented; last-lead demotion guard; 3 tests in `test_team_service.py`
@@ -192,8 +192,8 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 
 ### A4. Controllers
 
-- [ ] A4.1 [RED] Integration tests: `POST /api/v1/teams` 201; duplicate name → 409; `GET /api/v1/teams` list (workspace-scoped); `GET /api/v1/teams/{id}` with members; `PATCH /api/v1/teams/{id}`; `DELETE /api/v1/teams/{id}` — no integration tests for team controller found
-- [ ] A4.2 [RED] Integration tests: `POST /api/v1/teams/{id}/members`; `DELETE /api/v1/teams/{id}/members/{user_id}`; `PATCH /api/v1/teams/{id}/members/{user_id}/role`; last lead removal → 409 — not found
+- [x] A4.1 [RED+GREEN] Integration tests: `POST /api/v1/teams` 201; `GET /api/v1/teams` list (workspace-scoped); `GET /api/v1/teams/{id}` 200+404; `PATCH /api/v1/teams/{id}` 200; `DELETE /api/v1/teams/{id}` 200 — 11 tests passing (`backend/tests/integration/test_ep08_team_controller.py`)
+- [x] A4.2 [GREEN] Integration tests: `POST /api/v1/teams/{id}/members` 200; `PATCH /api/v1/teams/{id}/members/{user_id}/role`; last lead removal → 409 LAST_LEAD_REMOVAL — covered in same file
 - [x] A4.3 [GREEN] Added `PATCH /teams/{team_id}` (name/description/can_receive_reviews) and `PATCH /teams/{team_id}/members/{user_id}/role` (returns 409 LAST_LEAD_REMOVAL on demotion); `DELETE /teams/{id}` now maps `TeamHasOpenReviewsError` → 409 TEAM_HAS_OPEN_REVIEWS (`backend/app/presentation/controllers/team_controller.py`)
 - [ ] A4.4 [REFACTOR] Extract input validation to `TeamValidator` — enum allowlist, UUID validation — not done
 

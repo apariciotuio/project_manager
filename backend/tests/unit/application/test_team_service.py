@@ -298,6 +298,82 @@ class TestAddMemberSuspended:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Tests — TeamService.create (A3.1)
+# ---------------------------------------------------------------------------
+
+
+class TestCreate:
+    @pytest.mark.asyncio
+    async def test_create_returns_team(self) -> None:
+        from app.application.services.team_service import TeamService
+
+        team_repo = FakeTeamRepository()
+        membership_repo = FakeMembershipRepository()
+        review_repo = FakeReviewRequestRepository()
+        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+
+        ws_id = uuid4()
+        creator_id = uuid4()
+        team = await svc.create(
+            workspace_id=ws_id,
+            name="Alpha",
+            created_by=creator_id,
+        )
+
+        assert team.name == "Alpha"
+        assert team.workspace_id == ws_id
+        assert team.created_by == creator_id
+        assert team.deleted_at is None
+
+    @pytest.mark.asyncio
+    async def test_create_empty_name_raises_invariant_error(self) -> None:
+        from app.application.services.team_service import TeamService
+
+        team_repo = FakeTeamRepository()
+        membership_repo = FakeMembershipRepository()
+        review_repo = FakeReviewRequestRepository()
+        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+
+        with pytest.raises(ValueError):
+            await svc.create(
+                workspace_id=uuid4(),
+                name="   ",
+                created_by=uuid4(),
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_returns_team_in_workspace(self) -> None:
+        from app.application.services.team_service import TeamService
+
+        team_repo = FakeTeamRepository()
+        membership_repo = FakeMembershipRepository()
+        review_repo = FakeReviewRequestRepository()
+        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+
+        ws_id = uuid4()
+        team = await team_repo.create(_make_team(ws_id))
+
+        result = await svc.get(team.id, workspace_id=ws_id)
+        assert result.id == team.id
+
+    @pytest.mark.asyncio
+    async def test_get_cross_workspace_raises_not_found(self) -> None:
+        from app.application.services.team_service import TeamNotFoundError, TeamService
+
+        team_repo = FakeTeamRepository()
+        membership_repo = FakeMembershipRepository()
+        review_repo = FakeReviewRequestRepository()
+        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+
+        ws_id = uuid4()
+        other_ws_id = uuid4()
+        team = await team_repo.create(_make_team(ws_id))
+
+        with pytest.raises(TeamNotFoundError):
+            await svc.get(team.id, workspace_id=other_ws_id)
+
+
 class TestSoftDeleteOpenReviews:
     @pytest.mark.asyncio
     async def test_soft_delete_with_open_reviews_raises(self) -> None:

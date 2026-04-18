@@ -5,6 +5,12 @@ from slowapi.errors import RateLimitExceeded
 from app.config.logging import configure_logging
 from app.infrastructure.rate_limiting.pg_rate_limiter import RateLimitMiddleware
 from app.presentation.controllers.admin_controller import router as admin_router
+from app.presentation.controllers.admin_members_controller import router as admin_members_router
+from app.presentation.controllers.admin_context_presets_controller import router as admin_context_presets_router
+from app.presentation.controllers.admin_rules_controller import router as admin_rules_router
+from app.presentation.controllers.admin_jira_controller import router as admin_jira_router
+from app.presentation.controllers.admin_support_controller import router as admin_support_router
+from app.presentation.controllers.admin_dashboard_controller import router as admin_dashboard_router
 from app.presentation.controllers.internal_jobs_controller import router as internal_jobs_router
 from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router

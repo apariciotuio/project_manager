@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 from uuid import UUID
 
-from app.domain.models.team import Notification, Team, TeamMembership, TeamRole
+from app.domain.models.team import Notification, NotificationState, Team, TeamMembership, TeamRole
 from app.domain.queries.page import Page
 from app.domain.repositories.team_repository import (
     INotificationRepository,
@@ -33,6 +33,10 @@ class MembershipNotFoundError(LookupError):
 
 class NotificationNotFoundError(LookupError):
     pass
+
+
+class StaleActionError(ValueError):
+    """Raised when execute_action is called on an already-actioned notification."""
 
 
 class LastLeadError(ValueError):
@@ -73,7 +77,15 @@ class TeamService:
             description=description,
             can_receive_reviews=can_receive_reviews,
         )
-        return await self._teams.create(team)
+        created = await self._teams.create(team)
+        # Auto-add creator as lead (spec: US-080)
+        membership = TeamMembership.create(
+            team_id=created.id,
+            user_id=created_by,
+            role=TeamRole.LEAD,
+        )
+        await self._memberships.add_member(membership)
+        return created
 
     async def get(self, team_id: UUID, *, workspace_id: UUID) -> Team:
         """Return a team scoped to the caller's workspace.
@@ -182,8 +194,14 @@ class TeamService:
 
 
 class NotificationService:
-    def __init__(self, *, notification_repo: INotificationRepository) -> None:
+    def __init__(
+        self,
+        *,
+        notification_repo: INotificationRepository,
+        quick_action_dispatcher: object | None = None,
+    ) -> None:
         self._notifications = notification_repo
+        self._dispatcher = quick_action_dispatcher
 
     async def enqueue(
         self,
@@ -253,3 +271,52 @@ class NotificationService:
             raise NotificationNotFoundError(f"notification {notification_id} not found")
         notification.mark_actioned()
         return await self._notifications.save(notification)
+
+    async def execute_action(
+        self,
+        *,
+        notification_id: UUID,
+        actor_id: UUID,
+    ) -> dict:
+        """Execute a quick action from the inbox.
+
+        Raises:
+            NotificationNotFoundError: notification not found.
+            StaleActionError: notification is already actioned.
+        """
+        from typing import Any
+
+        notification = await self._notifications.get(notification_id)
+        if notification is None:
+            raise NotificationNotFoundError(f"notification {notification_id} not found")
+
+        if notification.state == NotificationState.ACTIONED:
+            raise StaleActionError(
+                f"notification {notification_id} is already actioned"
+            )
+
+        quick_action = notification.quick_action
+        if quick_action is None or "action" not in quick_action:
+            raise ValueError(f"notification {notification_id} has no quick_action")
+
+        action_type = quick_action["action"]
+        action_result: dict[str, Any] = {}
+
+        if self._dispatcher is not None:
+            action_result = await self._dispatcher.dispatch(
+                action_type=action_type,
+                subject_id=notification.subject_id,
+                actor_id=actor_id,
+            )
+
+        notification.mark_actioned()
+        saved = await self._notifications.save(notification)
+
+        return {
+            "result": action_result,
+            "notification": {
+                "id": str(saved.id),
+                "state": saved.state.value,
+                "actioned_at": saved.actioned_at.isoformat() if saved.actioned_at else None,
+            },
+        }
