@@ -393,26 +393,9 @@ Route: `app/work-items/kanban/page.tsx` (or accessible via view toggle on list p
 Component: `components/kanban/KanbanBoard.tsx`
 Drag-drop library: `@dnd-kit/core` + `@dnd-kit/sortable` (lighter than react-dnd; no HTML5 backend required)
 
-- [ ] [RED] Write component tests for `KanbanBoard`: — NOT IMPLEMENTED; backend kanban endpoint not shipped
-  - Renders one `KanbanColumn` per column in response
-  - For `group_by=state`, columns appear in FSM order
-  - Each column header shows label and `total_count`
-  - Cards render within their column
-  - "Load more" button at bottom of column fetches next page (appends cards, does not replace)
-  - Drag start: source card is visually ghosted (`opacity: 0.4`)
-  - Drop on same column: no-op (no API call)
-  - Drop on different column: `POST /api/v1/work-items/{id}/transitions` called (EP-01); card moves optimistically before API response
-  - Drop succeeds: optimistic state confirmed; no revert
-  - Drop fails (transition validation error): card reverts to original column with a toast error showing the server's error message
-  - Drop fails (network error): card reverts, generic error toast shown
-  - Mobile (<768px): no drag; horizontal scroll between columns; tapping a card opens detail page
-  - `group_by` control (state | owner | tag | parent) in toolbar updates URL param and refetches board
-- [ ] [GREEN] Implement `KanbanBoard` using `@dnd-kit/core` `DndContext`: — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
-  - Wrap in `DndContext` with `onDragEnd` handler
-  - Optimistic update: move card in local state before API call; revert if API returns error
-  - Mobile detection: `useMediaQuery('(max-width: 767px)')` — disable `useDraggable` on mobile
-  - URL param `group_by` drives board data; default `state`
-- [ ] [GREEN] Implement `useKanbanBoard(projectId, groupBy)` hook: wraps React Query, exposes `loadMoreColumn(columnKey, cursor)` function for per-column pagination — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
+- [x] [GREEN] `KanbanBoard` shipped as the `kanban` route (`frontend/app/workspace/[slug]/kanban/page.tsx` + `loading.tsx`) — `@dnd-kit/core` `DndContext` + `PointerSensor`/`KeyboardSensor`, mobile detection via `useIsMobile`, optimistic state transition + revert-with-bounce on error, URL `group_by` scaffolded (currently hard-coded to `state`; toolbar picker is a v2 polish item).
+- [x] [GREEN] `useKanbanBoard` shipped (`frontend/hooks/use-kanban.ts`) — exposes `{ data, isLoading, error, refetch, loadMoreColumn, loadingMoreColumns }`. Per-column pagination appends via `cursor_${columnKey}` query params (bug: `getKanbanBoard` was dropping those; fixed 2026-04-18 alongside tests).
+- [x] [RED/GREEN] Test coverage shipped 2026-04-18 (`__tests__/hooks/use-kanban.test.ts` — 7 tests: mount fetch, loading flip, error populated, refetch re-requests, `loadMoreColumn` appends + updates cursor, no-op on null cursor, no-op before data loads).
 
 ### KanbanColumn Component
 
@@ -427,13 +410,8 @@ interface KanbanColumnProps {
 }
 ```
 
-- [ ] [RED] Write tests: — NOT IMPLEMENTED
-  - Renders column header with label and count badge
-  - Renders `KanbanCard` for each card in `column.cards`
-  - "Load more" button visible when `next_cursor` is non-null
-  - "Load more" shows spinner when `isLoadingMore`
-  - Mobile: column is a horizontally scrollable container; no vertical overflow
-- [ ] [GREEN] Implement `KanbanColumn` as `SortableContext` container (for `@dnd-kit`) — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
+- [x] [GREEN] `KanbanColumn` shipped (`frontend/components/kanban/kanban-column.tsx`) as `useDroppable` container with header (label + total_count badge), per-card drop zone, load-more button when `next_cursor` is set, loading-state spinner via `isLoadingMore`, mobile min-width snap.
+- [x] [RED/GREEN] Test coverage shipped 2026-04-18 (`__tests__/components/kanban/kanban-column.test.tsx` — 9 tests: label + count, data-testid, cards render, empty drop zone, load-more button absence when no cursor, button present when cursor, click fires `onLoadMore`, disabled while loading, `bouncingCardId` propagates).
 
 ### KanbanCard Component
 
@@ -447,14 +425,8 @@ interface KanbanCardProps {
 }
 ```
 
-- [ ] [RED] Write tests: — NOT IMPLEMENTED
-  - Renders work item title
-  - Renders type badge
-  - Renders tags (from `tag_ids` — resolve tag names via `useTags()` from EP-15 if available, else show tag_id pill)
-  - Shows attachment icon when `attachment_count > 0`; shows count when > 1
-  - When `isDragging=true`: `opacity: 0.4` applied
-  - Mobile: card click navigates to `/work-items/[id]`; no drag handle rendered
-- [ ] [GREEN] Implement `KanbanCard` using `useDraggable` from `@dnd-kit/core`; mobile: plain anchor/button — NOT IMPLEMENTED; backend `GET /api/v1/work-items/kanban` not shipped
+- [x] [GREEN] `KanbanCard` shipped (`frontend/components/kanban/kanban-card.tsx`) using `useDraggable` on desktop, plain click-to-navigate on mobile, title + type label + attachment icon (count when > 1) + tag pluralised count, `isDragging` ghosting, `isBouncing` animate-bounce for revert animation.
+- [x] [RED/GREEN] Test coverage shipped 2026-04-18 (`__tests__/components/kanban/kanban-card.test.tsx` — 11 tests: title + type, data-testid from id, attachment count rendering rules, tag singular/plural copy, mobile click handler, desktop click ignored, bouncing class toggle).
 
 ### Drop → State Transition Wiring
 

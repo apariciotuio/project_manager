@@ -34,6 +34,12 @@ export interface KanbanFilters {
   group_by?: KanbanGroupBy;
   project_id?: string;
   limit?: number;
+  /**
+   * Per-column continuation cursors; the key is `cursor_${columnKey}` and the
+   * value is the `next_cursor` returned by the last page for that column. The
+   * backend reads them positionally, so we forward any matching entry verbatim.
+   */
+  [key: `cursor_${string}`]: string | undefined;
 }
 
 interface Envelope<T> {
@@ -45,6 +51,11 @@ export async function getKanbanBoard(filters: KanbanFilters = {}): Promise<Kanba
   if (filters.group_by) params.set('group_by', filters.group_by);
   if (filters.project_id) params.set('project_id', filters.project_id);
   if (filters.limit !== undefined) params.set('limit', String(filters.limit));
+  for (const [key, value] of Object.entries(filters)) {
+    if (key.startsWith('cursor_') && typeof value === 'string') {
+      params.set(key, value);
+    }
+  }
   const qs = params.toString();
   const res = await apiGet<Envelope<KanbanBoard>>(`/api/v1/work-items/kanban${qs ? `?${qs}` : ''}`);
   return res.data;
