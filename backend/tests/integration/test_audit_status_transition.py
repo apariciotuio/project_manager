@@ -14,7 +14,6 @@ from __future__ import annotations
 import time
 from uuid import UUID
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
@@ -50,11 +49,28 @@ _CSRF_TOKEN = "test-csrf-transition"
 async def app(migrated_database):
     import app.infrastructure.persistence.database as db_module
 
+    # Dispose any engine left from a previous test before truncating.
+    # Timeline event handlers previously leaked "idle in transaction" connections
+    # by closing sessions without committing.  That bug is fixed, but we also
+    # patch get_engine to use NullPool so the app never pools connections across
+    # test boundaries.
+    if db_module._engine is not None:
+        await db_module._engine.dispose(close=True)
     db_module._engine = None
     db_module._session_factory = None
 
-    engine = create_async_engine(migrated_database.database.url, poolclass=NullPool)
-    async with engine.begin() as conn:
+    _db_url = migrated_database.database.url
+
+    def _nullpool_engine() -> "AsyncEngine":
+        if db_module._engine is None:
+            db_module._engine = create_async_engine(_db_url, poolclass=NullPool)
+        return db_module._engine
+
+    _original_get_engine = db_module.get_engine
+    db_module.get_engine = _nullpool_engine  # type: ignore[assignment]
+
+    truncate_engine = create_async_engine(_db_url, poolclass=NullPool)
+    async with truncate_engine.begin() as conn:
         # Truncate child tables first (no FK deps), then parents.
         # state_transitions/ownership_history have row-level no-delete triggers
         # but TRUNCATE is statement-level and does NOT fire FOR EACH ROW triggers.
@@ -68,7 +84,7 @@ async def app(migrated_database):
                 "workspaces, users RESTART IDENTITY CASCADE"
             )
         )
-    await engine.dispose()
+    await truncate_engine.dispose(close=True)
 
     from app.infrastructure.adapters.jwt_adapter import JwtAdapter as _JwtAdapter
     from app.presentation.dependencies import get_cache_adapter, get_jwt_adapter
@@ -93,10 +109,12 @@ async def app(migrated_database):
 
     yield fastapi_app
 
+    # Teardown: close all connections before the next test can TRUNCATE.
     if db_module._engine is not None:
-        await db_module._engine.dispose()
+        await db_module._engine.dispose(close=True)
     db_module._engine = None
     db_module._session_factory = None
+    db_module.get_engine = _original_get_engine  # type: ignore[assignment]
 
 
 @pytest_asyncio.fixture
@@ -243,16 +261,18 @@ async def test_valid_transition_audit_records_actor_and_workspace(
 
 
 async def test_invalid_fsm_transition_writes_failure_audit(http, migrated_database) -> None:
-    """Invalid FSM edge (e.g. draft → approved) → audit row with outcome='failure',
+    """Invalid FSM edge (e.g. draft → exported) → audit row with outcome='failure',
     ip_address in context. HTTP response is 422."""
     user, ws = await _seed(migrated_database)
     token = _mint_jwt(user, ws)
     item_id = await _create_work_item(http, token)
 
-    # draft → approved is not a valid FSM edge
+    # draft → exported is a valid WorkItemState enum value but not a valid FSM edge.
+    # Using an invalid enum value (e.g. "approved") would be rejected at schema
+    # validation before reaching the service, so no audit row would be written.
     resp = await http.post(
         f"/api/v1/work-items/{item_id}/transitions",
-        json={"target_state": "approved"},
+        json={"target_state": "exported"},
         cookies=_cookies(token),
         headers=_headers(),
     )

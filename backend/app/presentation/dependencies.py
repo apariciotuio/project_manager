@@ -258,8 +258,10 @@ def get_work_item_service(
         ValidationStatusRepositoryImpl,
     )
 
-    audit_repo = AuditRepositoryImpl(session)
-    audit = AuditService(audit_repo)
+    # AuditService.isolated() opens its own session per log_event() call so
+    # that failure audit rows (written in the except block before re-raising)
+    # are committed even when the main request session is rolled back.
+    audit = AuditService.isolated(get_session_factory())
     ready_gate = ReadyGateService(
         requirement_repo=ValidationRequirementRepositoryImpl(session),
         status_repo=ValidationStatusRepositoryImpl(session),
