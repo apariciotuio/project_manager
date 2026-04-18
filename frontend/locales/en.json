@@ -214,6 +214,22 @@
         "proposed": "Proposed",
         "section": "Section"
       },
+      "quickActions": {
+        "rewrite": "Rewrite",
+        "concretize": "Concretize",
+        "expand": "Expand",
+        "shorten": "Shorten",
+        "generate_ac": "Generate AC",
+        "noContent": "No content to act on",
+        "undo": "Undo",
+        "undoCountdown": "Undo ({seconds}s)",
+        "errorPrefix": "Action failed"
+      },
+      "splitView": {
+        "chatTab": "Chat",
+        "contentTab": "Content",
+        "resizeAria": "Resize panels"
+      },
       "versions": {
         "tab": "Versions",
         "list": "Version history",
@@ -550,6 +566,61 @@
           "apiTokenPlaceholder": "Jira token",
           "showMapping": "Show advanced mapping",
           "hideMapping": "Hide advanced mapping"
+        },
+        "puppet": {
+          "fields": {
+            "baseUrl": "Base URL *",
+            "apiKey": "API Key"
+          },
+          "apiKeyRotatePlaceholder": "Enter new key to rotate",
+          "save": "Save",
+          "saving": "Saving…",
+          "testing": "Testing…",
+          "testConnection": "Test Connection",
+          "errors": {
+            "baseUrlRequired": "Base URL is required"
+          },
+          "healthStatus": {
+            "ok": "Healthy",
+            "error": "Unhealthy",
+            "unchecked": "Not checked"
+          }
+        }
+      },
+      "docSources": {
+        "addButton": "Add Source",
+        "columns": {
+          "name": "Name",
+          "type": "Type",
+          "url": "URL",
+          "public": "Public",
+          "status": "Status",
+          "lastIndexed": "Last Indexed",
+          "actions": "Actions"
+        },
+        "statusLabels": {
+          "pending": "Pending",
+          "indexing": "Indexing",
+          "indexed": "Indexed",
+          "error": "Error"
+        },
+        "deleteConfirmTitle": "Delete source",
+        "deleteConfirmDescription": "Are you sure you want to delete \"{name}\"? This cannot be undone.",
+        "deleteConfirm": "Delete",
+        "deleteCancel": "Cancel",
+        "modal": {
+          "title": "Add Documentation Source",
+          "name": "Name *",
+          "namePlaceholder": "My docs",
+          "sourceType": "Source type *",
+          "url": "URL *",
+          "urlPlaceholder": "https://...",
+          "isPublic": "Public",
+          "submit": "Add Source",
+          "cancel": "Cancel",
+          "invalidGithubUrl": "Must be a GitHub repo URL (https://github.com/...)",
+          "invalidHttpUrl": "Must be a valid HTTP(S) URL",
+          "invalidPath": "Must be a relative or absolute path"
         }
       },
       "tags": {
@@ -581,7 +652,19 @@
       },
       "empty": "No results for \"{query}\". Try different keywords.",
       "error": "Search failed. Please try again.",
-      "minChars": "Type at least 2 characters to search"
+      "minChars": "Type at least 2 characters to search",
+      "suggestions": "Suggestions",
+      "unavailable": "Search is temporarily unavailable"
+    },
+    "docs": {
+      "title": "Related docs",
+      "noRelatedDocs": "No related docs available",
+      "previewDoc": "Preview {title}",
+      "previewTitle": "Doc preview",
+      "openInNewTab": "Open in new tab",
+      "close": "Close",
+      "contentTruncated": "Content truncated — open the original for the full document",
+      "loadError": "Could not load document content"
     },
     "savedSearches": {
       "title": "Saved searches",

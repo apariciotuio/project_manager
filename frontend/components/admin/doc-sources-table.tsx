@@ -75,7 +75,7 @@ export function DocSourcesTable({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-testid="doc-sources-table" className="flex flex-col gap-4">
       <div className="flex justify-end">
         <Button
           type="button"

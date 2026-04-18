@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { TimelineTab } from '@/components/work-item/timeline-tab';
 import { ChildItemsTab } from '@/components/work-item/child-items-tab';
 import { ClarificationTab } from '@/components/clarification/clarification-tab';
 import { VersionHistoryPanel } from '@/components/work-item/version-history-panel';
+import { DocPreviewPanel } from '@/components/docs/doc-preview-panel';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
 import { useVersions } from '@/hooks/work-item/use-versions';
 import { useAuth } from '@/app/providers/auth-provider';
@@ -27,6 +28,11 @@ import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
 import { Pencil } from 'lucide-react';
 import type { WorkItemResponse } from '@/lib/types/work-item';
+
+// Lazy-loaded to keep detail page initial load fast (EP-13 Group 4)
+const RelatedDocsWidget = lazy(() =>
+  import('@/components/docs/related-docs-widget').then((m) => ({ default: m.RelatedDocsWidget })),
+);
 
 interface WorkItemDetailPageProps {
   params: { slug: string; id: string };
@@ -39,6 +45,7 @@ export default function WorkItemDetailPage({
   const { versions } = useVersions(id);
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null);
 
   // Pick the latest version id — null while versions haven't loaded yet
   const latestVersionId = versions.length > 0 ? (versions[0]?.id ?? null) : null;
@@ -147,6 +154,12 @@ export default function WorkItemDetailPage({
             <div className="flex flex-col gap-4">
               <CompletenessPanel workItemId={id} />
               <NextStepHint workItemId={id} />
+              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                <RelatedDocsWidget
+                  workItemId={id}
+                  onDocPreview={(docId) => setPreviewDocId(docId)}
+                />
+              </Suspense>
             </div>
           </div>
         </TabsContent>
@@ -194,6 +207,11 @@ export default function WorkItemDetailPage({
           </TabsContent>
         )}
       </Tabs>
+      <DocPreviewPanel
+        docId={previewDocId}
+        isOpen={previewDocId !== null}
+        onClose={() => setPreviewDocId(null)}
+      />
     </PageContainer>
   );
 }

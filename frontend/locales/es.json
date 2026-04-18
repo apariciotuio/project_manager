@@ -214,6 +214,22 @@
         "proposed": "Propuesto",
         "section": "Sección"
       },
+      "quickActions": {
+        "rewrite": "Reescribir",
+        "concretize": "Concretar",
+        "expand": "Ampliar",
+        "shorten": "Acortar",
+        "generate_ac": "Generar criterios",
+        "noContent": "Sin contenido para actuar",
+        "undo": "Deshacer",
+        "undoCountdown": "Deshacer ({seconds}s)",
+        "errorPrefix": "Error al ejecutar acción"
+      },
+      "splitView": {
+        "chatTab": "Chat",
+        "contentTab": "Contenido",
+        "resizeAria": "Redimensionar paneles"
+      },
       "versions": {
         "tab": "Versiones",
         "list": "Historial de versiones",
@@ -550,6 +566,61 @@
           "apiTokenPlaceholder": "Token de Jira",
           "showMapping": "Mostrar mapping avanzado",
           "hideMapping": "Ocultar mapping avanzado"
+        },
+        "puppet": {
+          "fields": {
+            "baseUrl": "URL base *",
+            "apiKey": "Clave API"
+          },
+          "apiKeyRotatePlaceholder": "Introduce nueva clave para rotar",
+          "save": "Guardar",
+          "saving": "Guardando…",
+          "testing": "Probando…",
+          "testConnection": "Probar conexión",
+          "errors": {
+            "baseUrlRequired": "La URL base es obligatoria"
+          },
+          "healthStatus": {
+            "ok": "Activo",
+            "error": "Con errores",
+            "unchecked": "Sin verificar"
+          }
+        }
+      },
+      "docSources": {
+        "addButton": "Añadir fuente",
+        "columns": {
+          "name": "Nombre",
+          "type": "Tipo",
+          "url": "URL",
+          "public": "Pública",
+          "status": "Estado",
+          "lastIndexed": "Último índice",
+          "actions": "Acciones"
+        },
+        "statusLabels": {
+          "pending": "Pendiente",
+          "indexing": "Indexando",
+          "indexed": "Indexada",
+          "error": "Error"
+        },
+        "deleteConfirmTitle": "Eliminar fuente",
+        "deleteConfirmDescription": "¿Seguro que quieres eliminar \"{name}\"? Esta acción no se puede deshacer.",
+        "deleteConfirm": "Eliminar",
+        "deleteCancel": "Cancelar",
+        "modal": {
+          "title": "Añadir fuente de documentación",
+          "name": "Nombre *",
+          "namePlaceholder": "Mis docs",
+          "sourceType": "Tipo de fuente *",
+          "url": "URL *",
+          "urlPlaceholder": "https://...",
+          "isPublic": "Pública",
+          "submit": "Añadir fuente",
+          "cancel": "Cancelar",
+          "invalidGithubUrl": "Debe ser una URL de repo GitHub (https://github.com/...)",
+          "invalidHttpUrl": "Debe ser una URL HTTP(S) válida",
+          "invalidPath": "Debe ser una ruta relativa o absoluta"
         }
       },
       "tags": {
@@ -581,7 +652,19 @@
       },
       "empty": "Sin resultados para \"{query}\". Prueba otras palabras.",
       "error": "Búsqueda fallida. Inténtalo de nuevo.",
-      "minChars": "Escribe al menos 2 caracteres para buscar"
+      "minChars": "Escribe al menos 2 caracteres para buscar",
+      "suggestions": "Sugerencias",
+      "unavailable": "La búsqueda no está disponible temporalmente"
+    },
+    "docs": {
+      "title": "Docs relacionados",
+      "noRelatedDocs": "No hay docs relacionados disponibles",
+      "previewDoc": "Previsualizar {title}",
+      "previewTitle": "Vista previa del doc",
+      "openInNewTab": "Abrir en nueva pestaña",
+      "close": "Cerrar",
+      "contentTruncated": "Contenido truncado — abre el original para ver el documento completo",
+      "loadError": "No se pudo cargar el contenido del documento"
     },
     "savedSearches": {
       "title": "Búsquedas guardadas",

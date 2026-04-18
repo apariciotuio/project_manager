@@ -80,10 +80,10 @@ WHEN the user types ≥2 chars THEN `GET /api/v1/search/suggest?q=...` is called
 WHEN the user submits (Enter or click) THEN `GET /api/v1/search?q=...&<filters>` is called and results render
 WHEN Puppet returns 503 THEN a persistent banner shows "Search is temporarily unavailable" and results area is empty
 
-- [ ] **[RED]** Write test: `SearchBar` debounces suggest calls at 150ms
-- [ ] **[RED]** Write test: suggest dropdown renders ≤5 results, keyboard nav (↑/↓/Enter)
-- [ ] **[RED]** Write test: 503 response shows "Search unavailable" banner
-- [ ] **[GREEN]** Implement `components/search/SearchBar.tsx` with prefix suggestions
+- [x] **[RED]** Write test: `SearchBar` debounces suggest calls at 150ms — 10 tests in `__tests__/components/search/search-bar-suggest.test.tsx`
+- [x] **[RED]** Write test: suggest dropdown renders ≤5 results, keyboard nav (↑/↓/Enter)
+- [x] **[RED]** Write test: 503 response shows "Search unavailable" banner
+- [x] **[GREEN]** Implement `components/search/SearchBar.tsx` with prefix suggestions — 150ms debounce, `data-testid="suggest-dropdown"`, ARIA listbox/option/activedescendant, Escape closes
 - [ ] **[REFACTOR]** URL state: `useSearchParams` drives `q` and filters — no React state duplication
 
 ---
@@ -144,7 +144,7 @@ WHEN the panel is closed THEN focus returns to the triggering element
   - Header: title, source_name, last_indexed_at, "Open in new tab" button
 - [x] **[RED]** Write test: content_truncated flag shows "Content truncated" notice
 - [x] **[GREEN]** Handle `content_truncated: true` in panel header
-- [ ] **[REFACTOR]** Use `useQuery` with `staleTime: 3600_000` (matches server cache TTL) — currently uses module-level Map cache; functional equivalent, upgrade to React Query deferred
+- [ ] **[REFACTOR]** Use `useQuery` with `staleTime: 3600_000` (matches server cache TTL) — currently uses module-level Map cache; functional equivalent, deferred to after React Query adoption
 
 ---
 
@@ -164,9 +164,9 @@ WHEN a related doc is clicked THEN `DocPreviewPanel` opens
   - Props: `workItemId: string`
   - Uses `useRelatedDocs` hook; `retry: false` (Puppet failure should not spam retries)
   - Renders compact list of related docs with title + snippet
-- [ ] **[GREEN]** Integrate `RelatedDocsWidget` into `WorkItemDetail.tsx` side panel area
-- [ ] **[GREEN]** Add `DocPreviewPanel` to `WorkItemDetail.tsx` with local open/close state
-- [ ] **[REFACTOR]** `RelatedDocsWidget` is lazy-loaded (`React.lazy` + `Suspense`) to keep detail page initial load fast
+- [x] **[GREEN]** Integrate `RelatedDocsWidget` into `WorkItemDetail.tsx` side panel area — added to spec tab right column in `app/workspace/[slug]/items/[id]/page.tsx`
+- [x] **[GREEN]** Add `DocPreviewPanel` to `WorkItemDetail.tsx` with local open/close state — `previewDocId` state drives panel; placed at bottom of `PageContainer`
+- [x] **[REFACTOR]** `RelatedDocsWidget` is lazy-loaded (`React.lazy` + `Suspense`) to keep detail page initial load fast — `Suspense` fallback `<Skeleton>`
 
 ---
 
@@ -190,7 +190,7 @@ WHEN health check status is 'error' THEN a warning badge is shown
   - `api_key` field: password input, placeholder "Enter new key to rotate" when editing
   - "Test Connection" button: async, shows loading state, updates status after response
   - Health status badge: green=ok, red=error, gray=unchecked via `PuppetHealthBadge`
-- [ ] **[REFACTOR]** On successful save: invalidate `['puppet-config']` React Query cache
+- [x] **[REFACTOR]** On successful save: invalidate `['puppet-config']` React Query cache — hooks use local state (no React Query); `onSaved` callback propagates updated config to `PuppetTab` state. Wired in admin page Puppet tab.
 
 ---
 
@@ -215,5 +215,14 @@ WHEN admin deletes a source THEN a confirmation dialog appears before deletion
 - [x] **[GREEN]** Implement `components/admin/AddDocSourceModal.tsx`
   - Fields: name, source_type (select), url, is_public (checkbox)
   - URL validation changes based on source_type (github_repo/url/path)
-- [ ] **[GREEN]** Wire both into admin integrations page (`app/admin/integrations/puppet/page.tsx`)
-- [ ] **[REFACTOR]** Polling: sources with `status='pending'` or `status='indexing'` poll `GET /api/v1/admin/documentation-sources` every 5 seconds until stable — implemented in `hooks/use-doc-sources.ts` via setInterval
+- [x] **[GREEN]** Wire both into admin page — new "Puppet" tab in `app/workspace/[slug]/admin/page.tsx` renders `PuppetConfigForm` + `DocSourcesTable` + `AddDocSourceModal`
+- [x] **[REFACTOR]** Polling: sources with `status='pending'` or `status='indexing'` poll `GET /api/v1/admin/documentation-sources` every 5 seconds until stable — implemented in `hooks/use-doc-sources.ts` via setInterval
+
+---
+
+## i18n
+
+- [x] Added `workspace.search.suggestions` + `workspace.search.unavailable` to `en.json` + `es.json`
+- [x] Added `workspace.docs.*` namespace (`title`, `noRelatedDocs`, `previewDoc`, `previewTitle`, `openInNewTab`, `close`, `contentTruncated`, `loadError`) to both locales
+- [x] Added `workspace.admin.integrations.puppet.*` namespace to both locales
+- [x] Added `workspace.admin.docSources.*` namespace (columns, statusLabels, modal, delete dialogs) to both locales

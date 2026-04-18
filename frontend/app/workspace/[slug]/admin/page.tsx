@@ -36,6 +36,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Archive, Pencil, Trash2 } from 'lucide-react';
+import { PuppetConfigForm } from '@/components/admin/puppet-config-form';
+import { DocSourcesTable } from '@/components/admin/doc-sources-table';
+import { AddDocSourceModal } from '@/components/admin/add-doc-source-modal';
+import { usePuppetConfig } from '@/hooks/use-puppet-config';
+import { useDocSources } from '@/hooks/use-doc-sources';
+import type { PuppetConfig } from '@/lib/types/puppet';
 import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -943,6 +949,54 @@ function TagsTab() {
   );
 }
 
+// ─── Puppet Tab ───────────────────────────────────────────────────────────────
+
+function PuppetTab({ slug }: { slug: string }) {
+  const { config, createConfig: _cc, updateConfig: _uc, runHealthCheck: _rhc } = usePuppetConfig();
+  const { sources, isLoading: sourcesLoading, addSource, removeSource } = useDocSources();
+  const [addSourceOpen, setAddSourceOpen] = useState(false);
+  const [currentConfig, setCurrentConfig] = useState<PuppetConfig | null>(config);
+
+  // Sync config from hook on initial load
+  if (config !== null && currentConfig === null) {
+    setCurrentConfig(config);
+  }
+
+  const workspaceId = slug;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Puppet Configuration</h3>
+        <PuppetConfigForm
+          existingConfig={currentConfig}
+          workspaceId={workspaceId}
+          onSaved={(saved) => setCurrentConfig(saved)}
+        />
+      </div>
+
+      <div>
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Documentation Sources</h3>
+        <DocSourcesTable
+          sources={sources}
+          isLoading={sourcesLoading}
+          onAddSource={() => setAddSourceOpen(true)}
+          onDeleteSource={async (id) => { await removeSource(id); }}
+        />
+        <AddDocSourceModal
+          open={addSourceOpen}
+          workspaceId={workspaceId}
+          onClose={() => setAddSourceOpen(false)}
+          onSubmit={async (req) => {
+            await addSource(req);
+            setAddSourceOpen(false);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPage({ params: { slug: _slug } }: AdminPageProps) {
@@ -961,6 +1015,7 @@ export default function AdminPage({ params: { slug: _slug } }: AdminPageProps) {
           <TabsTrigger value="projects">Proyectos</TabsTrigger>
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>
           <TabsTrigger value="tags">Etiquetas</TabsTrigger>
+          <TabsTrigger value="puppet">Puppet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="members">
@@ -980,6 +1035,9 @@ export default function AdminPage({ params: { slug: _slug } }: AdminPageProps) {
         </TabsContent>
         <TabsContent value="tags">
           <TagsTab />
+        </TabsContent>
+        <TabsContent value="puppet">
+          <PuppetTab slug={_slug} />
         </TabsContent>
       </Tabs>
     </PageContainer>
