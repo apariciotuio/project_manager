@@ -69,7 +69,7 @@ export function NotificationItem({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-md px-3 py-2 transition-colors hover:bg-accent',
+        'flex min-h-[48px] items-start gap-3 rounded-md px-3 py-2 transition-colors hover:bg-accent',
         isUnread && 'bg-primary/5'
       )}
       onMouseEnter={handleMouseEnter}

@@ -28,6 +28,10 @@ class AuditService:
         actor_id: UUID | None = None,
         actor_display: str | None = None,
         workspace_id: UUID | None = None,
+        entity_type: str | None = None,
+        entity_id: UUID | None = None,
+        before_value: dict[str, Any] | None = None,
+        after_value: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
     ) -> None:
         event = AuditEvent(
@@ -37,10 +41,14 @@ class AuditService:
             actor_id=actor_id,
             actor_display=actor_display,
             workspace_id=workspace_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            before_value=before_value,
+            after_value=after_value,
             context=context or {},
         )
         try:
-            await self._repo.record(event)
+            await self._repo.append(event)
         except Exception:
             logger.exception(
                 "audit log failed (category=%s action=%s actor=%s)",

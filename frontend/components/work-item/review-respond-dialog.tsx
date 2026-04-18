@@ -12,8 +12,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { BottomSheet } from '@/components/layout/bottom-sheet';
 import { submitReviewResponse } from '@/lib/api/reviews';
 import type { ReviewDecision } from '@/lib/api/reviews';
+import { useIsMobile } from '@/hooks/use-is-mobile';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +37,7 @@ export function ReviewRespondDialog({
   onClose,
 }: ReviewRespondDialogProps) {
   const t = useTranslations('workspace.itemDetail.reviews.respondDialog');
+  const isMobile = useIsMobile();
 
   const [decision, setDecision] = useState<ReviewDecision | null>(null);
   const [content, setContent] = useState('');
@@ -78,6 +81,97 @@ export function ReviewRespondDialog({
     }
   }
 
+  // ─── Shared content ───────────────────────────────────────────────────────
+
+  const formBody = (
+    <div className="flex flex-col gap-4">
+      {/* Decision selector */}
+      <div className="flex flex-col gap-1.5">
+        <Label>{t('decisionLabel')}</Label>
+        <div className="flex gap-2 flex-wrap">
+          {DECISIONS.map((d) => (
+            <Button
+              key={d}
+              type="button"
+              data-testid={`decision-${d}`}
+              variant={decision === d ? 'default' : 'outline'}
+              size="sm"
+              className="min-h-[48px] min-w-[48px]"
+              onClick={() => setDecision(d)}
+            >
+              {d === 'approved' ? t('approved') : d === 'rejected' ? t('rejected') : t('changesRequested')}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content textarea — shown when decision requires explanation */}
+      {needsContent && (
+        <div className="flex flex-col gap-1.5">
+          <Label>{t('contentLabel')}</Label>
+          <Textarea
+            data-testid="content-textarea"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={t('contentPlaceholder')}
+            rows={3}
+          />
+        </div>
+      )}
+
+      {inlineError && (
+        <p role="alert" data-testid="inline-error" className="text-sm text-destructive">
+          {inlineError}
+        </p>
+      )}
+    </div>
+  );
+
+  const actionButtons = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        data-testid="cancel-btn"
+        onClick={handleClose}
+        disabled={isPending}
+        className="min-h-[48px]"
+      >
+        {t('cancel')}
+      </Button>
+      <Button
+        type="button"
+        data-testid="submit-btn"
+        onClick={() => void handleSubmit()}
+        disabled={isPending || !canSubmit}
+        className="min-h-[48px]"
+      >
+        {t('submit')}
+      </Button>
+    </>
+  );
+
+  // ─── Mobile: BottomSheet ──────────────────────────────────────────────────
+
+  if (isMobile) {
+    return (
+      <BottomSheet
+        open={open}
+        onClose={handleClose}
+        title={t('title')}
+        footer={
+          <div className="flex gap-2 justify-end">
+            {actionButtons}
+          </div>
+        }
+      >
+        {formBody}
+      </BottomSheet>
+    );
+  }
+
+  // ─── Desktop: Dialog ──────────────────────────────────────────────────────
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose(); }}>
       <DialogContent>
@@ -85,65 +179,10 @@ export function ReviewRespondDialog({
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          {/* Decision selector */}
-          <div className="flex flex-col gap-1.5">
-            <Label>{t('decisionLabel')}</Label>
-            <div className="flex gap-2 flex-wrap">
-              {DECISIONS.map((d) => (
-                <Button
-                  key={d}
-                  type="button"
-                  data-testid={`decision-${d}`}
-                  variant={decision === d ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setDecision(d)}
-                >
-                  {d === 'approved' ? t('approved') : d === 'rejected' ? t('rejected') : t('changesRequested')}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content textarea — shown when decision requires explanation */}
-          {needsContent && (
-            <div className="flex flex-col gap-1.5">
-              <Label>{t('contentLabel')}</Label>
-              <Textarea
-                data-testid="content-textarea"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={t('contentPlaceholder')}
-                rows={3}
-              />
-            </div>
-          )}
-
-          {inlineError && (
-            <p role="alert" data-testid="inline-error" className="text-sm text-destructive">
-              {inlineError}
-            </p>
-          )}
-        </div>
+        {formBody}
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            data-testid="cancel-btn"
-            onClick={handleClose}
-            disabled={isPending}
-          >
-            {t('cancel')}
-          </Button>
-          <Button
-            type="button"
-            data-testid="submit-btn"
-            onClick={() => void handleSubmit()}
-            disabled={isPending || !canSubmit}
-          >
-            {t('submit')}
-          </Button>
+          {actionButtons}
         </DialogFooter>
       </DialogContent>
     </Dialog>

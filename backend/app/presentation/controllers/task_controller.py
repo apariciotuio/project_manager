@@ -32,6 +32,8 @@ from app.application.services.dependency_service import (
     DependencyService,
 )
 from app.application.services.task_service import (
+    InvalidPositionError,
+    TaskCyclicDependencyError,
     TaskNodeNotFoundError,
     TaskService,
 )
@@ -86,6 +88,16 @@ class MergeTaskRequest(BaseModel):
 
 
 class ReorderTaskRequest(BaseModel):
+    ordered_ids: list[UUID]
+
+
+class ReparentTaskRequest(BaseModel):
+    new_parent_id: UUID | None = None
+    position: int | None = None
+
+
+class SiblingReorderRequest(BaseModel):
+    parent_id: UUID | None = None
     ordered_ids: list[UUID]
 
 
@@ -399,6 +411,72 @@ async def reorder_tasks(
     try:
         nodes = await service.reorder(
             work_item_id=work_item_id,
+            ordered_ids=body.ordered_ids,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "INVALID_TASK_IDS", "message": str(exc), "details": {}}},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok({"ordered_ids": [str(n.id) for n in nodes]})
+
+
+@router.patch("/tasks/{node_id}/parent")
+async def reparent_task(
+    node_id: UUID,
+    body: ReparentTaskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    """Reparent a task node. Optionally set position (0-based) among new siblings.
+
+    position absent → append at end.
+    position out of range → 422.
+    Cycle (descendant-as-parent) → 422.
+    """
+    _require_workspace(current_user)
+    try:
+        node = await service.reparent(
+            node_id=node_id,
+            new_parent_id=body.new_parent_id,
+            position=body.position,
+            actor_id=current_user.id,
+        )
+    except TaskNodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except (InvalidPositionError, TaskCyclicDependencyError, ValueError) as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "INVALID_POSITION", "message": str(exc), "details": {}}},
+        ) from exc
+    return _ok(_node_payload(node))
+
+
+@router.post("/work-items/{work_item_id}/tasks/reorder-siblings")
+async def reorder_siblings(
+    work_item_id: UUID,
+    body: SiblingReorderRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+) -> dict[str, Any]:
+    """Atomic full-sibling reorder. ordered_ids must be ALL children of parent_id (or all roots).
+
+    Missing or foreign ids → 422.
+    """
+    _require_workspace(current_user)
+    try:
+        nodes = await service.reorder_siblings(
+            work_item_id=work_item_id,
+            parent_id=body.parent_id,
             ordered_ids=body.ordered_ids,
             actor_id=current_user.id,
         )

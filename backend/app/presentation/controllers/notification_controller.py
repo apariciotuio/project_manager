@@ -25,6 +25,7 @@ from app.application.services.team_service import (
     NotificationNotFoundError,
     NotificationService,
 )
+from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
 from app.presentation.dependencies import (
     get_current_user,
     get_extended_notification_service,
@@ -73,24 +74,36 @@ def _require_workspace(current_user: CurrentUser) -> UUID:
 
 @router.get("/notifications")
 async def list_notifications(
-    page: int = Query(default=1, ge=1),
+    cursor: str | None = Query(default=None),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     service: NotificationService = Depends(get_notification_service),
 ) -> dict[str, Any]:
     workspace_id = _require_workspace(current_user)
-    result = await service.list_inbox(
+
+    decoded_cursor: PaginationCursor | None = None
+    if cursor is not None:
+        try:
+            decoded_cursor = PaginationCursor.decode(cursor)
+        except InvalidCursorError as exc:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_CURSOR", "message": str(exc), "details": {}}},
+            ) from exc
+
+    result = await service.list_inbox_cursor(
         user_id=current_user.id,
         workspace_id=workspace_id,
-        page=page,
+        cursor=decoded_cursor,
         page_size=page_size,
     )
     return _ok(
         {
-            "items": [_notification_payload(n) for n in result.items],
-            "total": result.total,
-            "page": result.page,
-            "page_size": result.page_size,
+            "items": [_notification_payload(n) for n in result.rows],
+            "pagination": {
+                "cursor": result.next_cursor,
+                "has_next": result.has_next,
+            },
         }
     )
 

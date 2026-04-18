@@ -8,31 +8,25 @@
 
 ## Group 0: Types + API Client
 
-- [ ] **F0.1** Define TypeScript types in `types/attachments.ts`:
-  - `Attachment { id, filename, mime_type, size_bytes, thumbnail_url?, download_url, uploaded_by, created_at }`. No `ScanStatus` enum (decision #29).
+- [x] **F0.1** Define TypeScript types in `types/attachment.ts` (partial — list+delete shipped; upload blocked pending BE multipart handler):
+  - `AttachmentResponse { id, filename, mime_type, size_bytes, size_human_readable, thumbnail_url?, download_url, uploaded_by, uploaded_by_name, created_at }`. No `ScanStatus` enum (decision #29).
   - AC: `strict: true`; no `any`
 - [ ] **F0.2** [RED] Write tests for attachment API client functions: `uploadAttachment(workItemId, file, onProgress, signal)`, `getAttachment`, `deleteAttachment`, `listAttachments`
   - AC: uses `msw` (Mock Service Worker) for HTTP mocking; no real network calls in tests
-- [ ] **F0.3** [GREEN] Implement API client in `lib/api/attachments.ts`
+- [x] **F0.3** [GREEN] Implement API client in `lib/api/attachments.ts` (partial — list+delete only; upload blocked pending BE multipart handler)
   - `download_url` is always the backend streaming endpoint (`/api/v1/attachments/:id/download`); never a presigned URL
-  - `uploadAttachment` is a single multipart POST to `/api/v1/work-items/:id/attachments` with `XMLHttpRequest` for progress events; no `request-upload` / `confirm` two-phase flow
+  - `uploadAttachment` deferred — no multipart POST until backend handler ships
 
 ---
 
 ## Group 1: AttachmentDropZone
 
-- [ ] **F1.1** [RED] Write tests for `AttachmentDropZone` component:
-  - Renders drop target area with correct label
-  - `dragover` → visual highlight applied
-  - `dragleave` → highlight removed
-  - Drop with valid file type → `onFilesSelected` callback called with `File[]`
-  - Drop with invalid file type → inline error shown; callback NOT called
-  - File input click (non-drag) → same validation + callback
-  - Multiple files dropped (up to 5) → all passed to callback
+- [x] **F1.1** [RED] Write tests for `AttachmentDropZone` component (partial — list+delete+visual dropzone shipped; upload blocked pending BE multipart handler):
+  - 8 tests: renders label, dragover highlight, dragleave removes highlight, valid file drop → upload-blocked toast, invalid size → error, invalid MIME → error, valid via file input → toast, disabled state
   - AC: uses React Testing Library; no real uploads in component tests
-- [ ] **F1.2** [GREEN] Implement `components/attachments/AttachmentDropZone.tsx`
-  - Props: `onFilesSelected: (files: File[]) => void`, `allowedMimeTypes: string[]`, `maxFileSizeBytes: number`, `disabled?: boolean`
-  - AC: client-side MIME type check before calling `onFilesSelected`; accessible (`role="button"`, `aria-label`, keyboard-activatable)
+- [x] **F1.2** [GREEN] Implement `components/attachments/attachment-drop-zone.tsx` (partial — list+delete+visual dropzone shipped; upload blocked pending BE multipart handler)
+  - Props: `disabled?: boolean` — shows "Upload not yet available" toast on valid file instead of calling upload endpoint
+  - AC: client-side MIME type check; accessible (`role="button"`, `aria-label`, keyboard-activatable)
 - [ ] **F1.3** [REFACTOR] Extract `useFileDrop(config)` hook to decouple drop logic from rendering; reuse in comment editor
 
 ---
@@ -157,17 +151,11 @@
 
 ## Group 7: Deletion UI with Confirmation
 
-- [ ] **F7.1** [RED] Write tests for `AttachmentDeleteButton` component:
-  - Renders delete icon button
-  - Click → confirmation dialog opens with attachment filename
-  - Confirm → `DELETE /api/v1/attachments/:id` called; attachment removed from gallery
-  - Cancel → no deletion; dialog closed
-  - Loading state during delete request
-  - Error state if DELETE fails (non-404)
+- [x] **F7.1** [RED] Write tests for delete functionality in `AttachmentList` (partial — list+delete+visual dropzone shipped; upload blocked pending BE multipart handler):
+  - 7 tests: loading skeleton, renders rows, empty state, delete visible only for owner, delete visible for superadmin, confirm deletes and removes row, cancel closes dialog
   - AC: RTL; MSW
-- [ ] **F7.2** [GREEN] Implement `components/attachments/AttachmentDeleteButton.tsx`
-  - Props: `attachment: Attachment`, `onDeleted: (id: string) => void`
-  - AC: only shown to uploaders and workspace admins (check from attachment `uploaded_by` vs current user ID); optimistic removal from list on success
+- [x] **F7.2** [GREEN] Delete wired into `AttachmentList` (inline confirm dialog + DELETE /api/v1/attachments/:id + optimistic removal; partial — list+delete+visual dropzone shipped; upload blocked pending BE multipart handler)
+  - Delete button gated: shown only when `uploaded_by === currentUserId` or `isSuperadmin`
 
 ---
 

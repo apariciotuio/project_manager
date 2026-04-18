@@ -1,4 +1,4 @@
-"""SSE channel registry — maps logical channel names to Redis key patterns.
+"""SSE channel registry — maps logical channel names to Postgres NOTIFY channel patterns.
 
 Channel naming convention (canonical, all SSE consumers must use this):
   job:          sse:job:{job_id}
@@ -17,7 +17,7 @@ from uuid import UUID
 
 
 class ChannelRegistry:
-    """Maps logical channel names to their Redis pub/sub key strings."""
+    """Maps logical channel names to their Postgres NOTIFY channel strings."""
 
     def __init__(self, workspace_id: UUID | None = None) -> None:
         self._workspace_id = workspace_id
@@ -27,19 +27,19 @@ class ChannelRegistry:
     # ------------------------------------------------------------------
 
     def job(self, job_id: str) -> str:
-        """Redis channel for a Celery job's progress stream."""
+        """Postgres NOTIFY channel for an async job's progress stream."""
         if self._workspace_id is not None:
             return f"sse:ws:{self._workspace_id}:job:{job_id}"
         return f"sse:job:{job_id}"
 
     def conversation(self, thread_id: UUID) -> str:
-        """Redis channel for a conversation thread (EP-03 LLM streaming)."""
+        """Postgres NOTIFY channel for a conversation thread (EP-03 LLM streaming)."""
         return f"sse:thread:{thread_id}"
 
     def user_notifications(self, user_id: UUID) -> str:
-        """Redis channel for per-user real-time notifications (EP-08)."""
+        """Postgres NOTIFY channel for per-user real-time notifications (EP-08)."""
         return f"sse:user:{user_id}"
 
     def presence(self, workspace_id: UUID) -> str:
-        """Redis channel for workspace presence/online status."""
+        """Postgres NOTIFY channel for workspace presence/online status."""
         return f"sse:presence:{workspace_id}"

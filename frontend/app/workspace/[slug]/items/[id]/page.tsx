@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { WorkItemHeader } from '@/components/work-item/work-item-header';
+import { JiraExportButton } from '@/components/work-item/jira-export-button';
 import { WorkItemEditModal } from '@/components/work-item/work-item-edit-modal';
 import { StateTransitionPanel } from '@/components/work-item/state-transition-panel';
 import { OwnerPanel } from '@/components/work-item/owner-panel';
@@ -14,6 +15,8 @@ import { SpecificationSectionsEditor } from '@/components/work-item/specificatio
 import { CompletenessPanel } from '@/components/work-item/completeness-panel';
 import { NextStepHint } from '@/components/work-item/next-step-hint';
 import { TasksTab } from '@/components/work-item/tasks-tab';
+import { AttachmentList } from '@/components/attachments/attachment-list';
+import { AttachmentDropZone } from '@/components/attachments/attachment-drop-zone';
 import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
@@ -26,6 +29,7 @@ import { useVersions } from '@/hooks/work-item/use-versions';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
+import { StickyActionBar } from '@/components/layout/sticky-action-bar';
 import { Pencil } from 'lucide-react';
 import type { WorkItemResponse } from '@/lib/types/work-item';
 
@@ -79,9 +83,10 @@ export default function WorkItemDetailPage({
 
   if (!workItem) return null;
 
-  // Owner or superadmin can edit
+  // Owner or superadmin can edit / export
   // TODO: add workspace membership role check once /workspaces/members role is exposed in AuthUser
   const canEdit = user !== null && (user.id === workItem.owner_id || user.is_superadmin);
+  const canExport = canEdit;
 
   function handleSaved(updated: WorkItemResponse) {
     setEditOpen(false);
@@ -92,23 +97,11 @@ export default function WorkItemDetailPage({
   }
 
   return (
+    <div data-testid="detail-page-wrapper" className="overflow-x-hidden">
     <PageContainer variant="wide" className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <WorkItemHeader workItem={workItem} slug={slug} />
-        </div>
-        {canEdit && (
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Editar elemento"
-            onClick={() => setEditOpen(true)}
-            className="shrink-0 mt-1"
-          >
-            <Pencil className="h-4 w-4 mr-1.5" />
-            Editar
-          </Button>
-        )}
+      {/* Header row: full width on mobile, constrained on desktop */}
+      <div className="flex-1 min-w-0">
+        <WorkItemHeader workItem={workItem} slug={slug} />
       </div>
 
       {canEdit && (
@@ -120,18 +113,39 @@ export default function WorkItemDetailPage({
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <StateTransitionPanel
-          workItem={workItem}
-          onTransition={() => void refetch()}
-          canForceReady={canEdit}
-        />
-        <OwnerPanel
-          workItem={workItem}
-          canReassign={canEdit}
-          onReassigned={() => void refetch()}
-        />
-      </div>
+      {/* Metadata accordion — collapsed on mobile, always visible on md+ */}
+      <details
+        data-testid="metadata-accordion"
+        className="group border border-border rounded-md md:border-0"
+        open
+      >
+        <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-medium md:hidden">
+          Metadatos
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="h-4 w-4 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </summary>
+        <div className="grid gap-4 px-3 pb-3 pt-1 md:grid-cols-2 md:px-0 md:pb-0 md:pt-0">
+          <StateTransitionPanel
+            workItem={workItem}
+            onTransition={() => void refetch()}
+            canForceReady={canEdit}
+          />
+          <OwnerPanel
+            workItem={workItem}
+            canReassign={canEdit}
+            onReassigned={() => void refetch()}
+          />
+        </div>
+      </details>
 
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
@@ -144,6 +158,7 @@ export default function WorkItemDetailPage({
           {canEdit && <TabsTrigger value="versiones">Versiones</TabsTrigger>}
           <TabsTrigger value="subitems">Sub-items</TabsTrigger>
           {canEdit && <TabsTrigger value="auditoria">Auditoría</TabsTrigger>}
+          <TabsTrigger value="adjuntos">Adjuntos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="especificacion" className="mt-4">
@@ -206,12 +221,47 @@ export default function WorkItemDetailPage({
             </div>
           </TabsContent>
         )}
+
+        <TabsContent value="adjuntos" className="mt-4">
+          <div className="flex flex-col gap-4">
+            <AttachmentDropZone disabled={!canEdit} />
+            <AttachmentList
+              workItemId={id}
+              canEdit={canEdit}
+              currentUserId={user?.id ?? ''}
+              isSuperadmin={user?.is_superadmin ?? false}
+            />
+          </div>
+        </TabsContent>
       </Tabs>
+
       <DocPreviewPanel
         docId={previewDocId}
         isOpen={previewDocId !== null}
         onClose={() => setPreviewDocId(null)}
       />
+
+      {/* Mobile sticky action bar — fixed at bottom on < md, inline on md+ */}
+      {canEdit && (
+        <StickyActionBar>
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Editar elemento"
+            onClick={() => setEditOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            <Pencil className="h-4 w-4 mr-1.5" />
+            Editar
+          </Button>
+          <JiraExportButton
+            workItemId={id}
+            canExport={canExport}
+            externalJiraKey={workItem.external_jira_key ?? null}
+          />
+        </StickyActionBar>
+      )}
     </PageContainer>
+    </div>
   );
 }

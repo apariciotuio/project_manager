@@ -53,6 +53,8 @@ export interface WorkItemResponse {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  // EP-11: Jira export key — null until a successful export has been confirmed
+  external_jira_key: string | null;
 }
 
 // ─── Tag types ────────────────────────────────────────────────────────────────
@@ -71,6 +73,9 @@ export interface PagedWorkItemResponse<T> {
   total: number;
   page: number;
   page_size: number;
+  // EP-09 cursor fields — present when backend supports cursor pagination
+  cursor?: string | null;
+  has_next?: boolean;
 }
 
 // ─── Request types ────────────────────────────────────────────────────────────
@@ -156,6 +161,7 @@ export interface WorkItemFilters {
   creator_id?: string;
   project_id?: string;
   parent_work_item_id?: string;
+  ancestor_id?: string;  // EP-14: filter to descendants of this work item
   q?: string;
   sort?: string;
   cursor?: string;

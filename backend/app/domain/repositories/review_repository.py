@@ -25,6 +25,11 @@ class IReviewRequestRepository(ABC):
     @abstractmethod
     async def list_pending_for_reviewer(self, user_id: UUID) -> list[ReviewRequest]: ...
 
+    @abstractmethod
+    async def has_open_reviews_for_team(self, team_id: UUID) -> bool:
+        """Return True if any pending ReviewRequest references this team."""
+        ...
+
 
 class IReviewResponseRepository(ABC):
     @abstractmethod

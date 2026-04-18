@@ -31,6 +31,7 @@ class Section:
     updated_at: datetime
     created_by: UUID
     updated_by: UUID
+    workspace_id: UUID | None = None
 
     def update_content(
         self,

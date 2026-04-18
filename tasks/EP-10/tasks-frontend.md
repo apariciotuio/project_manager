@@ -30,14 +30,14 @@
 ## API Client Functions
 
 - [x] [GREEN] Implement `hooks/use-admin.ts` — `useWorkspaceMembers` (GET /api/v1/workspaces/members), `useAuditEvents(filters)`, `useHealth`, `useProjects` (createProject, updateProject, deleteProject), `useIntegrations` (createIntegration, deleteIntegration), `useTags` — 2026-04-17
-- [ ] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation` (blocked: admin members endpoint not yet live)
-- [ ] [GREEN] Implement `lib/api/admin/rules.ts` — `listValidationRules`, `createValidationRule`, `updateValidationRule`, `deleteValidationRule`, `listRoutingRules`, `createRoutingRule`, `updateRoutingRule`, `deleteRoutingRule`
-- [ ] [GREEN] Implement `lib/api/admin/projects.ts` — `listProjects`, `createProject`, `updateProject`, `getProject`, `replaceContextSources`, `updateTemplateBindings`
-- [ ] [GREEN] Implement `lib/api/admin/presets.ts` — `listContextPresets`, `createContextPreset`, `updateContextPreset`, `deleteContextPreset`
-- [ ] [GREEN] Implement `lib/api/admin/jira.ts` — `listJiraConfigs`, `createJiraConfig`, `updateJiraConfig`, `testJiraConnection`, `listMappings`, `createMapping`, `listSyncLogs`, `retrySyncLog`
+- [ ] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation` (blocked: `GET/POST /api/v1/admin/members` not yet live)
+- [ ] [GREEN] Implement `lib/api/admin/rules.ts` — `listValidationRules`, `createValidationRule`, `updateValidationRule`, `deleteValidationRule`, `listRoutingRules`, `createRoutingRule`, `updateRoutingRule`, `deleteRoutingRule` (blocked: rules endpoints not yet live)
+- [ ] [GREEN] Implement `lib/api/admin/projects.ts` — `listProjects`, `createProject`, `updateProject`, `getProject`, `replaceContextSources`, `updateTemplateBindings` (blocked: admin projects endpoints not yet live; current impl uses /api/v1/projects)
+- [ ] [GREEN] Implement `lib/api/admin/presets.ts` — `listContextPresets`, `createContextPreset`, `updateContextPreset`, `deleteContextPreset` (blocked: presets endpoints not yet live)
+- [ ] [GREEN] Implement `lib/api/admin/jira.ts` — `listJiraConfigs`, `createJiraConfig`, `updateJiraConfig`, `testJiraConnection`, `listMappings`, `createMapping`, `listSyncLogs`, `retrySyncLog` (blocked: jira admin endpoints not yet live)
 - [x] [GREEN] Implement audit events hook — `getAuditLog(filters)` via `useAuditEvents(filters)` in use-admin.ts — 2026-04-17
-- [ ] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)`
-- [ ] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems`
+- [ ] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)` (blocked: GET /api/v1/admin/dashboard not yet live)
+- [ ] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems` (blocked: support endpoints not yet live)
 - [ ] All functions use shared API client with correlation ID header (EP-12)
 
 ---
@@ -60,12 +60,12 @@ THEN the active nav item is highlighted and `aria-current="page"` is set
 
 ## Group 1 — Admin Layout & Shell
 
-- [ ] [RED] Test: admin routes are only reachable when `member.capabilities` contains at least one admin capability; redirect to `/` otherwise
-- [ ] [GREEN] Implement `app/admin/layout.tsx` — admin section layout with capability guard
-- [ ] [GREEN] Implement admin side navigation: Members, Rules, Projects, Integrations (Jira + Puppet), Tags, Audit Log, Dashboard, Support Tools
-- [ ] [GREEN] Superadmin-only sections (visible only when `user.is_superadmin = true` from `/auth/me`): User Management (create user form), Cross-Workspace Audit — hide menu items completely, do not disable them
-- [ ] [GREEN] Mobile: admin nav collapses to hamburger/drawer; side navigation on md+
-- [ ] [GREEN] Active nav item highlighted per current route
+- [ ] [RED] Test: admin routes are only reachable when `member.capabilities` contains at least one admin capability; redirect to `/` otherwise (deferred: capability guard not implemented; admin page has no layout.tsx guard)
+- [ ] [GREEN] Implement `app/admin/layout.tsx` — admin section layout with capability guard (deferred: page is at /workspace/[slug]/admin/page.tsx, no separate /admin layout with route guard)
+- [ ] [GREEN] Implement admin side navigation: Members, Rules, Projects, Integrations (Jira + Puppet), Tags, Audit Log, Dashboard, Support Tools (partial: current impl is tab-based, not side-nav; no /admin/* sub-routes)
+- [ ] [GREEN] Superadmin-only sections (visible only when `user.is_superadmin = true` from `/auth/me`): User Management (create user form), Cross-Workspace Audit — hide menu items completely, do not disable them (deferred: no superadmin gating in current tabs)
+- [ ] [GREEN] Mobile: admin nav collapses to hamburger/drawer; side navigation on md+ (deferred: tab UI only)
+- [ ] [GREEN] Active nav item highlighted per current route (N/A: tab-based, not route-based)
 
 ---
 
@@ -76,14 +76,14 @@ THEN the active nav item is highlighted and `aria-current="page"` is set
 - [x] [RED] Test: empty state when no members — 2026-04-17 (data-testid="members-empty")
 - [x] [RED] Test: skeleton shown during fetch — 2026-04-17 (data-testid="members-skeleton")
 - [x] [GREEN] Implement member list: table with full_name / email / role; loading skeleton / empty state / error banner — 2026-04-17 (inline MembersTab in admin/page.tsx; GET /api/v1/workspaces/members)
-- [ ] [GREEN] Columns: name/email, state badge, capabilities (truncated chips), teams, invited_at/joined_at, actions
-- [ ] [GREEN] Filter controls: by state (active/invited/suspended/deleted), teamless toggle
-- [ ] [GREEN] Cursor-based pagination via "Load more" or paginated DataTable
+- [ ] [GREEN] Columns: name/email, state badge, capabilities (truncated chips), teams, invited_at/joined_at, actions (deferred: backend GET /api/v1/admin/members with capabilities/state not live; current uses /workspaces/members with role only)
+- [ ] [GREEN] Filter controls: by state (active/invited/suspended/deleted), teamless toggle (deferred: backend doesn't return state/capabilities)
+- [ ] [GREEN] Cursor-based pagination via "Load more" or paginated DataTable (deferred: backend pagination not yet live)
 
 ### Invite Member Form
-- [ ] [RED] Test: email validation, context_labels multi-input, team_ids multi-select, submit calls invite API, success shows confirmation, 409 shows duplicate email error
-- [ ] [GREEN] Implement `InviteMemberModal` (modal form, or slide-over panel on mobile as BottomSheet)
-- [ ] [GREEN] Trigger from "Invite member" button in member list
+- [ ] [RED] Test: email validation, context_labels multi-input, team_ids multi-select, submit calls invite API, success shows confirmation, 409 shows duplicate email error (blocked: POST /api/v1/admin/members not live)
+- [ ] [GREEN] Implement `InviteMemberModal` (modal form, or slide-over panel on mobile as BottomSheet) (blocked: same)
+- [ ] [GREEN] Trigger from "Invite member" button in member list (blocked: same)
 
 ### Acceptance Criteria — MemberCapabilityEditor
 
@@ -107,15 +107,15 @@ WHEN suspend/delete confirmation dialog is confirmed
 THEN the API call is made and the member row updates state badge in place
 
 ### Edit Member Capabilities (`components/admin/MemberCapabilityEditor.tsx`)
-- [ ] [RED] Test: checkboxes render for each capability, disabled if current user doesn't possess the capability (cannot grant unpossessed), submit calls PATCH, 403 shows inline error
-- [ ] [GREEN] Implement `MemberCapabilityEditor` — checkbox grid for all 10 capabilities
-- [ ] [GREEN] Disable capabilities the acting member doesn't hold (granting constraint)
-- [ ] [GREEN] Context labels editor: tag-input component (add/remove text labels)
+- [ ] [RED] Test: checkboxes render for each capability, disabled if current user doesn't possess the capability (cannot grant unpossessed), submit calls PATCH, 403 shows inline error (blocked: PATCH /api/v1/admin/members/{id} not live)
+- [ ] [GREEN] Implement `MemberCapabilityEditor` — checkbox grid for all 10 capabilities (blocked: same)
+- [ ] [GREEN] Disable capabilities the acting member doesn't hold (granting constraint) (blocked: same)
+- [ ] [GREEN] Context labels editor: tag-input component (add/remove text labels) (blocked: same)
 
 ### Suspend / Delete / Reactivate Actions
-- [ ] [RED] Test: suspend prompts confirmation dialog, reactivate prompts confirmation, delete prompts confirmation with orphan-owner warning
-- [ ] [GREEN] Implement action menu on member row (suspend, reactivate, delete)
-- [ ] [GREEN] Confirmation dialogs with consequence text
+- [ ] [RED] Test: suspend prompts confirmation dialog, reactivate prompts confirmation, delete prompts confirmation with orphan-owner warning (blocked: admin member state-change endpoints not live)
+- [ ] [GREEN] Implement action menu on member row (suspend, reactivate, delete) (blocked: same)
+- [ ] [GREEN] Confirmation dialogs with consequence text (blocked: same)
 
 ---
 
@@ -139,49 +139,49 @@ WHEN the API returns HTTP 409 `global_blocker_in_effect` on project-level rule c
 THEN the form shows inline error explaining that a workspace-level blocked_override rule is in effect
 
 ### Rule List (`app/admin/rules/page.tsx`)
-- [ ] [RED] Test: renders validation and routing rule tables, shows `effective`/`superseded_by` annotation, workspace vs project scope labelled
-- [ ] [GREEN] Implement rules page with two tabs: Validation Rules, Routing Rules
-- [ ] [GREEN] Validation rule row: work_item_type, validation_type, enforcement badge, scope (workspace/project), effective badge, superseded_by indicator
-- [ ] [GREEN] Filter: by work_item_type, by project, by active/inactive
+- [ ] [RED] Test: renders validation and routing rule tables, shows `effective`/`superseded_by` annotation, workspace vs project scope labelled (blocked: GET /api/v1/admin/rules/validation not live)
+- [ ] [GREEN] Implement rules page with two tabs: Validation Rules, Routing Rules (blocked: same)
+- [ ] [GREEN] Validation rule row: work_item_type, validation_type, enforcement badge, scope (workspace/project), effective badge, superseded_by indicator (blocked: same)
+- [ ] [GREEN] Filter: by work_item_type, by project, by active/inactive (blocked: same)
 
 ### Create/Edit Validation Rule Form
-- [ ] [RED] Test: form validation (all required fields), enforcement select (required/recommended/blocked_override), scope toggle (workspace vs project with project picker), submit creates/updates, duplicate 409 shows inline error
-- [ ] [GREEN] Implement `ValidationRuleForm` modal/drawer
-- [ ] [GREEN] `blocked_override` enforcement shows warning: "This will supersede any project-level rule of the same type"
+- [ ] [RED] Test: form validation (all required fields), enforcement select (required/recommended/blocked_override), scope toggle (workspace vs project with project picker), submit creates/updates, duplicate 409 shows inline error (blocked: POST/PATCH /api/v1/admin/rules/validation not live)
+- [ ] [GREEN] Implement `ValidationRuleForm` modal/drawer (blocked: same)
+- [ ] [GREEN] `blocked_override` enforcement shows warning: "This will supersede any project-level rule of the same type" (blocked: same)
 
 ### Routing Rule Form
-- [ ] [RED] Test: optional fields, team picker, context label picker, submit
-- [ ] [GREEN] Implement `RoutingRuleForm` modal/drawer
+- [ ] [RED] Test: optional fields, team picker, context label picker, submit (blocked: routing rule endpoints not live)
+- [ ] [GREEN] Implement `RoutingRuleForm` modal/drawer (blocked: same)
 
 ### Delete Rule
-- [ ] [RED] Test: delete disabled when rule has history (409), enabled when no history; confirmation dialog
-- [ ] [GREEN] Disable delete button with tooltip when rule has usage history
+- [ ] [RED] Test: delete disabled when rule has history (409), enabled when no history; confirmation dialog (blocked: DELETE /api/v1/admin/rules/validation/{id} not live)
+- [ ] [GREEN] Disable delete button with tooltip when rule has usage history (blocked: same)
 
 ---
 
 ## Group 4 — Projects & Context
 
 ### Project List (`app/admin/projects/page.tsx`)
-- [ ] [RED] Test: renders project list, state badge, team chips, preset indicator
-- [ ] [GREEN] Implement project list page
+- [ ] [RED] Test: renders project list, state badge, team chips, preset indicator (deferred: state/team/preset fields not in current Project type; current /api/v1/projects returns name+description only)
+- [ ] [GREEN] Implement project list page (partial: inline ProjectsTab exists but no state/team/preset display)
 
 ### Create/Edit Project Form
 - [x] [RED] Test: create success (project in list), 409 PROJECT_NAME_TAKEN inline field error, edit PATCH updates list, delete removes from list — 2026-04-17
 - [x] [GREEN] Implement create modal (name + description, 409 field error), edit modal (PATCH), delete confirmation dialog — 2026-04-17 (ProjectsTab in admin/page.tsx; updateProject/deleteProject added to useProjects)
-- [ ] [GREEN] Archive project: confirmation dialog with open-elements count warning (deferred — no backend archive endpoint yet)
+- [ ] [GREEN] Archive project: confirmation dialog with open-elements count warning (blocked: no backend archive endpoint)
 
 ### Context Sources Editor (`components/admin/ContextSourcesEditor.tsx`)
-- [ ] [RED] Test: add source (type/label/url/description), remove source, bulk replace via PUT, inline validation
-- [ ] [GREEN] Implement context sources editor as inline list within project edit page
-- [ ] [GREEN] Source types: enum select, label and URL required
+- [ ] [RED] Test: add source (type/label/url/description), remove source, bulk replace via PUT, inline validation (blocked: GET/PUT /api/v1/admin/projects/{id}/context-sources not live)
+- [ ] [GREEN] Implement context sources editor as inline list within project edit page (blocked: same)
+- [ ] [GREEN] Source types: enum select, label and URL required (blocked: same)
 
 ### Context Presets (`app/admin/context-presets/page.tsx`)
-- [ ] [RED] Test: list presets, create preset, edit sources, delete (disabled if in use — 409 shows which projects)
-- [ ] [GREEN] Implement context presets list and CRUD forms
-- [ ] [GREEN] Delete: show "in use by N projects" warning when 409 returned
+- [ ] [RED] Test: list presets, create preset, edit sources, delete (disabled if in use — 409 shows which projects) (blocked: GET/POST /api/v1/admin/context-presets not live)
+- [ ] [GREEN] Implement context presets list and CRUD forms (blocked: same)
+- [ ] [GREEN] Delete: show "in use by N projects" warning when 409 returned (blocked: same)
 
 ### Template Bindings
-- [ ] [GREEN] Implement `TemplateBundlingEditor` — key/value editor for template bindings JSONB field (within project edit)
+- [ ] [GREEN] Implement `TemplateBundlingEditor` — key/value editor for template bindings JSONB field (within project edit) (blocked: template_bindings field not in current Project type)
 
 ---
 
@@ -213,28 +213,28 @@ THEN the button is absent (not just disabled)
 - [x] [GREEN] Implement IntegrationsTab: list with active/inactive badge + masked credentials row, create modal (base_url/email/api_token), delete confirmation — 2026-04-17 (GET/POST /api/v1/integrations/configs; deleteIntegration added to useIntegrations; NOTE: backend has no DELETE /api/v1/integrations/configs/{id} — optimistic delete will 404 in prod until endpoint added)
 
 ### Jira Config List (`app/admin/integrations/jira/page.tsx`)
-- [ ] [RED] Test: renders config cards with state badge (active/disabled/error), health status, last check time
-- [ ] [GREEN] Implement Jira integration list page
-- [ ] [GREEN] State badges: active (green), disabled (grey), error (red with streak count)
+- [ ] [RED] Test: renders config cards with state badge (active/disabled/error), health status, last check time (blocked: GET /api/v1/admin/integrations/jira not live; current uses generic /integrations/configs)
+- [ ] [GREEN] Implement Jira integration list page (blocked: same; current IntegrationsTab is generic, not Jira-specific)
+- [ ] [GREEN] State badges: active (green), disabled (grey), error (red with streak count) (blocked: error state/streak not in current IntegrationConfig type)
 
 ### Create Jira Config Form
-- [ ] [RED] Test: base URL validation (must be HTTPS), auth type select (API token, OAuth), credentials fields (never pre-filled on edit), submit creates config, server-side 422 shown inline
-- [ ] [GREEN] Implement `JiraConfigForm` — credentials fields never show existing values (write-only UI)
-- [ ] [GREEN] Credential fields: `email` + `api_token` for API token auth
+- [ ] [RED] Test: base URL validation (must be HTTPS), auth type select (API token, OAuth), credentials fields (never pre-filled on edit), submit creates config, server-side 422 shown inline (deferred: current form has no HTTPS validation; Jira-specific form not yet separate)
+- [ ] [GREEN] Implement `JiraConfigForm` — credentials fields never show existing values (write-only UI) (deferred: same)
+- [ ] [GREEN] Credential fields: `email` + `api_token` for API token auth (partial: current create form has these fields but no write-only enforcement on edit)
 
 ### Test Connection
-- [ ] [RED] Test: "Test Connection" button sends POST, shows spinner during call, renders ok/auth_failure/unreachable result inline
-- [ ] [GREEN] Implement inline connection test result with status icon and message
+- [ ] [RED] Test: "Test Connection" button sends POST, shows spinner during call, renders ok/auth_failure/unreachable result inline (blocked: POST /api/v1/admin/integrations/jira/{id}/test not live)
+- [ ] [GREEN] Implement inline connection test result with status icon and message (blocked: same)
 
 ### Project Mappings (`components/admin/JiraProjectMappings.tsx`)
-- [ ] [RED] Test: list mappings, add mapping (jira project key, workspace project picker, type mappings table), submit
-- [ ] [GREEN] Implement `JiraProjectMappings` as a section within config detail page
-- [ ] [GREEN] Work item type mappings: table with platform type → Jira issue type ID mapping
+- [ ] [RED] Test: list mappings, add mapping (jira project key, workspace project picker, type mappings table), submit (blocked: /api/v1/admin/integrations/jira/{id}/mappings not live)
+- [ ] [GREEN] Implement `JiraProjectMappings` as a section within config detail page (blocked: same)
+- [ ] [GREEN] Work item type mappings: table with platform type → Jira issue type ID mapping (blocked: same)
 
 ### Export History Viewer
-- [ ] [RED] Test: export history list (from `jira_export_events` — EP-11) with status filter, pagination, retry button on failed export (requires RETRY_EXPORTS capability)
-- [ ] [GREEN] Implement `JiraExportHistoryTable` within config detail page — sourced from EP-11 export events, not from a `sync_logs` table (decision #26)
-- [ ] [GREEN] Retry button: disabled if user lacks `retry_exports` capability (check from current member context)
+- [ ] [RED] Test: export history list (from `jira_export_events` — EP-11) with status filter, pagination, retry button on failed export (requires RETRY_EXPORTS capability) (blocked: EP-11 jira_export_events endpoint not live)
+- [ ] [GREEN] Implement `JiraExportHistoryTable` within config detail page — sourced from EP-11 export events, not from a `sync_logs` table (decision #26) (blocked: same)
+- [ ] [GREEN] Retry button: disabled if user lacks `retry_exports` capability (check from current member context) (blocked: capabilities not in current member type)
 
 ---
 
@@ -256,12 +256,12 @@ THEN the API key field is empty — never pre-populated (write-only field)
 WHEN "Test Connection" is clicked
 THEN the button shows a spinner and on result: `ok` shows green checkmark; `auth_failure`/`unreachable` shows red icon + message
 
-- [ ] [GREEN] Implement `lib/api/admin/puppet.ts` — `listPuppetConfigs`, `createPuppetConfig`, `updatePuppetConfig`, `testPuppetConnection`, `listSources`, `addSource`, `deleteSource`
-- [ ] [RED] Test: renders config list with state badge, test-connection flow, form validation (HTTPS required)
-- [ ] [GREEN] Implement Puppet integration list page
-- [ ] [GREEN] Implement `PuppetConfigForm` — API key field is write-only (never pre-filled on edit)
-- [ ] [GREEN] Documentation sources editor: add/remove URL entries inline
-- [ ] [GREEN] Test Connection button: same spinner/result pattern as Jira
+- [x] [GREEN] Implement `lib/api/admin/puppet.ts` — `createPuppetConfig`, `updatePuppetConfig`, `testPuppetConnection` via `hooks/use-puppet-config.ts`; `listSources`, `addSource`, `deleteSource` via `hooks/use-doc-sources.ts` — 2026-04-18 (files: `hooks/use-puppet-config.ts`, `hooks/use-doc-sources.ts`)
+- [x] [RED] Test: renders config list with state badge, test-connection flow, form validation (HTTPS required) — 2026-04-18 (tests in `__tests__/app/workspace/admin-puppet-tab.test.tsx`, `__tests__/components/admin/puppet-config-form.test.tsx`)
+- [x] [GREEN] Implement Puppet integration list page — 2026-04-18 (PuppetTab inline in `app/workspace/[slug]/admin/page.tsx`)
+- [x] [GREEN] Implement `PuppetConfigForm` — API key field is write-only (never pre-filled on edit) — 2026-04-18 (`components/admin/puppet-config-form.tsx`)
+- [x] [GREEN] Documentation sources editor: add/remove URL entries inline — 2026-04-18 (`components/admin/doc-sources-table.tsx`, `components/admin/add-doc-source-modal.tsx`)
+- [ ] [GREEN] Test Connection button: same spinner/result pattern as Jira (deferred: test-connection POST endpoint not live; PuppetConfigForm has `runHealthCheck` in hook but no inline result UI)
 
 ---
 
@@ -271,17 +271,17 @@ Visibility: render only when `user.is_superadmin = true` (from `/auth/me` respon
 
 ### User Management (`app/admin/users/new/page.tsx`)
 
-- [ ] [RED] Test: form hidden when `is_superadmin = false`, visible when `true`
-- [ ] [RED] Test: form validation (email, display_name required), workspace picker, initial capabilities multi-select, submit creates user, 409 shows duplicate email error
-- [ ] [GREEN] Implement create-user form page (superadmin only)
-- [ ] [GREEN] Route guarded by `is_superadmin` check — redirect to `/admin` if not superadmin
+- [ ] [RED] Test: form hidden when `is_superadmin = false`, visible when `true` (deferred: no superadmin-gated user management page exists; no /admin/users/new route)
+- [ ] [RED] Test: form validation (email, display_name required), workspace picker, initial capabilities multi-select, submit creates user, 409 shows duplicate email error (blocked: superadmin user-create endpoint not live)
+- [ ] [GREEN] Implement create-user form page (superadmin only) (deferred: no such page)
+- [ ] [GREEN] Route guarded by `is_superadmin` check — redirect to `/admin` if not superadmin (deferred: same)
 
 ### Cross-Workspace Audit (`app/admin/audit/cross-workspace/page.tsx`)
 
-- [ ] [RED] Test: page hidden when `is_superadmin = false`, renders full audit table when `true`
-- [ ] [GREEN] Implement cross-workspace audit viewer — same filters as workspace audit log but no workspace scope constraint
-- [ ] [GREEN] Each row shows `workspace_id` / workspace name column (not present in workspace-scoped audit log)
-- [ ] [GREEN] Route guarded by `is_superadmin` check
+- [ ] [RED] Test: page hidden when `is_superadmin = false`, renders full audit table when `true` (deferred: no cross-workspace audit page)
+- [ ] [GREEN] Implement cross-workspace audit viewer — same filters as workspace audit log but no workspace scope constraint (blocked: cross-workspace audit endpoint not live)
+- [ ] [GREEN] Each row shows `workspace_id` / workspace name column (not present in workspace-scoped audit log) (blocked: same)
+- [ ] [GREEN] Route guarded by `is_superadmin` check (deferred: same)
 
 ---
 
@@ -291,8 +291,8 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 
 - [x] [GREEN] Tags tab in admin page: TagsTab with loading skeleton / empty state (data-testid="tags-empty") / error banner (data-testid="tags-error") consistent with other tabs — 2026-04-17
 - [x] [RED] Test: shows tags, empty state, error banner, edit icon opens modal pre-filled, PATCH updates list, 409 shows field error — 2026-04-17
-- [ ] [GREEN] Admin left-nav entry: **Tags** → `/admin/tags` (route implemented in EP-15)
-- [ ] [GREEN] Entry visible to members with `manage_tags` or `merge_tags` capability (or superadmin)
+- [ ] [GREEN] Admin left-nav entry: **Tags** → `/admin/tags` (deferred: route implemented in EP-15; current is inline tab)
+- [ ] [GREEN] Entry visible to members with `manage_tags` or `merge_tags` capability (or superadmin) (deferred: capability gating not yet implemented)
 
 ---
 
@@ -301,17 +301,17 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 - [x] [RED] Test: renders log table with actor, action, entity, date; filters (action select, category text); empty state — 2026-04-17
 - [x] [GREEN] Implement audit tab: action filter select + category text input; re-fetches on change; empty/error states — 2026-04-17 (AuditTab in admin/page.tsx; GET /api/v1/admin/audit-events?action=&category=)
 - [x] [RED] Test: action filter triggers re-fetch with action= param — 2026-04-17
-- [ ] [GREEN] Filter bar: actor search, entity type filter, date range picker (deferred — backend doesn't support those params yet)
-- [ ] [GREEN] Row detail: expand row to show before/after JSONB diff (collapsible)
-- [ ] [GREEN] Cursor-based pagination, max 200 per page
-- [ ] [RED] Test: 403 shown when user lacks `view_audit_log` capability (guard at page level)
+- [ ] [GREEN] Filter bar: actor search, entity type filter, date range picker (deferred: backend doesn't support actor/entity_type/date params yet)
+- [ ] [GREEN] Row detail: expand row to show before/after JSONB diff (collapsible) (deferred: before_value/after_value present in type but no expand UI)
+- [ ] [GREEN] Cursor-based pagination, max 200 per page (deferred: current impl fetches page=1 only)
+- [ ] [RED] Test: 403 shown when user lacks `view_audit_log` capability (guard at page level) (deferred: capability gating not yet implemented)
 
 ---
 
 ## Group 7 — Admin Health Dashboard (`app/admin/dashboard/page.tsx`)
 
 - [x] [RED] Test: state breakdown bar segments per state, total_active count, empty + error states — 2026-04-17 (scoped to WorkspaceHealthSection only; GET /api/v1/admin/health)
-- [ ] [RED] Test: renders four health sections (workspace, org, process, integration), project scope selector
+- [ ] [RED] Test: renders four health sections (workspace, org, process, integration), project scope selector (deferred: only workspace section implemented)
 - [ ] [GREEN] Implement admin dashboard page (full 4-section dashboard deferred to Group 7 proper)
 
 ### WorkspaceHealthSection
@@ -319,23 +319,23 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 - [x] [GREEN] Implement HealthTab with divided bar chart, colour-coded by state, legend below — 2026-04-17 (inline HealthTab in admin/page.tsx)
 
 ### OrgHealthSection
-- [ ] [RED] Test: active member count, teamless members list (clickable), teams without lead, top loaded owners
-- [ ] [GREEN] Implement `OrgHealthSection`
+- [ ] [RED] Test: active member count, teamless members list (clickable), teams without lead, top loaded owners (blocked: GET /api/v1/admin/dashboard org section not live)
+- [ ] [GREEN] Implement `OrgHealthSection` (blocked: same)
 
 ### ProcessHealthSection
-- [ ] [RED] Test: override rate %, most skipped validations list, exported count
-- [ ] [GREEN] Implement `ProcessHealthSection`
+- [ ] [RED] Test: override rate %, most skipped validations list, exported count (blocked: GET /api/v1/admin/dashboard process section not live)
+- [ ] [GREEN] Implement `ProcessHealthSection` (blocked: same)
 
 ### IntegrationHealthSection
-- [ ] [RED] Test: per-config health card, error streak, export counts, link to config detail
-- [ ] [GREEN] Implement `IntegrationHealthSection`
+- [ ] [RED] Test: per-config health card, error streak, export counts, link to config detail (blocked: GET /api/v1/admin/dashboard integration section not live)
+- [ ] [GREEN] Implement `IntegrationHealthSection` (blocked: same)
 
 ### Project Scope Filter
-- [ ] [GREEN] Dropdown at top of page: "All projects" + individual project names; updates query param; re-fetches dashboard data
+- [ ] [GREEN] Dropdown at top of page: "All projects" + individual project names; updates query param; re-fetches dashboard data (deferred: not implemented)
 
 ### Loading / Empty / Error
-- [ ] [RED] Test: skeletons during fetch, zeros/empty states for new workspace, inline error + retry on 5xx
-- [ ] [GREEN] Apply SkeletonLoader to each section, EmptyState for zero-data workspace
+- [ ] [RED] Test: skeletons during fetch, zeros/empty states for new workspace, inline error + retry on 5xx (partial: workspace section has skeleton/empty/error; other sections not built)
+- [ ] [GREEN] Apply SkeletonLoader to each section, EmptyState for zero-data workspace (partial: same)
 
 ---
 
@@ -361,23 +361,23 @@ AND each group has a header label
 
 ## Group 8 — Support Tools (`app/admin/support/page.tsx`)
 
-- [ ] [RED] Test: four sections visible (orphaned items, pending invitations, failed exports, config-blocked items); each shows count badge
-- [ ] [GREEN] Implement support tools page with four collapsible sections
+- [ ] [RED] Test: four sections visible (orphaned items, pending invitations, failed exports, config-blocked items); each shows count badge (blocked: all /api/v1/admin/support/* endpoints not live)
+- [ ] [GREEN] Implement support tools page with four collapsible sections (blocked: same)
 
 ### Orphaned Work Items
-- [ ] [RED] Test: list with owner name (struck-through if suspended/deleted), reassign button per item
-- [ ] [GREEN] Implement orphaned items list with inline `ReassignOwnerForm` (member picker)
+- [ ] [RED] Test: list with owner name (struck-through if suspended/deleted), reassign button per item (blocked: GET /api/v1/admin/support/orphaned-items not live)
+- [ ] [GREEN] Implement orphaned items list with inline `ReassignOwnerForm` (member picker) (blocked: same)
 
 ### Pending Invitations
-- [ ] [RED] Test: list with email, expiry date, "expiring soon" warning badge, resend button
-- [ ] [GREEN] Implement pending invitations list
+- [ ] [RED] Test: list with email, expiry date, "expiring soon" warning badge, resend button (blocked: GET /api/v1/admin/support/pending-invitations not live)
+- [ ] [GREEN] Implement pending invitations list (blocked: same)
 
 ### Failed Exports
-- [ ] [RED] Test: list with work item title, error_code, attempt count, retry button (requires RETRY_EXPORTS), "Retry all" button with 429 handling
-- [ ] [GREEN] Implement failed exports list with individual and bulk retry
-- [ ] [GREEN] "Retry all" shows disabled state for 10 min after last call (429 handling)
-- [ ] [GREEN] Warning banner when Jira config is in error state (retrying is pointless)
+- [ ] [RED] Test: list with work item title, error_code, attempt count, retry button (requires RETRY_EXPORTS), "Retry all" button with 429 handling (blocked: GET /api/v1/admin/support/failed-exports not live)
+- [ ] [GREEN] Implement failed exports list with individual and bulk retry (blocked: same)
+- [ ] [GREEN] "Retry all" shows disabled state for 10 min after last call (429 handling) (blocked: same)
+- [ ] [GREEN] Warning banner when Jira config is in error state (retrying is pointless) (blocked: same)
 
 ### Config-Blocked Work Items
-- [ ] [RED] Test: list grouped by blocking reason (suspended owner / deleted team in rule / archived project)
-- [ ] [GREEN] Implement config-blocked items grouped list
+- [ ] [RED] Test: list grouped by blocking reason (suspended owner / deleted team in rule / archived project) (blocked: GET /api/v1/admin/support/config-blocked-items not live)
+- [ ] [GREEN] Implement config-blocked items grouped list (blocked: same)

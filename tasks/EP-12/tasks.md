@@ -2,7 +2,7 @@
 
 > **Scope (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Keep: Python stdlib `logging` to stdout + `CorrelationIDMiddleware`. Drop: Sentry, Prometheus, Grafana, Loki, OpenTelemetry, trace sampling, `product_events` table, LLM-token metrics, health dashboards, integration-health endpoints, ops monitoring page. EP-12 narrows to Responsive + Security + Performance (+ correlation-id logging).
 
-**Status: NOT STARTED**
+**Status: IN PROGRESS** (2026-04-18) — ~75/85 items shipped across 10 sub-tracks. Redis+Celery both ripped out; PG-native stack (PgRateLimiter, PgNotificationBus LISTEN/NOTIFY, InMemoryJobProgress). Remaining: credential CRUD audit + export audit + client-disconnect SSE test. See `tasks-backend.md` / `tasks-frontend.md`.
 
 TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [REFACTOR] = clean up
 

@@ -303,10 +303,44 @@ async def _invalid_suggestion_state_handler(
     )
 
 
+async def _audit_authorization_denied(request: Request) -> None:
+    """Fire-and-forget audit record for 403 responses.
+
+    Wrapped in try/except — an audit failure must never mask the 403.
+    """
+    try:
+        from app.application.services.audit_service import AuditService
+        from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+        from app.infrastructure.persistence.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            audit = AuditService(AuditRepositoryImpl(session))
+            path = request.url.path
+            ip_address = request.client.host if request.client else None
+            await audit.log_event(
+                category="auth",
+                action="authorization_denied",
+                entity_type=path.split("/")[3] if len(path.split("/")) > 3 else None,
+                context={
+                    "outcome": "failure",
+                    "path": path,
+                    "method": request.method,
+                    "ip_address": ip_address,
+                },
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("failed to write authorization_denied audit record")
+
+
 async def _http_exception_handler(
-    _: Request, exc: StarletteHTTPException
+    request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     # Controller-raised HTTPException already carries an envelope in `detail` — pass through.
+    if exc.status_code == 403:
+        await _audit_authorization_denied(request)
+
     if isinstance(exc.detail, dict) and "error" in exc.detail:
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     message = exc.detail if isinstance(exc.detail, str) else "http error"

@@ -63,6 +63,7 @@ class WorkItem:
     deleted_at: datetime | None
     exported_at: datetime | None
     export_reference: str | None
+    external_jira_key: str | None
 
     @classmethod
     def create(
@@ -109,6 +110,7 @@ class WorkItem:
             deleted_at=None,
             exported_at=None,
             export_reference=None,
+            external_jira_key=None,
         )
 
     @property
@@ -198,5 +200,6 @@ class WorkItem:
         )
 
     def compute_completeness(self) -> int:
-        # TODO(EP-04): implement scoring
-        return 0
+        from app.domain.services.completeness_service import compute_completeness
+
+        return compute_completeness(self)

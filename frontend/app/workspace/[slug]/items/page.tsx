@@ -3,17 +3,21 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, FileText, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Plus, FileText, ChevronLeft, ChevronRight, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { useWorkItems } from '@/hooks/use-work-items';
 import { WorkItemList } from '@/components/work-item/work-item-list';
+import { SortControl } from '@/components/work-item/sort-control';
 import { SearchBar } from '@/components/search/search-bar';
 import { SavedSearchesMenu } from '@/components/search/saved-searches-menu';
+import { ParentPicker } from '@/components/hierarchy/ParentPicker';
 import { useTranslations } from 'next-intl';
 import { PageContainer } from '@/components/layout/page-container';
+import { ANCESTOR_ID_PARAM } from '@/lib/filter-params';
 import type { WorkItemState, WorkItemType, Priority, WorkItemResponse } from '@/lib/types/work-item';
+import type { WorkItemSummary } from '@/lib/types/hierarchy';
 
 const PAGE_SIZE = 20;
 
@@ -74,6 +78,9 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
   });
   const [updatedAfter, setUpdatedAfter] = useState<string>(() => searchParams.get('updated_after') ?? '');
   const [updatedBefore, setUpdatedBefore] = useState<string>(() => searchParams.get('updated_before') ?? '');
+  const [sortOption, setSortOption] = useState<string>(() => searchParams.get('sort') ?? '');
+  const [ancestorId, setAncestorId] = useState<string>(() => searchParams.get(ANCESTOR_ID_PARAM) ?? '');
+  const [ancestorSummary, setAncestorSummary] = useState<WorkItemSummary | null>(null);
   const [page, setPage] = useState(() => {
     const p = parseInt(searchParams.get('page') ?? '1', 10);
     return isNaN(p) || p < 1 ? 1 : p;
@@ -88,15 +95,17 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
     if (completenessMin > 0) p.set('completeness_min', String(completenessMin));
     if (updatedAfter) p.set('updated_after', updatedAfter);
     if (updatedBefore) p.set('updated_before', updatedBefore);
+    if (ancestorId) p.set(ANCESTOR_ID_PARAM, ancestorId);
+    if (sortOption) p.set('sort', sortOption);
     p.set('page', String(page));
     router.replace(`?${p.toString()}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, page]);
+  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, ancestorId, page]);
 
   useEffect(() => {
     syncUrl();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, page]);
+  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, ancestorId, sortOption, page]);
 
   const resetPage = () => setPage(1);
 
@@ -137,7 +146,16 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
     setCompletenessMin(0);
     setUpdatedAfter('');
     setUpdatedBefore('');
+    setAncestorId('');
+    setAncestorSummary(null);
+    setSortOption('');
     setPage(1);
+  };
+
+  const handleAncestorChange = (item: WorkItemSummary | null) => {
+    setAncestorId(item?.id ?? '');
+    setAncestorSummary(item);
+    resetPage();
   };
 
   // ─── Search state ─────────────────────────────────────────────────────────────
@@ -146,7 +164,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
 
   const projectId = user?.workspace_id ?? null;
 
-  const { items, total, isLoading, error } = useWorkItems(
+  const { items, total, isLoading, error, refetch, hasNext, isLoadingMore, loadMore } = useWorkItems(
     projectId,
     {
       ...(stateFilter ? { state: stateFilter } : {}),
@@ -155,6 +173,8 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
       ...(completenessMin > 0 ? { completeness_min: completenessMin } : {}),
       ...(updatedAfter ? { updated_after: updatedAfter } : {}),
       ...(updatedBefore ? { updated_before: updatedBefore } : {}),
+      ...(ancestorId ? { ancestor_id: ancestorId } : {}),
+      ...(sortOption ? { sort: sortOption } : {}),
       page,
       page_size: PAGE_SIZE,
     },
@@ -186,6 +206,27 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
         onResults={setSearchResults}
         onSearchActiveChange={setIsSearchActive}
       />
+
+      {/* Ancestor filter banner — shown when ancestor_id is active */}
+      {ancestorId && (
+        <div
+          data-testid="ancestor-filter-banner"
+          className="flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-body-sm"
+        >
+          <span className="text-muted-foreground">
+            {tItems('ancestorFilterActive')}
+            {ancestorSummary ? `: ${ancestorSummary.title}` : ''}
+          </span>
+          <button
+            type="button"
+            aria-label="Clear ancestor filter"
+            className="ml-auto text-muted-foreground hover:text-foreground"
+            onClick={() => handleAncestorChange(null)}
+          >
+            <X className="h-3 w-3" aria-hidden />
+          </button>
+        </div>
+      )}
 
       {/* Filter bar — hidden when search is active */}
       <div className={`flex flex-wrap items-end gap-3 ${isSearchActive ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -290,6 +331,26 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
           />
         </div>
 
+        {/* Ancestor filter — "Within ancestor" typeahead */}
+        {projectId && (
+          <div className="flex flex-col gap-1 min-w-[200px]">
+            <label className="text-body-sm text-muted-foreground sr-only">
+              {tFilters('ancestorFilterAria')}
+            </label>
+            <ParentPicker
+              projectId={projectId}
+              childType="story"
+              value={ancestorSummary}
+              onChange={handleAncestorChange}
+              label={tFilters('ancestorFilterAria')}
+              className="h-9"
+            />
+          </div>
+        )}
+
+        {/* Sort control */}
+        <SortControl />
+
         {/* Reset */}
         <Button
           variant="ghost"
@@ -330,6 +391,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
         slug={slug}
         isLoading={isLoading && !isSearchActive}
         error={!isSearchActive && error && !isSessionExpired(error) ? error : null}
+        onRetry={refetch}
         emptyState={<EmptyState slug={slug} tItems={tItems} />}
       />
 
@@ -341,6 +403,21 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
           onPageChange={setPage}
           tItems={tItems}
         />
+      )}
+
+      {/* Load more — cursor-based append, shown when backend returns has_next */}
+      {!isSearchActive && hasNext && (
+        <div className="flex justify-center py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            aria-label="Load more items"
+          >
+            {isLoadingMore ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
       )}
     </PageContainer>
   );

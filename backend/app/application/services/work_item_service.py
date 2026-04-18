@@ -43,6 +43,7 @@ from app.domain.exceptions import (
     CannotDeleteNonDraftError,
     ConfirmationRequiredError,
     CreatorNotMemberError,
+    InvalidTransitionError,
     MandatoryValidationsPendingError,
     NotOwnerError,
     OwnerSuspendedError,
@@ -53,6 +54,7 @@ from app.domain.exceptions import (
 from app.domain.models.work_item import WorkItem
 from app.domain.queries.page import Page
 from app.domain.queries.work_item_filters import WorkItemFilters
+from app.domain.queries.work_item_list_filters import WorkItemListFilters
 from app.domain.repositories.user_repository import IUserRepository
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.domain.repositories.workspace_membership_repository import (
@@ -62,6 +64,7 @@ from app.domain.services.completeness_service import compute_completeness
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
 from app.domain.value_objects.work_item_state import WorkItemState
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +190,22 @@ class WorkItemService:
     ) -> Page[WorkItem]:
         return await self._work_items.list(workspace_id, project_id, filters)
 
+    async def list_cursor(
+        self,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+        filters: WorkItemListFilters | None = None,
+    ) -> PaginationResult:
+        """Keyset-paginated workspace work item list with full filter support."""
+        return await self._work_items.list_cursor(
+            workspace_id,
+            cursor=cursor,
+            page_size=page_size,
+            filters=filters,
+        )
+
     # ------------------------------------------------------------------
     # update
     # ------------------------------------------------------------------
@@ -281,27 +300,54 @@ class WorkItemService:
     # ------------------------------------------------------------------
 
     async def transition(self, cmd: TransitionStateCommand) -> WorkItem:
-        item = await self._get_or_raise(cmd.item_id, cmd.workspace_id)
+        _audit_ctx: dict = {
+            "outcome": "failure",
+            "ip_address": cmd.ip_address,
+            "user_agent": cmd.user_agent,
+        }
+        if cmd.reason:
+            _audit_ctx["reason"] = cmd.reason
 
-        # Gate: completeness check before transitioning to READY
-        if cmd.target_state == WorkItemState.READY:
-            score = compute_completeness(item)
-            if score < COMPLETENESS_READY_THRESHOLD:
-                raise MandatoryValidationsPendingError(
-                    item.id, pending_ids=(score,)
-                )
-            # EP-06 ReadyGate: check all mandatory validations
-            if self._ready_gate is not None:
-                gate_result = await self._ready_gate.check(
-                    work_item_id=item.id,
-                    workspace_id=cmd.workspace_id,
-                    work_item_type=item.type.value,
-                )
-                if not gate_result.ok:
-                    raise ReadyGateBlockedError(item.id, blockers=gate_result.blockers)
+        try:
+            item = await self._get_or_raise(cmd.item_id, cmd.workspace_id)
 
-        # apply_transition enforces ownership and FSM edges
-        transition = item.apply_transition(cmd.target_state, cmd.actor_id, cmd.reason)
+            # Gate: completeness check before transitioning to READY
+            if cmd.target_state == WorkItemState.READY:
+                score = compute_completeness(item)
+                if score < COMPLETENESS_READY_THRESHOLD:
+                    raise MandatoryValidationsPendingError(
+                        item.id, pending_ids=(score,)
+                    )
+                # EP-06 ReadyGate: check all mandatory validations
+                if self._ready_gate is not None:
+                    gate_result = await self._ready_gate.check(
+                        work_item_id=item.id,
+                        workspace_id=cmd.workspace_id,
+                        work_item_type=item.type.value,
+                    )
+                    if not gate_result.ok:
+                        raise ReadyGateBlockedError(item.id, blockers=gate_result.blockers)
+
+            # apply_transition enforces ownership and FSM edges
+            transition = item.apply_transition(cmd.target_state, cmd.actor_id, cmd.reason)
+        except (
+            InvalidTransitionError,
+            NotOwnerError,
+            MandatoryValidationsPendingError,
+            ReadyGateBlockedError,
+            WorkItemNotFoundError,
+        ) as exc:
+            _audit_ctx["error_code"] = type(exc).__name__
+            await self._audit.log_event(
+                category="domain",
+                action="state_transition",
+                actor_id=cmd.actor_id,
+                workspace_id=cmd.workspace_id,
+                entity_type="work_item",
+                entity_id=cmd.item_id,
+                context=_audit_ctx,
+            )
+            raise
 
         saved = await self._work_items.save(item, cmd.workspace_id)
         await self._work_items.record_transition(transition, cmd.workspace_id)
@@ -339,16 +385,17 @@ class WorkItemService:
                 )
             )
 
+        _audit_ctx["outcome"] = "success"
         await self._audit.log_event(
             category="domain",
-            action="work_item_state_changed",
+            action="state_transition",
             actor_id=cmd.actor_id,
             workspace_id=cmd.workspace_id,
-            context={
-                "item_id": str(saved.id),
-                "from_state": transition.from_state.value,
-                "to_state": transition.to_state.value,
-            },
+            entity_type="work_item",
+            entity_id=saved.id,
+            before_value={"state": transition.from_state.value},
+            after_value={"state": transition.to_state.value},
+            context=_audit_ctx,
         )
         return saved
 

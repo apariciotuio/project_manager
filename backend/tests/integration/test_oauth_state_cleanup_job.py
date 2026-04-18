@@ -1,4 +1,7 @@
-"""EP-00 Phase 9 — cleanup_expired_oauth_states integration."""
+"""EP-00 Phase 9 — cleanup_expired_oauth_states integration.
+
+Runs the async function against the real testcontainer DB.
+"""
 
 from __future__ import annotations
 
@@ -57,7 +60,7 @@ async def test_cleanup_deletes_only_expired_states(clean_db) -> None:
 
     from app.infrastructure.jobs.oauth_state_cleanup import cleanup_expired_oauth_states
 
-    deleted = cleanup_expired_oauth_states()
+    deleted = await cleanup_expired_oauth_states()
     assert deleted == 4
     assert await _count(clean_db) == 2
 
@@ -65,4 +68,4 @@ async def test_cleanup_deletes_only_expired_states(clean_db) -> None:
 async def test_cleanup_returns_zero_when_nothing_expired(clean_db) -> None:
     from app.infrastructure.jobs.oauth_state_cleanup import cleanup_expired_oauth_states
 
-    assert cleanup_expired_oauth_states() == 0
+    assert await cleanup_expired_oauth_states() == 0

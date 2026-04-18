@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from app.domain.repositories.team_repository import (
     ITeamMembershipRepository,
     ITeamRepository,
 )
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 from app.infrastructure.persistence.mappers.team_mapper import (
     membership_to_domain,
     membership_to_orm,
@@ -128,6 +130,15 @@ class TeamMembershipRepositoryImpl(ITeamMembershipRepository):
         rows = (await self._session.execute(stmt)).scalars().all()
         return [team_to_domain(r) for r in rows]
 
+    async def count_active_leads(self, team_id: UUID) -> int:
+        stmt = select(func.count()).where(
+            TeamMembershipORM.team_id == team_id,
+            TeamMembershipORM.role == "lead",
+            TeamMembershipORM.removed_at.is_(None),
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
+
     async def list_active_members_with_users(
         self, team_ids: Sequence[UUID]
     ) -> dict[UUID, list[dict[str, Any]]]:
@@ -223,6 +234,61 @@ class NotificationRepositoryImpl(INotificationRepository):
             page_size=page_size,
         )
 
+    async def list_inbox_cursor(
+        self,
+        user_id: UUID,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+    ) -> PaginationResult:
+        from datetime import timezone
+        from uuid import UUID as _UUID
+
+        stmt = (
+            select(NotificationORM)
+            .where(
+                NotificationORM.recipient_id == user_id,
+                NotificationORM.workspace_id == workspace_id,
+            )
+        )
+        if cursor is not None:
+            stmt = stmt.where(
+                sa.or_(
+                    NotificationORM.created_at < cursor.created_at,
+                    sa.and_(
+                        NotificationORM.created_at == cursor.created_at,
+                        sa.cast(NotificationORM.id, sa.Text) < str(cursor.id),
+                    ),
+                )
+            )
+        stmt = stmt.order_by(
+            NotificationORM.created_at.desc(),
+            sa.cast(NotificationORM.id, sa.Text).desc(),
+        ).limit(page_size + 1)
+
+        rows = (await self._session.execute(stmt)).scalars().all()
+        has_next = len(rows) > page_size
+        if has_next:
+            rows = rows[:page_size]
+
+        next_cursor: str | None = None
+        if has_next and rows:
+            last = rows[-1]
+            ts = last.created_at
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            next_cursor = PaginationCursor(
+                id=_UUID(str(last.id)),
+                created_at=ts,
+            ).encode()
+
+        return PaginationResult(
+            rows=[notification_to_domain(r) for r in rows],
+            has_next=has_next,
+            next_cursor=next_cursor,
+        )
+
     async def bulk_insert_idempotent(
         self, notifications: list[Notification]
     ) -> list[Notification]:
@@ -274,5 +340,44 @@ class NotificationRepositoryImpl(INotificationRepository):
             existing.state = notification.state.value
             existing.read_at = notification.read_at
             existing.actioned_at = notification.actioned_at
+            existing.archived_at = notification.archived_at
         await self._session.flush()
         return notification
+
+    async def archive_stale(
+        self,
+        *,
+        read_before: datetime,
+        actioned_before: datetime,
+        now: datetime,
+    ) -> dict[str, int]:
+        """Set archived_at on stale read (>30d) and actioned (>90d) notifications."""
+        import sqlalchemy as sa_local
+
+        read_stmt = (
+            sa_local.update(NotificationORM)
+            .where(
+                NotificationORM.state == "read",
+                NotificationORM.read_at < read_before,
+                NotificationORM.archived_at.is_(None),
+            )
+            .values(archived_at=now)
+            .returning(NotificationORM.id)
+        )
+        read_result = await self._session.execute(read_stmt)
+        archived_read = len(read_result.all())
+
+        actioned_stmt = (
+            sa_local.update(NotificationORM)
+            .where(
+                NotificationORM.state == "actioned",
+                NotificationORM.actioned_at < actioned_before,
+                NotificationORM.archived_at.is_(None),
+            )
+            .values(archived_at=now)
+            .returning(NotificationORM.id)
+        )
+        actioned_result = await self._session.execute(actioned_stmt)
+        archived_actioned = len(actioned_result.all())
+
+        return {"archived_read": archived_read, "archived_actioned": archived_actioned}

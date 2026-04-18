@@ -46,6 +46,7 @@ class WorkItemVersion:
     actor_id: UUID | None = None
     commit_message: str | None = None
     archived: bool = False
+    workspace_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if self.version_number <= 0:

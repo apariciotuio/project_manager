@@ -129,6 +129,15 @@ AND the adapter contains zero business logic (only HTTP call + error classificat
 - [ ] [RED] Test: `JiraErrorClassifier.classify(response)` returns correct subclass for 401 → `JiraAuthError`, 403 → `JiraPermissionError`, 404 → `JiraNotFoundError`, 429 → `JiraRateLimitError` (with `retry_after` from header), 500 → `JiraServerError`, httpx.TimeoutException → `JiraTimeoutError`
 - [ ] [GREEN] Implement error hierarchy in `infrastructure/adapters/jira/jira_error_classifier.py`
 
+### JiraClient (MVP — single-issue creation, EP-11 slice 1)
+- [x] [RED] Tests for `JiraClient.create_issue()` — 201→JiraIssue, 400→JiraValidationError, 429→JiraRateLimited(retry_after), 5xx retry 2x→JiraUnavailable, ADF body — `tests/unit/infrastructure/adapters/test_jira_adapter.py` (10 tests)
+- [x] [GREEN] Implement `JiraClient` in `infrastructure/adapters/jira_adapter.py` — PAT auth, httpx.AsyncClient, timeout 30s, 2 retries exponential backoff, ADF wrapping
+- [x] [GREEN] `JiraSettings` updated with `email`, `api_token` (SecretStr), prod validator for sentinel `dev-jira-token`
+- [x] [GREEN] `ExportService.export_work_item_to_jira()` in `application/services/export_service.py` — type mapping, calls JiraClient, persists via `export_reference`, emits audit
+- [x] [GREEN] `external_jira_key` column + mapper + schema — migration 0118 (`backend/migrations/versions/0118_work_items_external_jira_key.py`); dual-writes `export_reference` for backward compat (drop in next release); 5 unit tests in `tests/unit/application/test_export_service.py`
+- [x] [GREEN] `POST /api/v1/work-items/{id}/export/jira` in `integration_controller.py` — 202 + BackgroundTask, auth+workspace guard
+- [x] [RED+GREEN] Controller tests: 202 on valid, 401 no auth, 401 no workspace, 422 missing project_key — `tests/integration/test_export_controller.py` (4 tests)
+
 ### JiraApiAdapter
 - [ ] [RED] Test: `JiraApiAdapter.create_issue()` — returns `JiraIssueRef(key, url)` on 201; raises `JiraAuthError` on 401; raises `JiraPermissionError` on 403; raises `JiraNotFoundError` on 404; raises `JiraRateLimitError` on 429; raises `JiraServerError` on 5xx; raises `JiraTimeoutError` on timeout — use httpx mock transport
 - [ ] [GREEN] Implement `JiraApiAdapter.create_issue()` in `infrastructure/adapters/jira/jira_api_adapter.py`

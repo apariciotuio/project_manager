@@ -75,20 +75,24 @@ WHEN HTTP 409 `EXPORT_ALREADY_IN_PROGRESS` is received
 THEN inline notice renders: "Export already in progress" — no second trigger is possible
 
 ### ExportButton (`components/detail/ExportButton.tsx`)
-- [ ] [RED] Test: button renders when `state === 'ready'`; button absent or disabled when `state !== 'ready'`
-- [ ] [RED] Test: clicking triggers `POST /work-items/{id}/export`; button enters loading state during call
-- [ ] [RED] Test: on 202 response, shows "Export queued" success toast; button becomes disabled with "Export in progress" label
-- [ ] [RED] Test: on 422 `ELEMENT_NOT_READY`, shows inline error (should not happen if guarded, but handle anyway)
-- [ ] [RED] Test: on 422 `JIRA_CONFIG_NOT_FOUND`, shows inline error: "No Jira integration configured for this project"
-- [ ] [RED] Test: on 422 `JIRA_CONFIG_DEGRADED`, shows inline error: "Jira integration is currently unavailable" with link to admin integrations page
-- [ ] [RED] Test: on 422 `JIRA_PROJECT_MAPPING_NOT_FOUND`, shows inline error: "No Jira project mapping configured"
-- [ ] [RED] Test: on 409 `EXPORT_ALREADY_IN_PROGRESS`, shows inline notice: "Export already in progress" (no second trigger)
-- [ ] [GREEN] Implement `ExportButton` client component
-- [ ] [GREEN] Use React Query `useMutation` for the export trigger; invalidate `exportHistory` query on success
+- [x] [RED] Test: button renders when `canExport=true`; absent when `canExport=false` — done (`__tests__/app/workspace/items/jira-export-button.test.tsx`, 9 tests)
+- [x] [RED] Test: clicking triggers `POST /work-items/{id}/export/jira`; button disabled + "Export queued" status on 202
+- [x] [RED] Test: 30 s lockout re-enables button
+- [x] [RED] Test: on 401 (UnauthenticatedError) → showErrorToast('EXPORT_FORBIDDEN', ...)
+- [x] [RED] Test: on 403 → showErrorToast('EXPORT_FORBIDDEN', ...)
+- [x] [RED] Test: on 5xx → showErrorToast with retry message
+- [x] [RED] Test: Jira link renders when `external_jira_key` set; absent when null
+- [x] [GREEN] Implemented `JiraExportButton` in `components/work-item/jira-export-button.tsx` — Jira export button — done
+- [ ] [RED] Test: on 422 `JIRA_CONFIG_NOT_FOUND`, shows inline error (full EP-11 plan)
+- [ ] [RED] Test: on 422 `JIRA_CONFIG_DEGRADED`, shows inline error with link
+- [ ] [RED] Test: on 422 `JIRA_PROJECT_MAPPING_NOT_FOUND`, shows inline error
+- [ ] [RED] Test: on 409 `EXPORT_ALREADY_IN_PROGRESS`, shows inline notice
+- [ ] [GREEN] Migrate to React Query `useMutation` + invalidate `exportHistory` query on success
 
 ### Placement in WorkItemDetail
-- [ ] [GREEN] Wire `ExportButton` into `HeaderSection` or `StickyActionBar` (mobile) within `WorkItemDetail` (EP-09)
-- [ ] [GREEN] Show Jira issue badge (`jira_key` chip linking to `jira_issue_url`) in header when latest export has status=success
+- [x] [GREEN] Wire `JiraExportButton` into `StickyActionBar` within `WorkItemDetail` — done
+- [x] [GREEN] Show Jira issue link (`external_jira_key` → `jira_issue_url`) via `JiraExportButton` prop — done
+- Note: `external_jira_key` added to `WorkItemResponse` type (optional field, null until backend confirms successful export)
 
 ---
 

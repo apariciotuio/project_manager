@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from app.domain.models.team import Notification, Team, TeamMembership
 from app.domain.queries.page import Page
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 
 class ITeamRepository(ABC):
@@ -39,6 +41,11 @@ class ITeamMembershipRepository(ABC):
 
     @abstractmethod
     async def list_teams_for_user(self, user_id: UUID, workspace_id: UUID) -> list[Team]: ...
+
+    @abstractmethod
+    async def count_active_leads(self, team_id: UUID) -> int:
+        """Return the number of active members with role=lead for the team."""
+        ...
 
     @abstractmethod
     async def list_active_members_with_users(
@@ -93,6 +100,16 @@ class INotificationRepository(ABC):
     ) -> Page[Notification]: ...
 
     @abstractmethod
+    async def list_inbox_cursor(
+        self,
+        user_id: UUID,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+    ) -> PaginationResult: ...
+
+    @abstractmethod
     async def save(self, notification: Notification) -> Notification: ...
 
     @abstractmethod
@@ -105,5 +122,22 @@ class INotificationRepository(ABC):
         """Bulk-mark all unread notifications for the user as read.
 
         Returns the number of rows updated.
+        """
+        ...
+
+    @abstractmethod
+    async def archive_stale(
+        self,
+        *,
+        read_before: datetime,
+        actioned_before: datetime,
+        now: datetime,
+    ) -> dict[str, int]:
+        """Archive stale notifications by setting archived_at.
+
+        - Notifications in state=read with read_at < read_before → archived.
+        - Notifications in state=actioned with actioned_at < actioned_before → archived.
+
+        Returns {"archived_read": N, "archived_actioned": M}.
         """
         ...

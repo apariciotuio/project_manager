@@ -1,17 +1,13 @@
-"""Unit tests for Celery dundun tasks — EP-03 Phase 6.
+"""Unit tests for dundun async tasks — EP-03 Phase 6.
 
-Tests run synchronously (no @pytest.mark.asyncio). The tasks use asyncio.run()
-internally, which starts a fresh event loop per invocation. This is safe in sync
-test context but would fail inside an already-running loop.
-
-Celery eager mode (task_always_eager=True set in conftest) means task.delay(...)
-executes synchronously and raises rather than queuing.
+Tasks are now plain async functions; tests call them directly via asyncio.run().
 
 Injection strategy: monkeypatch `app.infrastructure.tasks.dundun_tasks._build_deps`
 to return FakeDundunClient + fake repos, bypassing the real DB session factory.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -66,11 +62,13 @@ def test_invoke_suggestion_agent_happy_path(monkeypatch: pytest.MonkeyPatch) -> 
     user_id = str(uuid4())
     batch_id = str(uuid4())
 
-    result = invoke_suggestion_agent.delay(
-        work_item_id=work_item_id,
-        user_id=user_id,
-        batch_id=batch_id,
-    ).get()
+    result = asyncio.run(
+        invoke_suggestion_agent(
+            work_item_id=work_item_id,
+            user_id=user_id,
+            batch_id=batch_id,
+        )
+    )
 
     assert result.startswith("fake-")
     assert len(fake.invocations) == 1
@@ -95,12 +93,14 @@ def test_invoke_suggestion_agent_passes_thread_id(monkeypatch: pytest.MonkeyPatc
     batch_id = str(uuid4())
     thread_id = str(uuid4())
 
-    invoke_suggestion_agent.delay(
-        work_item_id=work_item_id,
-        user_id=user_id,
-        batch_id=batch_id,
-        thread_id=thread_id,
-    ).get()
+    asyncio.run(
+        invoke_suggestion_agent(
+            work_item_id=work_item_id,
+            user_id=user_id,
+            batch_id=batch_id,
+            thread_id=thread_id,
+        )
+    )
 
     assert len(fake.invocations) == 1
     _, _, conv_id, _, _, _ = fake.invocations[0]
@@ -108,11 +108,7 @@ def test_invoke_suggestion_agent_passes_thread_id(monkeypatch: pytest.MonkeyPatc
 
 
 def test_invoke_suggestion_agent_idempotent_on_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Idempotency: if batch already has a dundun_request_id, skip re-invocation.
-
-    Simulates a retry scenario where a suggestion row already exists with a
-    dundun_request_id for this batch_id, meaning Dundun was already invoked.
-    """
+    """Idempotency: if batch already has a dundun_request_id, skip re-invocation."""
     from datetime import UTC, datetime, timedelta
 
     from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
@@ -150,24 +146,21 @@ def test_invoke_suggestion_agent_idempotent_on_retry(monkeypatch: pytest.MonkeyP
 
     from app.infrastructure.tasks.dundun_tasks import invoke_suggestion_agent
 
-    result = invoke_suggestion_agent.delay(
-        work_item_id=str(work_item_id),
-        user_id=str(user_id),
-        batch_id=str(batch_id),
-    ).get()
+    result = asyncio.run(
+        invoke_suggestion_agent(
+            work_item_id=str(work_item_id),
+            user_id=str(user_id),
+            batch_id=str(batch_id),
+        )
+    )
 
     # Must return the prior request_id without calling Dundun again
     assert result == prior_request_id
     assert len(fake.invocations) == 0
 
 
-def test_invoke_suggestion_agent_retry_on_server_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """DundunServerError triggers Celery retry.
-
-    In eager mode, Celery re-executes the task inline up to max_retries.
-    With max_retries=3 and always-failing fake, the task ultimately raises
-    MaxRetriesExceededError or the original exception after exhausting retries.
-    """
+def test_invoke_suggestion_agent_raises_on_server_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DundunServerError propagates to caller (caller owns retry/backoff)."""
     from app.domain.ports.dundun import DundunServerError
 
     fake = FakeDundunClient()
@@ -182,7 +175,6 @@ def test_invoke_suggestion_agent_retry_on_server_error(monkeypatch: pytest.Monke
     import app.infrastructure.tasks.dundun_tasks as tasks_module
     monkeypatch.setattr(tasks_module, "_build_deps", _fail_build_deps)
 
-    # Make every invoke_agent call raise DundunServerError
     async def _failing_invoke(**_kwargs: Any) -> dict[str, Any]:
         raise DundunServerError("server blew up")
 
@@ -190,12 +182,14 @@ def test_invoke_suggestion_agent_retry_on_server_error(monkeypatch: pytest.Monke
 
     from app.infrastructure.tasks.dundun_tasks import invoke_suggestion_agent
 
-    with pytest.raises(Exception):  # noqa: B017
-        invoke_suggestion_agent.delay(
-            work_item_id=str(uuid4()),
-            user_id=str(uuid4()),
-            batch_id=str(uuid4()),
-        ).get()
+    with pytest.raises(DundunServerError):
+        asyncio.run(
+            invoke_suggestion_agent(
+                work_item_id=str(uuid4()),
+                user_id=str(uuid4()),
+                batch_id=str(uuid4()),
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -213,10 +207,12 @@ def test_invoke_gap_agent_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     work_item_id = str(uuid4())
     user_id = str(uuid4())
 
-    result = invoke_gap_agent.delay(
-        work_item_id=work_item_id,
-        user_id=user_id,
-    ).get()
+    result = asyncio.run(
+        invoke_gap_agent(
+            work_item_id=work_item_id,
+            user_id=user_id,
+        )
+    )
 
     assert result.startswith("fake-")
     assert len(fake.invocations) == 1
@@ -237,7 +233,7 @@ def test_invoke_gap_agent_correct_payload(monkeypatch: pytest.MonkeyPatch) -> No
     work_item_id = str(uuid4())
     user_id = str(uuid4())
 
-    invoke_gap_agent.delay(work_item_id=work_item_id, user_id=user_id).get()
+    asyncio.run(invoke_gap_agent(work_item_id=work_item_id, user_id=user_id))
 
     _, _, _, _, _, payload = fake.invocations[0]
     assert payload.get("work_item_id") == work_item_id
@@ -259,13 +255,15 @@ def test_invoke_quick_action_agent_happy_path(monkeypatch: pytest.MonkeyPatch) -
     user_id = str(uuid4())
     action_id = str(uuid4())
 
-    result = invoke_quick_action_agent.delay(
-        work_item_id=work_item_id,
-        user_id=user_id,
-        action_id=action_id,
-        action_type="rewrite_section",
-        section_id=None,
-    ).get()
+    result = asyncio.run(
+        invoke_quick_action_agent(
+            work_item_id=work_item_id,
+            user_id=user_id,
+            action_id=action_id,
+            action_type="rewrite_section",
+            section_id=None,
+        )
+    )
 
     assert result.startswith("fake-")
     assert len(fake.invocations) == 1
@@ -286,13 +284,15 @@ def test_invoke_quick_action_agent_with_section_id(monkeypatch: pytest.MonkeyPat
     from app.infrastructure.tasks.dundun_tasks import invoke_quick_action_agent
 
     section_id = str(uuid4())
-    invoke_quick_action_agent.delay(
-        work_item_id=str(uuid4()),
-        user_id=str(uuid4()),
-        action_id=str(uuid4()),
-        action_type="summarize",
-        section_id=section_id,
-    ).get()
+    asyncio.run(
+        invoke_quick_action_agent(
+            work_item_id=str(uuid4()),
+            user_id=str(uuid4()),
+            action_id=str(uuid4()),
+            action_type="summarize",
+            section_id=section_id,
+        )
+    )
 
     _, _, _, _, _, payload = fake.invocations[0]
     assert payload.get("section_id") == section_id
@@ -305,33 +305,18 @@ def test_invoke_quick_action_agent_without_section_id(monkeypatch: pytest.Monkey
 
     from app.infrastructure.tasks.dundun_tasks import invoke_quick_action_agent
 
-    invoke_quick_action_agent.delay(
-        work_item_id=str(uuid4()),
-        user_id=str(uuid4()),
-        action_id=str(uuid4()),
-        action_type="summarize",
-        section_id=None,
-    ).get()
+    asyncio.run(
+        invoke_quick_action_agent(
+            work_item_id=str(uuid4()),
+            user_id=str(uuid4()),
+            action_id=str(uuid4()),
+            action_type="summarize",
+            section_id=None,
+        )
+    )
 
     _, _, _, _, _, payload = fake.invocations[0]
     assert "section_id" not in payload
-
-
-# ---------------------------------------------------------------------------
-# Task registration
-# ---------------------------------------------------------------------------
-
-
-def test_tasks_registered_on_dundun_queue() -> None:
-    """All three tasks are bound to queue 'dundun'."""
-    from app.infrastructure.tasks.dundun_tasks import (
-        invoke_gap_agent,
-        invoke_quick_action_agent,
-        invoke_suggestion_agent,
-    )
-
-    for task in (invoke_suggestion_agent, invoke_gap_agent, invoke_quick_action_agent):
-        assert task.queue == "dundun", f"{task.name} not on dundun queue"
 
 
 # ---------------------------------------------------------------------------
@@ -341,11 +326,8 @@ def test_tasks_registered_on_dundun_queue() -> None:
 
 def test_build_deps_raises_in_production_with_fake_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     """_build_deps raises RuntimeError when use_fake=True and app.env=production."""
-    import asyncio
-
     import app.infrastructure.tasks.dundun_tasks as tasks_module
 
-    # Build a settings stub with use_fake=True + env=production
     class _FakeDundunSettings:
         use_fake = True
 
@@ -356,12 +338,6 @@ def test_build_deps_raises_in_production_with_fake_flag(monkeypatch: pytest.Monk
         dundun = _FakeDundunSettings()
         app = _FakeAppSettings()
 
-    monkeypatch.setattr(
-        "app.infrastructure.tasks.dundun_tasks._build_deps",
-        tasks_module._build_deps,  # restore original so we exercise the real guard
-    )
-
-    # Patch get_settings inside the module scope
     import app.config.settings as settings_module
     monkeypatch.setattr(settings_module, "get_settings", lambda: _FakeSettings())
 

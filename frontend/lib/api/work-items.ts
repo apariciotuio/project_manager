@@ -50,6 +50,7 @@ function buildQuery(filters: WorkItemFilters): string {
   if (filters.creator_id !== undefined) params.set('creator_id', filters.creator_id);
   if (filters.project_id !== undefined) params.set('project_id', filters.project_id);
   if (filters.parent_work_item_id !== undefined) params.set('parent_work_item_id', filters.parent_work_item_id);
+  if (filters.ancestor_id !== undefined) params.set('ancestor_id', filters.ancestor_id);
   if (filters.q !== undefined && filters.q !== '') params.set('q', filters.q);
   if (filters.sort !== undefined) params.set('sort', filters.sort);
   if (filters.cursor !== undefined) params.set('cursor', filters.cursor);
@@ -138,6 +139,20 @@ export async function getTransitions(id: string): Promise<StateTransitionRecord[
 export async function getOwnershipHistory(id: string): Promise<OwnershipRecord[]> {
   const res = await apiGet<Envelope<OwnershipRecord[]>>(
     `/api/v1/work-items/${id}/ownership-history`,
+  );
+  return res.data;
+}
+
+// EP-11 — Jira export
+export interface JiraExportJobResponse {
+  job_id: string;
+  status: string;
+}
+
+export async function exportToJira(id: string): Promise<JiraExportJobResponse> {
+  const res = await apiPost<Envelope<JiraExportJobResponse>>(
+    `/api/v1/work-items/${id}/export/jira`,
+    {},
   );
   return res.data;
 }

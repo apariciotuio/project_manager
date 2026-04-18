@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from uuid import UUID
 
 from app.domain.models.team import Notification
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 
 class INotificationRepository(ABC):
@@ -28,6 +29,16 @@ class INotificationRepository(ABC):
     async def list_for_user(
         self, user_id: UUID, *, limit: int = 50, offset: int = 0
     ) -> list[Notification]: ...
+
+    @abstractmethod
+    async def list_inbox_cursor(
+        self,
+        user_id: UUID,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+    ) -> PaginationResult: ...
 
     @abstractmethod
     async def mark_read(self, notification_id: UUID) -> None: ...

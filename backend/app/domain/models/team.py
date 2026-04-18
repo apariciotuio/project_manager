@@ -110,6 +110,7 @@ class Notification:
     created_at: datetime
     read_at: datetime | None
     actioned_at: datetime | None
+    archived_at: datetime | None = None
 
     @classmethod
     def create(

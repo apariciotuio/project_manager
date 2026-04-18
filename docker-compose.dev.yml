@@ -29,8 +29,6 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://wmp:wmp@postgres:5432/wmp
-      CELERY_BROKER_URL: sqla+postgresql+psycopg://wmp:wmp@postgres:5432/wmp
-      CELERY_RESULT_BACKEND: db+postgresql+psycopg://wmp:wmp@postgres:5432/wmp
     ports:
       - "17004:17004"
     volumes:

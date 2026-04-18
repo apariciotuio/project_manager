@@ -1,6 +1,6 @@
 """Reusable SSE streaming handler.
 
-SseHandler wraps a RedisPubSub (or compatible) source and produces a
+SseHandler wraps a PgNotificationBus (or compatible) source and produces a
 FastAPI StreamingResponse with proper SSE framing.
 
 Frame format:
@@ -9,12 +9,12 @@ Frame format:
   Keepalive:      : keepalive\\n\\n
 
 Usage (EP-03, EP-08, job progress — all share this):
-    handler = SseHandler(pubsub, keepalive_interval=30.0)
+    handler = SseHandler(bus, keepalive_interval=30.0)
     return handler.stream("sse:thread:{thread_id}")
 
 Disconnect cleanup: when the ASGI server cancels the generator (client
-disconnects), asyncio.CancelledError propagates into RedisPubSub.subscribe
-which always runs its finally block — unsubscribing the Redis channel.
+disconnects), asyncio.CancelledError propagates into PgNotificationBus.subscribe
+which always runs its finally block — issuing UNLISTEN and releasing the connection.
 """
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ class SseHandler:
     """Converts a pub/sub source into a FastAPI StreamingResponse.
 
     Args:
-        pubsub: RedisPubSub instance (or any compatible Protocol).
+        pubsub: PgNotificationBus instance (or any compatible _PubSubProto).
         keepalive_interval: seconds of idle time before emitting a keepalive comment.
     """
 
@@ -55,7 +55,7 @@ class SseHandler:
         pubsub: _PubSubProto,
         keepalive_interval: float = _DEFAULT_KEEPALIVE_INTERVAL,
     ) -> None:
-        self._pubsub = pubsub
+        self._pubsub = pubsub  # PgNotificationBus or any _PubSubProto-compatible object
         self._keepalive_interval = keepalive_interval
 
     # ------------------------------------------------------------------
@@ -82,11 +82,13 @@ class SseHandler:
     # ------------------------------------------------------------------
 
     async def _generate(self, channel: str) -> AsyncIterator[str]:
-        last_event_at = asyncio.get_event_loop().time()
+        """Emit SSE frames from *channel*, injecting keepalive comments on idle gaps."""
+        loop = asyncio.get_event_loop()
+        last_event_at = loop.time()
 
         try:
-            async for event in self._pubsub.subscribe(channel):
-                now = asyncio.get_event_loop().time()
+            async for event in self._pubsub.subscribe(channel, poll_interval=1.0):
+                now = loop.time()
                 if now - last_event_at >= self._keepalive_interval:
                     yield self.keepalive_frame()
 
@@ -102,17 +104,11 @@ class SseHandler:
                 else:
                     yield self.data_frame(event)
 
-                last_event_at = asyncio.get_event_loop().time()
-
-                # Check keepalive after each event too
-                now = asyncio.get_event_loop().time()
-                if now - last_event_at >= self._keepalive_interval:
-                    yield self.keepalive_frame()
-                    last_event_at = now
+                last_event_at = loop.time()
 
         except asyncio.CancelledError:
             logger.debug("SSE client disconnected from channel %s", channel)
-            # CancelledError propagates — RedisPubSub.subscribe finally block handles unsubscribe
+            # CancelledError propagates — PgNotificationBus.subscribe finally block handles UNLISTEN
 
     # ------------------------------------------------------------------
     # Public API

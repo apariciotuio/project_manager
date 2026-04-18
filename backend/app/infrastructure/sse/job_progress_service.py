@@ -1,12 +1,18 @@
-"""Job progress service — reads/writes Celery job state in Redis.
+"""In-memory job progress service.
 
-Keys: job:{job_id}  TTL: 3600s (1h after last update)
+Keys: job_id (str)  TTL: 3600s (1h after last write, evicted lazily on read)
+
+Replaces the Redis-backed JobProgressService. Job state is ephemeral and
+acceptable to lose on restart (<100 concurrent jobs, single Uvicorn worker).
+
+Public API is identical to the previous implementation so callers require
+no changes.
 """
 from __future__ import annotations
 
-import json
+import time
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any
 
 
 class JobState(str, Enum):  # noqa: UP042 — StrEnum is Python 3.11+; keep str+Enum for 3.10 compat
@@ -16,37 +22,51 @@ class JobState(str, Enum):  # noqa: UP042 — StrEnum is Python 3.11+; keep str+
     ERROR = "error"
 
 
-class _RedisProto(Protocol):
-    async def get(self, key: str) -> str | None: ...
-    async def setex(self, key: str, ttl: int, value: str) -> None: ...
-    async def set(self, key: str, value: str, ex: int | None = None) -> None: ...
-    async def delete(self, key: str) -> None: ...
+_JOB_TTL = 3600  # seconds
 
 
-_JOB_TTL = 3600
+class _Entry:
+    __slots__ = ("data", "expires_at")
+
+    def __init__(self, data: dict[str, Any], ttl: int) -> None:
+        self.data = data
+        self.expires_at = time.monotonic() + ttl
 
 
 class JobProgressService:
-    def __init__(self, redis: _RedisProto) -> None:
-        self._redis = redis
+    """In-memory job state store with TTL eviction.
 
-    def _key(self, job_id: str) -> str:
-        return f"job:{job_id}"
+    Thread-safety: asyncio single-threaded — dict ops are atomic enough.
+    """
+
+    def __init__(self) -> None:
+        self._store: dict[str, _Entry] = {}
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    def _write(self, job_id: str, data: dict[str, Any]) -> None:
+        self._store[job_id] = _Entry(data, _JOB_TTL)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     async def get_state(self, job_id: str) -> dict[str, Any] | None:
-        raw = await self._redis.get(self._key(job_id))
-        if raw is None:
+        entry = self._store.get(job_id)
+        if entry is None:
             return None
-        return json.loads(raw)  # type: ignore[no-any-return]
+        if time.monotonic() > entry.expires_at:
+            del self._store[job_id]
+            return None
+        return entry.data
 
     async def set_state(self, job_id: str, state: JobState, progress: int = 0) -> None:
-        data = {"state": state.value, "progress": progress}
-        await self._redis.setex(self._key(job_id), _JOB_TTL, json.dumps(data))
+        self._write(job_id, {"state": state.value, "progress": progress})
 
     async def complete(self, job_id: str, message_id: str) -> None:
-        data = {"state": JobState.DONE.value, "message_id": message_id}
-        await self._redis.setex(self._key(job_id), _JOB_TTL, json.dumps(data))
+        self._write(job_id, {"state": JobState.DONE.value, "message_id": message_id})
 
     async def fail(self, job_id: str, error: str) -> None:
-        data = {"state": JobState.ERROR.value, "error": error}
-        await self._redis.setex(self._key(job_id), _JOB_TTL, json.dumps(data))
+        self._write(job_id, {"state": JobState.ERROR.value, "error": error})

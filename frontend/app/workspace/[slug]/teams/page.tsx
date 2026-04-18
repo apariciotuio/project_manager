@@ -111,7 +111,11 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
     return (
       <PageContainer variant="wide">
         <h1 className="mb-4 text-h2 font-semibold">Equipos</h1>
-        <p className="text-body-sm text-muted-foreground">Cargando...</p>
+        <div data-testid="teams-skeleton" className="space-y-3 animate-pulse">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-16 rounded-md bg-muted" />
+          ))}
+        </div>
       </PageContainer>
     );
   }
@@ -121,9 +125,12 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
     return (
       <PageContainer variant="wide">
         <h1 className="mb-4 text-h2 font-semibold">Equipos</h1>
-        <p className="text-body-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-body-sm text-destructive"
+        >
           No se pudieron cargar los equipos: {error.message}
-        </p>
+        </div>
       </PageContainer>
     );
   }
@@ -139,7 +146,7 @@ export default function TeamsPage({ params: { slug: _slug } }: TeamsPageProps) {
       </div>
 
       {teams.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+        <div data-testid="teams-empty" className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
           <Users className="h-10 w-10 opacity-30" />
           <p className="text-body">No hay equipos creados</p>
         </div>

@@ -61,12 +61,14 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
   const { onlyUnread } = filterToApiParams(activeFilter);
 
   const fetchNotifications = useCallback(
-    async (pg = 1) => {
+    async (pg = 1, append = false) => {
       setIsLoading(true);
       setError(null);
       try {
         const res = await listNotifications(pg, PAGE_SIZE, onlyUnread);
-        setNotifications(res.data.items);
+        setNotifications((prev) =>
+          append ? [...prev, ...res.data.items] : res.data.items,
+        );
         setTotal(res.data.total);
         setPage(pg);
       } catch (err) {
@@ -77,6 +79,10 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
     },
     [onlyUnread],
   );
+
+  const handleLoadMore = useCallback(async () => {
+    await fetchNotifications(page + 1, true);
+  }, [fetchNotifications, page]);
 
   useEffect(() => {
     void fetchNotifications(1);
@@ -220,7 +226,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" data-testid="inbox-list">
             {visibleNotifications.map((n) => (
               <div
                 key={n.id}
@@ -237,26 +243,15 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-2">
+          {page < totalPages && (
+            <div className="mt-4 flex items-center justify-center">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page <= 1}
-                onClick={() => void fetchNotifications(page - 1)}
+                disabled={isLoading}
+                onClick={() => void handleLoadMore()}
               >
-                {t('prev')}
-              </Button>
-              <span className="text-body-sm text-muted-foreground">
-                {t('pageOf', { page, total: totalPages })}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => void fetchNotifications(page + 1)}
-              >
-                {t('next')}
+                {t('loadMore')}
               </Button>
             </div>
           )}

@@ -149,14 +149,20 @@ For **every** tool below, the step sequence is identical:
 
 - [ ] `user.me`
 - [ ] `workitem.get` (+ `include_spec_body: false` variant; + 256 KB truncation test)
-- [ ] `workitem.search` (filters AND/OR tags, state, type, owner, team, archived, parent, project; invalid cursor HMAC test)
+- [x] `workitem.search` / `search_work_items` — PoC handler implemented in `apps/mcp_server/tools/search_work_items.py`; wired into `server.py`; 25 unit tests + 8 integration tests (2026-04-18)
+- [x] `list_projects` — handler in `apps/mcp_server/tools/list_projects.py`; wired into `server.py` dispatch; 12 unit tests; work_item_count deferred to 0 (no COUNT JOIN in MVP); slug omitted (not in Project domain entity) (2026-04-18)
+- [x] `read_work_item` — handler in `apps/mcp_server/tools/read_work_item.py`; wired into `server.py` dispatch; 25 unit tests + 10 integration tests; 2000-char truncation per section with "..." marker; workspace isolation via WorkItemService.get raising WorkItemNotFoundError (2026-04-18)
+- [x] `list_work_items` — handler in `apps/mcp_server/tools/list_work_items.py`; stub deleted from `server.py`; wired into dispatch; 20 unit tests; state/type/project_id filters forwarded to WorkItemService.list_cursor; limit capped at 100/default 50; _truncated flag from has_next (2026-04-18)
+- [x] `list_sections` — handler in `apps/mcp_server/tools/list_sections.py`; wired into `server.py` dispatch; 19 unit tests; workspace isolation via WorkItemService.get; 200-char content preview; completeness derived from is_required + content presence (2026-04-18)
+- [x] `create_work_item_draft` — handler in `apps/mcp_server/tools/create_work_item_draft.py`; wired into `server.py` dispatch; 9 unit tests; title validation 3-200 chars; delegates to DraftService.upsert_pre_creation_draft; returns {id, title, state: "draft", created_at} (2026-04-18)
+- [x] `get_work_item_completeness` — handler in `apps/mcp_server/tools/get_work_item_completeness.py`; wired into `server.py` dispatch; 11 unit tests; delegates to CompletenessService.compute; LookupError maps to {error: "not_found"}; returns {overall_score, sections[]} with missing_fields on unfilled dims (2026-04-18)
 - [ ] `workitem.children` (direct children only; `has_more_children` flag per child test)
 - [ ] `workitem.hierarchy` (ancestors + node + children + roll-up; hidden-ancestor redaction test)
 - [ ] `workitem.listByEpic` (flat + grouped; non-epic id rejection test)
-- [ ] `comments.list` (anchored + general; orphan-comment-listed-not-dropped test)
+- [x] `list_comments` — handler in `apps/mcp_server/tools/list_comments.py`; wired into `server.py` dispatch; 6 unit tests (happy path, resolved flag, empty, section_id filter, cross-workspace isolation, invalid UUID); section_id optional filter; resolved=deleted_at is not None (2026-04-18)
 - [ ] `versions.list`
 - [ ] `versions.diff` (version-mismatch test; 64 KB body truncation test)
-- [ ] `reviews.list`
+- [x] `list_reviews` — handler in `apps/mcp_server/tools/list_reviews.py`; wired into `server.py` dispatch; 6 unit tests (happy path shape, status string, empty, cross-workspace isolation, include_resolved=false excludes CLOSED/CANCELLED, include_resolved=true returns all, invalid UUID); include_resolved default False (2026-04-18)
 - [ ] `validations.list` (override visibility test)
 - [ ] `timeline.list` (actor-kind distinction test; redacted-payload test)
 

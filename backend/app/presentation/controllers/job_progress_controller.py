@@ -1,13 +1,13 @@
-"""SSE endpoint for Celery job progress streaming.
+"""SSE endpoint for job progress streaming.
 
 GET /api/v1/jobs/{job_id}/progress
   - Auth required
-  - 404 when job not found (or not owned — we use the job_id UUID as the auth check)
-  - Streams SSE frames from Redis pub/sub channel via SseHandler
+  - 404 when job not found
+  - Streams SSE frames from Postgres LISTEN/NOTIFY via SseHandler
   - Sends `: keepalive` comment every 30s of idle time
-  - Sends `event: done` when Celery task completes
-  - Sends `event: error` when Celery task fails
-  - Cleans up Redis subscription on client disconnect
+  - Sends `event: done` when job completes
+  - Sends `event: error` when job fails
+  - Cleans up LISTEN subscription on client disconnect
 
 Dependency overrides (override_current_user, override_job_progress_service) are
 exposed for test injection only. Production code uses the real dependencies.
@@ -19,12 +19,11 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator
 
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.infrastructure.sse.job_progress_service import JobProgressService
-from app.infrastructure.sse.redis_pubsub import RedisPubSub
+from app.infrastructure.sse.pg_notification_bus import PgNotificationBus
 from app.infrastructure.sse.sse_handler import SseHandler
 from app.presentation.middleware.auth_middleware import CurrentUser
 
@@ -48,13 +47,15 @@ async def override_current_user(request: Request) -> CurrentUser:
     return await get_current_user(request)
 
 
-async def override_job_progress_service() -> JobProgressService:
-    """Default dependency — creates a per-request JobProgressService backed by Redis."""
-    from app.config.settings import get_settings
+_job_progress_service = JobProgressService()
 
-    settings = get_settings()
-    client = aioredis.from_url(settings.redis.url, decode_responses=True)
-    return JobProgressService(client)  # type: ignore[arg-type]
+
+async def override_job_progress_service() -> JobProgressService:
+    """Default dependency — returns the process-singleton in-memory job progress service.
+
+    Tests inject a fresh instance via dependency_overrides to ensure isolation.
+    """
+    return _job_progress_service
 
 
 # ---------------------------------------------------------------------------
@@ -64,20 +65,15 @@ async def override_job_progress_service() -> JobProgressService:
 
 async def _stream_job_progress(
     job_id: str,
-    redis_url: str,
+    db_dsn: str,
     keepalive_interval: float = _KEEPALIVE_INTERVAL,
 ) -> AsyncGenerator[str]:
-    """Build a SseHandler backed by a per-request Redis client and stream job progress."""
-    client = aioredis.from_url(redis_url, decode_responses=True)
-    try:
-        pubsub = RedisPubSub(client)  # type: ignore[arg-type]
-        handler = SseHandler(pubsub, keepalive_interval=keepalive_interval)  # type: ignore[arg-type]
-        channel = f"{_SSE_CHANNEL_PREFIX}{job_id}"
-        # Delegate to SseHandler generator — yields SSE frames
-        async for frame in handler._generate(channel):
-            yield frame
-    finally:
-        await client.aclose()  # type: ignore[attr-defined]
+    """Build a SseHandler backed by PgNotificationBus and stream job progress."""
+    bus = PgNotificationBus(dsn=db_dsn)
+    handler = SseHandler(bus, keepalive_interval=keepalive_interval)
+    channel = f"{_SSE_CHANNEL_PREFIX}{job_id}"
+    async for frame in handler._generate(channel):
+        yield frame
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +88,7 @@ async def job_progress(
     _current_user: CurrentUser = Depends(override_current_user),
     job_svc: JobProgressService = Depends(override_job_progress_service),
 ) -> StreamingResponse:
-    """Stream SSE events for a long-running Celery job.
+    """Stream SSE events for a long-running job.
 
     Returns 401 when no valid auth token is present (enforced by dependency).
     Returns 404 when job_id is unknown.
@@ -103,10 +99,11 @@ async def job_progress(
 
     from app.config.settings import get_settings
 
-    redis_url = get_settings().redis.url
+    # Strip SQLAlchemy dialect prefix — asyncpg DSN uses plain postgresql://
+    db_url = get_settings().database.url.replace("postgresql+asyncpg://", "postgresql://")
 
     return StreamingResponse(
-        _stream_job_progress(job_id, redis_url),
+        _stream_job_progress(job_id, db_url),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

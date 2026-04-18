@@ -280,6 +280,22 @@ describe('WorkItemsPage', () => {
     expect(stateCall).toContain('page=1');
   });
 
+  // ─── Error state ─────────────────────────────────────────────────────────────
+
+  it('shows error alert with retry button on 5xx', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json(
+          { error: { code: 'SERVER_ERROR', message: 'Internal server error' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    render(<WorkItemsPage params={{ slug: 'acme' }} />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
   it('selecting "all states" removes ?state from URL', async () => {
     mockSearchParams = { state: 'in_review' };
     mockReplace.mockClear();

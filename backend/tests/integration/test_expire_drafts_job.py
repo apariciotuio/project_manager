@@ -1,6 +1,6 @@
 """EP-02 Phase 7 — expire_work_item_drafts integration test.
 
-Runs the Celery task in eager mode against the real testcontainer DB. Asserts:
+Runs the async function against the real testcontainer DB. Asserts:
 - expired drafts are deleted, active drafts untouched
 - return count matches deleted rows
 - empty / no-expired case returns 0
@@ -122,7 +122,7 @@ async def test_expire_drafts_deletes_only_expired(clean_db) -> None:
 
     from app.infrastructure.jobs.expire_drafts_task import expire_work_item_drafts
 
-    deleted = expire_work_item_drafts()
+    deleted = await expire_work_item_drafts()
     assert deleted == 2
     assert await _count_drafts(clean_db) == 3
 
@@ -130,7 +130,7 @@ async def test_expire_drafts_deletes_only_expired(clean_db) -> None:
 async def test_expire_drafts_returns_zero_on_empty_table(clean_db) -> None:  # noqa: ARG001 — pytest fixture dep
     from app.infrastructure.jobs.expire_drafts_task import expire_work_item_drafts
 
-    assert expire_work_item_drafts() == 0
+    assert await expire_work_item_drafts() == 0
 
 
 async def test_expire_drafts_returns_zero_when_no_expired(clean_db) -> None:
@@ -147,6 +147,6 @@ async def test_expire_drafts_returns_zero_when_no_expired(clean_db) -> None:
 
     from app.infrastructure.jobs.expire_drafts_task import expire_work_item_drafts
 
-    deleted = expire_work_item_drafts()
+    deleted = await expire_work_item_drafts()
     assert deleted == 0
     assert await _count_drafts(clean_db) == 2

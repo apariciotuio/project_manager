@@ -152,6 +152,15 @@ class AuthService:
     ) -> CallbackResult:
         consumed = await self._oauth_states.consume(state)
         if consumed is None:
+            await self._audit.log_event(
+                category="auth",
+                action="login_invalid_state",
+                context={
+                    "outcome": "failure",
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                },
+            )
             raise InvalidStateError("oauth state missing, expired, or already consumed")
 
         try:
@@ -162,7 +171,12 @@ class AuthService:
             await self._audit.log_event(
                 category="auth",
                 action="login_failed_oauth_exchange",
-                context={"ip": ip_address, "user_agent": user_agent, "state": state},
+                context={
+                    "outcome": "failure",
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                    "state": state,
+                },
             )
             raise
 
@@ -192,7 +206,7 @@ class AuthService:
                 action="login_blocked_no_workspace",
                 actor_id=user.id,
                 actor_display=user.email,
-                context={"ip": ip_address, "user_agent": user_agent},
+                context={"outcome": "failure", "ip_address": ip_address, "user_agent": user_agent},
             )
             raise NoWorkspaceAccessError(user.email)
 
@@ -209,7 +223,9 @@ class AuthService:
             actor_id=user.id,
             actor_display=user.email,
             workspace_id=outcome.workspace_id,
-            context={"ip": ip_address, "user_agent": user_agent, "routing": outcome.kind},
+            entity_type="user",
+            entity_id=user.id,
+            context={"outcome": "success", "ip_address": ip_address, "user_agent": user_agent, "routing": outcome.kind},
         )
 
         return CallbackResult(
@@ -262,6 +278,15 @@ class AuthService:
         access_token, access_exp = self._encode_access_token(
             user=user, workspace_id=effective_workspace_id
         )
+
+        await self._audit.log_event(
+            category="auth",
+            action="token_refresh",
+            actor_id=user.id,
+            actor_display=user.email,
+            workspace_id=effective_workspace_id,
+        )
+
         return TokenPair(
             access_token=access_token,
             access_token_expires_at=access_exp,

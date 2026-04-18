@@ -37,8 +37,8 @@ export function ParentPicker({
   className,
 }: ParentPickerProps) {
   const validTypes = getValidParentTypes(childType);
-  // empty array = no parent allowed → don't render
-  if (validTypes !== null && validTypes.length === 0) return null;
+  // empty array = no parent allowed (root types) → don't render
+  if (validTypes.length === 0) return null;
 
   return (
     <ParentPickerInner
@@ -54,7 +54,7 @@ export function ParentPicker({
 
 interface InnerProps {
   projectId: string;
-  validTypes: WorkItemType[] | null;
+  validTypes: WorkItemType[];
   value: WorkItemSummary | null;
   onChange: (item: WorkItemSummary | null) => void;
   label: string;
@@ -84,9 +84,7 @@ function ParentPickerInner({ projectId, validTypes, value, onChange, label, clas
       try {
         const params = new URLSearchParams();
         if (q) params.set('q', q);
-        if (validTypes) {
-          for (const t of validTypes) params.append('type', t);
-        }
+        for (const t of validTypes) params.append('type', t);
         params.set('limit', '20');
         const res = await apiGet<Envelope<SearchPage>>(
           `/api/v1/projects/${projectId}/work-items?${params.toString()}`,

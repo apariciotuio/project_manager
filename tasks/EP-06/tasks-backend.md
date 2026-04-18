@@ -397,6 +397,12 @@ See also: specs/reviews/spec.md, specs/validations/spec.md
 
 **Status: COMPLETED (2026-04-17) — 57 unit tests + 26 integration tests passing**
 
+### MF-4 Fix — validation_controller.py work_item.type seeding (2026-04-18)
+
+- [x] MF-4 [FIX] `validation_controller.py:76` already fixed in commit `dce93fb` — `work_item.type.value if work_item is not None else ""` replaces hardcoded empty string
+- [x] MF-4 [RED→GREEN] Integration test `tests/integration/test_validation_type_seeding_mf4.py` added — 2 scenarios: bug item gets global+type-specific rules; task item gets only global rule
+- [x] MF-4 [FIX] Test fixture `_cached_jwt_adapter.cache_clear()` added to prevent lru_cache staleness when run as part of full suite
+
 ---
 
 ## Phase 7 — Integration & Edge Cases

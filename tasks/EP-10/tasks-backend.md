@@ -638,3 +638,7 @@ THEN the API returns HTTP 403
 - **`.limit(500)` safety cap** on project + template repos (`backend/app/infrastructure/persistence/project_repository_impl.py:45`, `template_repository_impl.py:122`).
 
 Nothing else in Groups 0-14 was touched today: no member management, no invitations, no capabilities, no validation/routing rules, no context sources/presets, no Jira/Puppet config surfaces, no audit log endpoint, no admin dashboard, no support tools, no superadmin endpoints. **>95% of the plan is still pending** — when EP-10 goes into formal delivery, re-plan from scratch against current schema.
+
+## MF-4 / SF-7 fixes (2026-04-17, session-2026-04-17-mega-review)
+- [x] MF-4: `get_validations` now injects `WorkItemRepositoryImpl` via `get_work_item_repo_scoped` and passes `work_item.type.value` to `get_checklist` — type-specific rules correctly filtered (commit dce93fb)
+- [x] SF-7: `require_admin` confirmed to check `workspace_id is None` → 401 (no gap). Removed all `# type: ignore[arg-type]` from routing_rule_controller (5 sites) and validation_rule_template_controller (5 sites); replaced with `assert current_user.workspace_id is not None` for type narrowing (commit 1cd11bb)

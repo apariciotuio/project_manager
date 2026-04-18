@@ -66,9 +66,11 @@ describe('ParentPicker', () => {
     await userEvent.click(input);
     await userEvent.type(input, 'Epic');
     await waitFor(() => {
+      // story valid parents: milestone + initiative (backend HIERARCHY_RULES)
       expect(capturedTypes).toContain('initiative');
+      expect(capturedTypes).toContain('milestone');
       expect(capturedTypes).not.toContain('story');
-      expect(capturedTypes).not.toContain('milestone');
+      expect(capturedTypes).not.toContain('task');
     }, { timeout: 1000 });
   });
 

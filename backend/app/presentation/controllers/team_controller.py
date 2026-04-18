@@ -4,9 +4,11 @@ Routes:
   POST   /api/v1/teams
   GET    /api/v1/teams
   GET    /api/v1/teams/{team_id}
+  PATCH  /api/v1/teams/{team_id}
   DELETE /api/v1/teams/{team_id}
   POST   /api/v1/teams/{team_id}/members
   DELETE /api/v1/teams/{team_id}/members/{user_id}
+  PATCH  /api/v1/teams/{team_id}/members/{user_id}/role
 """
 from __future__ import annotations
 
@@ -19,9 +21,11 @@ from fastapi import status as http_status
 from pydantic import BaseModel
 
 from app.application.services.team_service import (
+    LastLeadError,
     MembershipAlreadyExistsError,
     MembershipNotFoundError,
     TeamAlreadyDeletedError,
+    TeamHasOpenReviewsError,
     TeamNotFoundError,
     TeamService,
 )
@@ -82,6 +86,16 @@ class CreateTeamRequest(BaseModel):
 class AddMemberRequest(BaseModel):
     user_id: UUID
     role: TeamRole = TeamRole.MEMBER
+
+
+class UpdateTeamRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    can_receive_reviews: bool | None = None
+
+
+class UpdateRoleRequest(BaseModel):
+    role: TeamRole
 
 
 @router.post("/teams", status_code=http_status.HTTP_201_CREATED)
@@ -153,6 +167,47 @@ async def get_team(
     return _ok(_team_payload(team, members=members_by_team.get(team.id, [])))
 
 
+@router.patch("/teams/{team_id}")
+async def update_team(
+    team_id: UUID,
+    body: UpdateTeamRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TeamService = Depends(get_team_service),
+) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+        )
+    try:
+        team = await service.get(team_id, workspace_id=current_user.workspace_id)
+    except TeamNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    if body.name is not None:
+        try:
+            if not body.name.strip():
+                raise ValueError("team name cannot be empty")
+            team.name = body.name.strip()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_INPUT", "message": str(exc), "details": {}}},
+            ) from exc
+    if body.description is not None:
+        team.description = body.description
+    if body.can_receive_reviews is not None:
+        team.can_receive_reviews = body.can_receive_reviews
+    from datetime import UTC, datetime
+
+    team.updated_at = datetime.now(UTC)
+    updated_team = await service._teams.save(team)
+    members_by_team = await service.list_members_for_teams([updated_team.id])
+    return _ok(_team_payload(updated_team, members=members_by_team.get(updated_team.id, [])), "team updated")
+
+
 @router.delete("/teams/{team_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_team(
     team_id: UUID,
@@ -175,6 +230,17 @@ async def delete_team(
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
             detail={"error": {"code": "ALREADY_DELETED", "message": str(exc), "details": {}}},
+        ) from exc
+    except TeamHasOpenReviewsError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "TEAM_HAS_OPEN_REVIEWS",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
         ) from exc
 
 
@@ -229,3 +295,50 @@ async def remove_member(
             status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
         ) from exc
+    except LastLeadError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "LAST_LEAD_REMOVAL",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
+        ) from exc
+
+
+@router.patch("/teams/{team_id}/members/{user_id}/role")
+async def update_member_role(
+    team_id: UUID,
+    user_id: UUID,
+    body: UpdateRoleRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: TeamService = Depends(get_team_service),
+) -> dict[str, Any]:
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
+        )
+    try:
+        membership = await service.update_role(
+            team_id=team_id, user_id=user_id, new_role=body.role
+        )
+    except MembershipNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
+        ) from exc
+    except LastLeadError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "LAST_LEAD_REMOVAL",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
+        ) from exc
+    return _ok(_membership_payload(membership), "role updated")

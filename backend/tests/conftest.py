@@ -2,8 +2,9 @@
 
 Session-scoped Postgres container per test run.
 Settings are overridden to point at it.
-Celery runs in eager mode.
 """
+
+import secrets
 
 import pytest
 import pytest_asyncio
@@ -30,26 +31,18 @@ def override_settings(postgres_container):
     from app.config.settings import (
         AppSettings,
         AuthSettings,
-        CelerySettings,
         DatabaseSettings,
         DundunSettings,
         JiraSettings,
         PuppetSettings,
-        RedisSettings,
     )
 
     test_settings.app = AppSettings(env="test", debug=False, log_level="WARNING")
     test_settings.database = DatabaseSettings(url=pg_url)
-    test_settings.celery = CelerySettings(
-        task_always_eager=True,
-        broker_url="memory://",
-        result_backend="cache+memory://",
-    )
     test_settings.auth = AuthSettings()
     test_settings.dundun = DundunSettings(use_fake=True)
     test_settings.puppet = PuppetSettings(use_fake=True)
     test_settings.jira = JiraSettings()
-    test_settings.redis = RedisSettings()
 
     get_settings.cache_clear()
 
@@ -141,7 +134,7 @@ async def db_session(migrated_database):
         await conn.execute(
             text(
                 "TRUNCATE TABLE "
-                "section_locks, attachments, work_item_tags, tags, "
+                "lock_unlock_requests, section_locks, attachments, work_item_tags, tags, "
                 "puppet_ingest_requests, puppet_sync_outbox, integration_exports, integration_configs, "
                 "routing_rules, projects, saved_searches, notifications, "
                 "team_memberships, teams, timeline_events, comments, "
@@ -202,7 +195,7 @@ async def client(override_settings) -> AsyncClient:  # noqa: ARG001 — pytest f
 
     app = create_app()
 
-    # Tests don't run Redis. Replace the cache dep with an in-memory fake.
+    # Replace the cache dep with an in-memory fake.
     fake_cache = FakeCache()
 
     async def _override_cache():
@@ -215,3 +208,27 @@ async def client(override_settings) -> AsyncClient:  # noqa: ARG001 — pytest f
         base_url="http://test",
     ) as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def csrf_client(client: AsyncClient) -> AsyncClient:
+    """CSRF-protected client for state-changing endpoints (POST/PUT/PATCH/DELETE).
+
+    Auto-injects matching csrf_token cookie and X-CSRF-Token header on all requests.
+    Use this fixture when testing endpoints guarded by CSRFMiddleware.
+    """
+    csrf_token = secrets.token_urlsafe(32)
+    client.cookies.set("csrf_token", csrf_token)
+
+    # Wrap request methods to auto-inject CSRF header
+    original_request = client.request
+
+    async def _request_with_csrf(method, url, **kwargs):
+        if method.upper() not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
+            headers = kwargs.get("headers") or {}
+            headers["X-CSRF-Token"] = csrf_token
+            kwargs["headers"] = headers
+        return await original_request(method, url, **kwargs)
+
+    client.request = _request_with_csrf  # type: ignore[method-assign]
+    return client

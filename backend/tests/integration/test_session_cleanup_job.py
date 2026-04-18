@@ -1,8 +1,8 @@
 """EP-00 Phase 9 — cleanup_expired_sessions integration.
 
-Runs the Celery task in eager mode against the real testcontainer DB. Asserts
-expired rows are removed, active rows untouched, the return count matches, and
-the empty case returns 0.
+Runs the async function against the real testcontainer DB. Asserts expired rows
+are removed, active rows untouched, the return count matches, and the empty
+case returns 0.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ async def test_cleanup_deletes_only_expired_sessions(clean_db) -> None:
 
     from app.infrastructure.jobs.session_cleanup import cleanup_expired_sessions
 
-    deleted = cleanup_expired_sessions()  # eager mode
+    deleted = await cleanup_expired_sessions()
     assert deleted == 2
     assert await _count_sessions(clean_db) == 3
 
@@ -101,4 +101,4 @@ async def test_cleanup_deletes_only_expired_sessions(clean_db) -> None:
 async def test_cleanup_returns_zero_on_empty_table(clean_db) -> None:
     from app.infrastructure.jobs.session_cleanup import cleanup_expired_sessions
 
-    assert cleanup_expired_sessions() == 0
+    assert await cleanup_expired_sessions() == 0

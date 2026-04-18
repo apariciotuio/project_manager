@@ -10,13 +10,24 @@ from app.config.logging import correlation_id_var
 CORRELATION_ID_HEADER = "X-Correlation-Id"
 
 
+def _parse_correlation_id(raw: str | None) -> str:
+    """Return *raw* if it is a valid UUID string, else generate a new UUID v4."""
+    if raw:
+        try:
+            uuid.UUID(raw)
+            return raw
+        except ValueError:
+            pass
+    return str(uuid.uuid4())
+
+
 class CorrelationIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        correlation_id = request.headers.get(CORRELATION_ID_HEADER) or str(uuid.uuid4())
+        correlation_id = _parse_correlation_id(request.headers.get(CORRELATION_ID_HEADER))
         token = correlation_id_var.set(correlation_id)
         try:
             response = await call_next(request)

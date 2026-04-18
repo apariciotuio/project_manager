@@ -1,8 +1,8 @@
 # EP-10 — Implementation Checklist
 
 **Epic**: Configuration, Projects, Rules & Administration
-**Status**: PLANNING
-**Last updated**: 2026-04-13
+**Status**: PARTIAL (2026-04-18) — 24/123 FE items shipped (Projects, Integrations, Tags, Puppet, Health tabs). Blocked on 8 BE gaps: admin/members, admin/rules, admin/jira, admin/support, admin/context-presets, admin dashboard, DELETE integrations/configs/{id}, admin shell.
+**Last updated**: 2026-04-18
 
 ---
 

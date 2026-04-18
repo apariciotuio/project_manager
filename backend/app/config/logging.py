@@ -6,6 +6,43 @@ from typing import Any
 
 correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
 
+# Keys (or substrings of keys) whose values must never appear in logs.
+_SENSITIVE_KEY_SUBSTRINGS = frozenset({
+    "authorization",
+    "token",
+    "password",
+    "secret",
+    "api_key",
+    "credentials",
+    "cookie",
+    "set-cookie",
+})
+_REDACTED = "***REDACTED***"
+
+# LogRecord built-in attributes — we only scrub *extra* fields added by callers.
+_LOG_RECORD_BUILTIN_ATTRS = frozenset(logging.LogRecord(
+    "", 0, "", 0, "", (), None
+).__dict__.keys()) | {"message", "asctime"}
+
+
+def _is_sensitive_key(key: str) -> bool:
+    lower = key.lower()
+    return any(sub in lower for sub in _SENSITIVE_KEY_SUBSTRINGS)
+
+
+def _scrub_value(key: str, value: Any) -> Any:
+    if _is_sensitive_key(key):
+        return _REDACTED
+    if isinstance(value, dict):
+        return _scrub(value)
+    if isinstance(value, list):
+        return [_scrub(item) if isinstance(item, dict) else item for item in value]
+    return value
+
+
+def _scrub(data: dict[str, Any]) -> dict[str, Any]:
+    return {k: _scrub_value(k, v) for k, v in data.items()}
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -18,6 +55,16 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             log_entry["exc"] = self.formatException(record.exc_info)
+
+        # Merge and scrub any extra fields added via logging.info(..., extra={...})
+        extra = {
+            k: v
+            for k, v in record.__dict__.items()
+            if k not in _LOG_RECORD_BUILTIN_ATTRS and not k.startswith("_")
+        }
+        if extra:
+            log_entry.update(_scrub(extra))
+
         return json.dumps(log_entry)
 
 

@@ -6,6 +6,23 @@ Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.
 
 ---
 
+## Unlock-Request Endpoints (OOO scaffolding + EP-17 completion — 2026-04-18)
+
+- [x] Domain model `LockUnlockRequest` — scaffolded by OOO, complete (2026-04-18)
+- [x] Repository interface `ILockUnlockRequestRepository` — scaffolded by OOO, complete (2026-04-18)
+- [x] Repository impl `LockUnlockRequestRepositoryImpl` — scaffolded by OOO, complete (2026-04-18)
+- [x] ORM model `LockUnlockRequestORM` with partial index on `(section_id, created_at DESC) WHERE responded_at IS NULL` — scaffolded by OOO (2026-04-18)
+- [x] Migration `0119_lock_unlock_requests` — scaffolded by OOO, revision `0119_lock_unlock_requests` (2026-04-18)
+- [x] Controller `lock_controller.py` — endpoints `POST /lock/unlock-request` and `POST /lock/respond` — scaffolded by OOO, complete (2026-04-18)
+- [x] Router registered in `main.py` at `/api/v1` — confirmed present (2026-04-18)
+- [x] SSE fire-and-forget via `PgNotificationBus` on both endpoints — in controller, wrapped in try/except (2026-04-18)
+- [x] Integration tests `test_section_unlock_request.py` — 8 tests, all GREEN (2026-04-18)
+  - Fixed: per-request cookies replaced with Cookie header approach (httpx deprecation)
+  - Fixed: JWT secret now reads from `get_settings().auth.jwt_secret` (project `.env` sets `yoda-dev` secret)
+  - Fixed: CSRF headers added to all POST calls
+
+---
+
 ## Group 0: Setup & Configuration
 
 - [ ] Add env vars to settings: `LOCK_TTL_SECONDS=300`, `LOCK_HEARTBEAT_INTERVAL_SECONDS=30`, `UNLOCK_REQUEST_TTL_SECONDS=120`, `LOCK_FAIL_OPEN=false`

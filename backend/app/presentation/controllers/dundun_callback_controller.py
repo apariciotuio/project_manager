@@ -436,19 +436,10 @@ async def _handle_spec_gen(
     # On cache connection failure we log a warning and continue — stale data for up
     # to 60s is acceptable for an async background callback.
     try:
-        _settings = get_settings()
         cache_key = f"completeness:{work_item_id}"
-        if _settings.redis.use_fake:
-            from app.presentation.dependencies import _IN_MEMORY_CACHE as _fake_cache
-            if _fake_cache is not None:
-                await _fake_cache.delete(cache_key)
-        else:
-            from app.infrastructure.adapters.redis_cache_adapter import RedisCacheAdapter
-            _rc = RedisCacheAdapter(url=_settings.redis.url)
-            try:
-                await _rc.delete(cache_key)
-            finally:
-                await _rc.close()
+        from app.presentation.dependencies import _IN_MEMORY_CACHE as _cache
+        if _cache is not None:
+            await _cache.delete(cache_key)
     except Exception as _cache_err:
         logger.warning(
             "dundun_callback: spec_gen cache invalidation failed work_item=%s err=%s",

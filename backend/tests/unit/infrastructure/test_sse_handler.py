@@ -213,3 +213,42 @@ def test_sse_handler_no_cache_headers() -> None:
     resp = handler.stream("sse:test:ch")
     assert resp.headers.get("cache-control") == "no-cache"
     assert resp.headers.get("x-accel-buffering") == "no"
+
+
+def test_sse_handler_emits_keepalive_after_idle_gap() -> None:
+    """Keepalive is emitted when elapsed time since last event exceeds keepalive_interval.
+
+    Strategy: inject an event that arrives after the keepalive window has expired.
+    We fake the event loop clock so the test doesn't actually sleep.
+    """
+    from unittest.mock import patch
+
+    from app.infrastructure.sse.sse_handler import SseHandler
+
+    # Simulate: last_event_at = 0.0, now = 31.0 (> 30s interval) when next event arrives.
+    times = iter([0.0, 31.0, 31.0])  # initial time, pre-event check, post-event update
+
+    class _SlowPubSub:
+        async def subscribe(
+            self,
+            channel: str,
+            max_messages: int | None = None,
+            poll_interval: float = 0.05,
+        ) -> AsyncIterator[dict[str, Any]]:
+            yield {"type": "done", "payload": {"message_id": "m1"}, "channel": channel}
+
+    app = FastAPI()
+    handler = SseHandler(_SlowPubSub(), keepalive_interval=30.0)  # type: ignore[arg-type]
+
+    @app.get("/stream")
+    async def stream() -> StreamingResponse:
+        return handler.stream("sse:test:keepalive")
+
+    with patch("asyncio.get_event_loop") as mock_loop:
+        mock_loop.return_value.time.side_effect = times
+        client = TestClient(app, raise_server_exceptions=True)
+        resp = client.get("/stream")
+
+    body = resp.text
+    assert ": keepalive" in body, f"Expected keepalive comment in:\n{body}"
+    assert "event: done" in body

@@ -395,7 +395,7 @@ class TestTransition:
         with pytest.raises(MandatoryValidationsPendingError) as exc:
             await svc.transition(cmd)
 
-        assert exc.value.pending_ids == (0,)  # current score
+        assert exc.value.pending_ids == (40,)  # title(25) + owner(15)
 
     @pytest.mark.asyncio
     async def test_transition_changes_requested_emits_extra_event(self) -> None:

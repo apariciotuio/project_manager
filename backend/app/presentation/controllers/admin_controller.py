@@ -1,7 +1,7 @@
 """EP-10 — Admin controller.
 
 Routes:
-  GET /api/v1/admin/audit-events  — paginated audit log
+  GET /api/v1/admin/audit-events  — cursor-paginated audit log (admin-only)
   GET /api/v1/admin/health        — workspace health (work_items by state)
 """
 from __future__ import annotations
@@ -14,8 +14,10 @@ from fastapi import status as http_status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.persistence.models.orm import AuditEventORM, WorkItemORM
-from app.presentation.dependencies import get_current_user, get_scoped_session
+from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
+from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+from app.infrastructure.persistence.models.orm import WorkItemORM
+from app.presentation.dependencies import get_current_user, get_scoped_session, require_admin
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)
@@ -29,36 +31,34 @@ def _ok(data: object, message: str = "ok") -> dict[str, Any]:
 
 @router.get("/audit-events")
 async def list_audit_events(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=200),
+    cursor: str | None = Query(default=None),
+    page_size: int = Query(default=50, ge=1, le=100),
     category: str | None = Query(default=None),
     action: str | None = Query(default=None),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_admin),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
-    if current_user.workspace_id is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
-        )
+    # workspace_id presence guaranteed by require_admin
+    workspace_id = current_user.workspace_id  # type: ignore[assignment]
 
-    conditions = [AuditEventORM.workspace_id == current_user.workspace_id]
-    if category is not None:
-        conditions.append(AuditEventORM.category == category)
-    if action is not None:
-        conditions.append(AuditEventORM.action == action)
+    decoded_cursor: PaginationCursor | None = None
+    if cursor is not None:
+        try:
+            decoded_cursor = PaginationCursor.decode(cursor)
+        except InvalidCursorError as exc:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_CURSOR", "message": str(exc), "details": {}}},
+            ) from exc
 
-    count_stmt = select(func.count()).where(*conditions).select_from(AuditEventORM)
-    total: int = (await session.execute(count_stmt)).scalar_one()
-
-    rows_stmt = (
-        select(AuditEventORM)
-        .where(*conditions)
-        .order_by(AuditEventORM.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+    repo = AuditRepositoryImpl(session)
+    result = await repo.list_cursor(
+        workspace_id,
+        cursor=decoded_cursor,
+        page_size=page_size,
+        category=category,
+        action=action,
     )
-    rows = (await session.execute(rows_stmt)).scalars().all()
 
     items = [
         {
@@ -74,15 +74,16 @@ async def list_audit_events(
             "context": r.context,
             "created_at": r.created_at.isoformat(),
         }
-        for r in rows
+        for r in result.rows
     ]
 
     return _ok(
         {
             "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
+            "pagination": {
+                "cursor": result.next_cursor,
+                "has_next": result.has_next,
+            },
         }
     )
 

@@ -1,28 +1,25 @@
-"""EP-03 Phase 6 — Celery tasks for Dundun agent invocations.
+"""EP-03 Phase 6 — Async functions for Dundun agent invocations.
 
-All tasks run on the single `dundun` queue. They are dispatched on-demand by
-HTTP handlers (Phase 7) so the handler returns 202 immediately without blocking
-on Dundun's async HTTP round-trip.
+All functions are plain async — no Celery. Callers use FastAPI BackgroundTasks:
+  background_tasks.add_task(invoke_suggestion_agent, work_item_id=..., ...)
 
 Pattern:
-  - Each task is sync (Celery worker runs it in a thread pool).
-  - Internal async work is executed via asyncio.run() — safe because each task
-    invocation runs in its own thread with no pre-existing event loop.
-  - Session factory and DundunClient are constructed INSIDE the task body to
+  - Each function is async; internal DB + HTTP work is awaited directly.
+  - Session factory and DundunClient are constructed INSIDE the function body to
     respect the get_settings lru_cache trap: module-level imports capture a stale
     wrapper; deferred imports inside functions always get the live settings.
   - `_build_deps` is a module-level async factory for testability. Tests monkeypatch
     it to inject FakeDundunClient + fake repos without touching the DB.
+
+# TODO(pg-jobs): crash mid-run = silent failure for background invocations;
+#   move to pg jobs table if reliability needed.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 from uuid import UUID
-
-from app.config.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -86,25 +83,12 @@ async def _build_deps() -> dict[str, Any]:
     }
 
 
-def _run_async_str(coro: Any) -> str:
-    """Run a coroutine that returns str in a fresh event loop (sync-safe)."""
-    result: str = asyncio.run(coro)
-    return result
-
-
 # ---------------------------------------------------------------------------
 # invoke_suggestion_agent
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
-    name="invoke_suggestion_agent",
-    queue="dundun",
-    bind=True,
-    max_retries=3,
-)
-def invoke_suggestion_agent(
-    self: Any,
+async def invoke_suggestion_agent(
     *,
     work_item_id: str,
     user_id: str,
@@ -115,62 +99,50 @@ def invoke_suggestion_agent(
 
     Idempotent on retry: if any suggestion row for this batch_id already has a
     dundun_request_id, Dundun was already called — return the existing id and
-    skip re-invocation. This prevents duplicate agent runs on Celery retries.
+    skip re-invocation.
 
-    Retry policy: DundunServerError or network errors → exponential backoff
-    (2s, 4s, 8s) up to max_retries=3.
+    # TODO(pg-jobs): crash mid-run = silent failure; move to pg jobs table if reliability needed.
     """
-    async def _run() -> str:
-        deps = await _build_deps()
-        dundun_client = deps["dundun_client"]
-        suggestion_repo = deps["suggestion_repo"]
-        session = deps.get("_session")
-        try:
-            from app.config.settings import get_settings
-            settings = get_settings()
-
-            # Idempotency check: scan existing batch rows for a prior request_id.
-            batch_uuid = UUID(batch_id)
-            existing = await suggestion_repo.get_by_batch_id(batch_uuid)
-            for row in existing:
-                if row.dundun_request_id:
-                    logger.info(
-                        "invoke_suggestion_agent skipped (already invoked) "
-                        "batch_id=%s request_id=%s",
-                        batch_id,
-                        row.dundun_request_id,
-                    )
-                    return str(row.dundun_request_id)
-
-            result = await dundun_client.invoke_agent(
-                agent="wm_suggestion_agent",
-                user_id=UUID(user_id),
-                conversation_id=thread_id,
-                work_item_id=UUID(work_item_id),
-                callback_url=settings.dundun.callback_url,
-                payload={"batch_id": batch_id},
-            )
-            request_id: str = str(result["request_id"])
-            logger.info(
-                "invoke_suggestion_agent dispatched work_item=%s batch_id=%s request_id=%s",
-                work_item_id,
-                batch_id,
-                request_id,
-            )
-            return request_id
-        finally:
-            if session is not None:
-                await session.__aexit__(None, None, None)
-
+    deps = await _build_deps()
+    dundun_client = deps["dundun_client"]
+    suggestion_repo = deps["suggestion_repo"]
+    session = deps.get("_session")
     try:
-        return _run_async_str(_run())
-    except Exception as exc:
-        from app.domain.ports.dundun import DundunServerError
+        from app.config.settings import get_settings
+        settings = get_settings()
 
-        if isinstance(exc, DundunServerError):
-            countdown = 2 ** self.request.retries
-            raise self.retry(exc=exc, countdown=countdown) from exc
-        raise
+        # Idempotency check: scan existing batch rows for a prior request_id.
+        batch_uuid = UUID(batch_id)
+        existing = await suggestion_repo.get_by_batch_id(batch_uuid)
+        for row in existing:
+            if row.dundun_request_id:
+                logger.info(
+                    "invoke_suggestion_agent skipped (already invoked) "
+                    "batch_id=%s request_id=%s",
+                    batch_id,
+                    row.dundun_request_id,
+                )
+                return str(row.dundun_request_id)
+
+        result = await dundun_client.invoke_agent(
+            agent="wm_suggestion_agent",
+            user_id=UUID(user_id),
+            conversation_id=thread_id,
+            work_item_id=UUID(work_item_id),
+            callback_url=settings.dundun.callback_url,
+            payload={"batch_id": batch_id},
+        )
+        request_id: str = str(result["request_id"])
+        logger.info(
+            "invoke_suggestion_agent dispatched work_item=%s batch_id=%s request_id=%s",
+            work_item_id,
+            batch_id,
+            request_id,
+        )
+        return request_id
+    finally:
+        if session is not None:
+            await session.__aexit__(None, None, None)
 
 
 # ---------------------------------------------------------------------------
@@ -178,59 +150,40 @@ def invoke_suggestion_agent(
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
-    name="invoke_gap_agent",
-    queue="dundun",
-    bind=True,
-    max_retries=3,
-)
-def invoke_gap_agent(
-    self: Any,
+async def invoke_gap_agent(
     *,
     work_item_id: str,
     user_id: str,
 ) -> str:
     """Invoke Dundun's wm_gap_agent. Returns the Dundun request_id.
 
-    Retry policy: DundunServerError → exponential backoff (2s, 4s, 8s).
+    # TODO(pg-jobs): crash mid-run = silent failure; move to pg jobs table if reliability needed.
     """
-
-    async def _run() -> str:
-        deps = await _build_deps()
-        dundun_client = deps["dundun_client"]
-        session = deps.get("_session")
-        try:
-            from app.config.settings import get_settings
-            settings = get_settings()
-
-            result = await dundun_client.invoke_agent(
-                agent="wm_gap_agent",
-                user_id=UUID(user_id),
-                conversation_id=None,
-                work_item_id=UUID(work_item_id),
-                callback_url=settings.dundun.callback_url,
-                payload={"work_item_id": work_item_id},
-            )
-            request_id: str = str(result["request_id"])
-            logger.info(
-                "invoke_gap_agent dispatched work_item=%s request_id=%s",
-                work_item_id,
-                request_id,
-            )
-            return request_id
-        finally:
-            if session is not None:
-                await session.__aexit__(None, None, None)
-
+    deps = await _build_deps()
+    dundun_client = deps["dundun_client"]
+    session = deps.get("_session")
     try:
-        return _run_async_str(_run())
-    except Exception as exc:
-        from app.domain.ports.dundun import DundunServerError
+        from app.config.settings import get_settings
+        settings = get_settings()
 
-        if isinstance(exc, DundunServerError):
-            countdown = 2 ** self.request.retries
-            raise self.retry(exc=exc, countdown=countdown) from exc
-        raise
+        result = await dundun_client.invoke_agent(
+            agent="wm_gap_agent",
+            user_id=UUID(user_id),
+            conversation_id=None,
+            work_item_id=UUID(work_item_id),
+            callback_url=settings.dundun.callback_url,
+            payload={"work_item_id": work_item_id},
+        )
+        request_id: str = str(result["request_id"])
+        logger.info(
+            "invoke_gap_agent dispatched work_item=%s request_id=%s",
+            work_item_id,
+            request_id,
+        )
+        return request_id
+    finally:
+        if session is not None:
+            await session.__aexit__(None, None, None)
 
 
 # ---------------------------------------------------------------------------
@@ -238,14 +191,7 @@ def invoke_gap_agent(
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
-    name="invoke_quick_action_agent",
-    queue="dundun",
-    bind=True,
-    max_retries=3,
-)
-def invoke_quick_action_agent(
-    self: Any,
+async def invoke_quick_action_agent(
     *,
     work_item_id: str,
     user_id: str,
@@ -257,53 +203,41 @@ def invoke_quick_action_agent(
 
     # TODO: wire into QuickActionService when EP-04 lands.
     # QuickActionService.execute / undo are deferred — requires work_item_sections
-    # (EP-04) and undo TTL infra. This task dispatches directly to DundunClient
+    # (EP-04) and undo TTL infra. This function dispatches directly to DundunClient
     # and relies on the callback handler (Phase 3b / EP-04) to process the result.
 
-    Retry policy: DundunServerError → exponential backoff (2s, 4s, 8s).
+    # TODO(pg-jobs): crash mid-run = silent failure; move to pg jobs table if reliability needed.
     """
-
-    async def _run() -> str:
-        deps = await _build_deps()
-        dundun_client = deps["dundun_client"]
-        session = deps.get("_session")
-        try:
-            from app.config.settings import get_settings
-            settings = get_settings()
-
-            payload: dict[str, str] = {
-                "action_id": action_id,
-                "action_type": action_type,
-            }
-            if section_id is not None:
-                payload["section_id"] = section_id
-
-            result = await dundun_client.invoke_agent(
-                agent="wm_quick_action_agent",
-                user_id=UUID(user_id),
-                conversation_id=None,
-                work_item_id=UUID(work_item_id),
-                callback_url=settings.dundun.callback_url,
-                payload=payload,
-            )
-            request_id: str = str(result["request_id"])
-            logger.info(
-                "invoke_quick_action_agent dispatched work_item=%s action_id=%s request_id=%s",
-                work_item_id,
-                action_id,
-                request_id,
-            )
-            return request_id
-        finally:
-            if session is not None:
-                await session.__aexit__(None, None, None)
-
+    deps = await _build_deps()
+    dundun_client = deps["dundun_client"]
+    session = deps.get("_session")
     try:
-        return _run_async_str(_run())
-    except Exception as exc:
-        from app.domain.ports.dundun import DundunServerError
+        from app.config.settings import get_settings
+        settings = get_settings()
 
-        if isinstance(exc, DundunServerError):
-            countdown = 2 ** self.request.retries
-            raise self.retry(exc=exc, countdown=countdown) from exc
-        raise
+        payload: dict[str, str] = {
+            "action_id": action_id,
+            "action_type": action_type,
+        }
+        if section_id is not None:
+            payload["section_id"] = section_id
+
+        result = await dundun_client.invoke_agent(
+            agent="wm_quick_action_agent",
+            user_id=UUID(user_id),
+            conversation_id=None,
+            work_item_id=UUID(work_item_id),
+            callback_url=settings.dundun.callback_url,
+            payload=payload,
+        )
+        request_id: str = str(result["request_id"])
+        logger.info(
+            "invoke_quick_action_agent dispatched work_item=%s action_id=%s request_id=%s",
+            work_item_id,
+            action_id,
+            request_id,
+        )
+        return request_id
+    finally:
+        if session is not None:
+            await session.__aexit__(None, None, None)

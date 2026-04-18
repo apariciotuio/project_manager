@@ -29,6 +29,10 @@ class TaskCyclicDependencyError(ValueError):
     pass
 
 
+class InvalidPositionError(ValueError):
+    pass
+
+
 def _completeness_cache_key(work_item_id: UUID) -> str:
     return f"completeness:{work_item_id}"
 
@@ -434,6 +438,168 @@ class TaskService:
         result: list[TaskNode] = []
         for i, nid in enumerate(ordered_ids, start=1):
             node = nodes_by_id[nid]
+            node.display_order = i
+            node.updated_at = now
+            node.updated_by = actor_id
+            await self._nodes.save(node)
+            result.append(node)
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Reparent with optional position (EP-14)
+    # ------------------------------------------------------------------
+
+    async def reparent(
+        self,
+        *,
+        node_id: UUID,
+        new_parent_id: UUID | None,
+        position: int | None,
+        actor_id: UUID,
+    ) -> TaskNode:
+        """Move node to new_parent_id at 0-based position among siblings.
+
+        position=None → append at end (max+1).
+        Raises InvalidPositionError if position < 0 or > len(siblings).
+        Sibling display_orders are kept gapless (0-based) after the move.
+        """
+        from datetime import UTC, datetime
+
+        node = await self._get_or_404(node_id)
+        old_parent_id = node.parent_id
+        same_parent = old_parent_id == new_parent_id
+
+        # Validate new parent exists (if not None)
+        new_parent_path = ""
+        if new_parent_id is not None:
+            new_parent = await self._get_or_404(new_parent_id)
+            new_parent_path = new_parent.materialized_path
+
+        # Cycle detection: new parent must not be the node itself or a descendant of it
+        if new_parent_id == node_id:
+            raise TaskCyclicDependencyError("cannot reparent node under itself")
+        if not same_parent and new_parent_id is not None and node.materialized_path:
+            new_parent_obj = await self._nodes.get(new_parent_id)
+            if new_parent_obj is not None:
+                np_path = new_parent_obj.materialized_path
+                node_path = node.materialized_path
+                # new_parent is a descendant if its path starts with node's path followed by "."
+                if np_path == node_path or np_path.startswith(node_path + "."):
+                    raise TaskCyclicDependencyError(
+                        "new_parent_id is a descendant of node — cycle detected"
+                    )
+
+        # Fetch future siblings (children of new_parent_id, excluding moving node)
+        all_nodes = await self._nodes.get_by_work_item(node.work_item_id)
+        future_siblings = sorted(
+            [
+                n
+                for n in all_nodes
+                if n.parent_id == new_parent_id and n.id != node_id
+            ],
+            key=lambda n: n.display_order,
+        )
+
+        if position is None:
+            target_pos = len(future_siblings)
+        else:
+            if position < 0 or position > len(future_siblings):
+                raise InvalidPositionError(
+                    f"position {position} out of range [0, {len(future_siblings)}]"
+                )
+            target_pos = position
+
+        now = datetime.now(UTC)
+
+        # If same-parent: just reorder among existing siblings (node excluded above)
+        # Renumber old siblings if cross-parent: remove gap left by moving node
+        if not same_parent:
+            old_siblings = sorted(
+                [n for n in all_nodes if n.parent_id == old_parent_id and n.id != node_id],
+                key=lambda n: n.display_order,
+            )
+            for i, sib in enumerate(old_siblings):
+                if sib.display_order != i:
+                    sib.display_order = i
+                    sib.updated_at = now
+                    sib.updated_by = actor_id
+                    await self._nodes.save(sib)
+
+        # Shift future siblings to make room at target_pos
+        for sib in future_siblings[target_pos:]:
+            sib.display_order += 1
+            sib.updated_at = now
+            sib.updated_by = actor_id
+            await self._nodes.save(sib)
+
+        # Update the node itself
+        old_prefix = node.materialized_path
+        new_prefix = self._build_path(new_parent_path, node.id)
+        node.parent_id = new_parent_id
+        node.display_order = target_pos
+        node.materialized_path = new_prefix
+        node.updated_at = now
+        node.updated_by = actor_id
+        await self._nodes.save(node)
+
+        # Update descendants' paths
+        for desc in all_nodes:
+            if desc.id == node.id:
+                continue
+            if old_prefix and desc.materialized_path.startswith(old_prefix + "."):
+                desc.materialized_path = new_prefix + desc.materialized_path[len(old_prefix):]
+                desc.updated_at = now
+                desc.updated_by = actor_id
+                await self._nodes.save(desc)
+
+        return node
+
+    # ------------------------------------------------------------------
+    # Atomic sibling reorder (EP-14)
+    # ------------------------------------------------------------------
+
+    async def reorder_siblings(
+        self,
+        *,
+        work_item_id: UUID,
+        parent_id: UUID | None,
+        ordered_ids: list[UUID],
+        actor_id: UUID,
+    ) -> list[TaskNode]:
+        """Atomically reorder all siblings under parent_id.
+
+        ordered_ids must contain EXACTLY all children of parent_id (no more, no less).
+        Raises ValueError with PARTIAL if any sibling is missing.
+        Raises ValueError if any id does not belong to parent_id.
+        """
+        from datetime import UTC, datetime
+
+        all_nodes = await self._nodes.get_by_work_item(work_item_id)
+        actual_siblings = {
+            n.id: n for n in all_nodes if n.parent_id == parent_id
+        }
+
+        provided_set = set(ordered_ids)
+
+        # Check all provided ids are siblings
+        non_siblings = provided_set - actual_siblings.keys()
+        if non_siblings:
+            raise ValueError(
+                f"ids not children of parent_id={parent_id}: {non_siblings}"
+            )
+
+        # Check no sibling is missing (PARTIAL)
+        missing = actual_siblings.keys() - provided_set
+        if missing:
+            raise ValueError(
+                f"PARTIAL: ordered_ids is missing siblings: {missing}"
+            )
+
+        now = datetime.now(UTC)
+        result: list[TaskNode] = []
+        for i, nid in enumerate(ordered_ids):
+            node = actual_siblings[nid]
             node.display_order = i
             node.updated_at = now
             node.updated_by = actor_id

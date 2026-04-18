@@ -44,6 +44,7 @@ def to_domain(row: WorkItemORM) -> WorkItem:
         deleted_at=row.deleted_at,
         exported_at=row.exported_at,
         export_reference=row.export_reference,
+        external_jira_key=row.external_jira_key,
     )
 
 
@@ -82,3 +83,4 @@ def apply_to_orm(entity: WorkItem, row: WorkItemORM, *, workspace_id: UUID) -> N
     row.deleted_at = entity.deleted_at
     row.exported_at = entity.exported_at
     row.export_reference = entity.export_reference
+    row.external_jira_key = entity.external_jira_key

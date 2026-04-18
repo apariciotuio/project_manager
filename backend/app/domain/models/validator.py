@@ -28,6 +28,7 @@ class Validator:
     assigned_at: datetime
     assigned_by: UUID
     responded_at: datetime | None
+    workspace_id: UUID | None = None
 
     def respond(self, new_status: ValidatorStatus) -> None:
         if new_status is ValidatorStatus.PENDING:

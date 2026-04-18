@@ -297,7 +297,7 @@ describe('NewItemPage', () => {
 
   // ─── Parent picker ────────────────────────────────────────────────────────────
 
-  it('parent picker is hidden for initiative type', async () => {
+  it('parent picker is hidden for milestone type', async () => {
     setupHandlers();
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
@@ -306,14 +306,14 @@ describe('NewItemPage', () => {
 
     // Default type is task (child type), so parent picker IS shown
     await waitFor(() => {
-      expect(screen.getByLabelText(/padre/i)).toBeTruthy();
+      expect(screen.getByRole('combobox', { name: /parent/i })).toBeTruthy();
     });
 
-    // Switch to initiative via hidden native select — parent picker should disappear
-    changeSelect(/tipo/, 'initiative');
+    // Switch to milestone — milestone has no valid parent types so picker disappears
+    changeSelect(/tipo/, 'milestone');
 
     await waitFor(() => {
-      expect(screen.queryByLabelText(/padre/i)).toBeNull();
+      expect(screen.queryByRole('combobox', { name: /parent/i })).toBeNull();
     });
   });
 
@@ -327,37 +327,25 @@ describe('NewItemPage', () => {
     // Switch to milestone — no parent picker
     changeSelect(/tipo/, 'milestone');
     await waitFor(() => {
-      expect(screen.queryByLabelText(/padre/i)).toBeNull();
+      expect(screen.queryByRole('combobox', { name: /parent/i })).toBeNull();
     });
 
     // Switch to story — parent picker appears
     changeSelect(/tipo/, 'story');
     await waitFor(() => {
-      expect(screen.getByLabelText(/padre/i)).toBeTruthy();
+      expect(screen.getByRole('combobox', { name: /parent/i })).toBeTruthy();
     });
   });
 
-  it('parent picker lists initiatives and milestones as options', async () => {
+  it('parent picker combobox renders for task type (typeahead, not select)', async () => {
     setupHandlers();
     const NewItemPage = await importPage();
     render(<NewItemPage params={{ slug: 'acme' }} />);
 
     await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
-    // task type is default — parent picker shown
+    // task type is default — parent picker combobox shown
     await waitFor(() => {
-      expect(screen.getByLabelText(/padre/i)).toBeTruthy();
-    });
-
-    // After parent candidates load, they appear as options in the hidden select
-    await waitFor(() => {
-      const allSelects = document.querySelectorAll('select[aria-hidden="true"]');
-      let found = false;
-      for (const sel of allSelects) {
-        if (sel.querySelector('option[value="ini1"]') && sel.querySelector('option[value="ms1"]')) {
-          found = true;
-        }
-      }
-      expect(found).toBe(true);
+      expect(screen.getByRole('combobox', { name: /parent/i })).toBeTruthy();
     });
   });
 
@@ -503,6 +491,96 @@ describe('NewItemPage', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/workspace/acme/items/wi1');
     }, { timeout: 5000 });
+  }, 15000);
+
+  // ─── Submit error ─────────────────────────────────────────────────────────────
+
+  it('shows inline error message when submission fails with 5xx', async () => {
+    setupHandlers();
+    server.use(
+      http.post('http://localhost/api/v1/work-items', () =>
+        HttpResponse.json(
+          { error: { code: 'SERVER_ERROR', message: 'Internal server error' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    const NewItemPage = await importPage();
+    render(<NewItemPage params={{ slug: 'acme' }} />);
+
+    const titleInput = await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
+    await userEvent.type(titleInput, 'Broken item');
+
+    await waitFor(() => {
+      const allSelects = document.querySelectorAll('select[aria-hidden="true"]');
+      let found = false;
+      for (const sel of allSelects) {
+        if (sel.querySelector('option[value="p1"]')) { found = true; break; }
+      }
+      expect(found).toBe(true);
+    }, { timeout: 3000 });
+
+    changeSelect(/proyecto/, 'p1');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^crear$/i })).not.toBeDisabled();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /^crear$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    }, { timeout: 5000 });
+    // Form input is preserved after error
+    expect(screen.getByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i)).toHaveValue('Broken item');
+    // Submit button re-enables after error
+    expect(screen.getByRole('button', { name: /^crear$/i })).not.toBeDisabled();
+  }, 15000);
+
+  it('submit button is disabled while submission is in flight', async () => {
+    let resolvePost!: () => void;
+    const holdPost = new Promise<void>((res) => { resolvePost = res; });
+
+    setupHandlers();
+    server.use(
+      http.post('http://localhost/api/v1/work-items', async () => {
+        await holdPost;
+        return HttpResponse.json({
+          data: { id: 'wi1', title: 'My item', type: 'task', state: 'draft', created_at: new Date().toISOString() },
+        });
+      }),
+    );
+
+    const NewItemPage = await importPage();
+    render(<NewItemPage params={{ slug: 'acme' }} />);
+
+    const titleInput = await screen.findByPlaceholderText(/workspace\.newItem\.fields\.titlePlaceholder/i);
+    await userEvent.type(titleInput, 'Hold item');
+
+    await waitFor(() => {
+      const allSelects = document.querySelectorAll('select[aria-hidden="true"]');
+      let found = false;
+      for (const sel of allSelects) {
+        if (sel.querySelector('option[value="p1"]')) { found = true; break; }
+      }
+      expect(found).toBe(true);
+    }, { timeout: 3000 });
+
+    changeSelect(/proyecto/, 'p1');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^crear$/i })).not.toBeDisabled();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /^crear$/i }));
+
+    // While request is in flight button must be disabled
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /creando|crear/i })).toBeDisabled();
+    });
+
+    resolvePost();
   }, 15000);
 
   // ─── template_id forwarding ───────────────────────────────────────────────────

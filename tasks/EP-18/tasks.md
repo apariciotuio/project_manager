@@ -13,7 +13,7 @@
 | `plan-backend-task` detail pass | PENDING |
 | `plan-frontend-task` detail pass | PENDING |
 | Specialist reviews (arch, sec, back, front, DB) | PENDING |
-| Implementation | PENDING |
+| Implementation | **IN PROGRESS** (2026-04-18) — 9/15 tools shipped end-to-end: `search_work_items`, `read_work_item`, `list_projects`, `list_work_items`, `list_sections`, `create_work_item_draft`, `get_work_item_completeness`, `list_comments`, `list_reviews` (~140 tests total). **Skeleton rot**: `workspace_id=uuid4()` placeholder (no auth wiring — cap 1 BE), MCP SDK not in `pyproject.toml`, `_NoOpCache` stand-in, some existing tools still stubbed. |
 
 ## Capabilities
 

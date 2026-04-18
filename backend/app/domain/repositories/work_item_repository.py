@@ -9,8 +9,10 @@ from uuid import UUID
 from app.domain.models.work_item import WorkItem
 from app.domain.queries.page import Page
 from app.domain.queries.work_item_filters import WorkItemFilters
+from app.domain.queries.work_item_list_filters import WorkItemListFilters
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 
 class IWorkItemRepository(ABC):
@@ -69,3 +71,18 @@ class IWorkItemRepository(ABC):
         self, item_id: UUID, workspace_id: UUID
     ) -> Sequence[OwnershipRecord]:
         """Return ownership records for item, ordered changed_at DESC."""
+
+    @abstractmethod
+    async def list_cursor(
+        self,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+        filters: WorkItemListFilters | None = None,
+    ) -> PaginationResult:
+        """Keyset-paginated list of work items for a workspace.
+
+        Supports full filter/sort surface via WorkItemListFilters.
+        Returns domain WorkItem objects in PaginationResult.rows.
+        """

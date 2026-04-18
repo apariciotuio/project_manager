@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.review import (
@@ -77,6 +77,18 @@ class ReviewRequestRepositoryImpl(IReviewRequestRepository):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [review_request_to_domain(r) for r in rows]
+
+    async def has_open_reviews_for_team(self, team_id: UUID) -> bool:
+        stmt = select(
+            exists().where(
+                and_(
+                    ReviewRequestORM.team_id == team_id,
+                    ReviewRequestORM.status == ReviewStatus.PENDING.value,
+                )
+            )
+        )
+        result = await self._session.execute(stmt)
+        return bool(result.scalar())
 
 
 class ReviewResponseRepositoryImpl(IReviewResponseRepository):

@@ -2,8 +2,8 @@
 
 > **Scope (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search delegated to **Puppet** (see `specs/search/spec.md` + EP-13). No PG FTS, no `search_vector`, no `tsvector`, no GIN index, no denormalized aggregated columns, no Elasticsearch. Listings/filters/sorts stay in SQL.
 
-**Status**: Not started
-**Last updated**: 2026-04-14 (EP polish)
+**Status**: PARTIAL (2026-04-18) — 51/108 FE items shipped (list+filters+search+workspace dashboard). Pending: QuickFilterChips (needs `mine` BE), pipeline/kanban (needs BE endpoints), person/team dashboards (needs BE endpoints), QuickViewPanel, SortControl, SavedFilterPresets, loading.tsx route files, cursor Load-more.
+**Last updated**: 2026-04-18
 
 ---
 

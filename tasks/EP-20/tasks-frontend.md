@@ -29,15 +29,15 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
 
 ## Phase 4 — Red pill
 
-- [x] **P4.1** RED: `__tests__/components/system/red-pill.test.tsx` — 9 tests, RED confirmed (2026-04-17)
-- [x] **P4.2** GREEN: `red-pill.tsx` implemented — Pill icon, 44px touch target, tooltip, aria-label, call order setPrevious→setTheme (2026-04-17)
-- [x] **P4.3** i18n: `theme.redPill.*` keys in both locale files (2026-04-17)
+- [~] **P4.1** RED: `__tests__/components/system/red-pill.test.tsx` — superseded; RedPill as standalone component was not implemented (2026-04-18)
+- [~] **P4.2** GREEN: `red-pill.tsx` — superseded; theme switching UX consolidated into UserMenu dropdown radiogroup (2026-04-18)
+- [~] **P4.3** i18n: `theme.redPill.*` keys added to both locale files — keys exist and are consumed by UserMenu (2026-04-18)
 
 ## Phase 5 — Blue pill
 
-- [x] **P5.1** RED: `__tests__/components/system/blue-pill.test.tsx` — 8 tests, RED confirmed (2026-04-17)
-- [x] **P5.2** GREEN: `blue-pill.tsx` implemented — Pill icon, text-info color, 44px touch target, calls `setTheme(getPreviousTheme())` (2026-04-17)
-- [x] **P5.3** i18n: `theme.bluePill.*` keys added to both locale files (2026-04-17)
+- [~] **P5.1** RED: `__tests__/components/system/blue-pill.test.tsx` — superseded; BluePill as standalone component was not implemented (2026-04-18)
+- [~] **P5.2** GREEN: `blue-pill.tsx` — superseded; previous-theme restore handled inline in UserMenu.handleThemeChange (2026-04-18)
+- [~] **P5.3** i18n: `theme.bluePill.*` keys added to both locale files — keys exist but BluePill component does not (2026-04-18)
 
 ## Phase 6 — Header wiring
 
@@ -56,7 +56,7 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
 - [x] **P8.1** RED: `__tests__/components/system/matrix-rain.test.tsx` — 6 tests, RED confirmed (2026-04-17)
 - [x] **P8.2** GREEN: `matrix-rain.tsx` — canvas, 30fps cap, katakana pool, opacity 0.1, `position: fixed; inset: 0; -z-10; pointer-events-none` (2026-04-17)
 - [x] **P8.3** Tear-down: `cancelAnimationFrame(rafRef.current)` + `removeEventListener` in useEffect cleanup (2026-04-17)
-- [x] **P8.4** `RainToggle` component: visible only in matrix mode, persists via `trinity.setRainEnabled`, rendered in sidebar next to BluePill (2026-04-17)
+- [~] **P8.4** `RainToggle` component: superseded; RainToggle as standalone component was not implemented — rain is toggled via `isRainEnabled`/`setRainEnabled` from trinity with reactive state in MatrixRain (2026-04-18)
 - [x] **P8.5** Note: MatrixRain conditionally renders null when not in matrix — effective lazy-load; added to sidebar as direct import (SSR safe: canvas only created in useEffect) (2026-04-17)
 
 ## Phase 9 — E2E & a11y
@@ -76,7 +76,13 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
 ## Pre-merge gate
 
 - [x] All Phase 1–8 + 9 items checked (Phase 8 shipped in MVP) (2026-04-17)
-- [ ] `code-reviewer` agent run → all Must Fix resolved
+- [x] `code-reviewer` agent run → all Must Fix resolved (2026-04-18)
+  - MF-1: P4.1-4.3, P5.1-5.3, P8.4 marked `[~]` with honest notes — consolidated into UserMenu, components never existed
+  - MF-2: `theme-switcher/` directory + test deleted (3 files); no remaining importers
+  - MF-3: Added `normalizeTheme(theme, resolvedTheme)` helper; removed `as` cast; `resolvedTheme` consumed from `useTheme()`; 2 new tests cover system→dark and system→light paths
+  - SF-1: Removed `export { getPreviousTheme }` from user-menu.tsx; confirmed no importers
+  - SF-2: `matchMedia.addEventListener('change', ...)` in dedicated effect; 2 new reactivity tests
+  - SF-3: `useState(() => isRainEnabled())` + `window.addEventListener('storage', ...)` for cross-component reactivity; 3 new tests (enable/disable/ignore-unrelated)
 - [ ] `review-before-push` run → green
 
 ## Deferred / follow-up

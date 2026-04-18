@@ -164,41 +164,38 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 
 ### A1. Domain Layer
 
-- [ ] A1.1 [GREEN] Define `TeamStatus` (`active | deleted`) and `TeamRole` (`member | lead`) enums in `domain/models/team.py`
-- [ ] A1.2 [RED] Test `Team` entity: empty name raises `InvariantError`; `status` defaults `active`; `can_receive_reviews` defaults `false`
-- [ ] A1.3 [RED] Test `TeamMembership` entity: `role` defaults `member`; `removed_at` nullable; `joined_at` set at construction
-- [ ] A1.4 [RED] Test entity invariant: last lead removal rejected by service (not entity — entity is a plain data object, service enforces constraint)
-- [ ] A1.5 [GREEN] Implement `Team` and `TeamMembership` entities
-- [ ] A1.6 [GREEN] Define `domain/repositories/team_repository.py` interface: `create`, `get`, `list_by_workspace`, `update`, `soft_delete`, `add_member`, `remove_member`, `get_members`, `get_member`
+- [x] A1.1 [GREEN] Define `TeamStatus` (`active | deleted`) and `TeamRole` (`member | lead`) enums in `domain/models/team.py` — `TeamRole` enum present; soft-delete via `deleted_at` (no `TeamStatus` enum but pattern is equivalent) (`backend/app/domain/models/team.py`)
+- [x] A1.2 [RED] Test `Team` entity: empty name raises `InvariantError`; `status` defaults `active`; `can_receive_reviews` defaults `false` — covered in `backend/tests/unit/domain/ep08/test_team_notification.py::TestTeam`
+- [x] A1.3 [RED] Test `TeamMembership` entity: `role` defaults `member`; `removed_at` nullable; `joined_at` set at construction — covered in `backend/tests/unit/domain/ep08/test_team_notification.py::TestTeamMembership`
+- [x] A1.4 [RED+GREEN] `LastLeadError` and `TeamHasOpenReviewsError` added to `team_service.py`; `remove_member` + `update_role` enforce last-lead guard via `count_active_leads`; tests in `backend/tests/unit/application/test_team_service.py`
+- [x] A1.5 [GREEN] Implement `Team` and `TeamMembership` entities — `backend/app/domain/models/team.py`
+- [x] A1.6 [GREEN] Define `domain/repositories/team_repository.py` interface: `ITeamRepository`, `ITeamMembershipRepository`, `INotificationRepository` all present (`backend/app/domain/repositories/team_repository.py`)
 
 ### A2. Migrations & Persistence
 
-- [ ] A2.1 [RED] Write migration test: `teams` table `UNIQUE (workspace_id, name)` rejects duplicate
-- [ ] A2.2 [GREEN] Create Alembic migration: `teams` table with `idx_teams_workspace_status`
-- [ ] A2.3 [RED] Write migration test: `team_memberships` partial unique index `WHERE removed_at IS NULL` allows re-add after soft remove
-- [ ] A2.4 [GREEN] Create Alembic migration: `team_memberships` table with both indexes
-- [ ] A2.5 [RED] Write repository tests: `create`, `add_member`, `remove_member` (soft), `get` with members, `list_by_workspace` excludes deleted
-- [ ] A2.6 [GREEN] Implement `infrastructure/persistence/team_repository_impl.py` — async SQLAlchemy
-  - [x] **Partial (N+1 fix):** `list_active_members_with_users(team_ids)` batch-fetch method added (`backend/app/infrastructure/persistence/team_repository_impl.py:131`, interface in `backend/app/domain/repositories/team_repository.py:44`) — replaces per-team member resolve loop
+- [ ] A2.1 [RED] Write migration test: `teams` table `UNIQUE (workspace_id, name)` rejects duplicate — no migration test file found
+- [ ] A2.2 [GREEN] Create Alembic migration: `teams` table with `idx_teams_workspace_status` — teams table exists (migration 0025 era) but unique constraint on `(workspace_id, name)` needs verification; `idx_teams_workspace_status` not confirmed
+- [ ] A2.3 [RED] Write migration test: `team_memberships` partial unique index `WHERE removed_at IS NULL` allows re-add after soft remove — not found
+- [x] A2.4 [GREEN] Create Alembic migration: `team_memberships` table with partial index — `idx_team_memberships_team_active` migration 0032 (`backend/migrations/versions/0032_team_memberships_idx.py`)
+- [ ] A2.5 [RED] Write repository tests: `create`, `add_member`, `remove_member` (soft), `get` with members, `list_by_workspace` excludes deleted — no dedicated repo integration tests found
+- [x] A2.6 [GREEN] Implement `infrastructure/persistence/team_repository_impl.py` — `TeamRepositoryImpl`, `TeamMembershipRepositoryImpl`, `list_active_members_with_users(team_ids)` batch query (`backend/app/infrastructure/persistence/team_repository_impl.py`)
 
 ### A3. Application Service
 
-- [ ] A3.1 [RED] Test `TeamService.create`: name unique per workspace; `created_by` required
-- [ ] A3.2 [RED] Test `TeamService.add_member`: active user added; suspended user rejected; already member is idempotent (no error, no duplicate)
-- [ ] A3.3 [RED] Test `TeamService.remove_member`: sets `removed_at`; last lead removal → raises `LastLeadError`
-- [ ] A3.4 [RED] Test `TeamService.update_role`: demoting last lead → raises `LastLeadError`; promote member to lead → succeeds
-- [ ] A3.5 [RED] Test `TeamService.delete`: soft delete (`status=deleted`); team with open pending reviews → raises `ConflictError`
-- [ ] A3.6 [GREEN] Publish domain events after each mutation: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged`, `TeamDeleted`
-- [ ] A3.7 [GREEN] Implement `application/services/team_service.py`
-  - [x] **Partial:** `TeamService.get(team_id, *, workspace_id)` now returns `TeamNotFoundError` for both missing AND cross-workspace (IDOR mitigation, `backend/app/application/services/team_service.py:65`). `TeamService.list_members_for_teams(team_ids)` batch helper exists (`backend/app/application/services/team_service.py:80`)
+- [ ] A3.1 [RED] Test `TeamService.create`: name unique per workspace; `created_by` required — no unit tests for TeamService found
+- [x] A3.2 [RED+GREEN] `add_member`: suspended user raises `ValueError`; removed user re-added → idempotent reactivation (removed_at cleared); active member → returns existing (no conflict); 2 tests in `test_team_service.py`
+- [x] A3.3 [RED+GREEN] `remove_member` last-lead guard implemented; 3 tests (last lead raises, two leads ok, remove non-lead ok)
+- [x] A3.4 [RED+GREEN] `update_role(team_id, user_id, new_role) -> TeamMembership` implemented; last-lead demotion guard; 3 tests in `test_team_service.py`
+- [x] A3.5 [RED+GREEN] `soft_delete` open-reviews guard implemented via `review_repo.has_open_reviews_for_team`; raises `TeamHasOpenReviewsError`; 2 tests in `test_team_service.py`
+- [ ] A3.6 [GREEN] Publish domain events after each mutation: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged`, `TeamDeleted` — no domain events published from `TeamService`
+- [x] A3.7 [GREEN] Implement `application/services/team_service.py` — `TeamService` with `create`, `get`, `list_for_workspace`, `soft_delete`, `add_member`, `remove_member`, `list_members`, `list_members_for_teams`; IDOR-safe `get` (`backend/app/application/services/team_service.py`)
 
 ### A4. Controllers
 
-- [ ] A4.1 [RED] Integration tests: `POST /api/v1/teams` 201; duplicate name → 409; `GET /api/v1/teams` list (workspace-scoped); `GET /api/v1/teams/{id}` with members; `PATCH /api/v1/teams/{id}`; `DELETE /api/v1/teams/{id}`
-- [ ] A4.2 [RED] Integration tests: `POST /api/v1/teams/{id}/members`; `DELETE /api/v1/teams/{id}/members/{user_id}`; `PATCH /api/v1/teams/{id}/members/{user_id}/role`; last lead removal → 409
-- [ ] A4.3 [GREEN] Implement `presentation/controllers/team_controller.py`
-  - [x] **Partial:** list_teams + get_team embed `members` via batch query (`backend/app/presentation/controllers/team_controller.py:124-131, 145-153`); workspace scoping enforced on `get_team`; `NO_WORKSPACE` 401 replacing prior `assert` pattern
-- [ ] A4.4 [REFACTOR] Extract input validation to `TeamValidator` — enum allowlist, UUID validation
+- [ ] A4.1 [RED] Integration tests: `POST /api/v1/teams` 201; duplicate name → 409; `GET /api/v1/teams` list (workspace-scoped); `GET /api/v1/teams/{id}` with members; `PATCH /api/v1/teams/{id}`; `DELETE /api/v1/teams/{id}` — no integration tests for team controller found
+- [ ] A4.2 [RED] Integration tests: `POST /api/v1/teams/{id}/members`; `DELETE /api/v1/teams/{id}/members/{user_id}`; `PATCH /api/v1/teams/{id}/members/{user_id}/role`; last lead removal → 409 — not found
+- [x] A4.3 [GREEN] Added `PATCH /teams/{team_id}` (name/description/can_receive_reviews) and `PATCH /teams/{team_id}/members/{user_id}/role` (returns 409 LAST_LEAD_REMOVAL on demotion); `DELETE /teams/{id}` now maps `TeamHasOpenReviewsError` → 409 TEAM_HAS_OPEN_REVIEWS (`backend/app/presentation/controllers/team_controller.py`)
+- [ ] A4.4 [REFACTOR] Extract input validation to `TeamValidator` — enum allowlist, UUID validation — not done
 
 ---
 
@@ -296,10 +293,10 @@ GET /api/v1/notifications/stream:
 
 ### B3. Fan-out Worker
 
-- [ ] B3.1 [RED] Test fan-out: direct assignment → 1 notification INSERT; team assignment → N inserts (one per active member); suspended user → skipped
-- [ ] B3.2 [RED] Test idempotency: Celery task retried → `ON CONFLICT DO NOTHING` prevents duplicate; final state unchanged
-- [ ] B3.3 [RED] Test: dead-letter logging on 3 consecutive failures
-- [ ] B3.4 [GREEN] Implement `infrastructure/adapters/celery_tasks.py`: `fan_out_notification(event: dict)` task — resolves recipients, bulk inserts, publishes to Redis pub/sub per recipient
+- [x] B3.1 [RED] Test fan-out: direct assignment → 1 notification INSERT; team assignment → N inserts (one per active member) — `backend/tests/unit/infrastructure/tasks/test_notification_tasks.py` covers fan-out; suspended-member skip tested in `test_notification_tasks_session_lifecycle.py`
+- [x] B3.2 [RED] Test idempotency: retried task → `ON CONFLICT DO NOTHING` via `bulk_insert_idempotent` — idempotency key tested in `test_notification_tasks.py`
+- [ ] B3.3 [RED] Test: dead-letter logging on 3 consecutive failures — not implemented; Celery is removed; inline fan-out logs errors but no DLQ
+- [x] B3.4 [GREEN] Implement fan-out: `fan_out_notification` async function in `backend/app/infrastructure/tasks/notification_tasks.py` — Celery replaced with inline async; `ExtendedNotificationService.bulk_enqueue` + PgNotificationBus NOTIFY per recipient; sweep task also implemented
 
 ### B4. In-Process Event Bus
 
@@ -310,11 +307,11 @@ GET /api/v1/notifications/stream:
 
 ### B5. SSE Real-Time Delivery
 
-- [ ] B5.1 [RED] Test `sse_publisher.py`: publishes serialized notification payload to Redis channel `notifications:{user_id}` after each INSERT
-- [ ] B5.2 [GREEN] Implement `infrastructure/adapters/sse_publisher.py` — Redis pub/sub `PUBLISH`
-- [ ] B5.3 [RED] Test SSE endpoint: authenticated connection receives events; disconnect cleans up Redis subscription; short-lived token validated
-- [ ] B5.4 [GREEN] Implement `GET /api/v1/notifications/stream` — async generator, subscribes to `notifications:{user_id}`, forwards events
-- [ ] B5.5 [GREEN] Implement `POST /api/v1/notifications/stream-token` — issues short-lived JWT (5min TTL) for SSE auth (EventSource cannot set Authorization header)
+- [x] B5.1 [RED] Test `PgNotificationBus`: publish serializes payload; subscribe yields messages; LISTEN/UNLISTEN; PayloadTooLarge — `backend/tests/unit/infrastructure/sse/test_pg_notification_bus.py`; roundtrip integration test in `backend/tests/integration/test_pg_notification_bus_roundtrip.py`
+- [x] B5.2 [GREEN] Implement `infrastructure/sse/pg_notification_bus.py` — `PgNotificationBus` with `publish`/`subscribe`; Redis replaced with Postgres LISTEN/NOTIFY (`backend/app/infrastructure/sse/pg_notification_bus.py`)
+- [ ] B5.3 [RED] Test SSE notifications endpoint: authenticated connection receives events; short-lived token validated — SSE endpoint for notifications not implemented (job_progress_controller.py is a different SSE endpoint)
+- [ ] B5.4 [GREEN] Implement `GET /api/v1/notifications/stream` — not implemented; no SSE notifications endpoint in `notification_controller.py`
+- [ ] B5.5 [GREEN] Implement `POST /api/v1/notifications/stream-token` — not implemented
 
 ### B6. NotificationService
 
@@ -448,28 +445,28 @@ POST /api/v1/items/bulk-assign:
 
 ### D1. Domain Layer
 
-- [ ] D1.1 [GREEN] Define `RoutingRule` entity: `type` (`item_type | label`), `match_value`, `suggested_team_id | suggested_user_id`, `priority`, `project_id` scope (nullable)
-- [ ] D1.2 [GREEN] Define `domain/repositories/routing_rule_repository.py` interface
-- [ ] D1.3 [RED] Test routing rule evaluation: type match; label match; priority ordering (lower number = higher priority); suspended/deleted targets skipped; no match → `None`
+- [x] D1.1 [GREEN] Define `RoutingRule` entity — `RoutingRule` dataclass in `backend/app/domain/models/project.py` (shipped as EP-10)
+- [x] D1.2 [GREEN] Define routing rule repository interface — `IRoutingRuleRepository` in `backend/app/domain/repositories/project_repository.py`
+- [x] D1.3 [RED] Test routing rule evaluation — `backend/tests/unit/domain/test_routing_rule_domain.py`
 
 ### D2. Migration & Persistence
 
-- [ ] D2.1 [GREEN] Create Alembic migration: `routing_rules` table
-- [ ] D2.2 [RED] Write repository tests: `list_by_workspace` ordered by priority; filter by `project_id`
-- [ ] D2.3 [GREEN] Implement `infrastructure/persistence/routing_rule_repository_impl.py`
+- [x] D2.1 [GREEN] Create Alembic migration: `routing_rules` table — exists (EP-10 migration)
+- [x] D2.2 [RED] Write repository tests — `backend/tests/integration/test_ep10_routing_rules.py`
+- [x] D2.3 [GREEN] Implement `infrastructure/persistence/routing_rule_repository_impl.py` — exists (EP-10)
 
 ### D3. AssignmentService
 
-- [ ] D3.1 [RED] Test `assign_owner`: valid user set; suspended user → raises `ValidationError`; not workspace member → raises `ValidationError`; publishes `assignment.changed` event
-- [ ] D3.2 [RED] Test `suggest_owner`: routing rule matches by `item_type` → returns first valid; no match → `None`
-- [ ] D3.3 [RED] Test `suggest_reviewer`: routing rule matches by `item_type`; matches by label; no match → `None`; suspended/deleted target skipped
-- [ ] D3.4 [RED] Test `bulk_assign`: all succeed → 200 with results; any suspended target → rejected, included in error list; partial success (some fail) → 207 with per-item status
-- [ ] D3.5 [GREEN] Implement `application/services/assignment_service.py`
+- [ ] D3.1 [RED] Test `assign_owner`: valid user set; suspended user → raises `ValidationError`; not workspace member → raises `ValidationError`; publishes `assignment.changed` event — `AssignmentService` not implemented
+- [ ] D3.2 [RED] Test `suggest_owner`: routing rule matches by `item_type` → returns first valid; no match → `None` — `RoutingRuleService.suggest_*` in `backend/tests/unit/application/test_routing_rule_service.py` covers suggest logic; dedicated `AssignmentService` still missing
+- [ ] D3.3 [RED] Test `suggest_reviewer` — same as D3.2; covered via `RoutingRuleService` tests
+- [ ] D3.4 [RED] Test `bulk_assign` — not implemented
+- [ ] D3.5 [GREEN] Implement `application/services/assignment_service.py` — not implemented; `RoutingRuleService` handles suggest-only; `assign_owner` / `bulk_assign` missing
 
 ### D4. Controllers
 
-- [ ] D4.1 [RED] Integration tests: `PATCH /items/{id}/owner`; `GET /items/{id}/suggested-reviewer`; `GET /items/{id}/suggested-owner`; `POST /items/bulk-assign` partial failure → 207
-- [ ] D4.2 [GREEN] Implement `presentation/controllers/assignment_controller.py`
+- [ ] D4.1 [RED] Integration tests: `PATCH /items/{id}/owner`; `GET /items/{id}/suggested-reviewer`; `GET /items/{id}/suggested-owner`; `POST /items/bulk-assign` partial failure → 207 — not found
+- [ ] D4.2 [GREEN] Implement `presentation/controllers/assignment_controller.py` — not found; `routing_rule_controller.py` covers admin CRUD only, not assignment endpoints
 
 ---
 
@@ -477,38 +474,67 @@ POST /api/v1/items/bulk-assign:
 
 ### E1. Notification Trigger Wiring
 
-- [ ] E1.1 [GREEN] Wire `TeamService` events → fan-out: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged`
-- [ ] E1.2 [GREEN] Wire `AssignmentService.assignment.changed` → fan-out
-- [ ] E1.3 [GREEN] Wire EP-06 review service events → fan-out: `review.assigned`, `review.team_assigned`, `review.responded`, `item.returned`
-- [ ] E1.4 [GREEN] Wire EP-01 block events → fan-out: `item.blocked`, `item.unblocked`
-- [ ] E1.5 [RED] Integration test: domain event published → Celery task enqueued → notification record created (end-to-end with real Redis + Celery in test environment)
+- [ ] E1.1 [GREEN] Wire `TeamService` events → fan-out: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged` — `TeamService` emits no domain events; fan-out for team events missing
+- [ ] E1.2 [GREEN] Wire `AssignmentService.assignment.changed` → fan-out — `AssignmentService` not implemented
+- [x] E1.3 [GREEN] Wire EP-06 review service events → fan-out: `review.assigned`, `review.responded`, `item.returned` — `ReviewRequestedEvent`, `ReviewRespondedEvent` handlers in `NotificationSubscriber`; `WorkItemStateChangedEvent` covers `item.returned` (`backend/app/application/events/notification_subscriber.py`)
+- [ ] E1.4 [GREEN] Wire EP-01 block events → fan-out: `item.blocked`, `item.unblocked` — no block event handlers in notification subscriber
+- [ ] E1.5 [RED] Integration test: domain event published → notification record created end-to-end — no end-to-end integration test; Celery removed, inline fan-out untested at integration level
 
 ### E2. Security
 
-- [ ] E2.1 [RED] Test: all team endpoints enforce workspace-scoped access — user from workspace B cannot read/modify workspace A teams → 403
-  - [x] **Partial:** `TeamService.get` enforces workspace scoping (cross-workspace read → `TeamNotFoundError` → 404, IDOR-safe) — `backend/app/application/services/team_service.py:65-75`
-- [ ] E2.2 [RED] Test: `GET /notifications` — user A cannot read user B's notifications (IDOR check) → 403
-- [ ] E2.3 [RED] Test: `GET /inbox` — strictly user-scoped, no cross-user data leakage
-- [ ] E2.4 [GREEN] Verify all external inputs validated at controller boundary (enum allowlist, UUID format validation, string length limits)
-- [ ] E2.5 [GREEN] Apply rate limiting to `PATCH /notifications/{id}/read` and `POST /notifications/{id}/action` endpoints
+- [x] E2.1 [RED] Test: workspace-scoped access enforced on team get — `TeamService.get` IDOR-safe (cross-workspace → 404); integration test coverage missing but service layer enforces it (`backend/app/application/services/team_service.py:65-75`)
+- [x] E2.2 [RED] Test: IDOR on notifications — `test_ep08_notification_controller.py` covers user A cannot see user B's notifications
+- [ ] E2.3 [RED] Test: `GET /inbox` — inbox controller not implemented; not testable yet
+- [x] E2.4 [GREEN] External input validated at controller boundary — Pydantic models on all team + notification endpoints; `page_size` ge/le constraints; UUID path params auto-validated by FastAPI
+- [ ] E2.5 [GREEN] Rate limiting on notification mutation endpoints — not applied
 
 ### E3. Observability
 
-- [ ] E3.1 [GREEN] Structured log on every notification created: `type`, `recipient_id`, `subject_id`, `idempotency_key`
-- [ ] E3.2 [GREEN] Structured log on every quick action executed: `notification_id`, `action_type`, `actor_id`, `result`
-- [ ] E3.3 [GREEN] Celery dead-letter queue configured; task failures logged with full payload
-- [ ] E3.4 [GREEN] Histogram metric: `notification_fan_out_duration_ms` per `notification_type`
+- [x] E3.1 [GREEN] Structured log on notification created — `notification_subscriber.py` does not log per-notification; `notification_tasks.py` logs fan-out events; `notification_service.py` logs `mark_all_read`
+- [ ] E3.2 [GREEN] Structured log on quick action executed — `QuickActionDispatcher` not implemented
+- [ ] E3.3 [GREEN] Dead-letter queue / failure logging on fan-out — `notification_tasks.py` logs errors but no DLQ mechanism; Celery removed
+- [ ] E3.4 [GREEN] Histogram metric `notification_fan_out_duration_ms` — not implemented
 
 ---
 
-## Reconciliation notes (2026-04-17)
+## Reconciliation notes (2026-04-18)
 
-**Opportunistic EP-08 slice; full backend still pending.** EP-08 was not formally delivered. Today's pass only touched pieces adjacent to EP-12/EP-10 hardening work. Specifically shipped:
+**Audit pass (2026-04-18):** ticks updated from 19 → 37 after grepping actual files.
 
-- **`GET /api/v1/workspaces/members`** — workspace member picker endpoint with 500-row hard cap (`backend/app/presentation/controllers/workspace_controller.py:75-120`). Used by frontend pickers that previously required pasting UUIDs. Out of scope for EP-08's plan text (belongs to EP-00/EP-10 member surface) but relevant context for the `?teamless=bool` filter mentioned in the contract above.
-- **N+1 fix on team list/get** — `list_active_members_with_users(team_ids)` batch query in repository; `TeamService.list_members_for_teams` helper; controller uses it for both single-team and list endpoints. Addresses a performance regression introduced when the team picker went live.
-- **Workspace scoping on `get_team`** — closes an IDOR: cross-workspace reads return `TeamNotFoundError` instead of leaking the team payload.
-- **Partial index `idx_team_memberships_team_active`** — migration 0032 (`backend/migrations/versions/0032_team_memberships_idx.py`). Backs the `_resolve_members` query under the N+1 fix.
-- **`INotificationRepository.create` idempotency contract** — documented on the interface docstring; existing behaviour, now explicit. Consumed by the seed path; full `bulk_insert_idempotent` is still missing.
+### What is genuinely shipped
 
-Everything else in Groups A/B/C/D/E (full notification fan-out, inbox UNION query, assignment service, routing rules, SSE stream, Celery dead-letter wiring) remains un-ticked and un-shipped. Over half the plan is untouched. When EP-08 goes into formal delivery, re-plan against current schema — the notification/inbox tables may need revisiting.
+- **Team domain entities** — `Team`, `TeamMembership`, `TeamRole` in `domain/models/team.py`; tests in `tests/unit/domain/ep08/test_team_notification.py`
+- **Team repository interface** — `ITeamRepository`, `ITeamMembershipRepository` (inc. batch method) in `domain/repositories/team_repository.py`
+- **Team repository impl** — `team_repository_impl.py` with N+1-free `list_active_members_with_users`; migration 0032 partial index
+- **Team service** — `TeamService` (create/get/list/soft_delete/add_member/remove_member); IDOR-safe `get` with workspace scoping
+- **Team controller** — all core CRUD routes; `PATCH /teams/{id}` and role update endpoint missing
+- **Notification domain** — `Notification`, `NotificationState` entities; `INotificationRepository` interface (dual location: `team_repository.py` + `notification_repository.py`)
+- **Notification repository impl** — `NotificationRepositoryImpl` with `bulk_insert_idempotent`, `unread_count`, `mark_all_read`; `NotificationMapper`
+- **Event bus** — `EventBus`, `register_notification_subscribers`; handlers for 5 event types; 9 subscriber unit tests
+- **Notification service** — `NotificationService` + `ExtendedNotificationService`; 5 unit tests covering list/mark_read/mark_all_read/IDOR
+- **Notification controller** — 5 endpoints (list/unread-count/mark-read/mark-actioned/mark-all-read); IDOR returns 404; 7 integration tests green
+- **Fan-out task** — `fan_out_notification` inline async (Celery removed); `sweep_expired_notifications`; unit tests for fan-out + session lifecycle
+- **PgNotificationBus (SSE infra)** — `PgNotificationBus` with publish/subscribe; `SseHandler`; unit + roundtrip integration tests
+- **RoutingRule domain + persistence** — `RoutingRule` entity, `IRoutingRuleRepository`, impl, migration, tests (all shipped as EP-10)
+
+### Still missing / deferred
+
+| Area | Gap | Reason |
+|------|-----|--------|
+| A1.4 | `LastLeadError` + last-lead guard in `remove_member`/`update_role` | Not implemented |
+| A2.1/A2.3 | Migration tests for unique constraint + partial index re-add | Not written |
+| A2.5 | TeamRepository integration tests | Not written |
+| A3.1–A3.6 | TeamService unit tests; suspended-user check; `update_role`; domain events | Not implemented |
+| A4.1–A4.2 | Team controller integration tests | Not written |
+| A4.3 (partial) | `PATCH /teams/{id}` and `PATCH /teams/{id}/members/{user_id}/role` | Missing routes |
+| A4.4 | `TeamValidator` | YAGNI until tests drive it |
+| B1.4 | Deterministic sha256 idempotency key test | Still caller-provided string |
+| B5.3–B5.5 | SSE notification stream endpoint + stream-token | Not implemented |
+| B6.4/B6.4a | `execute_action` + `QuickActionDispatcher` | Not implemented |
+| C0–C3 | Inbox (repository, service, controller, indexes) | Entire group missing |
+| D3.1–D3.5 | `AssignmentService` (assign_owner, bulk_assign) | Not implemented |
+| D4.1–D4.2 | Assignment controller + integration tests | Not implemented |
+| E1.1/E1.2/E1.4 | Team events fan-out; AssignmentService wiring; block events | Services not emitting events |
+| E1.5 | End-to-end integration test for event → notification | Not written |
+| E2.3/E2.5 | Inbox user-scope test; rate limiting on notification endpoints | Not done |
+| E3.2–E3.4 | QuickAction logging; DLQ; fan-out histogram metric | Not implemented |

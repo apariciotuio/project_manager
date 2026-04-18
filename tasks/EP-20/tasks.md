@@ -27,8 +27,8 @@ Frontend-only. Extends EP-19 (Design System).
 | Phase 9 — E2E & a11y | **COMPLETED** (2026-04-17) — 4 new E2E tests pass; axe-playwright deferred |
 | Phase 10 — Cleanup & docs | **COMPLETED** (2026-04-17) — Storybook addon deferred |
 | Frontend implementation | **COMPLETED** (2026-04-17) |
-| code-review | Not started |
-| review-before-push | Not started |
+| code-review | **COMPLETED** (2026-04-18) — 3 MF (dead code ThemeSwitcher, pill/rain components not implemented vs plan, unsafe cast) + 3 SF (re-export, MatrixRain reduced-motion listener, rainEnabled reactivity) + 3 Nitpick; all MF+SF resolved by fix agent |
+| review-before-push | Not started (user requested no push yet) |
 
 ## Dependencies
 

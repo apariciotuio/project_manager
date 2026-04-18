@@ -1,7 +1,7 @@
 """EP-08 — TeamService + NotificationService."""
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 from uuid import UUID
 
@@ -12,6 +12,7 @@ from app.domain.repositories.team_repository import (
     ITeamMembershipRepository,
     ITeamRepository,
 )
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 
 class TeamNotFoundError(LookupError):
@@ -34,15 +35,27 @@ class NotificationNotFoundError(LookupError):
     pass
 
 
+class LastLeadError(ValueError):
+    """Raised when the last lead of a team would be removed or demoted."""
+
+
+class TeamHasOpenReviewsError(ValueError):
+    """Raised when a team with open pending reviews is deleted."""
+
+
 class TeamService:
     def __init__(
         self,
         *,
         team_repo: ITeamRepository,
         membership_repo: ITeamMembershipRepository,
+        review_repo: object | None = None,
+        is_user_suspended: Callable[[UUID], bool] | None = None,
     ) -> None:
         self._teams = team_repo
         self._memberships = membership_repo
+        self._review_repo = review_repo
+        self._is_user_suspended = is_user_suspended or (lambda _: False)
 
     async def create(
         self,
@@ -93,6 +106,12 @@ class TeamService:
             raise TeamNotFoundError(f"team {team_id} not found")
         if team.deleted_at is not None:
             raise TeamAlreadyDeletedError(f"team {team_id} already deleted")
+        if self._review_repo is not None:
+            has_open = await self._review_repo.has_open_reviews_for_team(team_id)
+            if has_open:
+                raise TeamHasOpenReviewsError(
+                    f"team {team_id} has open pending reviews and cannot be deleted"
+                )
         team.soft_delete()
         return await self._teams.save(team)
 
@@ -106,11 +125,18 @@ class TeamService:
         team = await self._teams.get(team_id)
         if team is None:
             raise TeamNotFoundError(f"team {team_id} not found")
-        existing = await self._memberships.get_active(team_id, user_id)
-        if existing is not None:
-            raise MembershipAlreadyExistsError(
-                f"user {user_id} is already a member of team {team_id}"
-            )
+        if self._is_user_suspended(user_id):
+            raise ValueError(f"user {user_id} is suspended and cannot receive team assignments")
+        existing_active = await self._memberships.get_active(team_id, user_id)
+        if existing_active is not None:
+            # Idempotent: already active member, no-op
+            return existing_active
+        # Re-activation: check for a removed membership to reuse
+        if hasattr(self._memberships, "get_any"):
+            any_membership = await self._memberships.get_any(team_id, user_id)
+            if any_membership is not None and any_membership.removed_at is not None:
+                any_membership.removed_at = None
+                return await self._memberships.save(any_membership)
         membership = TeamMembership.create(team_id=team_id, user_id=user_id, role=role)
         return await self._memberships.add_member(membership)
 
@@ -120,7 +146,35 @@ class TeamService:
             raise MembershipNotFoundError(
                 f"user {user_id} is not an active member of team {team_id}"
             )
+        if membership.role == TeamRole.LEAD:
+            lead_count = await self._memberships.count_active_leads(team_id)
+            if lead_count <= 1:
+                raise LastLeadError(
+                    f"cannot remove the last lead from team {team_id}"
+                )
         membership.remove()
+        return await self._memberships.save(membership)
+
+    async def update_role(
+        self,
+        *,
+        team_id: UUID,
+        user_id: UUID,
+        new_role: TeamRole,
+    ) -> TeamMembership:
+        membership = await self._memberships.get_active(team_id, user_id)
+        if membership is None:
+            raise MembershipNotFoundError(
+                f"user {user_id} is not an active member of team {team_id}"
+            )
+        # Guard: demoting a lead when they are the last one
+        if membership.role == TeamRole.LEAD and new_role != TeamRole.LEAD:
+            lead_count = await self._memberships.count_active_leads(team_id)
+            if lead_count <= 1:
+                raise LastLeadError(
+                    f"cannot demote the last lead of team {team_id}"
+                )
+        membership.role = new_role
         return await self._memberships.save(membership)
 
     async def list_members(self, team_id: UUID) -> list[TeamMembership]:
@@ -169,6 +223,21 @@ class NotificationService:
     ) -> Page[Notification]:
         return await self._notifications.list_unread_for_user(
             user_id, workspace_id, page, page_size
+        )
+
+    async def list_inbox_cursor(
+        self,
+        *,
+        user_id: UUID,
+        workspace_id: UUID,
+        cursor: PaginationCursor | None,
+        page_size: int,
+    ) -> PaginationResult:
+        return await self._notifications.list_inbox_cursor(
+            user_id,
+            workspace_id,
+            cursor=cursor,
+            page_size=page_size,
         )
 
     async def mark_read(self, notification_id: UUID) -> Notification:

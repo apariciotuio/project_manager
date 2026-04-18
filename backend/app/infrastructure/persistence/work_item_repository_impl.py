@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import sqlalchemy as sa
 from app.domain.exceptions import InvalidWorkItemError, UserNotFoundError
 from app.domain.models.work_item import WorkItem
 from app.domain.queries.page import Page
@@ -17,6 +18,9 @@ from app.domain.queries.work_item_filters import WorkItemFilters
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
+from app.domain.pagination import PaginationCursor as DomainPaginationCursor
+from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 from app.infrastructure.persistence.mappers import (
     ownership_record_mapper,
     state_transition_mapper,
@@ -178,6 +182,77 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
         rows = (await self._session.execute(stmt)).scalars().all()
         return [ownership_record_mapper.to_domain(r) for r in rows]
 
+    async def list_cursor(
+        self,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+        filters: WorkItemListFilters | None = None,
+    ) -> PaginationResult:
+        from app.application.services.work_item_list_service import WorkItemListQueryBuilder
+
+        if filters is None:
+            filters = WorkItemListFilters()
+
+        # Encode the infra cursor (id, created_at) into a domain cursor
+        # (sort_value, last_id) so WorkItemListQueryBuilder can apply keyset.
+        # Default sort is updated_desc — but list_cursor is invoked from the
+        # controller which now passes the sort from filters, so we use whatever
+        # sort the filters specify. For the (id, created_at) infra cursor coming
+        # from old callers: they are no longer produced — the controller now
+        # produces domain cursors.  cursor param here is always None (no infra
+        # cursor) or a DomainPaginationCursor re-cast via the controller.
+        # We piggyback the domain cursor into filters.cursor (already a str).
+        # The builder decodes filters.cursor internally via PaginationCursor.decode.
+
+        builder = WorkItemListQueryBuilder(workspace_id=workspace_id, filters=filters)
+        stmt = builder.build_stmt()
+
+        rows = (await self._session.execute(stmt)).scalars().all()
+        has_next = len(rows) > page_size
+        if has_next:
+            rows = rows[:page_size]
+
+        next_cursor: str | None = None
+        if has_next and rows:
+            last = rows[-1]
+            sort = filters.sort
+            if sort == SortOption.updated_desc or sort == SortOption.updated_asc:
+                from datetime import timezone
+                ts = last.updated_at
+                if ts is not None and ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                sv: object = ts.isoformat() if ts else ""
+            elif sort == SortOption.created_desc:
+                from datetime import timezone
+                ts = last.created_at
+                if ts is not None and ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                sv = ts.isoformat() if ts else ""
+            elif sort == SortOption.title_asc:
+                sv = last.title
+            elif sort == SortOption.completeness_desc:
+                sv = last.completeness_score or 0
+            else:
+                from datetime import timezone
+                ts = last.created_at
+                if ts is not None and ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                sv = ts.isoformat() if ts else ""
+
+            from uuid import UUID as _UUID
+            next_cursor = DomainPaginationCursor(
+                sort_value=sv,
+                last_id=_UUID(str(last.id)),
+            ).encode()
+
+        return PaginationResult(
+            rows=[work_item_mapper.to_domain(r) for r in rows],
+            has_next=has_next,
+            next_cursor=next_cursor,
+        )
+
 
 def _build_values(item: WorkItem, workspace_id: UUID) -> dict[str, object]:
     return {
@@ -208,6 +283,7 @@ def _build_values(item: WorkItem, workspace_id: UUID) -> dict[str, object]:
         "deleted_at": item.deleted_at,
         "exported_at": item.exported_at,
         "export_reference": item.export_reference,
+        "external_jira_key": item.external_jira_key,
     }
 
 

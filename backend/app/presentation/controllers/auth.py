@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import UUID
@@ -102,6 +103,23 @@ def _set_refresh_cookie(
     )
 
 
+def _set_csrf_cookie(response: Response, max_age_seconds: int, *, secure: bool) -> None:
+    """Emit a non-HttpOnly CSRF token cookie (double-submit cookie pattern).
+
+    JS reads this value and sends it back as X-CSRF-Token on state-changing requests.
+    CSRFMiddleware compares header == cookie via hmac.compare_digest.
+    """
+    response.set_cookie(
+        key="csrf_token",
+        value=secrets.token_urlsafe(32),
+        max_age=max_age_seconds,
+        httponly=False,  # JS must read this to inject the header
+        secure=secure,
+        samesite="strict",
+        path="/",
+    )
+
+
 def _clear_cookies(response: Response, *, secure: bool = False) -> None:
     response.delete_cookie(
         ACCESS_TOKEN_COOKIE,
@@ -199,6 +217,7 @@ async def google_callback(
     _set_refresh_cookie(
         response, tokens.refresh_token, refresh_ttl, secure=secure_cookies
     )
+    _set_csrf_cookie(response, access_ttl, secure=secure_cookies)
     return response
 
 
@@ -261,6 +280,7 @@ async def refresh_token(
     _set_access_cookie(
         response, pair.access_token, access_ttl, secure=secure_cookies
     )
+    _set_csrf_cookie(response, access_ttl, secure=secure_cookies)
     return {
         "data": {
             "access_token_expires_at": pair.access_token_expires_at.isoformat(),
@@ -300,6 +320,7 @@ async def logout(
 @auth_limiter.limit(AUTH_LIMIT)
 async def me(
     request: Request,
+    response: Response,
     user: CurrentUser = Depends(get_current_user),
     users: UserRepositoryImpl = Depends(get_user_repo),
     workspaces: WorkspaceRepositoryImpl = Depends(get_workspace_repo),
@@ -310,6 +331,11 @@ async def me(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=_error("INVALID_TOKEN", "user no longer exists"),
         )
+    # Bootstrap CSRF cookie for sessions that predate CSRF middleware rollout
+    # or that lost the cookie. Cheap idempotent side-effect on any /me call.
+    if not request.cookies.get("csrf_token"):
+        secure_cookies = request.url.scheme == "https"
+        _set_csrf_cookie(response, max_age_seconds=60 * 60 * 24, secure=secure_cookies)
     workspace_slug: str | None = None
     if user.workspace_id:
         ws = await workspaces.get_by_id(user.workspace_id)

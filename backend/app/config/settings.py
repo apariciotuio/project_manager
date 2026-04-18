@@ -1,8 +1,10 @@
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_PRODUCTION_ENVS = frozenset({"production", "prod"})
 
 
 def _csv_to_list(value: object) -> object:
@@ -52,23 +54,19 @@ class DatabaseSettings(BaseSettings):
     max_overflow: int = 20
 
 
-class CelerySettings(BaseSettings):
-    """Celery config. Broker is Postgres via SQLAlchemy; final broker choice lands at M2."""
-
-    model_config = SettingsConfigDict(env_prefix="CELERY_", env_file=".env", extra="ignore")
-
-    broker_url: str = "sqla+postgresql+psycopg://wmp:wmp@localhost:17000/wmp"
-    result_backend: str = "db+postgresql+psycopg://wmp:wmp@localhost:17000/wmp"
-    task_always_eager: bool = True
+_AUTH_JWT_SECRET_SENTINEL = "change-me-in-prod-use-32-chars-or-more-please"
 
 
 class AuthSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AUTH_", env_file=".env", extra="ignore")
 
+    # Read APP_ENV without the AUTH_ prefix via alias
+    app_env: str = Field(default="dev", alias="APP_ENV")
+
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:17004/api/v1/auth/google/callback"
-    jwt_secret: str = "change-me-in-prod-use-32-chars-or-more-please"
+    jwt_secret: str = _AUTH_JWT_SECRET_SENTINEL
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "wmp"
     jwt_audience: str = "wmp-web"
@@ -84,54 +82,103 @@ class AuthSettings(BaseSettings):
         "allowed_domains", "seed_superadmin_emails", mode="before"
     )(_csv_to_list)
 
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "AuthSettings":
+        if self.app_env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError  # deferred — avoids circular at module load
+        if self.jwt_secret == _AUTH_JWT_SECRET_SENTINEL:
+            raise ConfigurationError("jwt_secret")
+        return self
+
+
+_DUNDUN_API_KEY_SENTINEL = "dev-fake-key"
+_DUNDUN_CALLBACK_SECRET_SENTINEL = "dev-callback-secret"
+
 
 class DundunSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DUNDUN_", env_file=".env", extra="ignore")
 
+    app_env: str = Field(default="dev", alias="APP_ENV")
+
     base_url: str = "http://localhost:17006"
-    api_key: str = "dev-fake-key"
+    api_key: str = _DUNDUN_API_KEY_SENTINEL
     service_key: str = "dev-service-key"
     use_fake: bool = True
     callback_url: str = "http://localhost:17004/api/v1/dundun/callback"
-    callback_secret: str = "dev-callback-secret"
+    callback_secret: str = _DUNDUN_CALLBACK_SECRET_SENTINEL
     http_timeout: float = 30.0
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "DundunSettings":
+        if self.app_env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError
+        if self.api_key == _DUNDUN_API_KEY_SENTINEL:
+            raise ConfigurationError("api_key")
+        if self.callback_secret == _DUNDUN_CALLBACK_SECRET_SENTINEL:
+            raise ConfigurationError("callback_secret")
+        return self
+
+
+_PUPPET_API_KEY_SENTINEL = "dev-fake-key"
+_PUPPET_CALLBACK_SECRET_SENTINEL = "dev-puppet-callback-secret"
 
 
 class PuppetSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PUPPET_", env_file=".env", extra="ignore")
 
+    app_env: str = Field(default="dev", alias="APP_ENV")
+
     base_url: str = "http://localhost:17007"
-    api_key: str = "dev-fake-key"
+    api_key: str = _PUPPET_API_KEY_SENTINEL
     service_key: str = "dev-service-key"
-    callback_secret: str = "dev-puppet-callback-secret"
+    callback_secret: str = _PUPPET_CALLBACK_SECRET_SENTINEL
     use_fake: bool = True
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "PuppetSettings":
+        if self.app_env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError
+        if self.api_key == _PUPPET_API_KEY_SENTINEL:
+            raise ConfigurationError("api_key")
+        if self.callback_secret == _PUPPET_CALLBACK_SECRET_SENTINEL:
+            raise ConfigurationError("callback_secret")
+        return self
+
+
+_JIRA_API_TOKEN_SENTINEL = "dev-jira-token"
 
 
 class JiraSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="JIRA_", env_file=".env", extra="ignore")
 
+    app_env: str = Field(default="dev", alias="APP_ENV")
+
     base_url: str = ""
+    email: str = ""
+    api_token: SecretStr = SecretStr(_JIRA_API_TOKEN_SENTINEL)
     encryption_key: str = ""
 
-
-class RedisSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="REDIS_", env_file=".env", extra="ignore")
-
-    url: str = "redis://localhost:6379/0"
-    template_cache_ttl_seconds: int = 300  # 5 minutes
-    use_fake: bool = False  # dev/test: use in-memory cache instead of Redis
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "JiraSettings":
+        if self.app_env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError
+        if self.api_token.get_secret_value() == _JIRA_API_TOKEN_SENTINEL:
+            raise ConfigurationError("jira.api_token")
+        return self
 
 
 class Settings:
     def __init__(self) -> None:
         self.app = AppSettings()
         self.database = DatabaseSettings()
-        self.celery = CelerySettings()
         self.auth = AuthSettings()
         self.dundun = DundunSettings()
         self.puppet = PuppetSettings()
         self.jira = JiraSettings()
-        self.redis = RedisSettings()
 
 
 @lru_cache(maxsize=1)

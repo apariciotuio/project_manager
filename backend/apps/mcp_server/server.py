@@ -43,8 +43,38 @@ def _build_tool_list() -> list[dict[str, Any]]:
                 "properties": {
                     "state": {"type": "string", "description": "Filter by state"},
                     "type": {"type": "string", "description": "Filter by type"},
-                    "limit": {"type": "integer", "default": 20},
+                    "project_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Filter by project UUID",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 100,
+                        "default": 50,
+                        "description": "Maximum number of results (capped at 100)",
+                    },
                 },
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "list_sections",
+            "description": (
+                "List all specification sections for a work item. "
+                "Returns id, title, section_type, completeness flag, and first 200 chars of content."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "work_item_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID of the work item",
+                    },
+                },
+                "required": ["work_item_id"],
+                "additionalProperties": False,
             },
         },
         {
@@ -137,15 +167,96 @@ def _build_tool_list() -> list[dict[str, Any]]:
             },
         },
         {
-            "name": "search_work_items",
-            "description": "Full-text search across work items via Puppet",
+            "name": "read_work_item",
+            "description": (
+                "Fetch a single work item by ID with full detail: scalar fields, "
+                "all section bodies (truncated to 2000 chars each), completeness score, "
+                "and Jira key. Use this to deeply reason about a specific item."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string"},
-                    "limit": {"type": "integer", "default": 10},
+                    "work_item_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID of the work item to fetch",
+                    },
+                },
+                "required": ["work_item_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "create_work_item_draft",
+            "description": (
+                "Create a pre-creation WorkItemDraft in the workspace. "
+                "Draft is a floating intake entity — not yet a committed work item."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 200,
+                        "description": "Draft title (3-200 chars)",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional description",
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Optional work item type hint",
+                    },
+                },
+                "required": ["title"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_work_item_completeness",
+            "description": (
+                "Get completeness score and dimension breakdown for a work item. "
+                "Returns overall_score and per-dimension sections with missing_fields hints."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "work_item_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID of the work item",
+                    },
+                },
+                "required": ["work_item_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "search_work_items",
+            "description": (
+                "Search work items by title/description text within a workspace. "
+                "Returns up to `limit` items with id, title, state, type, url, and excerpt."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Free-text search term",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "minimum": 1,
+                        "maximum": 50,
+                        "description": "Maximum number of results",
+                    },
                 },
                 "required": ["query"],
+                "additionalProperties": False,
             },
         },
         {
@@ -170,6 +281,56 @@ def _build_tool_list() -> list[dict[str, Any]]:
             "inputSchema": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+        {
+            "name": "list_comments",
+            "description": (
+                "List all comments for a work item. "
+                "Returns id, author, body, created_at, resolved flag, and optional section_id. "
+                "Optionally filter by section_id."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "work_item_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID of the work item",
+                    },
+                    "section_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Optional UUID of the section to filter comments by",
+                    },
+                },
+                "required": ["work_item_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "list_reviews",
+            "description": (
+                "List review requests for a work item. "
+                "By default returns only pending requests. "
+                "Set include_resolved=true to include closed and cancelled reviews."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "work_item_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID of the work item",
+                    },
+                    "include_resolved": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include closed and cancelled reviews (default: false)",
+                    },
+                },
+                "required": ["work_item_id"],
+                "additionalProperties": False,
             },
         },
         {
@@ -217,21 +378,88 @@ async def _handle_tool_call(
 
         await with_workspace(session, workspace_id)
 
-        if name == "list_work_items":
+        if name == "create_work_item_draft":
+            from apps.mcp_server.tools.create_work_item_draft import handle_create_work_item_draft
+            from app.application.services.draft_service import DraftService
+            from app.infrastructure.persistence.work_item_draft_repository_impl import (
+                WorkItemDraftRepositoryImpl,
+            )
             from app.infrastructure.persistence.work_item_repository_impl import (
                 WorkItemRepositoryImpl,
             )
-            from app.domain.queries.work_item_filters import WorkItemFilters
 
-            repo = WorkItemRepositoryImpl(session)
-            filters = WorkItemFilters(
-                state=arguments.get("state"),
-                type=arguments.get("type"),
-                page_size=arguments.get("limit", 20),
+            svc = DraftService(
+                draft_repo=WorkItemDraftRepositoryImpl(session),
+                work_item_repo=WorkItemRepositoryImpl(session),
             )
-            # Use a dummy project_id — MCP lists across all projects
-            result = []  # Simplified: return empty for now, real impl fetches
-            return json.dumps({"items": result, "tool": name})
+            result_data = await handle_create_work_item_draft(
+                arguments=arguments,
+                workspace_id=workspace_id,
+                actor_id=user_id,
+                service=svc,
+            )
+            return json.dumps(result_data)
+
+        if name == "get_work_item_completeness":
+            from apps.mcp_server.tools.get_work_item_completeness import (
+                handle_get_work_item_completeness,
+            )
+            from app.application.services.completeness_service import CompletenessService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
+            from app.infrastructure.persistence.section_repository_impl import (
+                ValidatorRepositoryImpl,
+            )
+            from app.domain.ports.cache import ICache
+
+            class _NoOpCache(ICache):
+                async def get(self, key: str) -> str | None:
+                    return None
+
+                async def set(self, key: str, value: str, ttl_seconds: int) -> None:
+                    pass
+
+                async def delete(self, key: str) -> None:
+                    pass
+
+            svc = CompletenessService(
+                work_item_repo=WorkItemRepositoryImpl(session),
+                section_repo=SectionRepositoryImpl(session),
+                validator_repo=ValidatorRepositoryImpl(session),
+                cache=_NoOpCache(),
+            )
+            result_data = await handle_get_work_item_completeness(
+                arguments=arguments,
+                workspace_id=workspace_id,
+                service=svc,
+            )
+            return json.dumps(result_data)
+
+        if name == "list_work_items":
+            from apps.mcp_server.tools.list_work_items import handle_list_work_items
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            result_data = await handle_list_work_items(arguments, svc, workspace_id)
+            return json.dumps(result_data)
 
         if name == "get_work_item":
             from app.infrastructure.persistence.work_item_repository_impl import (
@@ -249,6 +477,154 @@ async def _handle_tool_call(
                 "state": item.state,
                 "completeness_score": item.completeness_score,
             })
+
+        if name == "search_work_items":
+            from apps.mcp_server.tools.search_work_items import handle_search_work_items
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            search_args = {**arguments, "workspace_id": str(workspace_id)}
+            base_url = settings.frontend_base_url if hasattr(settings, "frontend_base_url") else ""
+            results = await handle_search_work_items(search_args, svc, base_url=base_url)
+            return json.dumps({"items": results, "count": len(results)})
+
+        if name == "read_work_item":
+            from apps.mcp_server.tools.read_work_item import handle_read_work_item
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+            from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            section_repo = SectionRepositoryImpl(session)
+            read_args = {**arguments, "workspace_id": str(workspace_id)}
+            result_data = await handle_read_work_item(read_args, svc, section_repo)
+            return json.dumps(result_data)
+
+        if name == "list_sections":
+            from apps.mcp_server.tools.list_sections import handle_list_sections
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+            from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            section_repo = SectionRepositoryImpl(session)
+            result_data = await handle_list_sections(arguments, svc, section_repo, workspace_id)
+            return json.dumps(result_data)
+
+        if name == "list_projects":
+            from apps.mcp_server.tools.list_projects import handle_list_projects
+            from app.application.services.project_service import ProjectService
+            from app.infrastructure.persistence.project_repository_impl import (
+                ProjectRepositoryImpl,
+                RoutingRuleRepositoryImpl,
+            )
+
+            svc = ProjectService(
+                project_repo=ProjectRepositoryImpl(session),
+                routing_rule_repo=RoutingRuleRepositoryImpl(session),
+            )
+            result_data = await handle_list_projects(workspace_id=workspace_id, service=svc)
+            return json.dumps(result_data)
+
+        if name == "list_comments":
+            from apps.mcp_server.tools.list_comments import handle_list_comments
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+            from app.infrastructure.persistence.comment_repository_impl import CommentRepositoryImpl
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            comment_repo = CommentRepositoryImpl(session)
+            result_data = await handle_list_comments(arguments, svc, comment_repo, workspace_id)
+            return json.dumps(result_data)
+
+        if name == "list_reviews":
+            from apps.mcp_server.tools.list_reviews import handle_list_reviews
+            from app.application.services.work_item_service import WorkItemService
+            from app.infrastructure.persistence.work_item_repository_impl import (
+                WorkItemRepositoryImpl,
+            )
+            from app.application.services.audit_service import AuditService
+            from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+            from app.application.events.event_bus import EventBus
+            from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+            from app.infrastructure.persistence.workspace_membership_repository_impl import (
+                WorkspaceMembershipRepositoryImpl,
+            )
+            from app.infrastructure.persistence.review_repository_impl import (
+                ReviewRequestRepositoryImpl,
+            )
+
+            svc = WorkItemService(
+                work_items=WorkItemRepositoryImpl(session),
+                users=UserRepositoryImpl(session),
+                memberships=WorkspaceMembershipRepositoryImpl(session),
+                audit=AuditService(AuditRepositoryImpl(session)),
+                events=EventBus(),
+            )
+            review_repo = ReviewRequestRepositoryImpl(session)
+            result_data = await handle_list_reviews(arguments, svc, review_repo, workspace_id)
+            return json.dumps(result_data)
 
         if name in (
             "get_specification",

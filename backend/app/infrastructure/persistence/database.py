@@ -12,6 +12,7 @@ def get_engine() -> AsyncEngine:
         # Deferred import so tests can monkeypatch `app.config.settings.get_settings`
         # without being defeated by a stale module-level binding captured here.
         from app.config.settings import get_settings
+        from app.infrastructure.db.query_counter import register_query_counter
 
         settings = get_settings()
         _engine = create_async_engine(
@@ -22,6 +23,7 @@ def get_engine() -> AsyncEngine:
             pool_recycle=1800,
             echo=settings.app.debug,
         )
+        register_query_counter(_engine, environment=settings.app.env)
     return _engine
 
 

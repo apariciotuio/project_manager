@@ -15,6 +15,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 ERROR_CODES: dict[str, int] = {
+    "CONFIGURATION_ERROR": 500,
     "VALIDATION_ERROR": 400,
     "INVALID_INPUT": 400,
     "UNAUTHORIZED": 401,
@@ -132,3 +133,13 @@ class InvalidInputError(DomainError):
 
     def __init__(self, message: str, *, field: str | None = None) -> None:
         super().__init__(message, field=field)
+
+
+class ConfigurationError(DomainError):
+    """Raised at startup when a required configuration value is missing or uses a sentinel default."""
+
+    code = "CONFIGURATION_ERROR"
+
+    def __init__(self, variable_name: str, reason: str = "required in production but not set") -> None:
+        super().__init__(f"Configuration error: {variable_name} — {reason}", field=variable_name)
+        self.variable_name = variable_name

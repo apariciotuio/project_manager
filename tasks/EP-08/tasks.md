@@ -1,6 +1,6 @@
 # EP-08 — Implementation Tasks
 
-## Status: PENDING
+## Status: IN PROGRESS (2026-04-18) — 44/93 items shipped (audit + guards). Remaining: Inbox full (Group C), AssignmentService, SSE /notifications/stream, QuickActionDispatcher, TeamService unit tests. See `tasks-backend.md`.
 
 Dependencies: EP-00 (auth, JWT sessions), EP-01 (work_items), EP-06 (review_requests, review_responses)
 

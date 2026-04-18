@@ -3,8 +3,9 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
-from app.infrastructure.rate_limiting.redis_rate_limiter import RateLimitMiddleware
+from app.infrastructure.rate_limiting.pg_rate_limiter import RateLimitMiddleware
 from app.presentation.controllers.admin_controller import router as admin_router
+from app.presentation.controllers.internal_jobs_controller import router as internal_jobs_router
 from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
@@ -27,6 +28,7 @@ from app.presentation.controllers.integration_controller import router as integr
 from app.presentation.controllers.job_progress_controller import router as job_progress_router
 from app.presentation.controllers.lock_controller import router as lock_router
 from app.presentation.controllers.next_step_controller import router as next_step_router
+from app.presentation.controllers.inbox_controller import router as inbox_router
 from app.presentation.controllers.notification_controller import router as notification_router
 from app.presentation.controllers.project_controller import router as project_router
 from app.presentation.controllers.puppet_controller import router as puppet_router
@@ -59,7 +61,9 @@ from app.presentation.middleware.correlation_id import CorrelationIDMiddleware
 from app.presentation.middleware.cors_policy import CORSPolicyMiddleware
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 from app.presentation.middleware.error_middleware import register_error_handlers
+from app.presentation.middleware.csrf import CSRFMiddleware
 from app.presentation.middleware.request_logging import RequestLoggingMiddleware
+from app.presentation.middleware.query_counter import QueryCounterMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.rate_limit import build_limiter
 
@@ -116,12 +120,30 @@ def create_app() -> FastAPI:
     #   BodySizeLimitMiddleware       — early 413 before rate limit / auth cost
     #   RateLimitMiddleware           — Redis sliding window; after body size, before CORS preflight
     #   CORSPolicyMiddleware          — strict allowlist; handles preflight
+    #   CSRFMiddleware                — double-submit cookie; after CORS preflight, before auth
     #   SecurityHeadersMiddleware     — CSP, X-Frame-Options, HSTS on every response
+    #   QueryCounterMiddleware        — EP-12 N+1 detection; dev+staging only; innermost
     #
     # Add in reverse order so CorrelationID is outermost.
     app.add_middleware(
+        QueryCounterMiddleware,
+        budget=20,
+        environment=settings.app.env,
+    )
+    app.add_middleware(
         SecurityHeadersMiddleware,
         csp_overrides=settings.app.csp_overrides,
+    )
+    app.add_middleware(
+        CSRFMiddleware,
+        exempt_paths={
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/google/callback",
+            "/api/v1/auth/logout",
+            "/api/v1/csp-report",
+            "/api/v1/dundun/callback",
+            "/api/v1/puppet/ingest-callback",
+        },
     )
     app.add_middleware(
         CORSPolicyMiddleware,
@@ -129,12 +151,11 @@ def create_app() -> FastAPI:
         env=settings.app.env,
     )
 
-    import redis.asyncio as _aioredis
+    from app.infrastructure.persistence.database import get_session_factory as _get_sf
 
-    _redis_client = _aioredis.from_url(settings.redis.url, decode_responses=True)
     app.add_middleware(
         RateLimitMiddleware,
-        redis=_redis_client,
+        session_factory=_get_sf(),
         unauth_limit=settings.auth.rate_limit_per_minute,
         auth_limit=300,
     )
@@ -185,9 +206,10 @@ def create_app() -> FastAPI:
     app.include_router(attachment_router, prefix="/api/v1")
     # EP-17 — section locks
     app.include_router(lock_router, prefix="/api/v1")
-    # EP-08 — teams + notifications
+    # EP-08 — teams + notifications + inbox
     app.include_router(team_router, prefix="/api/v1")
     app.include_router(notification_router, prefix="/api/v1")
+    app.include_router(inbox_router, prefix="/api/v1")
     # EP-09 — saved searches
     app.include_router(saved_search_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
@@ -201,6 +223,8 @@ def create_app() -> FastAPI:
     app.include_router(integration_router, prefix="/api/v1")
     # EP-13 — Puppet ingest callback + search + admin
     app.include_router(puppet_router, prefix="/api/v1")
+    # Internal cron job triggers — superadmin only, hit by host scheduler
+    app.include_router(internal_jobs_router, prefix="/api/v1")
 
     return app
 

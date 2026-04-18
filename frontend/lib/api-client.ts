@@ -44,6 +44,14 @@ function generateCorrelationId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function readCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
   try {
     const json = (await response.json()) as {
@@ -112,13 +120,22 @@ async function request<T>(
   isRetry = false,
 ): Promise<T> {
   const correlationId = generateCorrelationId();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Correlation-Id': correlationId,
+  };
+
+  if (!CSRF_SAFE_METHODS.has(method.toUpperCase())) {
+    const csrfToken = readCsrfToken();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
   const init: RequestInit = {
     method,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Correlation-Id': correlationId,
-    },
+    headers,
   };
   if (body !== undefined) {
     init.body = JSON.stringify(body);

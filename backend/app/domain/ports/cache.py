@@ -1,8 +1,7 @@
 """ICache port — domain-level interface for a simple key-value cache.
 
 Intentionally minimal. Domain services only need get/set/delete.
-The Redis adapter implements this interface.
-For tests, use FakeCache from tests/fakes/.
+InMemoryCacheAdapter is the sole implementation. For tests, use FakeCache from tests/fakes/.
 """
 from __future__ import annotations
 

@@ -117,6 +117,7 @@ class WorkItemResponse(BaseModel):
     deleted_at: datetime | None
     exported_at: datetime | None
     export_reference: str | None
+    external_jira_key: str | None
     # Computed fields
     derived_state: DerivedState | None
     next_step: str | None
@@ -157,6 +158,7 @@ class WorkItemResponse(BaseModel):
             deleted_at=item.deleted_at,
             exported_at=item.exported_at,
             export_reference=item.export_reference,
+            external_jira_key=item.external_jira_key,
             derived_state=item.derived_state,
             next_step=_NEXT_STEP.get(item.state),
             override_info=override_info,

@@ -432,3 +432,7 @@ Security review run by `code-reviewer` subagent over controllers + adapters + mi
 - [ ] Suggestion apply transaction is atomic (verified: DB error mid-apply leaves no partial state)
 - [ ] IDOR check verified: user A cannot read user B's threads
 - [ ] No `anthropic` / `openai` / `litellm` / `tiktoken` / prompt YAMLs in the repo
+
+## MF-2 / MF-3 fixes (2026-04-17, session-2026-04-17-mega-review)
+- [x] MF-2: Added explicit `_require_workspace` guard to all 5 suggestion_controller endpoints — 401/NO_WORKSPACE for tokens without workspace_id (commit 702581a)
+- [x] MF-3: `version_number_target` in `_handle_suggestion` now resolved from `WorkItemVersionRepositoryImpl.get_latest` — no longer hardcoded to 1; regression test verifies target=3 when 2 versions exist (commit 1554412)

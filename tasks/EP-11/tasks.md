@@ -1,8 +1,8 @@
 # EP-11 — Implementation Checklist
 
 **Epic**: EP-11 — Export & Sync with Jira
-**Date**: 2026-04-13
-**Status**: NOT STARTED
+**Date**: 2026-04-13 (updated 2026-04-18)
+**Status**: SHIPPED (single-item export) — JiraClient (PAT + retry 2x + error hierarchy) + ExportService + `POST /api/v1/work-items/{id}/export/jira` + BackgroundTasks + migration 0118 `external_jira_key` + dual-write backcompat + audit queued/completed + FE export button (14 BE + 9 unit + 9 FE tests). Pending for full sync: webhook listener, multi-workspace rules, issue-type mapping admin UI.
 
 > **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no `sync_logs`. Export is upsert-by-key (re-export UPDATEs the same Jira issue via `jira_issue_key`). Inbound is a user-initiated `POST /work-items/import-from-jira` action. `SyncService` / `sync_task` / Celery Beat below are **obsolete** — drop during TDD, replace with `ImportService` per `specs/import/spec.md`.
 

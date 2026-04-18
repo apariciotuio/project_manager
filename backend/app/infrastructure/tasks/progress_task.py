@@ -1,32 +1,26 @@
-"""Celery task mixin that publishes SSE progress frames via Redis pub/sub.
+"""Mixin that publishes SSE progress frames via Postgres NOTIFY (PgNotificationBus).
 
 ProgressTaskMixin provides three async helpers:
   publish_progress(job_id, pct) — fire-and-forget progress frame (no state write)
   publish_done(job_id, message_id) — terminal frame + JobProgressService.complete()
   publish_error(job_id, error_msg) — terminal frame + JobProgressService.fail()
 
-All helpers are async and must be called inside an asyncio.run() block within
-the Celery task body. They do NOT define a Celery task themselves — they are
-mixed into concrete task classes.
-
 Channel: always sse:job:{job_id} (ChannelRegistry.job convention).
 
-Usage in a Celery task:
+Usage:
 
     from app.infrastructure.tasks.progress_task import ProgressTaskMixin
-
-    class MyTask(ProgressTaskMixin):
-        ...
+    from app.infrastructure.sse.pg_notification_bus import PgNotificationBus
 
     async def _run(job_id: str, ...) -> None:
-        mixin = MyTask(redis=redis_client, job_service=job_svc)
+        bus = PgNotificationBus(dsn=dsn)
+        mixin = ProgressTaskMixin(publisher=bus, job_service=job_svc)
         await mixin.publish_progress(job_id, pct=30)
         ...
         await mixin.publish_done(job_id, message_id="msg-uuid")
 """
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, Protocol
 
@@ -38,25 +32,25 @@ logger = logging.getLogger(__name__)
 _SSE_JOB_PREFIX = "sse:job:"
 
 
-class _RedisPublishProto(Protocol):
-    async def publish(self, channel: str, message: str) -> None: ...
+class _PublishProto(Protocol):
+    async def publish(self, channel: str, message: dict[str, Any]) -> None: ...
 
 
 class ProgressTaskMixin:
-    """Async helpers for publishing SSE frames from Celery tasks.
+    """Async helpers for publishing SSE frames via PgNotificationBus (or compatible).
 
     Args:
-        redis: Redis client (or compatible Protocol) — must support publish().
+        publisher: PgNotificationBus instance (or any object satisfying _PublishProto).
         job_service: Optional JobProgressService for persistent state updates.
                      When omitted, publish_done / publish_error skip state writes.
     """
 
     def __init__(
         self,
-        redis: _RedisPublishProto,
+        publisher: _PublishProto,
         job_service: JobProgressService | None = None,
     ) -> None:
-        self._redis = redis
+        self._publisher = publisher
         self._job_service = job_service
         self._registry = ChannelRegistry()
 
@@ -68,7 +62,7 @@ class ProgressTaskMixin:
         return self._registry.job(job_id)
 
     async def _publish_raw(self, channel: str, payload: dict[str, Any]) -> None:
-        await self._redis.publish(channel, json.dumps({**payload, "channel": channel}))
+        await self._publisher.publish(channel, payload)
 
     # ------------------------------------------------------------------
     # Public API

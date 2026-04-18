@@ -11,24 +11,46 @@ const GLYPHS =
 const FONT_SIZE = 16;
 const TARGET_FPS = 30;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
-
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 export function MatrixRain() {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [rainEnabled, setRainEnabledState] = useState(false);
 
-  const shouldRender =
-    mounted &&
-    theme === 'matrix' &&
-    isRainEnabled() &&
-    !prefersReducedMotion();
+  useEffect(() => {
+    setMounted(true);
+    setRainEnabledState(isRainEnabled());
+  }, []);
+
+  // React to OS reduced-motion toggle changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+    setReducedMotion(mq.matches);
+
+    function handleMotionChange(e: MediaQueryListEvent) {
+      setReducedMotion(e.matches);
+    }
+    mq.addEventListener('change', handleMotionChange);
+    return () => mq.removeEventListener('change', handleMotionChange);
+  }, []);
+
+  // React to storage changes from setRainEnabled() called in other tabs or components
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key === 'trinity:rainEnabled') {
+        setRainEnabledState(e.newValue === 'true');
+      }
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const shouldRender = mounted && theme === 'matrix' && rainEnabled && !reducedMotion;
 
   useEffect(() => {
     if (!shouldRender) return;

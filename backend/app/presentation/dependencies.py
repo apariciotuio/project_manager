@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from app.application.services.conversation_service import ConversationService
     from app.application.services.dependency_service import DependencyService
     from app.application.services.draft_service import DraftService
+    from app.application.services.export_service import ExportService
     from app.application.services.integration_service import IntegrationService
     from app.application.services.next_step_service import NextStepService
     from app.application.services.project_service import ProjectService
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
     from app.application.services.saved_search_service import SavedSearchService
     from app.application.services.search_service import SearchService
     from app.application.services.dashboard_service import DashboardService
+    from app.application.services.inbox_service import InboxService
     from app.application.services.validation_rule_template_service import ValidationRuleTemplateService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
@@ -301,30 +303,17 @@ _IN_MEMORY_CACHE: ICache | None = None
 
 
 async def get_cache_adapter() -> AsyncGenerator[ICache]:
-    """Yield a cache adapter scoped to the request; close the Redis client afterwards.
+    """Yield the singleton InMemoryCacheAdapter for the lifetime of the request.
 
-    Tests override this dep with an in-memory FakeCache so they don't need a Redis
-    container. In dev, set `REDIS_USE_FAKE=true` to get the same behaviour — no
-    Redis container needed.
+    Tests override this dep with a FakeCache injected directly.
     """
-    settings = get_settings()
-    if settings.redis.use_fake:
-        global _IN_MEMORY_CACHE
-        if _IN_MEMORY_CACHE is None:
-            from app.infrastructure.adapters.in_memory_cache_adapter import (
-                InMemoryCacheAdapter,
-            )
-            _IN_MEMORY_CACHE = InMemoryCacheAdapter()
-        yield _IN_MEMORY_CACHE
-        return
-
-    from app.infrastructure.adapters.redis_cache_adapter import RedisCacheAdapter
-
-    cache = RedisCacheAdapter(url=settings.redis.url)
-    try:
-        yield cache
-    finally:
-        await cache.close()
+    global _IN_MEMORY_CACHE
+    if _IN_MEMORY_CACHE is None:
+        from app.infrastructure.adapters.in_memory_cache_adapter import (
+            InMemoryCacheAdapter,
+        )
+        _IN_MEMORY_CACHE = InMemoryCacheAdapter()
+    yield _IN_MEMORY_CACHE
 
 
 def get_template_service(
@@ -899,6 +888,15 @@ def get_extended_notification_service(
     )
 
 
+def get_inbox_service(
+    session: AsyncSession = Depends(get_scoped_session),
+) -> "InboxService":
+    from app.application.services.inbox_service import InboxService
+    from app.infrastructure.persistence.inbox_repository_impl import InboxRepositoryImpl
+
+    return InboxService(inbox_repo=InboxRepositoryImpl(session))
+
+
 # ---------------------------------------------------------------------------
 # EP-09 — Saved Searches
 # ---------------------------------------------------------------------------
@@ -1047,6 +1045,13 @@ def get_validation_rule_template_service(
 # ---------------------------------------------------------------------------
 
 
+def get_audit_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> AuditService:
+    """Standalone AuditService dependency for controllers that emit audit events directly."""
+    return AuditService(AuditRepositoryImpl(session))
+
+
 def get_integration_service(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> IntegrationService:
@@ -1059,6 +1064,29 @@ def get_integration_service(
     return IntegrationService(
         config_repo=IntegrationConfigRepositoryImpl(session),
         export_repo=IntegrationExportRepositoryImpl(session),
+    )
+
+
+def get_export_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    settings: Settings = Depends(get_settings),
+) -> "ExportService":
+    from app.application.services.audit_service import AuditService
+    from app.application.services.export_service import ExportService
+    from app.infrastructure.adapters.jira_adapter import JiraClient
+    from app.infrastructure.persistence.audit_repository_impl import AuditRepositoryImpl
+    from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
+
+    jira_client = JiraClient(
+        base_url=settings.jira.base_url,
+        email=settings.jira.email,
+        api_token=settings.jira.api_token.get_secret_value(),
+    )
+    audit = AuditService(AuditRepositoryImpl(session))
+    return ExportService(
+        work_item_repo=WorkItemRepositoryImpl(session),
+        jira_client=jira_client,
+        audit_service=audit,
     )
 
 

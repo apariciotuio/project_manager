@@ -6,9 +6,10 @@ import userEvent from '@testing-library/user-event';
 
 const mockSetTheme = vi.fn();
 let mockTheme: string = 'light';
+let mockResolvedTheme: string = 'light';
 
 vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: mockTheme, setTheme: mockSetTheme }),
+  useTheme: () => ({ theme: mockTheme, resolvedTheme: mockResolvedTheme, setTheme: mockSetTheme }),
 }));
 
 const mockLogout = vi.fn();
@@ -47,6 +48,7 @@ import { UserMenu } from '@/components/workspace/user-menu/user-menu';
 beforeEach(() => {
   vi.clearAllMocks();
   mockTheme = 'light';
+  mockResolvedTheme = 'light';
   document.cookie = 'tuio-locale=; path=/; max-age=0';
   // Stub reload so the language toggle doesn't nuke jsdom
   Object.defineProperty(window, 'location', {
@@ -156,6 +158,28 @@ describe('UserMenu — theme segment (light / dark / matrix)', () => {
     await userEvent.click(screen.getByRole('radio', { name: /theme\.switcher\.light/i }));
     expect(mockSetTheme).toHaveBeenCalledWith('light');
     expect(screen.queryByTestId('cascade-active')).toBeNull();
+  });
+
+  it('stores resolved theme (dark) not literal "system" when theme is "system" and switching to matrix', async () => {
+    const { setPreviousTheme } = await import('@/lib/theme/trinity');
+    mockTheme = 'system';
+    mockResolvedTheme = 'dark';
+    render(<UserMenu />);
+    await openMenu();
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.redPill\.label/i }));
+    // Must store 'dark' (resolved), not 'system'
+    expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('dark');
+    expect(vi.mocked(setPreviousTheme)).not.toHaveBeenCalledWith('system');
+  });
+
+  it('stores resolved theme (light) not literal "system" when resolvedTheme is light', async () => {
+    const { setPreviousTheme } = await import('@/lib/theme/trinity');
+    mockTheme = 'system';
+    mockResolvedTheme = 'light';
+    render(<UserMenu />);
+    await openMenu();
+    await userEvent.click(screen.getByRole('radio', { name: /theme\.redPill\.label/i }));
+    expect(vi.mocked(setPreviousTheme)).toHaveBeenCalledWith('light');
   });
 
   it('clicking the already-active theme is a no-op', async () => {

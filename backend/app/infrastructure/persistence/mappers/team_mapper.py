@@ -76,6 +76,7 @@ def notification_to_domain(row: NotificationORM) -> Notification:
         created_at=row.created_at,
         read_at=row.read_at,
         actioned_at=row.actioned_at,
+        archived_at=getattr(row, "archived_at", None),
     )
 
 
@@ -96,4 +97,5 @@ def notification_to_orm(entity: Notification) -> NotificationORM:
     row.created_at = entity.created_at
     row.read_at = entity.read_at
     row.actioned_at = entity.actioned_at
+    row.archived_at = entity.archived_at
     return row

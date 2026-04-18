@@ -23,6 +23,7 @@ def version_to_domain(row: WorkItemVersionORM) -> WorkItemVersion:
         actor_id=row.actor_id,
         commit_message=row.commit_message,
         archived=row.archived,
+        workspace_id=row.workspace_id,
     )
 
 
@@ -40,4 +41,6 @@ def version_to_orm(entity: WorkItemVersion) -> WorkItemVersionORM:
     row.actor_id = entity.actor_id
     row.commit_message = entity.commit_message
     row.archived = entity.archived
+    if entity.workspace_id is not None:
+        row.workspace_id = entity.workspace_id
     return row

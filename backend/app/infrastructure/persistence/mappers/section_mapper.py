@@ -32,6 +32,7 @@ def section_to_domain(row: WorkItemSectionORM) -> Section:
         updated_at=row.updated_at,
         created_by=row.created_by,
         updated_by=row.updated_by,
+        workspace_id=row.workspace_id,
     )
 
 
@@ -49,6 +50,8 @@ def section_to_orm(entity: Section) -> WorkItemSectionORM:
     row.updated_at = entity.updated_at
     row.created_by = entity.created_by
     row.updated_by = entity.updated_by
+    if entity.workspace_id is not None:
+        row.workspace_id = entity.workspace_id
     return row
 
 
@@ -69,6 +72,7 @@ def section_version_to_domain(row: WorkItemSectionVersionORM) -> SectionVersion:
         revert_from_version=row.revert_from_version,
         created_at=row.created_at,
         created_by=row.created_by,
+        workspace_id=row.workspace_id,
     )
 
 
@@ -87,6 +91,7 @@ def validator_to_domain(row: WorkItemValidatorORM) -> Validator:
         assigned_at=row.assigned_at,
         assigned_by=row.assigned_by,
         responded_at=row.responded_at,
+        workspace_id=row.workspace_id,
     )
 
 
@@ -100,6 +105,8 @@ def validator_to_orm(entity: Validator) -> WorkItemValidatorORM:
     row.assigned_at = entity.assigned_at
     row.assigned_by = entity.assigned_by
     row.responded_at = entity.responded_at
+    if entity.workspace_id is not None:
+        row.workspace_id = entity.workspace_id
     return row
 
 
@@ -124,4 +131,5 @@ def work_item_version_to_domain(row: WorkItemVersionORM) -> WorkItemVersion:
         actor_id=getattr(row, "actor_id", None),
         commit_message=getattr(row, "commit_message", None),
         archived=getattr(row, "archived", False),
+        workspace_id=getattr(row, "workspace_id", None),
     )

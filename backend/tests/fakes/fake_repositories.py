@@ -18,6 +18,7 @@ from app.domain.models.workspace import Workspace
 from app.domain.models.workspace_membership import WorkspaceMembership
 from app.domain.queries.page import Page
 from app.domain.queries.work_item_filters import WorkItemFilters
+from app.domain.queries.work_item_list_filters import WorkItemListFilters
 from app.domain.repositories.audit_repository import IAuditRepository
 from app.domain.repositories.oauth_state_repository import (
     ConsumedOAuthState,
@@ -32,6 +33,7 @@ from app.domain.repositories.workspace_membership_repository import (
 from app.domain.repositories.workspace_repository import IWorkspaceRepository
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
+from app.infrastructure.pagination import PaginationCursor, PaginationResult
 
 
 class FakeUserRepository(IUserRepository):
@@ -274,16 +276,84 @@ class FakeWorkItemRepository(IWorkItemRepository):
             reverse=True,
         )
 
+    async def list_cursor(
+        self,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+        filters: WorkItemListFilters | None = None,
+    ) -> PaginationResult:
+        rows = [
+            item
+            for (ws_id, _), item in self._items.items()
+            if ws_id == workspace_id and item.deleted_at is None
+        ]
+        # naive in-memory filtering
+        if filters is not None:
+            if getattr(filters, "parent_id", None) is not None:
+                rows = [r for r in rows if r.parent_id == filters.parent_id]
+            if getattr(filters, "type", None) is not None:
+                rows = [r for r in rows if r.type == filters.type]
+            if getattr(filters, "state", None) is not None:
+                rows = [r for r in rows if r.state == filters.state]
+            if getattr(filters, "owner_id", None) is not None:
+                rows = [r for r in rows if r.owner_id == filters.owner_id]
+        rows = sorted(rows, key=lambda r: (r.created_at, r.id), reverse=True)
+        if cursor is not None:
+            rows = [
+                r
+                for r in rows
+                if (r.created_at, r.id) < (cursor.created_at, cursor.id)
+            ]
+        has_next = len(rows) > page_size
+        page = rows[:page_size]
+        next_cursor: str | None = None
+        if has_next and page:
+            last = page[-1]
+            next_cursor = PaginationCursor(id=last.id, created_at=last.created_at).encode()
+        return PaginationResult(rows=page, has_next=has_next, next_cursor=next_cursor)
+
 
 class FakeAuditRepository(IAuditRepository):
     def __init__(self, *, explode: bool = False) -> None:
         self.events: list[AuditEvent] = []
         self._explode = explode
 
-    async def record(self, event: AuditEvent) -> None:
+    async def append(self, event: AuditEvent) -> AuditEvent:
         if self._explode:
             raise RuntimeError("simulated audit DB failure")
         self.events.append(event)
+        return event
+
+    async def list_cursor(
+        self,
+        workspace_id: UUID,
+        *,
+        cursor: PaginationCursor | None,
+        page_size: int,
+        category: str | None = None,
+        action: str | None = None,
+    ) -> PaginationResult:
+        rows = [e for e in self.events if e.workspace_id == workspace_id]
+        if category is not None:
+            rows = [e for e in rows if e.category == category]
+        if action is not None:
+            rows = [e for e in rows if e.action == action]
+        rows = sorted(rows, key=lambda e: (e.created_at, e.id), reverse=True)
+        if cursor is not None:
+            rows = [
+                e
+                for e in rows
+                if (e.created_at, e.id) < (cursor.created_at, cursor.id)
+            ]
+        has_next = len(rows) > page_size
+        page = rows[:page_size]
+        next_cursor: str | None = None
+        if has_next and page:
+            last = page[-1]
+            next_cursor = PaginationCursor(id=last.id, created_at=last.created_at).encode()
+        return PaginationResult(rows=page, has_next=has_next, next_cursor=next_cursor)
 
 
 # ---------------------------------------------------------------------------

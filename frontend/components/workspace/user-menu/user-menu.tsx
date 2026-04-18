@@ -54,6 +54,24 @@ const THEME_OPTION_CONFIGS: ReadonlyArray<ThemeOptionConfig> = [
   },
 ];
 
+/**
+ * Resolves the active theme to a concrete ThemeChoice.
+ * next-themes can return 'system' when the user has not picked explicitly;
+ * in that case we fall back to resolvedTheme (the OS preference result) and
+ * then to 'light' as a safe default.
+ */
+function normalizeTheme(
+  theme: string | undefined,
+  resolvedTheme: string | undefined,
+): ThemeChoice {
+  if (theme === 'matrix') return 'matrix';
+  if (theme === 'dark') return 'dark';
+  if (theme === 'light') return 'light';
+  // theme is 'system' or undefined — use the resolved value
+  if (resolvedTheme === 'dark') return 'dark';
+  return 'light';
+}
+
 function readLocaleCookie(): LocaleChoice {
   if (typeof document === 'undefined') return 'es';
   const match = document.cookie.match(/(?:^|;\s*)tuio-locale=([^;]+)/);
@@ -69,7 +87,7 @@ function writeLocaleCookie(locale: LocaleChoice): void {
 
 export function UserMenu() {
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [cascadeActive, setCascadeActive] = useState(false);
   const [locale, setLocale] = useState<LocaleChoice>('es');
@@ -83,11 +101,7 @@ export function UserMenu() {
   }, []);
 
   const currentTheme: ThemeChoice | null = mounted
-    ? theme === 'matrix'
-      ? 'matrix'
-      : theme === 'dark'
-        ? 'dark'
-        : 'light'
+    ? normalizeTheme(theme, resolvedTheme)
     : null;
 
   function getThemeLabel(key: ThemeChoice): string {
@@ -100,7 +114,7 @@ export function UserMenu() {
     if (!mounted || next === currentTheme) return;
 
     if (next === 'matrix') {
-      setPreviousTheme((theme ?? 'light') as 'light' | 'dark');
+      setPreviousTheme(normalizeTheme(theme, resolvedTheme));
       setTheme('matrix');
       setCascadeActive(true);
       return;
@@ -230,4 +244,3 @@ export function UserMenu() {
   );
 }
 
-export { getPreviousTheme };

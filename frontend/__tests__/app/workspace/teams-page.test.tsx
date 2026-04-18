@@ -30,6 +30,44 @@ const mockTeams = [
 ];
 
 describe('TeamsPage', () => {
+  it('shows skeleton while loading', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/teams', async () => {
+        await new Promise(() => {});
+        return HttpResponse.json({ data: [] });
+      }),
+    );
+
+    const { default: TeamsPage } = await import('@/app/workspace/[slug]/teams/page');
+    render(<TeamsPage params={{ slug: 'acme' }} />);
+
+    expect(document.querySelector('[data-testid="teams-skeleton"]')).toBeTruthy();
+  });
+
+  it('shows empty state when no teams exist', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/teams', () => HttpResponse.json({ data: [] })),
+    );
+
+    const { default: TeamsPage } = await import('@/app/workspace/[slug]/teams/page');
+    render(<TeamsPage params={{ slug: 'acme' }} />);
+
+    expect(await screen.findByTestId('teams-empty')).toBeTruthy();
+  });
+
+  it('shows error state on 5xx', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/teams', () =>
+        HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'oops' } }, { status: 500 }),
+      ),
+    );
+
+    const { default: TeamsPage } = await import('@/app/workspace/[slug]/teams/page');
+    render(<TeamsPage params={{ slug: 'acme' }} />);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  });
+
   it('renders team names', async () => {
     server.use(
       http.get('http://localhost/api/v1/teams', () => HttpResponse.json({ data: mockTeams }))

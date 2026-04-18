@@ -449,3 +449,6 @@ See also: specs/versioning/spec.md, specs/comments/spec.md, specs/timeline/spec.
 - [ ] 6.2 [GREEN] Verify index on timeline `(work_item_id, occurred_at DESC)` used by `EXPLAIN ANALYZE` in test environment
 - [ ] 6.3 [GREEN] Verify diff endpoint p95 < 2s under 100KB payload
 - [ ] 6.4 [GREEN] Add archival batch job: mark versions as `archived=true` when `COUNT > 500` per work item
+
+## MF-3 fix (2026-04-17, session-2026-04-17-mega-review)
+- [x] MF-3: `IWorkItemVersionRepository.get_latest` consumed in dundun_callback_controller to resolve `version_number_target` for suggestion rows — eliminates hardcoded 1 (commit 1554412)

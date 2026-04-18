@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-04-14T09:28:56.208320+00:00'
-apm_version: 0.8.11
+generated_at: '2026-04-17T18:32:56.060965+00:00'
+apm_version: 0.8.7
 dependencies:
 - repo_url: somostuio/coding-agents-config
   host: github.com
@@ -8,10 +8,33 @@ dependencies:
   resolved_ref: apm
   package_type: hybrid
   deployed_files:
-  - .agents/skills/coding-agents-config
-  - .agents/skills/core
+  - .claude/agents/code-reviewer.md
+  - .claude/agents/poc-developer.md
+  - .claude/agents/product-analyst.md
+  - .claude/agents/quick-fix-developer.md
+  - .claude/agents/sw-architect.md
+  - .claude/commands/code-review.md
+  - .claude/commands/develop-poc.md
+  - .claude/commands/develop-quick-fix.md
+  - .claude/commands/enrich-us.md
+  - .claude/commands/meta-prompt.md
+  - .claude/commands/plan-poc.md
+  - .claude/commands/plan-task.md
+  - .claude/commands/review-before-push.md
   - .claude/skills/coding-agents-config
   - .claude/skills/core
+  - .cursor/agents/code-reviewer.md
+  - .cursor/agents/poc-developer.md
+  - .cursor/agents/product-analyst.md
+  - .cursor/agents/quick-fix-developer.md
+  - .cursor/agents/sw-architect.md
+  - .cursor/rules/agent-behavior-standards.mdc
+  - .cursor/rules/agent-routing.mdc
+  - .cursor/rules/base-standards.mdc
+  - .cursor/rules/insurance-domain-standards.mdc
+  - .cursor/rules/rules.mdc
+  - .cursor/rules/soul.mdc
+  - .cursor/rules/task-management-standards.mdc
   - .cursor/skills/coding-agents-config
   - .cursor/skills/core
   - .github/agents/code-reviewer.agent.md
@@ -36,6 +59,19 @@ dependencies:
   - .github/prompts/review-before-push.prompt.md
   - .github/skills/coding-agents-config
   - .github/skills/core
+  - .opencode/agents/code-reviewer.md
+  - .opencode/agents/poc-developer.md
+  - .opencode/agents/product-analyst.md
+  - .opencode/agents/quick-fix-developer.md
+  - .opencode/agents/sw-architect.md
+  - .opencode/commands/code-review.md
+  - .opencode/commands/develop-poc.md
+  - .opencode/commands/develop-quick-fix.md
+  - .opencode/commands/enrich-us.md
+  - .opencode/commands/meta-prompt.md
+  - .opencode/commands/plan-poc.md
+  - .opencode/commands/plan-task.md
+  - .opencode/commands/review-before-push.md
   - .opencode/skills/coding-agents-config
   - .opencode/skills/core
   content_hash: sha256:d5551866dd97272572fc449f7cd7d98b5fdd2d9e719e43edca1ccdaa3ef1c9e6
@@ -47,13 +83,11 @@ dependencies:
   is_virtual: true
   package_type: hybrid
   deployed_files:
-  - .agents/skills/backend
   - .claude/agents/backend-developer.md
   - .claude/agents/db-reviewer.md
   - .claude/commands/develop-backend-data-modeling.md
   - .claude/commands/develop-backend.md
   - .claude/commands/plan-backend-task.md
-  - .claude/rules/backend-standards.md
   - .claude/skills/backend
   - .cursor/agents/backend-developer.md
   - .cursor/agents/db-reviewer.md
@@ -81,7 +115,6 @@ dependencies:
   is_virtual: true
   package_type: hybrid
   deployed_files:
-  - .agents/skills/frontend
   - .claude/agents/frontend-developer.md
   - .claude/commands/develop-frontend.md
   - .claude/commands/plan-frontend-task.md
@@ -105,7 +138,6 @@ dependencies:
   is_virtual: true
   package_type: apm_package
   deployed_files:
-  - .claude/rules/security-standards.md
   - .cursor/rules/security-standards.mdc
   - .github/instructions/security-standards.instructions.md
   content_hash: sha256:8d8efc22afad5f88c078db1dc181a65c0a877b8bc73db53eded778b85a7bf569
@@ -117,12 +149,10 @@ dependencies:
   is_virtual: true
   package_type: hybrid
   deployed_files:
-  - .agents/skills/testing
   - .claude/agents/test-engineer.md
   - .claude/commands/develop-backend-tests.md
   - .claude/commands/develop-frontend-tests.md
   - .claude/commands/test.md
-  - .claude/rules/testing-standards.md
   - .claude/skills/testing
   - .cursor/agents/test-engineer.md
   - .cursor/rules/testing-standards.mdc

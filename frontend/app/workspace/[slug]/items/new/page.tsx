@@ -7,8 +7,10 @@ import { useTemplates } from '@/hooks/use-templates';
 import { useProjects } from '@/hooks/use-admin';
 import { useTags } from '@/hooks/use-admin';
 import { usePreCreationDraft } from '@/hooks/use-pre-creation-draft';
-import { createWorkItem, listWorkItems } from '@/lib/api/work-items';
+import { createWorkItem } from '@/lib/api/work-items';
 import { useAuth } from '@/app/providers/auth-provider';
+import { ParentPicker } from '@/components/hierarchy/ParentPicker';
+import { getValidParentTypes } from '@/lib/hierarchy-rules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,7 +30,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { WorkItemType, WorkItemResponse } from '@/lib/types/work-item';
+import type { WorkItemType } from '@/lib/types/work-item';
+import type { WorkItemSummary } from '@/lib/types/hierarchy';
 import type { Template } from '@/lib/types/api';
 import type { DraftData } from '@/hooks/use-pre-creation-draft';
 import { PageContainer } from '@/components/layout/page-container';
@@ -50,16 +53,7 @@ const WORK_ITEM_TYPES: { value: WorkItemType; label: string }[] = [
   { value: 'story', label: 'Historia' },
 ];
 
-// Types that can have a parent (initiative or milestone)
-const CHILD_TYPES: WorkItemType[] = [
-  'story',
-  'task',
-  'bug',
-  'spike',
-  'enhancement',
-  'requirement',
-  'business_change',
-];
+// showParentPicker is determined by getValidParentTypes at render time (EP-14 hierarchy-rules).
 
 interface NewItemPageProps {
   params: { slug: string };
@@ -78,33 +72,12 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
   const [type, setType] = useState<WorkItemType>('task');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState<string>('');
-  const [parentId, setParentId] = useState<string>('');
+  const [parentItem, setParentItem] = useState<WorkItemSummary | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localVersion, setLocalVersion] = useState(0);
-
-  // ─── Parent candidates ───────────────────────────────────────────────────────
-  const [parentCandidates, setParentCandidates] = useState<WorkItemResponse[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [initiatives, milestones] = await Promise.all([
-          listWorkItems(null, { type: 'initiative' }),
-          listWorkItems(null, { type: 'milestone' }),
-        ]);
-        if (!cancelled) {
-          setParentCandidates([...initiatives.items, ...milestones.items]);
-        }
-      } catch {
-        // Non-blocking
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // ─── Draft hydration ─────────────────────────────────────────────────────────
   const handleHydrate = useCallback((data: DraftData) => {
@@ -112,7 +85,11 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
     if (data.type) setType(data.type);
     if (data.description) setDescription(data.description);
     if (data.project_id) setProjectId(data.project_id);
-    if (data.parent_work_item_id) setParentId(data.parent_work_item_id);
+    if (data.parent_work_item_id) {
+      // Hydrate with ID only — ParentPicker will show it as a pre-populated value
+      // when we have the summary object. For now set a minimal summary.
+      setParentItem({ id: data.parent_work_item_id, title: data.parent_work_item_id, type: 'initiative', state: 'draft', parent_work_item_id: null, materialized_path: '' });
+    }
     if (data.tags) setSelectedTags(data.tags);
   }, []);
 
@@ -135,11 +112,11 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
     const nextVersion = localVersion + 1;
     setLocalVersion(nextVersion);
     save(
-      { title, type, description, project_id: projectId || undefined, parent_work_item_id: parentId || undefined, tags: selectedTags },
+      { title, type, description, project_id: projectId || undefined, parent_work_item_id: parentItem?.id, tags: selectedTags },
       nextVersion,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, type, description, projectId, parentId, selectedTags]);
+  }, [title, type, description, projectId, parentItem, selectedTags]);
 
   // ─── New project dialog ───────────────────────────────────────────────────────
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
@@ -194,7 +171,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
         type,
         description: description.trim() || undefined,
         project_id: projectId,
-        parent_work_item_id: parentId || undefined,
+        parent_work_item_id: parentItem?.id,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         template_id: selectedTemplate?.id,
       });
@@ -207,7 +184,10 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
     }
   }
 
-  const showParentPicker = CHILD_TYPES.includes(type);
+  // ParentPicker renders nothing when validTypes is an empty array (e.g. milestone).
+  // For all other types (null = any, or [...] = restricted list) it renders.
+  const validParentTypes = getValidParentTypes(type);
+  const showParentPicker = validParentTypes === null || validParentTypes.length > 0;
 
   return (
     <PageContainer variant="narrow" className="flex flex-col gap-8">
@@ -235,7 +215,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               type,
               description,
               project_id: projectId || undefined,
-              parent_work_item_id: parentId || undefined,
+              parent_work_item_id: parentItem?.id,
               tags: selectedTags,
             })
           }
@@ -245,7 +225,7 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               type,
               description,
               project_id: projectId || undefined,
-              parent_work_item_id: parentId || undefined,
+              parent_work_item_id: parentItem?.id,
               tags: selectedTags,
             })
           }
@@ -351,26 +331,18 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
               )}
             </div>
 
-            {/* Parent picker (only for child types) */}
+            {/* Parent picker — EP-14 typeahead, type-restricted by hierarchy-rules */}
             {showParentPicker && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="parent">Padre</Label>
-                <Select
-                  value={parentId || '__none__'}
-                  onValueChange={(v) => setParentId(v === '__none__' ? '' : v)}
-                >
-                  <SelectTrigger id="parent" className="h-11">
-                    <SelectValue placeholder="Sin padre" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin padre</SelectItem>
-                    {parentCandidates.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        [{item.type}] {item.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="parent-picker-input">Padre</Label>
+                <ParentPicker
+                  projectId={projectId || 'none'}
+                  childType={type}
+                  value={parentItem}
+                  onChange={setParentItem}
+                  label="Parent"
+                  className="h-11"
+                />
               </div>
             )}
 
@@ -424,7 +396,9 @@ export default function NewItemPage({ params: { slug } }: NewItemPageProps) {
             </div>
 
             {error && (
-              <p className="text-body-sm text-destructive">{error}</p>
+              <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-body-sm text-destructive">
+                {error}
+              </div>
             )}
 
             <div className="flex justify-end gap-2 border-t border-border pt-6">

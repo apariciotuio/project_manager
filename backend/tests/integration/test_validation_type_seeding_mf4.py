@@ -70,8 +70,12 @@ async def app(migrated_database):
     await engine.dispose()
 
     from app.main import create_app as _create_app
-    from app.presentation.dependencies import get_cache_adapter
+    from app.presentation.dependencies import _cached_jwt_adapter, get_cache_adapter
     from tests.fakes.fake_repositories import FakeCache
+
+    # Clear the lru_cache so the JWT adapter is rebuilt with the current test settings,
+    # not a stale instance from a prior test module that ran earlier in the suite.
+    _cached_jwt_adapter.cache_clear()
 
     fastapi_app = _create_app()
     fake_cache = FakeCache()

@@ -58,9 +58,16 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
         )
         next_number: int = (max_q.scalar() or 0) + 1
 
+        # Resolve workspace_id — work_item_id FK guarantees the row exists
+        wi_row = await self._session.get(WorkItemORM, work_item_id)
+        if wi_row is None:
+            raise ValueError(f"work_item {work_item_id} not found")
+        workspace_id = wi_row.workspace_id
+
         row = WorkItemVersionORM()
         row.id = uuid4()
         row.work_item_id = work_item_id
+        row.workspace_id = workspace_id
         row.version_number = next_number
         row.snapshot = snapshot
         row.created_by = created_by

@@ -54,3 +54,20 @@ Proceed through EP-04 .. EP-19 implementation instead of pausing to close the Ph
 Medium — VPN-only + random UUIDs make active exploitation unlikely, but the RLS gap is a structural divergence from the rest of the schema and must be closed before any external exposure. WS client→upstream direction is currently a no-op (test already skips the bidirectional case, so no one is relying on it yet).
 
 ---
+
+## Decision Record
+
+**Date:** 2026-04-18
+**User:** @David
+**Context:** EP-12 reintroduced Redis (rate limiter, SSE pub/sub, CacheService) against the 2026-04-15 decision "remove Redis entirely". User flagged mid-session; Redis-out re-affirmed.
+
+### Agent Concern
+Reintroducing Redis violated a prior explicit decision. I (Fermi) did not push back when EP-12 design brought Redis back and even built a new CacheService on top (Agent I). Postgres-only replacements have known limits (8KB NOTIFY payload, per-connection listener, rate-limit contention under burst) but are acceptable at target scale (<100 users).
+
+### User Decision
+Rip Redis out. Plan-task in flight (`tasks/redis-removal/plan.md`). Delete CacheService + redis_cache_adapter + redis_pubsub. Replace with PG LISTEN/NOTIFY bus, PG rate-limit buckets table, PG job_progress table.
+
+### Risk Level
+Medium — PG LISTEN/NOTIFY strains beyond ~100 concurrent SSE subscribers. Revisit at M2. Wasted work: rate limiter (commit f0fa6d1), SseHandler, job progress controller, CacheService. Accepted cost.
+
+---

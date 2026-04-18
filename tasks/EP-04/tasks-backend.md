@@ -236,6 +236,13 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 - [x] [RED] Write tests for CompletenessService cache hit/miss/invalidate with fake cache (2026-04-17 — test_completeness_service.py: 4 tests)
 - [x] [GREEN] Cache is in `CompletenessService` using `ICache` port; key = `completeness:{work_item_id}`, TTL 60s (2026-04-16)
 
+### Field-Level Scorer (domain/services/completeness_service.py)
+
+- [x] [RED] Write unit tests for `compute_completeness(WorkItem)`: score=0 (no owner, short title, no desc), score=100 (all fields), score=60 (title+desc only), score<100 when title short, suspended owner earns 0 pts, description below threshold earns 0 pts, method delegates to function (2026-04-18 — 8 tests in test_field_completeness.py)
+- [x] [GREEN] Implement `domain/services/completeness_service.py` — additive field scorer: title(25) + description(35) + priority(15) + due_date(10) + owner-not-suspended(15) (2026-04-18)
+- [x] [REFACTOR] Weights and thresholds extracted as module constants: TITLE_MIN_LEN, DESCRIPTION_MIN_LEN, TITLE_POINTS, DESCRIPTION_POINTS, PRIORITY_POINTS, DUE_DATE_POINTS, OWNER_POINTS (2026-04-18)
+- [x] `WorkItem.compute_completeness()` delegates to module function — no more TODO stub (2026-04-18)
+
 ### CompletenessService
 
 - [x] [RED] Write unit tests using fake cache + fake repos: cache hit skips DB, cache miss calls repos, cached flag set (2026-04-17)

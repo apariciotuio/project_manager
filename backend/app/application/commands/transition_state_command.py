@@ -14,3 +14,5 @@ class TransitionStateCommand:
     target_state: WorkItemState
     actor_id: UUID
     reason: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None

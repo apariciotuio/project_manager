@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
@@ -181,13 +181,16 @@ async def delete_work_item(
 async def transition_work_item(
     item_id: UUID,
     body: TransitionRequest,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = TransitionStateCommand(
         item_id=item_id,
@@ -195,6 +198,8 @@ async def transition_work_item(
         target_state=body.target_state,
         actor_id=current_user.id,
         reason=body.reason,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
     item = await service.transition(cmd)
     return _ok(_response(item, current_user.workspace_id))
@@ -417,12 +422,13 @@ async def list_all_work_items(  # noqa: PLR0913
     updated_after: str | None = None,
     updated_before: str | None = None,
     sort: str = "updated_desc",
-    # --- cursor pagination (preferred) ---
+    # --- keyset cursor pagination (preferred) ---
     cursor: str | None = None,
-    limit: int = Query(default=25, ge=1, le=100),
+    page_size: int = Query(default=20, ge=1, le=100),
+    # --- legacy cursor param alias (backward compat) ---
+    limit: int = Query(default=20, ge=1, le=100),
     # --- legacy offset pagination ---
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
     # --- free text + puppet ---
     q: str | None = None,
     use_puppet: bool = False,
@@ -431,9 +437,8 @@ async def list_all_work_items(  # noqa: PLR0913
 ) -> dict[str, Any]:
     """List all work items in the current workspace (all projects).
 
-    Supports cursor-based pagination (preferred) via `cursor` + `limit`.
-    Legacy `page` / `page_size` still works for backward compat but is not
-    recommended for real-time data.
+    Supports cursor-based pagination (preferred) via `cursor` + `page_size` (default 20, max 100).
+    Legacy `page` / `limit` params are kept for backward compat.
 
     New EP-09 filters: project_id, creator_id, tag_id (AND), priority,
     completeness_min/max, updated_after/before, sort (enum), q (free-text).
@@ -445,46 +450,28 @@ async def list_all_work_items(  # noqa: PLR0913
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
         )
 
-    from datetime import datetime
-
-    from sqlalchemy import func as sa_func
-    from sqlalchemy import select
-
-    from app.application.services.work_item_list_service import WorkItemListQueryBuilder
-    from app.domain.pagination import PaginationCursor
     from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
-    from app.infrastructure.persistence.database import get_session_factory
-    from app.infrastructure.persistence.mappers.work_item_mapper import to_domain
-    from app.infrastructure.persistence.session_context import with_workspace
 
-    # Parse sort enum
-    try:
-        sort_enum = SortOption(sort)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": {
-                    "code": "INVALID_SORT",
-                    "message": f"sort must be one of {[o.value for o in SortOption]}",
-                    "details": {},
-                }
-            },
-        )
-
-    # Parse datetime strings
-    def _parse_dt(val: str | None) -> datetime | None:
-        if val is None:
-            return None
+    # Validate cursor format eagerly so we return 422 before hitting the DB.
+    if cursor is not None:
         try:
-            return datetime.fromisoformat(val)
-        except ValueError:
+            from app.domain.pagination import PaginationCursor as DomainCursor
+            DomainCursor.decode(cursor)
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"error": {"code": "INVALID_DATETIME", "message": f"invalid ISO 8601 datetime: {val!r}", "details": {}}},
-            )
+                detail={"error": {"code": "INVALID_CURSOR", "message": str(exc), "details": {}}},
+            ) from exc
 
-    filters = WorkItemListFilters(
+    # Parse sort param — default to updated_desc if unrecognised.
+    try:
+        sort_opt = SortOption(sort)
+    except ValueError:
+        sort_opt = SortOption.updated_desc
+
+    # Build filter struct from query params.
+    # updated_after / updated_before accepted as ISO strings by WorkItemListFilters.
+    list_filters = WorkItemListFilters(
         state=[s.value for s in state] if state else None,
         type=[t.value for t in type] if type else None,
         owner_id=owner_id,
@@ -497,63 +484,25 @@ async def list_all_work_items(  # noqa: PLR0913
         priority=priority,
         completeness_min=completeness_min,
         completeness_max=completeness_max,
-        updated_after=_parse_dt(updated_after),
-        updated_before=_parse_dt(updated_before),
-        sort=sort_enum,
+        updated_after=updated_after,  # type: ignore[arg-type]
+        updated_before=updated_before,  # type: ignore[arg-type]
+        sort=sort_opt,
         cursor=cursor,
-        limit=limit,
-        page=page,
-        page_size=page_size,
+        limit=page_size,
         q=q,
         use_puppet=use_puppet,
     )
 
-    builder = WorkItemListQueryBuilder(
-        workspace_id=current_user.workspace_id,
-        filters=filters,
+    result = await service.list_cursor(
+        current_user.workspace_id,
+        cursor=None,  # cursor is encoded inside list_filters.cursor
+        page_size=page_size,
+        filters=list_filters,
     )
 
-    # Validate cursor early so we surface 422 before hitting DB
-    try:
-        decoded_cursor = builder.decoded_cursor
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "INVALID_CURSOR", "message": "invalid or tampered cursor", "details": {}}},
-        )
-
-    factory = get_session_factory()
-    async with factory() as session:
-        await with_workspace(session, current_user.workspace_id)
-
-        # Count (same WHERE, no sort/limit)
-        total = (await session.execute(builder.build_count_stmt())).scalar_one()
-
-        # Data (limit+1 to detect next page)
-        rows = (await session.execute(builder.build_stmt())).scalars().all()
-
-        items = [to_domain(row) for row in rows]
-
-    has_next = len(items) > filters.limit
-    if has_next:
-        items = items[: filters.limit]
-
-    # Build next_cursor
-    next_cursor: str | None = None
-    if has_next and items:
-        last = items[-1]
-        sv: Any
-        if sort_enum in (SortOption.updated_desc, SortOption.updated_asc):
-            sv = last.updated_at
-        elif sort_enum == SortOption.created_desc:
-            sv = last.created_at
-        elif sort_enum == SortOption.title_asc:
-            sv = last.title
-        elif sort_enum == SortOption.completeness_desc:
-            sv = last.completeness_score
-        else:
-            sv = last.updated_at
-        next_cursor = PaginationCursor(sort_value=sv, last_id=last.id).encode()
+    next_cursor = result.next_cursor
+    has_next = result.has_next
+    items = result.rows  # already domain WorkItem objects
 
     # Applied filters for response transparency
     applied_filters: dict[str, Any] = {}
@@ -579,12 +528,11 @@ async def list_all_work_items(  # noqa: PLR0913
                 for item in items
             ],
             "next_cursor": next_cursor,
-            "total": total,
         },
         "pagination": {
             "cursor": next_cursor,
             "has_next": has_next,
-            "total_count": total,
+            "total_count": None,
         },
         "applied_filters": applied_filters,
         "message": "ok",

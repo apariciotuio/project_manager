@@ -301,6 +301,7 @@ class WorkItemORM(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     export_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    external_jira_key: Mapped[str | None] = mapped_column(String(32), nullable=True, index=False)
 
 
 # ---------------------------------------------------------------------------
@@ -630,6 +631,9 @@ class WorkItemSectionORM(Base):
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     section_type: Mapped[str] = mapped_column(String(64), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     display_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -664,6 +668,9 @@ class WorkItemSectionVersionORM(Base):
         ForeignKey("work_item_sections.id", ondelete="CASCADE"), nullable=False
     )
     work_item_id: Mapped[UUID] = mapped_column(nullable=False)
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     section_type: Mapped[str] = mapped_column(String(64), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -695,6 +702,9 @@ class WorkItemValidatorORM(Base):
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
     user_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -721,6 +731,9 @@ class WorkItemVersionORM(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
@@ -1078,6 +1091,7 @@ class NotificationORM(Base):
     )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     actioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1443,3 +1457,34 @@ class SectionLockORM(Base):
     force_released_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class LockUnlockRequestORM(Base):
+    __tablename__ = "lock_unlock_requests"
+    __table_args__ = (
+        Index(
+            "idx_lock_unlock_requests_section_pending",
+            "section_id",
+            "created_at",
+            postgresql_where="responded_at IS NULL",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    section_id: Mapped[UUID] = mapped_column(
+        ForeignKey("work_item_sections.id", ondelete="CASCADE"), nullable=False
+    )
+    requester_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    response: Mapped[str | None] = mapped_column(
+        String(16),
+        nullable=True,
+        # CHECK enforced in migration DDL
+    )
+    response_note: Mapped[str | None] = mapped_column(Text, nullable=True)

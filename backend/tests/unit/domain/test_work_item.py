@@ -343,9 +343,10 @@ class TestDerivedState:
 
 
 class TestComputeCompleteness:
-    def test_returns_zero_stub(self) -> None:
+    def test_returns_nonzero_for_item_with_title_and_owner(self) -> None:
+        # "A valid title" = 13 chars >= 10 → 25 pts; owner assigned, not suspended → 15 pts
         wi = _make_work_item()
-        assert wi.compute_completeness() == 0
+        assert wi.compute_completeness() == 40
 
     def test_returns_int(self) -> None:
         wi = _make_work_item()

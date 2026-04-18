@@ -33,11 +33,20 @@ from app.infrastructure.persistence.mappers.section_mapper import (
     work_item_version_to_domain,
 )
 from app.infrastructure.persistence.models.orm import (
+    WorkItemORM,
     WorkItemSectionORM,
     WorkItemSectionVersionORM,
     WorkItemValidatorORM,
     WorkItemVersionORM,
 )
+
+
+async def _resolve_workspace_id(session: AsyncSession, work_item_id: UUID) -> UUID:
+    """Resolve workspace_id from work_items for RLS column population."""
+    row = await session.get(WorkItemORM, work_item_id)
+    if row is None:
+        raise ValueError(f"work_item {work_item_id} not found — cannot resolve workspace_id")
+    return row.workspace_id
 
 
 class SectionRepositoryImpl(ISectionRepository):
@@ -60,7 +69,12 @@ class SectionRepositoryImpl(ISectionRepository):
     async def save(self, section: Section) -> Section:
         existing = await self._session.get(WorkItemSectionORM, section.id)
         if existing is None:
-            self._session.add(section_to_orm(section))
+            row = section_to_orm(section)
+            if row.workspace_id is None:  # type: ignore[attr-defined]
+                row.workspace_id = await _resolve_workspace_id(
+                    self._session, section.work_item_id
+                )
+            self._session.add(row)
         else:
             existing.content = section.content
             existing.is_required = section.is_required
@@ -75,8 +89,16 @@ class SectionRepositoryImpl(ISectionRepository):
     async def bulk_insert(self, sections: list[Section]) -> list[Section]:
         if not sections:
             return []
+        # Resolve workspace_id once (all sections share the same work_item_id)
+        work_item_id = sections[0].work_item_id
+        workspace_id = (
+            sections[0].workspace_id
+            or await _resolve_workspace_id(self._session, work_item_id)
+        )
         rows = [section_to_orm(s) for s in sections]
         for r in rows:
+            if r.workspace_id is None:  # type: ignore[attr-defined]
+                r.workspace_id = workspace_id
             self._session.add(r)
         await self._session.flush()
         return [section_to_domain(r) for r in rows]
@@ -87,10 +109,14 @@ class SectionVersionRepositoryImpl(ISectionVersionRepository):
         self._session = session
 
     async def append(self, section: Section, actor_id: UUID) -> SectionVersion:
+        workspace_id = section.workspace_id or await _resolve_workspace_id(
+            self._session, section.work_item_id
+        )
         row = WorkItemSectionVersionORM()
         row.id = uuid4()
         row.section_id = section.id
         row.work_item_id = section.work_item_id
+        row.workspace_id = workspace_id
         row.section_type = section.section_type.value
         row.content = section.content
         row.version = section.version
@@ -128,14 +154,24 @@ class ValidatorRepositoryImpl(IValidatorRepository):
         return [validator_to_domain(r) for r in rows]
 
     async def assign(self, validator: Validator) -> Validator:
-        self._session.add(validator_to_orm(validator))
+        row = validator_to_orm(validator)
+        if row.workspace_id is None:  # type: ignore[attr-defined]
+            row.workspace_id = await _resolve_workspace_id(
+                self._session, validator.work_item_id
+            )
+        self._session.add(row)
         await self._session.flush()
         return validator
 
     async def save(self, validator: Validator) -> Validator:
         existing = await self._session.get(WorkItemValidatorORM, validator.id)
         if existing is None:
-            self._session.add(validator_to_orm(validator))
+            row = validator_to_orm(validator)
+            if row.workspace_id is None:  # type: ignore[attr-defined]
+                row.workspace_id = await _resolve_workspace_id(
+                    self._session, validator.work_item_id
+                )
+            self._session.add(row)
         else:
             existing.status = validator.status.value
             existing.responded_at = validator.responded_at
@@ -175,9 +211,11 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
         latest = (await self._session.execute(stmt)).scalar_one_or_none()
         next_number = (latest or 0) + 1
 
+        workspace_id = await _resolve_workspace_id(self._session, work_item_id)
         row = WorkItemVersionORM()
         row.id = uuid4()
         row.work_item_id = work_item_id
+        row.workspace_id = workspace_id
         row.version_number = next_number
         row.snapshot = snapshot
         row.created_by = created_by

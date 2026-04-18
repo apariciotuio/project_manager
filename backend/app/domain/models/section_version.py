@@ -20,3 +20,4 @@ class SectionVersion:
     revert_from_version: int | None
     created_at: datetime
     created_by: UUID
+    workspace_id: UUID | None = None

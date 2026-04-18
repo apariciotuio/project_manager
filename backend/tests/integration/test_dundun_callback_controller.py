@@ -422,3 +422,134 @@ async def test_error_status_returns_200_nothing_persisted(http, seeded_ids, migr
     await engine.dispose()
     assert count == 0
     assert any("Dundun internal timeout" in r.message or request_id in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# MF-3: version_number_target must reflect actual latest version (not hardcoded 1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_suggestion_version_number_target_reflects_latest_version(
+    http, seeded_ids, migrated_database
+):
+    """Suggestions must target latest_version.version_number + 1, not hardcoded 1."""
+    from datetime import UTC, datetime
+    from uuid import uuid4 as _uuid4
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    user_id, ws_id, wi_id = seeded_ids
+
+    # Seed two version rows directly so latest is version_number=3
+    engine = create_async_engine(migrated_database.database.url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        from app.infrastructure.persistence.models.orm import WorkItemVersionORM
+
+        for n in (1, 2, 3):
+            row = WorkItemVersionORM()
+            row.id = _uuid4()
+            row.work_item_id = wi_id
+            row.version_number = n
+            row.snapshot = {"title": f"v{n}"}
+            row.created_by = user_id
+            row.created_at = datetime.now(UTC)
+            row.snapshot_schema_version = 1
+            row.trigger = "content_edit"
+            row.actor_type = "human"
+            row.actor_id = None
+            row.commit_message = None
+            row.archived = False
+            session.add(row)
+        await session.commit()
+    await engine.dispose()
+
+    request_id = str(_uuid4())
+    batch_id = str(_uuid4())
+    payload = {
+        "agent": "wm_suggestion_agent",
+        "request_id": request_id,
+        "status": "success",
+        "work_item_id": str(wi_id),
+        "batch_id": batch_id,
+        "user_id": str(user_id),
+        "suggestions": [
+            {
+                "section_id": None,
+                "proposed_content": "Content targeting v4",
+                "current_content": "Current v3",
+                "rationale": "Version bump test",
+            }
+        ],
+    }
+
+    resp = await _post(http, payload)
+    assert resp.status_code == 200
+    assert resp.json()["data"]["count"] == 1
+
+    # version_number_target must be 4 (latest=3, target=3+1)
+    engine = create_async_engine(migrated_database.database.url)
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+
+        result = await conn.execute(
+            text(
+                "SELECT version_number_target FROM assistant_suggestions "
+                "WHERE dundun_request_id = :rid"
+            ),
+            {"rid": request_id},
+        )
+        row = result.fetchone()
+    await engine.dispose()
+
+    assert row is not None
+    assert row[0] == 4, f"Expected version_number_target=4, got {row[0]}"
+
+
+@pytest.mark.asyncio
+async def test_suggestion_version_number_target_defaults_to_1_when_no_versions(
+    http, seeded_ids, migrated_database
+):
+    """Fresh work item with no versions → version_number_target=1."""
+    user_id, _ws_id, wi_id = seeded_ids
+    request_id = str(uuid4())
+    batch_id = str(uuid4())
+
+    payload = {
+        "agent": "wm_suggestion_agent",
+        "request_id": request_id,
+        "status": "success",
+        "work_item_id": str(wi_id),
+        "batch_id": batch_id,
+        "user_id": str(user_id),
+        "suggestions": [
+            {
+                "section_id": None,
+                "proposed_content": "Fresh item suggestion",
+                "current_content": "None yet",
+                "rationale": None,
+            }
+        ],
+    }
+
+    resp = await _post(http, payload)
+    assert resp.status_code == 200
+    assert resp.json()["data"]["count"] == 1
+
+    engine = create_async_engine(migrated_database.database.url)
+    async with engine.begin() as conn:
+        from sqlalchemy import text as _text
+
+        result = await conn.execute(
+            _text(
+                "SELECT version_number_target FROM assistant_suggestions "
+                "WHERE dundun_request_id = :rid"
+            ),
+            {"rid": request_id},
+        )
+        row = result.fetchone()
+    await engine.dispose()
+
+    assert row is not None
+    assert row[0] == 1, f"Expected version_number_target=1, got {row[0]}"

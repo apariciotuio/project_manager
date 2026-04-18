@@ -41,7 +41,7 @@ class InMemoryCacheAdapter(ICache):
         self._store.pop(key, None)
 
     async def close(self) -> None:
-        # For parity with RedisCacheAdapter which owns a client.
+        # No-op: in-memory store has no external connection to close.
         return None
 
     def clear(self) -> None:
