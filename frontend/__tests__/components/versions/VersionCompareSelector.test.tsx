@@ -17,6 +17,8 @@ vi.mock('next-intl', () => ({
 
 const versions: WorkItemVersion[] = [
   {
+    id: 'ver-1',
+    work_item_id: 'wi-1',
     version_number: 1,
     trigger: 'content_edit',
     actor_type: 'human',
@@ -26,6 +28,8 @@ const versions: WorkItemVersion[] = [
     created_at: '2026-04-17T10:00:00Z',
   },
   {
+    id: 'ver-2',
+    work_item_id: 'wi-1',
     version_number: 2,
     trigger: 'content_edit',
     actor_type: 'human',
@@ -35,6 +39,8 @@ const versions: WorkItemVersion[] = [
     created_at: '2026-04-17T11:00:00Z',
   },
   {
+    id: 'ver-3',
+    work_item_id: 'wi-1',
     version_number: 3,
     trigger: 'state_transition',
     actor_type: 'system',

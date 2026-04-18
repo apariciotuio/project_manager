@@ -62,6 +62,7 @@ const mockWorkItem: WorkItemResponse = {
   created_at: '2026-04-15T00:00:00Z',
   updated_at: '2026-04-15T10:00:00Z',
   deleted_at: null,
+  external_jira_key: null,
 };
 
 describe('WorkItemsPage', () => {

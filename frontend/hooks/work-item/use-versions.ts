@@ -101,6 +101,7 @@ export function useVersionDiff(
   const [diff, setDiff] = useState<VersionDiff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (fromVersion >= toVersion) {
@@ -115,7 +116,11 @@ export function useVersionDiff(
       .then((d) => setDiff(d))
       .catch((err) => setError(err instanceof Error ? err : new Error('Failed to load diff')))
       .finally(() => setIsLoading(false));
-  }, [workItemId, fromVersion, toVersion]);
+  }, [workItemId, fromVersion, toVersion, retryNonce]);
 
-  return { diff, isLoading, error };
+  const refetch = useCallback(() => {
+    setRetryNonce((n) => n + 1);
+  }, []);
+
+  return { diff, isLoading, error, refetch };
 }
