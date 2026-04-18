@@ -200,6 +200,19 @@ def get_membership_repo(
     return WorkspaceMembershipRepositoryImpl(session)
 
 
+def get_capability_repo(
+    session: AsyncSession = Depends(get_db_session),
+) -> WorkspaceMembershipRepositoryImpl:
+    """Narrow repo handle for the ``require_capabilities`` FastAPI dependency.
+
+    Returns the same ``WorkspaceMembershipRepositoryImpl`` as
+    ``get_membership_repo`` — the capability dependency uses only the
+    ``get_capabilities_for(user_id, workspace_id)`` method. A separate name
+    keeps the override surface small for tests.
+    """
+    return WorkspaceMembershipRepositoryImpl(session)
+
+
 async def get_current_user(
     request: Request,
     jwt_adapter: JwtAdapter = Depends(get_jwt_adapter),

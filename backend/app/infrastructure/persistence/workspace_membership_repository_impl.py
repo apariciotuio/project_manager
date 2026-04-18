@@ -74,6 +74,29 @@ class WorkspaceMembershipRepositoryImpl(IWorkspaceMembershipRepository):
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return _to_domain(row) if row else None
 
+    async def get_capabilities_for(
+        self, user_id: UUID, workspace_id: UUID
+    ) -> list[str] | None:
+        """Return the capabilities array for the (user, workspace) membership.
+
+        Narrow read helper used by the ``require_capabilities`` FastAPI
+        dependency (EP-12). Returns ``None`` when there is no active
+        membership — the caller translates that into a 403.
+        """
+        stmt = (
+            select(WorkspaceMembershipORM.capabilities)
+            .where(
+                WorkspaceMembershipORM.user_id == user_id,
+                WorkspaceMembershipORM.workspace_id == workspace_id,
+                WorkspaceMembershipORM.state == "active",
+            )
+            .limit(1)
+        )
+        caps = (await self._session.execute(stmt)).scalar_one_or_none()
+        if caps is None:
+            return None
+        return list(caps)
+
     async def get_default_for_user(self, user_id: UUID) -> WorkspaceMembership | None:
         stmt = (
             select(WorkspaceMembershipORM)

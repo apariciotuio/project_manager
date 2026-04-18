@@ -82,12 +82,12 @@ THEN a single log line is emitted containing: `method`, `path`, `status_code`, `
 ## Group 2 — Security
 
 ### Capability Enforcement
-- [ ] [RED] Test: `require_capabilities(["review"])` returns 403 when member lacks capability
-- [ ] [RED] Test: returns 403 when workspace_id is invalid/missing
-- [ ] [RED] Test: passes through when member has required capability
-- [ ] [RED] Test: superadmin bypass is explicit and logs the bypass
-- [ ] [GREEN] Implement `require_capabilities` FastAPI dependency in `app/presentation/dependencies/auth.py`
-- [ ] [REFACTOR] Scan all existing protected endpoints across other epics and apply `require_capabilities`
+- [x] [RED] Test: `require_capabilities(["review"])` returns 403 when member lacks capability — `test_returns_403_when_missing_required_capability` (2026-04-18)
+- [x] [RED] Test: returns 403 when workspace_id is invalid/missing — `test_returns_403_when_workspace_id_is_none` + `test_returns_403_when_membership_missing` (2026-04-18)
+- [x] [RED] Test: passes through when member has required capability — `test_passes_when_user_has_required_capability` (2026-04-18)
+- [x] [RED] Test: superadmin bypass is explicit and logs the bypass — `test_superadmin_bypasses_check_and_logs` (2026-04-18)
+- [x] [GREEN] Implement `require_capabilities` FastAPI dependency — `build_require_capabilities(*caps)` factory at `app/presentation/capabilities.py` + `get_capabilities_for(user_id, workspace_id)` narrow method on `WorkspaceMembershipRepositoryImpl` + `get_capability_repo` DI handle (2026-04-18, 7 tests green)
+- [ ] [REFACTOR] Scan all existing protected endpoints across other epics and apply `require_capabilities` — pending separate sweep (infrastructure landed, adoption deferred to per-epic work)
 
 ### Acceptance Criteria — CORS
 
