@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
+from app.infrastructure.rate_limiting.redis_rate_limiter import RateLimitMiddleware
 from app.presentation.controllers.admin_controller import router as admin_router
-from app.presentation.controllers.puppet_controller import router as puppet_router
 from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
@@ -17,23 +17,24 @@ from app.presentation.controllers.completeness_controller import (
 from app.presentation.controllers.conversation_controller import (
     router as conversation_router,
 )
+from app.presentation.controllers.csp_report_controller import router as csp_report_router
+from app.presentation.controllers.dashboard_controller import router as dashboard_router
 from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
 from app.presentation.controllers.health import router as health_router
 from app.presentation.controllers.integration_controller import router as integration_router
-from app.presentation.controllers.routing_rule_controller import router as routing_rule_router
-from app.presentation.controllers.validation_rule_template_controller import router as vrt_router
+from app.presentation.controllers.job_progress_controller import router as job_progress_router
 from app.presentation.controllers.lock_controller import router as lock_router
 from app.presentation.controllers.next_step_controller import router as next_step_router
 from app.presentation.controllers.notification_controller import router as notification_router
 from app.presentation.controllers.project_controller import router as project_router
+from app.presentation.controllers.puppet_controller import router as puppet_router
 from app.presentation.controllers.ready_gate_controller import router as ready_gate_router
 from app.presentation.controllers.review_controller import router as review_router
-from app.presentation.controllers.validation_controller import router as validation_router
+from app.presentation.controllers.routing_rule_controller import router as routing_rule_router
 from app.presentation.controllers.saved_search_controller import router as saved_search_router
 from app.presentation.controllers.search_controller import router as search_router
-from app.presentation.controllers.dashboard_controller import router as dashboard_router
 from app.presentation.controllers.specification_controller import (
     router as specification_router,
 )
@@ -43,6 +44,8 @@ from app.presentation.controllers.task_controller import router as task_router
 from app.presentation.controllers.team_controller import router as team_router
 from app.presentation.controllers.template_controller import router as template_router
 from app.presentation.controllers.timeline_controller import router as timeline_router
+from app.presentation.controllers.validation_controller import router as validation_router
+from app.presentation.controllers.validation_rule_template_controller import router as vrt_router
 from app.presentation.controllers.version_controller import router as version_router
 from app.presentation.controllers.work_item_controller import router as work_item_router
 from app.presentation.controllers.work_item_draft_controller import (
@@ -110,7 +113,8 @@ def create_app() -> FastAPI:
     # Execution order outermost → innermost:
     #   CorrelationIDMiddleware       — generates/passes X-Correlation-ID ContextVar
     #   RequestLoggingMiddleware      — structured log line per request
-    #   BodySizeLimitMiddleware       — early 413 before auth/CORS cost
+    #   BodySizeLimitMiddleware       — early 413 before rate limit / auth cost
+    #   RateLimitMiddleware           — Redis sliding window; after body size, before CORS preflight
     #   CORSPolicyMiddleware          — strict allowlist; handles preflight
     #   SecurityHeadersMiddleware     — CSP, X-Frame-Options, HSTS on every response
     #
@@ -124,6 +128,17 @@ def create_app() -> FastAPI:
         allowed_origins=settings.app.cors_allowed_origins,
         env=settings.app.env,
     )
+
+    import redis.asyncio as _aioredis
+
+    _redis_client = _aioredis.from_url(settings.redis.url, decode_responses=True)
+    app.add_middleware(
+        RateLimitMiddleware,
+        redis=_redis_client,
+        unauth_limit=settings.auth.rate_limit_per_minute,
+        auth_limit=300,
+    )
+
     app.add_middleware(
         BodySizeLimitMiddleware,
         max_body_bytes=settings.app.max_body_bytes,
@@ -134,6 +149,10 @@ def create_app() -> FastAPI:
     app.add_middleware(CorrelationIDMiddleware)
 
     app.include_router(health_router, prefix="/api/v1")
+    # EP-12 — CSP violation reports (no auth, no prefix — path defined in controller)
+    app.include_router(csp_report_router)
+    # EP-12 — SSE job progress streaming
+    app.include_router(job_progress_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(workspace_router, prefix="/api/v1")
     app.include_router(work_item_router, prefix="/api/v1")
