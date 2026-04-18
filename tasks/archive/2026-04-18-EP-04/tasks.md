@@ -1,6 +1,27 @@
 # EP-04 — Implementation Checklist
 
-**Status: NOT STARTED**
+**Status (archived 2026-04-18 as v1)**: ✅ SHIPPED — 85/118 real items (72%): 5 migrations (0017–0021) + 4 repositories + 9 dimension checkers (44 triangulated tests) + CompletenessService + ScoreCalculator + GapService + NextStepDecisionTree + NextStepService + SectionService + ValidatorService + 3 controllers wired (`GET /specification`, `PATCH /sections/{id}`, `GET /completeness`, `GET /gaps`, `GET /next-step`) + spec-gen callback handler + FE (SpecificationSectionsEditor w/ debounced auto-save, CompletenessPanel, NextStepHint, 2-column detail integration).
+
+> ⚠️ **Prior header said "NOT STARTED" — that was stale.** The authoritative sub-trackers were `tasks-backend.md` and `tasks-frontend.md` (both updated 2026-04-16+).
+
+### v1 scope shipped
+- **BE**: sections CRUD + versioning + validators + 9 dimension checkers + completeness engine (score + gap messages + cache + invalidation on edit) + next-step decision tree (9 rules) + full controller surface + spec-gen Dundun callback handler.
+- **FE**: SpecificationSectionsEditor (debounced auto-save 600ms, generation badge, version chip), CompletenessPanel (score ring + LevelBadge + per-dimension bars + gap overlay + cached badge), NextStepHint (message + blocking badge + suggested validators), 2-column detail-page integration.
+- **Tests**: BE 1174 green + 94 FE component tests. Ruff + mypy --strict clean on EP-04 files.
+
+### Deferred (v2 scope, new follow-up epic — NOT EP-04 v1)
+- `POST /specification/generate` trigger endpoint (spec-gen Dundun callback handler IS shipped; the trigger that dispatches the request from the detail page is deferred).
+- `PATCH /sections` bulk endpoint (single PATCH works; batch atomic mutation deferred).
+- `GET /sections/{id}/versions` history endpoint + section revert UI.
+- `ValidatorSuggestionEngine` (role-based validator suggestions; NextStepRules currently returns static rule IDs only).
+- `domain/quality/gap_messages.py` extraction (messages inline in `dimension_checkers.py` — refactor-only).
+- Cache invalidation hooks in `WorkItemService.transition_state()` + `ValidatorService.update_status()` (section edits invalidate; state/validator changes don't re-score yet).
+- `workspace_id` parameter on repo methods (defense-in-depth for CRIT-2; batched with EP-03 Phase 8 RLS follow-up per `decisions.log.md` 2026-04-16).
+- Phase 9 Error Middleware extended codes (basic 422/403 work).
+
+### Re-homed from EP-03 (tracked but not implemented here)
+- `QuickActionService` + apply/undo endpoints — `dundun_tasks.py` has a TODO marker "wire into QuickActionService when EP-04 lands"; explicit wiring deferred to v2.
+- `/work-items/{id}/gaps/ai-review` endpoint — dispatches `wm_gap_agent`; callback handler IS shipped, the trigger endpoint is not.
 
 ---
 

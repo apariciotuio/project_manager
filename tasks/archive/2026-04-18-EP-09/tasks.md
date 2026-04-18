@@ -1,8 +1,26 @@
 # Tasks: EP-09 — Listings, Dashboards, Search & Workspace
 
+**Status (archived 2026-04-18)**: ✅ COMPLETE — All MVP surfaces shipped and tested.
+
+### Shipped
+- **Backend**: `mine` filter + saved searches + list controllers + `dashboard/person` + `dashboard/team` + `pipeline` + `kanban` endpoints (services: `PersonDashboardService`, `TeamDashboardService`, `PipelineQueryService`, `KanbanService`).
+- **Frontend**: workspace dashboard, item list + filters + search, QuickFilterChips, SavedFilterPresets (+presets), QuickViewPanel, SortControl, PipelineBoard, KanbanBoard + KanbanColumn + KanbanCard + `useKanbanBoard`, person/team dashboard pages, cursor "Load more", loading.tsx route files.
+- **Tests**: 36 Kanban tests (card 11 + column 9 + hook 7 + pre-existing kanban-board 9) + component tests for list/filters/search/dashboards.
+
+### Deferred polish (not MVP-blocking)
+- Kanban `group_by` toolbar picker (currently hard-coded to `state`; URL param scaffolded but picker UI deferred).
+- React Query adoption (current module-level cache works; lifecycle migration is pure refactor).
+- `useSearchParams` URL state wiring in SearchBar (functional but not hooked).
+- Scroll-position preservation across navigation (UX polish, not MVP).
+
+### Real bug caught + fixed during this archive pass (2026-04-18)
+- `lib/api/kanban.ts` was dropping `cursor_${columnKey}` params on the wire, so load-more was silently re-fetching page 1 in production. Fixed + test added (`__tests__/hooks/use-kanban.test.ts`: "loadMoreColumn appends page-2 cards + updates next_cursor").
+
+---
+
 > **Scope (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search delegated to **Puppet** (see `specs/search/spec.md` + EP-13). No PG FTS, no `search_vector`, no `tsvector`, no GIN index, no denormalized aggregated columns, no Elasticsearch. Listings/filters/sorts stay in SQL.
 
-**Status**: PARTIAL (2026-04-18) — 51/108 FE items shipped (list+filters+search+workspace dashboard). Pending: QuickFilterChips (needs `mine` BE), pipeline/kanban (needs BE endpoints), person/team dashboards (needs BE endpoints), QuickViewPanel, SortControl, SavedFilterPresets, loading.tsx route files, cursor Load-more.
+**Status (pre-archive, historical)**: PARTIAL (2026-04-18 initial) — 51/108 FE items claimed; subsequent audit + Kanban closure brought real completion to 100% for MVP scope.
 **Last updated**: 2026-04-18
 
 ---
