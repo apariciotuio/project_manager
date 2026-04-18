@@ -29,12 +29,12 @@ def load_auth_context_from_env() -> tuple[UUID, UUID]:
     """Parse MCP_TOKEN env var and return (workspace_id, user_id).
 
     Raises:
-        EnvironmentError: MCP_TOKEN not set.
+        OSError: MCP_TOKEN not set.
         ValueError: token is expired, invalid, or missing required claims.
     """
     token = os.environ.get("MCP_TOKEN")
     if not token:
-        raise EnvironmentError(
+        raise OSError(
             "MCP_TOKEN environment variable is required. "
             "Set it to a valid JWT access token before starting the MCP server."
         )
@@ -485,13 +485,12 @@ async def _handle_tool_call(
             from app.infrastructure.persistence.section_repository_impl import (
                 ValidatorRepositoryImpl,
             )
-            from app.infrastructure.adapters.in_memory_cache_adapter import InMemoryCacheAdapter
 
             svc = CompletenessService(
                 work_item_repo=WorkItemRepositoryImpl(session),
                 section_repo=SectionRepositoryImpl(session),
                 validator_repo=ValidatorRepositoryImpl(session),
-                cache=InMemoryCacheAdapter(),
+                cache=_completeness_cache,
             )
             result_data = await handle_get_work_item_completeness(
                 arguments=arguments,
@@ -708,11 +707,22 @@ async def _handle_tool_call(
 
 
 def create_mcp_server() -> Any:
-    """Create and configure the MCP server instance."""
+    """Create and configure the MCP server instance.
+
+    Auth context (workspace_id, user_id) is resolved once from MCP_TOKEN at server
+    startup. Process restart is required to rotate tokens.
+    """
     if not _MCP_SDK_AVAILABLE:
         raise ImportError(
             "MCP Python SDK not installed. Install with: pip install mcp"
         )
+
+    # Resolve auth context once at startup; fail fast if token is missing or invalid.
+    workspace_id, user_id = _resolve_auth_context()
+
+    # Shared cache instance for completeness computations across tool calls.
+    from app.infrastructure.adapters.in_memory_cache_adapter import InMemoryCacheAdapter
+    _completeness_cache = InMemoryCacheAdapter()
 
     server = Server("work-maturation-platform")
 
@@ -732,7 +742,6 @@ def create_mcp_server() -> Any:
         # workspace_id and user_id are bound at server startup from MCP_TOKEN.
         # Clients cannot override these values — they are never accepted as
         # tool arguments, so cross-workspace access is structurally impossible.
-        workspace_id, user_id = _resolve_auth_context()
         result = await _handle_tool_call(name, arguments, workspace_id, user_id)
         return [TextContent(type="text", text=result)]
 
