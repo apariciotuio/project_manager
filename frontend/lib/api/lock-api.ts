@@ -6,6 +6,8 @@
  *   POST   /sections/{sectionId}/lock/heartbeat  → heartbeat
  *   DELETE /sections/{sectionId}/lock            → release
  *   POST   /sections/{sectionId}/lock/force-release → force-release (admin)
+ *   POST   /sections/{sectionId}/lock/unlock-request → request unlock
+ *   POST   /sections/{sectionId}/lock/respond    → respond to unlock request
  *   GET    /work-items/{workItemId}/locks        → list active locks
  */
 

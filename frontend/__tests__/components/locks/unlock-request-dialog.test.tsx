@@ -117,6 +117,26 @@ describe('UnlockRequestDialog', () => {
     });
   });
 
+  it('test_shows_error_on_429_rate_limited_with_retry_after', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${BASE}/api/v1/sections/sec-1/lock/unlock-request`, () =>
+        HttpResponse.json(
+          { error: { code: 'RATE_LIMITED', message: 'too many requests', details: { retry_after: 300 } } },
+          { status: 429 },
+        ),
+      ),
+    );
+    renderDialog();
+    await user.type(screen.getByRole('textbox'), 'Need access urgently');
+    await user.click(screen.getByRole('button', { name: /solicitud|enviar/i }));
+    await waitFor(() => {
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeTruthy();
+      expect(alert.textContent).toMatch(/minutos|minutes/i);
+    });
+  });
+
   it('test_reason_max_500_chars_enforced', async () => {
     const user = userEvent.setup();
     renderDialog();

@@ -32,6 +32,7 @@ import type { SectionLockDTO } from '@/lib/types/lock';
 import type { AuthUser } from '@/lib/types/auth';
 
 const MIN_REASON_LENGTH = 10;
+const MAX_REASON_LENGTH = 1000;
 
 interface ForceReleaseDialogProps {
   sectionId: string;
@@ -55,9 +56,6 @@ export function ForceReleaseDialog({
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Gate: only superadmin can force-release (capabilities.force_unlock pending RBAC)
-  if (!currentUser.is_superadmin) return null;
 
   const reasonValid = reason.trim().length >= MIN_REASON_LENGTH;
   const canSubmit = reasonValid && confirmed && !submitting;
@@ -93,6 +91,11 @@ export function ForceReleaseDialog({
     }
   }
 
+  // Gate: only superadmin can force-release (capabilities.force_unlock pending RBAC)
+  if (!currentUser.is_superadmin) {
+    return null;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
@@ -115,11 +118,22 @@ export function ForceReleaseDialog({
             <Textarea
               id="force-release-reason"
               value={reason}
-              onChange={(e) => { setReason(e.target.value); setError(null); }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length <= MAX_REASON_LENGTH) {
+                  setReason(val);
+                }
+                setError(null);
+              }}
               placeholder="Indica el motivo del desbloqueo forzado"
               rows={3}
             />
-            <p className="text-caption text-muted-foreground">Mínimo 10 caracteres</p>
+            <div className="flex justify-between">
+              <p className="text-caption text-muted-foreground">Mínimo 10 caracteres</p>
+              <p className="text-right text-caption text-muted-foreground">
+                {reason.length}/{MAX_REASON_LENGTH}
+              </p>
+            </div>
           </div>
 
           <div className="mt-3 flex items-start gap-2">

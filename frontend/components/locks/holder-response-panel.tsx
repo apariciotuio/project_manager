@@ -43,7 +43,12 @@ export function HolderResponsePanel({
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setRemaining(expiresAt - Date.now());
+      const r = expiresAt - Date.now();
+      setRemaining(r);
+      if (r <= 0 && intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }, 1000);
     return () => {
       if (intervalRef.current !== null) clearInterval(intervalRef.current);

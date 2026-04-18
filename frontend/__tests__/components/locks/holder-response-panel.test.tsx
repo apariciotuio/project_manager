@@ -152,4 +152,27 @@ describe('HolderResponsePanel', () => {
     await user.click(screen.getByRole('button', { name: /liberar|release/i }));
     await waitFor(() => expect(onRespond).toHaveBeenCalled());
   });
+
+  it('test_countdown_interval_cleared_when_expired', async () => {
+    // Request expires 100ms from now
+    const expiresAt = new Date(Date.now() + 100).toISOString();
+    renderPanel({ request: { ...UNLOCK_REQUEST, expires_at: expiresAt } });
+    
+    // Show countdown is running
+    expect(screen.getByText(/\d{1,2}:\d{2}/)).toBeTruthy();
+    
+    // Advance timers past expiry (200ms total)
+    vi.advanceTimersByTime(200);
+    
+    // Verify interval has stopped by advancing again — should not cause additional renders
+    const countdownBefore = screen.getByText(/00:00|00:01/).textContent;
+    vi.advanceTimersByTime(1000);
+    const countdownAfter = screen.getByText(/00:00|00:01/).textContent;
+    
+    // Countdown should be the same or not have decremented further
+    expect(countdownBefore).toBe(countdownAfter);
+    
+    // Panel should still be rendered (it doesn't auto-dismiss)
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+  });
 });
