@@ -4,7 +4,7 @@
 
 **Epic**: EP-13
 **Date**: 2026-04-13 (rewritten 2026-04-14 per decisions #4/#9/#24/#28)
-**Status**: Draft
+**Status**: In Progress
 
 > **Scope (2026-04-14)**: Puppet is the sole search backend. No mode toggle (hybrid/keyword/semantic), no provenance badges, no fallback banner (Puppet outage → 503 not a partial result). Add: prefix type-ahead, saved searches UI. Below is rewritten — obsolete sections removed.
 
@@ -95,15 +95,15 @@ WHEN results render THEN each card shows title, type/state, snippet (HTML-safe),
 WHEN results are loading THEN skeleton cards render (not a spinner)
 WHEN `entity_type='doc'` THEN `DocResultCard` renders (external link + source)
 
-- [ ] **[RED]** Write test: `SearchResultCard` renders title, snippet (sanitized), state/type chips
-- [ ] **[GREEN]** Implement `components/search/SearchResultCard.tsx`
-- [ ] **[RED]** Write test: `DocResultCard` renders `source_name` and external link icon
-- [ ] **[GREEN]** Implement `components/search/DocResultCard.tsx`
-- [ ] **[RED]** Write test: `SearchResults` renders `DocResultCard` for `entity_type='doc'`, `SearchResultCard` otherwise
-- [ ] **[RED]** Write test: skeleton cards render when `isLoading=true`
-- [ ] **[GREEN]** Add skeleton loading state (3 placeholder cards) to `SearchResults.tsx`
-- [ ] **[REFACTOR]** Pagination: "Load more" button using cursor from `pagination`
-- [ ] Removed: `ProvenanceBadge`, `ModeToggle`, hybrid/keyword/semantic mode switcher, Puppet-fallback banner. Puppet is the only backend — no provenance to display (decision #4).
+- [x] **[RED]** Write test: `SearchResultCard` renders title, snippet (sanitized), state/type chips — 6 tests in `__tests__/components/search/search-result-card.test.tsx`
+- [x] **[GREEN]** Implement `components/search/SearchResultCard.tsx` — sanitizer fixed to strip script textContent before extraction
+- [x] **[RED]** Write test: `DocResultCard` renders `source_name` and external link icon — 5 tests in `__tests__/components/search/doc-result-card.test.tsx`
+- [x] **[GREEN]** Implement `components/search/DocResultCard.tsx`
+- [x] **[RED]** Write test: `SearchResults` renders `DocResultCard` for `entity_type='doc'`, `SearchResultCard` otherwise — 6 tests in `__tests__/components/search/search-results-list.test.tsx`
+- [x] **[RED]** Write test: skeleton cards render when `isLoading=true`
+- [x] **[GREEN]** Add skeleton loading state (3 placeholder cards) to `SearchResults.tsx`
+- [x] **[REFACTOR]** Pagination: "Load more" button using cursor from `pagination`
+- [x] Removed: `ProvenanceBadge`, `ModeToggle`, hybrid/keyword/semantic mode switcher, Puppet-fallback banner. Puppet is the only backend — no provenance to display (decision #4).
 
 ---
 
@@ -114,10 +114,10 @@ WHEN the user saves a search THEN `(name, query, filters)` is persisted for thei
 WHEN the user opens the saved-search side panel THEN only their own saves are listed
 WHEN the user clicks a saved search THEN the URL is replaced with the saved `(q, filters)` and results re-fetch
 
-- [ ] **[RED]** Write test: `SavedSearchesPanel` lists only the current user's saves
-- [ ] **[RED]** Write test: "Save this search" captures current URL query + filter state into a named save
-- [ ] **[RED]** Write test: rename + delete happy paths
-- [ ] **[GREEN]** Implement `components/search/SavedSearchesPanel.tsx` + API client in `lib/api/saved-searches.ts`
+- [x] **[RED]** Write test: `SavedSearchesPanel` lists only the current user's saves — 8 tests in `__tests__/components/search/saved-searches-menu.test.tsx`
+- [x] **[RED]** Write test: "Save this search" captures current URL query + filter state into a named save
+- [x] **[RED]** Write test: rename + delete happy paths
+- [x] **[GREEN]** Implement `components/search/SavedSearchesPanel.tsx` + API client in `lib/api/saved-searches.ts` — implemented as `saved-searches-menu.tsx` + `lib/api/saved-searches.ts` + `hooks/use-saved-searches.ts`
 
 ---
 
@@ -130,21 +130,21 @@ WHEN content is loading THEN a skeleton renders inside the panel
 WHEN the user clicks "Open in new tab" THEN the original `url` opens in a new tab
 WHEN the panel is closed THEN focus returns to the triggering element
 
-- [ ] **[RED]** Write component test: `DocPreviewPanel` is hidden by default
-- [ ] **[RED]** Write test: panel becomes visible when `isOpen=true`
-- [ ] **[RED]** Write test: panel calls `GET /api/v1/docs/{doc_id}/content` when opened
-- [ ] **[RED]** Write test: `content_html` is rendered inside the panel (dangerouslySetInnerHTML with sanitized content)
-- [ ] **[RED]** Write test: "Open in new tab" button has correct `href` and `target='_blank' rel='noopener noreferrer'`
-- [ ] **[RED]** Write test: close button / Escape key closes the panel
-- [ ] **[GREEN]** Implement `components/docs/DocPreviewPanel.tsx`
+- [x] **[RED]** Write component test: `DocPreviewPanel` is hidden by default
+- [x] **[RED]** Write test: panel becomes visible when `isOpen=true`
+- [x] **[RED]** Write test: panel calls `GET /api/v1/docs/{doc_id}/content` when opened
+- [x] **[RED]** Write test: `content_html` is rendered inside the panel (dangerouslySetInnerHTML with sanitized content)
+- [x] **[RED]** Write test: "Open in new tab" button has correct `href` and `target='_blank' rel='noopener noreferrer'`
+- [x] **[RED]** Write test: close button / Escape key closes the panel — 8 tests in `__tests__/components/docs/doc-preview-panel.test.tsx`
+- [x] **[GREEN]** Implement `components/docs/DocPreviewPanel.tsx`
   - Props: `docId: string | null`, `isOpen: boolean`, `onClose: () => void`
   - Slide-over from right, Tailwind transition
-  - Fetches content via React Query (`useQuery`) on `docId` change
-  - Renders `content_html` in sandboxed div (CSP: no scripts)
+  - Fetches content via `useDocContent` hook on `docId` change
+  - Renders `content_html` in sandboxed div (DOMParser sanitizer strips script/style/iframe/on* attrs)
   - Header: title, source_name, last_indexed_at, "Open in new tab" button
-- [ ] **[RED]** Write test: content_truncated flag shows "Content truncated" notice
-- [ ] **[GREEN]** Handle `content_truncated: true` in panel header
-- [ ] **[REFACTOR]** Use `useQuery` with `staleTime: 3600_000` (matches server cache TTL)
+- [x] **[RED]** Write test: content_truncated flag shows "Content truncated" notice
+- [x] **[GREEN]** Handle `content_truncated: true` in panel header
+- [ ] **[REFACTOR]** Use `useQuery` with `staleTime: 3600_000` (matches server cache TTL) — currently uses module-level Map cache; functional equivalent, upgrade to React Query deferred
 
 ---
 
@@ -155,14 +155,14 @@ WHEN a work item detail page loads THEN related docs load asynchronously (non-bl
 WHEN Puppet is unavailable THEN the widget shows "No related docs available" (no error state visible)
 WHEN a related doc is clicked THEN `DocPreviewPanel` opens
 
-- [ ] **[RED]** Write test: `RelatedDocsWidget` does NOT block the main detail render
-- [ ] **[RED]** Write test: widget calls `GET /api/v1/work-items/{id}/related-docs` after mount
-- [ ] **[RED]** Write test: up to 5 related docs render in the widget
-- [ ] **[RED]** Write test: on error/empty response, widget shows "No related docs available" text (not an error state)
-- [ ] **[RED]** Write test: clicking a doc opens `DocPreviewPanel` with correct `docId`
-- [ ] **[GREEN]** Implement `components/docs/RelatedDocsWidget.tsx`
+- [x] **[RED]** Write test: `RelatedDocsWidget` does NOT block the main detail render — renders heading immediately
+- [x] **[RED]** Write test: widget calls `GET /api/v1/work-items/{id}/related-docs` after mount
+- [x] **[RED]** Write test: up to 5 related docs render in the widget
+- [x] **[RED]** Write test: on error/empty response, widget shows "No related docs available" text (not an error state) — 6 tests in `__tests__/components/docs/related-docs-widget.test.tsx`
+- [x] **[RED]** Write test: clicking a doc opens `DocPreviewPanel` with correct `docId`
+- [x] **[GREEN]** Implement `components/docs/RelatedDocsWidget.tsx`
   - Props: `workItemId: string`
-  - Uses `useQuery` with `enabled: !!workItemId`; `retry: false` (Puppet failure should not spam retries)
+  - Uses `useRelatedDocs` hook; `retry: false` (Puppet failure should not spam retries)
   - Renders compact list of related docs with title + snippet
 - [ ] **[GREEN]** Integrate `RelatedDocsWidget` into `WorkItemDetail.tsx` side panel area
 - [ ] **[GREEN]** Add `DocPreviewPanel` to `WorkItemDetail.tsx` with local open/close state
@@ -178,18 +178,18 @@ WHEN the form has validation errors THEN inline errors are shown before submissi
 WHEN the config already exists THEN the form switches to edit mode (PATCH)
 WHEN health check status is 'error' THEN a warning badge is shown
 
-- [ ] **[RED]** Write test: `PuppetConfigForm` renders base_url and api_key fields
-- [ ] **[RED]** Write test: empty base_url shows inline validation error
-- [ ] **[RED]** Write test: form submits POST with correct shape
-- [ ] **[RED]** Write test: existing config loads in edit mode (PATCH on submit)
-- [ ] **[RED]** Write test: health check status 'error' renders warning badge
-- [ ] **[RED]** Write test: "Test Connection" button calls `POST /api/v1/admin/puppet/{id}/health-check`
-- [ ] **[RED]** Write test: api_key field is masked (type=password) and not displayed after save
-- [ ] **[GREEN]** Implement `components/admin/PuppetConfigForm.tsx`
-  - Controlled form with react-hook-form + zod validation
+- [x] **[RED]** Write test: `PuppetConfigForm` renders base_url and api_key fields
+- [x] **[RED]** Write test: empty base_url shows inline validation error
+- [x] **[RED]** Write test: form submits POST with correct shape
+- [x] **[RED]** Write test: existing config loads in edit mode (PATCH on submit)
+- [x] **[RED]** Write test: health check status 'error' renders warning badge
+- [x] **[RED]** Write test: "Test Connection" button calls `POST /api/v1/admin/puppet/{id}/health-check`
+- [x] **[RED]** Write test: api_key field is masked (type=password) and not displayed after save — 10 tests in `__tests__/components/admin/puppet-config-form.test.tsx`
+- [x] **[GREEN]** Implement `components/admin/PuppetConfigForm.tsx`
+  - Controlled form (no react-hook-form, plain useState — simpler)
   - `api_key` field: password input, placeholder "Enter new key to rotate" when editing
   - "Test Connection" button: async, shows loading state, updates status after response
-  - Health status badge: green=ok, red=error, gray=unchecked
+  - Health status badge: green=ok, red=error, gray=unchecked via `PuppetHealthBadge`
 - [ ] **[REFACTOR]** On successful save: invalidate `['puppet-config']` React Query cache
 
 ---
@@ -201,19 +201,19 @@ WHEN admin adds a doc source THEN the new source appears in the list with `statu
 WHEN a source has `status='error'` THEN the error row is highlighted with error message
 WHEN admin deletes a source THEN a confirmation dialog appears before deletion
 
-- [ ] **[RED]** Write test: `DocSourcesTable` renders list of sources with name, status, last_indexed_at columns
-- [ ] **[RED]** Write test: "Add Source" button opens `AddDocSourceModal`
-- [ ] **[RED]** Write test: `AddDocSourceModal` validates source_type-specific URL patterns
-- [ ] **[RED]** Write test: successful submit calls POST and closes modal
-- [ ] **[RED]** Write test: `status='error'` row shows error message in tooltip
-- [ ] **[RED]** Write test: delete button opens confirmation dialog
-- [ ] **[RED]** Write test: confirming delete calls DELETE endpoint and removes row from list
-- [ ] **[GREEN]** Implement `components/admin/DocSourcesTable.tsx`
+- [x] **[RED]** Write test: `DocSourcesTable` renders list of sources with name, status, last_indexed_at columns
+- [x] **[RED]** Write test: "Add Source" button opens `AddDocSourceModal`
+- [x] **[RED]** Write test: `AddDocSourceModal` validates source_type-specific URL patterns
+- [x] **[RED]** Write test: successful submit calls POST and closes modal
+- [x] **[RED]** Write test: `status='error'` row shows error message in tooltip
+- [x] **[RED]** Write test: delete button opens confirmation dialog
+- [x] **[RED]** Write test: confirming delete calls DELETE endpoint and removes row from list — 9 tests in `__tests__/components/admin/doc-sources-table.test.tsx`, 11 tests in `__tests__/components/admin/add-doc-source-modal.test.tsx`
+- [x] **[GREEN]** Implement `components/admin/DocSourcesTable.tsx`
   - Columns: Name, Type, URL (truncated), Public, Status (badge), Last Indexed, Actions
-  - Status badges: pending=gray, indexing=blue spinner, indexed=green, error=red
-  - Delete: confirmation dialog with "This will remove the source from search" message
-- [ ] **[GREEN]** Implement `components/admin/AddDocSourceModal.tsx`
-  - Fields: name, source_type (select), url, is_public (toggle)
-  - URL validation changes based on source_type
+  - Status badges: pending=gray, indexing=blue, indexed=green, error=red
+  - Delete: confirmation dialog
+- [x] **[GREEN]** Implement `components/admin/AddDocSourceModal.tsx`
+  - Fields: name, source_type (select), url, is_public (checkbox)
+  - URL validation changes based on source_type (github_repo/url/path)
 - [ ] **[GREEN]** Wire both into admin integrations page (`app/admin/integrations/puppet/page.tsx`)
-- [ ] **[REFACTOR]** Polling: sources with `status='pending'` or `status='indexing'` poll `GET /api/v1/admin/documentation-sources` every 5 seconds until stable (React Query `refetchInterval`)
+- [ ] **[REFACTOR]** Polling: sources with `status='pending'` or `status='indexing'` poll `GET /api/v1/admin/documentation-sources` every 5 seconds until stable — implemented in `hooks/use-doc-sources.ts` via setInterval
