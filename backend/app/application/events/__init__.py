@@ -100,3 +100,64 @@ def register_event_subscribers(bus: EventBus) -> None:
         logger.exception(
             "register_event_subscribers: failed to register validation template subscriber"
         )
+
+    # EP-22 — Chat primer on work item creation
+    try:
+        # Resolve callback_url at registration time; deferred import per lru_cache trap.
+        from app.config.settings import get_settings
+
+        _s = get_settings()
+        _callback_url = _s.dundun.callback_url
+
+        # Build a shared stateless proxy that creates fresh DB sessions per event.
+        # Following the same pattern as _NotificationProxy above.
+        class _ChatPrimerProxy:
+            async def handle(self, event: object) -> None:
+                from app.application.events.chat_primer_subscriber import (
+                    make_chat_primer_handler,
+                )
+                from app.application.services.conversation_service import ConversationService
+                from app.infrastructure.persistence.conversation_thread_repository_impl import (
+                    ConversationThreadRepositoryImpl,
+                )
+                from app.infrastructure.persistence.database import get_session_factory
+                from app.infrastructure.persistence.section_repository_impl import (
+                    SectionRepositoryImpl,
+                )
+                from app.infrastructure.persistence.work_item_repository_impl import (
+                    WorkItemRepositoryImpl,
+                )
+                from app.presentation.dependencies import get_dundun_client
+
+                factory = get_session_factory()
+                async with factory() as session:
+                    try:
+                        w_repo = WorkItemRepositoryImpl(session)
+                        s_repo = SectionRepositoryImpl(session)
+                        t_repo = ConversationThreadRepositoryImpl(session)
+                        dundun = get_dundun_client()
+                        svc = ConversationService(
+                            thread_repo=t_repo, dundun_client=dundun
+                        )
+                        handler = make_chat_primer_handler(
+                            work_item_repo=w_repo,
+                            conversation_svc=svc,
+                            dundun_client=dundun,
+                            callback_url=_callback_url,
+                            section_repo=s_repo,
+                        )
+                        await handler(event)
+                        await session.commit()
+                    except Exception:
+                        await session.rollback()
+                        raise
+
+        from app.application.events.events import WorkItemCreatedEvent as _WICreatedEvent
+
+        _primer_proxy = _ChatPrimerProxy()
+        bus.subscribe(_WICreatedEvent, _primer_proxy.handle)
+        logger.info("register_event_subscribers: chat_primer subscriber registered")
+    except Exception:
+        logger.exception(
+            "register_event_subscribers: failed to register chat_primer subscriber"
+        )

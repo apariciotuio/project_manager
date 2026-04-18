@@ -45,4 +45,16 @@ class IConversationThreadRepository(ABC):
 
     @abstractmethod
     async def update(self, thread: ConversationThread) -> ConversationThread:
-        """Persist mutations on an existing thread (preview, archive). Returns updated entity."""
+        """Persist mutations on an existing thread (preview, archive, primer_sent_at).
+
+        Returns updated entity.
+        """
+
+    @abstractmethod
+    async def acquire_for_primer(self, thread_id: UUID) -> ConversationThread | None:
+        """Row-locked SELECT WHERE primer_sent_at IS NULL.
+
+        Returns the thread if it exists and has not yet been primed (primer_sent_at IS NULL).
+        Returns None if the thread does not exist or is already primed.
+        Caller must be inside an open transaction; the lock is released on commit/rollback.
+        """

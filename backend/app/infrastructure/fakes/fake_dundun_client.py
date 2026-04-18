@@ -75,7 +75,7 @@ class FakeDundunClient:
         conversation_id: str,  # noqa: ARG002
         user_id: UUID,  # noqa: ARG002
         work_item_id: UUID | None,  # noqa: ARG002
-    ) -> AsyncIterator["FakeDundunWSBridge"]:
+    ) -> AsyncIterator[FakeDundunWSBridge]:
         self._check_error()
         frames = list(self.chat_frames)
         self.chat_frames = []
@@ -90,6 +90,20 @@ class FakeDundunClient:
     async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
         self._check_error()
         return list(self.history_by_conversation.get(conversation_id, []))
+
+    def queue_ws_response_with_signals(self, signals: dict[str, Any]) -> None:
+        """Seed a response frame with the given signals into chat_frames.
+
+        Integration tests use this to simulate Dundun emitting structured signals
+        (e.g. suggested_sections) so the inbound proxy validation path can be exercised.
+        """
+        self.chat_frames.append(
+            {
+                "type": "response",
+                "response": "Assistant reply with signals.",
+                "signals": signals,
+            }
+        )
 
 
 class FakeDundunWSBridge:

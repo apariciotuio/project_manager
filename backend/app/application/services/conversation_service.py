@@ -19,6 +19,7 @@ from app.domain.ports.dundun import DundunClient
 from app.domain.repositories.conversation_thread_repository import (
     IConversationThreadRepository,
 )
+from app.domain.repositories.section_repository import ISectionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,12 @@ class ConversationService:
         thread_repo: IConversationThreadRepository,
         dundun_client: DundunClient,
         now: Callable[[], datetime] = _utcnow,
+        section_repo: ISectionRepository | None = None,
     ) -> None:
         self._thread_repo = thread_repo
         self._dundun_client = dundun_client
         self._now = now
+        self._section_repo = section_repo
 
     async def get_or_create_thread(
         self, workspace_id: UUID, user_id: UUID, work_item_id: UUID | None
@@ -160,3 +163,18 @@ class ConversationService:
         return await self._thread_repo.list_for_user(
             user_id, work_item_id=work_item_id, include_archived=False
         )
+
+    async def build_sections_snapshot(
+        self, work_item_id: UUID | None
+    ) -> dict[str, str] | None:
+        """Build server-authoritative { section_type: content } snapshot.
+
+        Returns None for general threads (work_item_id=None).
+        Returns {} when the work item has no sections yet.
+        """
+        if work_item_id is None:
+            return None
+        if self._section_repo is None:
+            return {}
+        sections = await self._section_repo.get_by_work_item(work_item_id)
+        return {s.section_type.value: s.content for s in sections}

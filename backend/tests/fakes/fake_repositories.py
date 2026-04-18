@@ -558,6 +558,13 @@ class FakeConversationThreadRepository:
         self._by_id[thread.id] = thread
         return thread
 
+    async def acquire_for_primer(self, thread_id: UUID) -> object:
+        """Return thread if not yet primed; None if already primed or not found."""
+        thread = self._by_id.get(thread_id)
+        if thread is None or thread.primer_sent_at is not None:
+            return None
+        return thread
+
 
 class FakeAssistantSuggestionRepository:
     """In-memory IAssistantSuggestionRepository for unit tests."""
@@ -685,3 +692,39 @@ class FakeTemplateRepository:
 
     async def list_for_workspace(self, workspace_id: object) -> list:
         return [t for t in self._all() if t.workspace_id == workspace_id]
+
+
+class FakeSectionRepository:
+    """In-memory ISectionRepository for unit/integration tests — EP-22."""
+
+    def __init__(self) -> None:
+        from app.domain.models.section import Section
+
+        self._by_id: dict[UUID, Section] = {}
+
+    def seed(self, section: object) -> None:
+        from app.domain.models.section import Section
+
+        assert isinstance(section, Section)
+        self._by_id[section.id] = section
+
+    async def get(self, section_id: UUID) -> object:
+        return self._by_id.get(section_id)
+
+    async def get_by_work_item(self, work_item_id: UUID) -> list:
+        return [s for s in self._by_id.values() if s.work_item_id == work_item_id]
+
+    async def save(self, section: object) -> object:
+        from app.domain.models.section import Section
+
+        assert isinstance(section, Section)
+        self._by_id[section.id] = section
+        return section
+
+    async def bulk_insert(self, sections: list) -> list:
+        for s in sections:
+            from app.domain.models.section import Section
+
+            assert isinstance(s, Section)
+            self._by_id[s.id] = s
+        return list(sections)

@@ -16,6 +16,7 @@ def to_domain(row: ConversationThreadORM) -> ConversationThread:
         last_message_at=row.last_message_at,
         created_at=row.created_at,
         deleted_at=row.deleted_at,
+        primer_sent_at=getattr(row, "primer_sent_at", None),
     )
 
 
@@ -30,4 +31,5 @@ def to_orm(entity: ConversationThread) -> ConversationThreadORM:
     row.last_message_at = entity.last_message_at
     row.created_at = entity.created_at
     row.deleted_at = entity.deleted_at
+    row.primer_sent_at = entity.primer_sent_at
     return row

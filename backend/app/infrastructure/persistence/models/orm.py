@@ -440,6 +440,7 @@ class ConversationThreadORM(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    primer_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 _SUGGESTION_STATUSES = "'pending','accepted','rejected','expired','applied'"

@@ -14,6 +14,8 @@ from app.infrastructure.persistence.mappers.conversation_thread_mapper import (
 )
 from app.infrastructure.persistence.models.orm import ConversationThreadORM
 
+_FOR_UPDATE = True
+
 
 class ConversationThreadRepositoryImpl(IConversationThreadRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -77,8 +79,28 @@ class ConversationThreadRepositoryImpl(IConversationThreadRepository):
                 last_message_preview=thread.last_message_preview,
                 last_message_at=thread.last_message_at,
                 deleted_at=thread.deleted_at,
+                primer_sent_at=thread.primer_sent_at,
             )
             .returning(ConversationThreadORM)
         )
         row = (await self._session.execute(stmt)).scalar_one()
         return to_domain(row)
+
+    async def acquire_for_primer(self, thread_id: UUID) -> ConversationThread | None:
+        """Row-locked SELECT for primer idempotency.
+
+        Returns the thread only if primer_sent_at IS NULL (not yet primed).
+        Returns None if the thread does not exist OR is already primed.
+        The FOR UPDATE lock serialises concurrent primer invocations.
+        Caller must hold a transaction that is committed or rolled back to release the lock.
+        """
+        stmt = (
+            select(ConversationThreadORM)
+            .where(
+                ConversationThreadORM.id == thread_id,
+                ConversationThreadORM.primer_sent_at.is_(None),
+            )
+            .with_for_update()
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        return to_domain(row) if row else None

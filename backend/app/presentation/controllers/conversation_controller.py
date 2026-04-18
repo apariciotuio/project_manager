@@ -7,12 +7,18 @@ Routes:
   GET    /api/v1/threads/{thread_id}/history   — fetch history from Dundun
   DELETE /api/v1/threads/{thread_id}           — archive (soft-delete)
   WS     /ws/conversations/{thread_id}         — bidirectional proxy to Dundun
+
+EP-22 extensions:
+  - fe_to_upstream: attaches server-authoritative context.sections_snapshot
+  - upstream_to_fe: validates signals.suggested_sections; drops invalid items
 """
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
@@ -79,7 +85,7 @@ async def get_or_create_thread(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},  # noqa: E501
         )
     thread = await service.get_or_create_thread(
         current_user.workspace_id, current_user.id, body.work_item_id
@@ -187,10 +193,28 @@ async def conversation_ws(
         # 4. Open upstream to Dundun and pump frames bidirectionally
         dundun = get_dundun_client()
         try:
+            # Build snapshot provider for this thread — closes over session factory
+            from app.infrastructure.persistence.database import get_session_factory
+            from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
+
+            async def _get_snapshot(wid: UUID | None) -> dict[str, str] | None:
+                if wid is None:
+                    return None
+                factory = get_session_factory()
+                async with factory() as _s:
+                    repo = SectionRepositoryImpl(_s)
+                    sections = await repo.get_by_work_item(wid)
+                    return {sec.section_type.value: sec.content for sec in sections}
+
             async with _UpstreamWS(
                 dundun, thread.dundun_conversation_id, user.id, thread.work_item_id
             ) as upstream:
-                await _pump(websocket, upstream)
+                await _pump(
+                    websocket,
+                    upstream,
+                    work_item_id=thread.work_item_id,
+                    snapshot_provider=_get_snapshot,
+                )
         except WebSocketDisconnect:
             logger.debug("ws_proxy: client disconnected thread=%s", thread_id)
         except Exception:
@@ -253,13 +277,92 @@ class _UpstreamWS:
             logger.debug("ws_proxy: upstream send error", exc_info=True)
 
 
-async def _pump(websocket: WebSocket, upstream: _UpstreamWS) -> None:
+_SnapshotProvider = Callable[[UUID | None], Awaitable[dict[str, str] | None]]
+
+_SNAPSHOT_WARN_THRESHOLD = 50 * 1024  # 50 KB
+
+
+async def _enrich_outbound_frame(
+    frame: dict[str, Any],
+    *,
+    work_item_id: UUID | None,
+    snapshot_provider: _SnapshotProvider,
+) -> dict[str, Any]:
+    """Attach server-authoritative context.sections_snapshot to outbound message frames.
+
+    Only type==message frames are enriched. General threads (work_item_id=None)
+    are forwarded verbatim. BE overrides any FE-supplied snapshot value.
+    """
+    if frame.get("type") != "message":
+        return frame
+    if work_item_id is None:
+        return frame
+
+    snapshot = await snapshot_provider(work_item_id)
+    if snapshot is None:
+        return frame
+
+    # Log size observability (EP-22 §3.4)
+    size = len(json.dumps(snapshot).encode())
+    if size > _SNAPSHOT_WARN_THRESHOLD:
+        logger.warning(
+            "sections_snapshot_oversized work_item_id=%s size_bytes=%d",
+            work_item_id,
+            size,
+        )
+    else:
+        logger.debug(
+            "sections_snapshot_attached work_item_id=%s size_bytes=%d",
+            work_item_id,
+            size,
+        )
+
+    enriched = dict(frame)
+    existing_context = dict(enriched.get("context") or {})
+    existing_context["sections_snapshot"] = snapshot
+    enriched["context"] = existing_context
+    return enriched
+
+
+def _enrich_inbound_frame(frame: dict[str, Any]) -> dict[str, Any]:
+    """Validate signals.suggested_sections on inbound response frames.
+
+    Non-response frames are forwarded verbatim. Invalid items in
+    suggested_sections are dropped with a warn log. All-invalid → empty list
+    (field always present). Uses validate_signals from dundun_signals.
+    """
+    from app.presentation.schemas.dundun_signals import validate_signals
+
+    if frame.get("type") != "response":
+        return frame
+
+    raw_signals = frame.get("signals") or {}
+    validated = validate_signals(raw_signals)
+
+    enriched = dict(frame)
+    enriched["signals"] = validated
+    return enriched
+
+
+async def _pump(
+    websocket: WebSocket,
+    upstream: _UpstreamWS,
+    *,
+    work_item_id: UUID | None = None,
+    snapshot_provider: _SnapshotProvider | None = None,
+) -> None:
     """Drive frames in both directions until either side closes."""
 
     async def fe_to_upstream() -> None:
         try:
             while True:
                 msg = await websocket.receive_json()
+                if snapshot_provider is not None:
+                    msg = await _enrich_outbound_frame(
+                        msg,
+                        work_item_id=work_item_id,
+                        snapshot_provider=snapshot_provider,
+                    )
                 await upstream.send(msg)
         except WebSocketDisconnect:
             pass
@@ -269,6 +372,7 @@ async def _pump(websocket: WebSocket, upstream: _UpstreamWS) -> None:
             frame = await upstream.receive()
             if frame is None:
                 break
+            frame = _enrich_inbound_frame(frame)
             await websocket.send_json(frame)
 
     tasks = [
