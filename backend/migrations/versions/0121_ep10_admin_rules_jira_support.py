@@ -22,9 +22,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Widen alembic_version.version_num — this revision ID exceeds the default
-    # VARCHAR(32) that Alembic creates. Must run before Alembic stamps the new
-    # version at the end of the transaction.
+    # alembic_version widening moved to 0120 (first long-named migration).
+    # Kept here as a defensive idempotent guard in case 0120 is skipped
+    # (e.g. cherry-picked migrations or downgrade/upgrade cycles).
     op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
 
     # ------------------------------------------------------------------

@@ -22,6 +22,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Widen alembic_version.version_num — later revision IDs exceed the default
+    # VARCHAR(32) that Alembic creates. Done here (earliest long-named migration
+    # in the chain) so asyncpg does not cache a prepared UPDATE against the old
+    # column type when stamping 0121+.
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
+
     # ------------------------------------------------------------------
     # 1. capabilities + context_labels on workspace_memberships
     # ------------------------------------------------------------------
