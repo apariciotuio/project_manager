@@ -210,7 +210,8 @@ THEN it must be replaced with cursor-based pagination (offset pagination is a MU
   - [ ] member list: deferred — endpoint is a UI picker (hard cap 500, intentional by design comment); keyset pagination would break picker UX; no service/repo layer exists to extend — 2026-04-18
   - [x] audit log list — done: keyset on (created_at DESC, id DESC), `require_admin` enforced, old offset-page removed, 6 integration tests green — 2026-04-18
   - [ ] search results: pending
-- [ ] [REFACTOR] Eliminate any offset-based pagination from existing endpoints — pending
+- [x] [GREEN] Migrate `GET /puppet/ingest-requests` (list_ingest_requests) from offset/limit to cursor pagination — `list_by_workspace_cursor` in `puppet_ingest_request_repository_impl.py`; controller uses `PaginationCursor.decode`/`InvalidCursorError`; response shape `{ items, pagination: { next_cursor, has_more } }`; 7 integration tests green (2026-04-18)
+- [ ] [REFACTOR] Eliminate any remaining offset-based pagination from existing endpoints — `work_item_controller.py` still has legacy `page`/`limit` params (backward-compat shim, documented); no other offset pagination found in admin controllers
 
 ### Acceptance Criteria — Redis Caching
 
