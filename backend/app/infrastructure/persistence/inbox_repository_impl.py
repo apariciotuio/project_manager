@@ -25,6 +25,7 @@ Indexes required (migration C2.1):
 from __future__ import annotations
 
 from datetime import UTC
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
@@ -291,7 +292,7 @@ class InboxRepositoryImpl(IInboxRepository):
         sql_str = _INBOX_UNION_SQL.text.replace("{type_filter}", type_filter)
         stmt = text(sql_str)
 
-        params: dict = {"user_id": user_id, "workspace_id": workspace_id}
+        params: dict[str, Any] = {"user_id": user_id, "workspace_id": workspace_id}
         if item_type is not None:
             params["item_type"] = item_type
 

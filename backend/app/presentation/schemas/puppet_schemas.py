@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,7 +44,7 @@ class PuppetSearchHit(BaseModel):
     puppet_doc_id: str
     score: float
     snippet: str
-    metadata: dict
+    metadata: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------

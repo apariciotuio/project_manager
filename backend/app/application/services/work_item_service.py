@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
@@ -303,7 +304,7 @@ class WorkItemService:
     # ------------------------------------------------------------------
 
     async def transition(self, cmd: TransitionStateCommand) -> WorkItem:
-        _audit_ctx: dict = {
+        _audit_ctx: dict[str, Any] = {
             "outcome": "failure",
             "ip_address": cmd.ip_address,
             "user_agent": cmd.user_agent,

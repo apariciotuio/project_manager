@@ -156,10 +156,10 @@ class AdminSupportService:
 
         if self._cache is not None:
             try:
-                existing = await self._cache.get(rate_key)  # type: ignore[union-attr]
+                existing = await self._cache.get(rate_key)
                 if existing:
                     raise RetryAllRateLimitedError("retry-all called within 10 min window")
-                await self._cache.set(rate_key, "1", ttl=_RETRY_ALL_TTL)  # type: ignore[union-attr]
+                await self._cache.set(rate_key, "1", ttl=_RETRY_ALL_TTL)
             except RetryAllRateLimitedError:
                 raise
             except Exception:

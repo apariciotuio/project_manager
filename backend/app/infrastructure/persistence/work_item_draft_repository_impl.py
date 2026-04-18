@@ -82,7 +82,7 @@ class WorkItemDraftRepositoryImpl(IWorkItemDraftRepository):
             row.id = draft.id
             row.user_id = draft.user_id
             row.workspace_id = draft.workspace_id
-            row.data = draft.data  # type: ignore[assignment]
+            row.data = draft.data
             row.local_version = 1
             row.incomplete = draft.incomplete
             row.created_at = now
@@ -123,4 +123,4 @@ class WorkItemDraftRepositoryImpl(IWorkItemDraftRepository):
         stmt = delete(WorkItemDraftORM).where(WorkItemDraftORM.expires_at < now)
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.rowcount  # type: ignore[return-value]
+        return result.rowcount

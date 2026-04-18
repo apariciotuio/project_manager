@@ -7,6 +7,7 @@ transitions check predecessor dependencies before allowing mark_done.
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.task_node import (
@@ -210,7 +211,7 @@ class TaskService:
     # Single node + breadcrumb (EP-05 Commit 2)
     # ------------------------------------------------------------------
 
-    async def get_node_with_breadcrumb(self, node_id: UUID) -> tuple[TaskNode, list[dict]] | None:
+    async def get_node_with_breadcrumb(self, node_id: UUID) -> tuple[TaskNode, list[dict[str, Any]]] | None:
         """Return (node, breadcrumb) where breadcrumb = [{id, title}, ...] root→parent.
 
         Breadcrumb is derived from materialized_path without extra DB queries:
@@ -246,7 +247,7 @@ class TaskService:
     # Search (EP-05 Commit 2)
     # ------------------------------------------------------------------
 
-    async def search_tasks(self, *, work_item_id: UUID, q: str) -> list[dict]:
+    async def search_tasks(self, *, work_item_id: UUID, q: str) -> list[dict[str, Any]]:
         """Return [{id, title}] for tasks whose title ILIKE '%q%' within work_item.
 
         Returns [] without DB query when len(q) < 2.

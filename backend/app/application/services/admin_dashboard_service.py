@@ -36,7 +36,7 @@ class AdminDashboardService:
 
         if self._cache is not None:
             try:
-                cached = await self._cache.get(cache_key)  # type: ignore[union-attr]
+                cached = await self._cache.get(cache_key)
                 if cached:
                     return json.loads(cached)
             except Exception:
@@ -46,7 +46,7 @@ class AdminDashboardService:
 
         if self._cache is not None:
             try:
-                await self._cache.set(cache_key, json.dumps(result), ttl=_CACHE_TTL_SECONDS)  # type: ignore[union-attr]
+                await self._cache.set(cache_key, json.dumps(result), ttl=_CACHE_TTL_SECONDS)
             except Exception:
                 logger.warning("dashboard cache write failed")
 

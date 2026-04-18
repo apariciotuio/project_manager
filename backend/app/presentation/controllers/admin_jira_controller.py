@@ -231,7 +231,7 @@ async def list_jira_mappings(
 class CreateMappingRequest(BaseModel):
     jira_project_key: str
     local_project_id: UUID | None = None
-    type_mappings: dict | None = None
+    type_mappings: dict[str, Any] | None = None
 
 
 @router.post("/{config_id}/mappings", status_code=http_status.HTTP_201_CREATED)

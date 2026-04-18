@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
@@ -47,7 +48,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 
 
-def _error(code: str, message: str) -> dict:
+def _error(code: str, message: str) -> dict[str, Any]:
     return {"error": {"code": code, "message": message, "details": {}}}
 
 
@@ -225,7 +226,7 @@ async def refresh_token(
     workspace_slug: str | None = None,
     auth: AuthService = Depends(get_auth_service),
     workspaces: WorkspaceRepositoryImpl = Depends(get_workspace_repo),
-) -> dict:
+) -> dict[str, Any]:
     secure_cookies = request.url.scheme == "https"
     if not refresh_token:
         _clear_cookies(response, secure=secure_cookies)
@@ -323,7 +324,7 @@ async def me(
     user: CurrentUser = Depends(get_current_user),
     users: UserRepositoryImpl = Depends(get_user_repo),
     workspaces: WorkspaceRepositoryImpl = Depends(get_workspace_repo),
-) -> dict:
+) -> dict[str, Any]:
     record = await users.get_by_id(user.id)
     if record is None:
         raise HTTPException(

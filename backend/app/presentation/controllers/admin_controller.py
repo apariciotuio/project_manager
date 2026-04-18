@@ -40,7 +40,7 @@ async def list_audit_events(
     session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     # workspace_id presence guaranteed by require_admin
-    workspace_id = current_user.workspace_id  # type: ignore[assignment]
+    workspace_id = current_user.workspace_id
 
     decoded_cursor: PaginationCursor | None = None
     if cursor is not None:

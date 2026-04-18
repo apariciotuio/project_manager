@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService
@@ -50,7 +51,7 @@ class ContextPresetService:
         *,
         name: str,
         description: str | None,
-        sources: list[dict],
+        sources: list[dict[str, Any]],
         actor_id: UUID,
     ) -> ContextPreset:
         existing = await self._repo.get_by_name(workspace_id, name)
@@ -84,7 +85,7 @@ class ContextPresetService:
         *,
         name: str | None = None,
         description: str | None = None,
-        sources: list[dict] | None = None,
+        sources: list[dict[str, Any]] | None = None,
         actor_id: UUID,
     ) -> ContextPreset:
         preset = await self._repo.get_by_id(preset_id, workspace_id)

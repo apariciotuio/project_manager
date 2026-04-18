@@ -15,6 +15,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService
@@ -311,7 +312,7 @@ class AuthService:
             actor_id=actor_id or session.user_id,
         )
 
-    def decode_access_token(self, token: str) -> dict:
+    def decode_access_token(self, token: str) -> dict[str, Any]:
         try:
             return self._jwt.decode(token)
         except (TokenExpiredError, TokenInvalidError):

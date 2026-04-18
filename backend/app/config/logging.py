@@ -71,7 +71,7 @@ class JsonFormatter(logging.Formatter):
 
 class CorrelationIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.correlation_id = correlation_id_var.get("")  # type: ignore[attr-defined]
+        record.correlation_id = correlation_id_var.get("")
         return True
 
 

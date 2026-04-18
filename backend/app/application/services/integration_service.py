@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.integration import IntegrationConfig, IntegrationExport
@@ -33,7 +34,7 @@ class IntegrationService:
         encrypted_credentials: str,
         created_by: UUID,
         project_id: UUID | None = None,
-        mapping: dict | None = None,
+        mapping: dict[str, Any] | None = None,
     ) -> IntegrationConfig:
         config = IntegrationConfig.create(
             workspace_id=workspace_id,
@@ -54,7 +55,7 @@ class IntegrationService:
         work_item_id: UUID,
         workspace_id: UUID,
         integration_config_id: UUID,
-        snapshot: dict,
+        snapshot: dict[str, Any],
         exported_by: UUID,
     ) -> IntegrationExport:
         """Stub — creates an export record with status=pending.

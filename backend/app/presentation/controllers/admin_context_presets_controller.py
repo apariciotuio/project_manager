@@ -77,7 +77,7 @@ async def list_presets(
 class CreatePresetRequest(BaseModel):
     name: str
     description: str | None = None
-    sources: list[dict] = []
+    sources: list[dict[str, Any]] = []
 
 
 @router.post("", status_code=http_status.HTTP_201_CREATED)
@@ -128,7 +128,7 @@ async def get_preset(
 class PatchPresetRequest(BaseModel):
     name: str | None = None
     description: str | None = None
-    sources: list[dict] | None = None
+    sources: list[dict[str, Any]] | None = None
 
 
 @router.patch("/{preset_id}")

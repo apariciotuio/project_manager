@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.project import Project, RoutingRule
@@ -94,7 +95,7 @@ class ProjectService:
         project_id: UUID | None = None,
         suggested_team_id: UUID | None = None,
         suggested_owner_id: UUID | None = None,
-        suggested_validators: list | None = None,
+        suggested_validators: list[Any] | None = None,
         priority: int = 0,
     ) -> RoutingRule:
         rule = RoutingRule.create(
@@ -133,7 +134,7 @@ class ProjectService:
         workspace_id: UUID,
         suggested_team_id: UUID | None = None,
         suggested_owner_id: UUID | None = None,
-        suggested_validators: list | None = None,
+        suggested_validators: list[Any] | None = None,
         priority: int | None = None,
         active: bool | None = None,
     ) -> RoutingRule:

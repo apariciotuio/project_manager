@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 LockUnlockResponse = Literal["accepted", "declined"]
@@ -64,7 +64,7 @@ class LockUnlockRequest:
             response_note=None,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": str(self.id),
             "section_id": str(self.section_id),

@@ -75,7 +75,7 @@ class PaginationResult:
 
 
 def paginate(
-    stmt: sa.Select,
+    stmt: sa.Select[Any],
     *,
     session: Session,
     cursor: PaginationCursor | None,

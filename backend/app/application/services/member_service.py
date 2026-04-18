@@ -222,7 +222,7 @@ class MemberService:
             ).encode()
 
         return PaginationResult(
-            rows=items,  # type: ignore[arg-type]
+            rows=items,
             has_next=has_next,
             next_cursor=next_cursor,
         )

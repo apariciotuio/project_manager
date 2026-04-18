@@ -17,7 +17,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import sqlalchemy as sa
@@ -103,7 +103,7 @@ class PgRateLimiter:
             window_start: datetime = row.window_start_minute
             # Reset is the start of the *next* minute.
             if window_start.tzinfo is None:
-                window_start = window_start.replace(tzinfo=timezone.utc)
+                window_start = window_start.replace(tzinfo=UTC)
             reset_at = int(window_start.timestamp()) + 60
 
             return RateLimitResult(
@@ -118,7 +118,7 @@ class PgRateLimiter:
                 exc,
                 exc_info=True,
             )
-            now_epoch = int(datetime.now(tz=timezone.utc).timestamp())
+            now_epoch = int(datetime.now(tz=UTC).timestamp())
             window_minute = now_epoch // 60
             return RateLimitResult(
                 allowed=True,
@@ -160,6 +160,8 @@ class RateLimitMiddleware:
         auth_limit      — requests/min for authenticated identifiers (by user_id).
         get_user_id     — optional callable(Request) → str | None.  Return None
                           to use IP-based bucketing.
+        exempt_paths    — optional set[str] of paths to exempt from rate limiting
+                          (exact match on request path).
     """
 
     def __init__(
@@ -169,12 +171,14 @@ class RateLimitMiddleware:
         unauth_limit: int = 10,
         auth_limit: int = 300,
         get_user_id: Callable[[Request], str | None] | None = None,
+        exempt_paths: set[str] | None = None,
     ) -> None:
         self._app = app
         self._session_factory = session_factory
         self._unauth_limit = unauth_limit
         self._auth_limit = auth_limit
         self._get_user_id = get_user_id or (lambda _r: None)
+        self._exempt_paths = exempt_paths or set()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -182,6 +186,12 @@ class RateLimitMiddleware:
             return
 
         request = Request(scope, receive)
+        path = scope.get("path", "")
+
+        # Check if this path is exempt from rate limiting
+        if path in self._exempt_paths:
+            await self._app(scope, receive, send)
+            return
 
         try:
             user_id = self._get_user_id(request)

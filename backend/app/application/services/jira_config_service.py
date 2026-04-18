@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService
@@ -177,7 +178,7 @@ class JiraConfigService:
         *,
         jira_project_key: str,
         local_project_id: UUID | None,
-        type_mappings: dict | None,
+        type_mappings: dict[str, Any] | None,
         actor_id: UUID,
     ) -> JiraProjectMapping:
         await self.get_config(workspace_id, config_id)

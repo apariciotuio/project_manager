@@ -42,7 +42,7 @@ class WorkItemListQueryBuilder:
             else:
                 # Raises ValueError on tamper — caller maps to 422
                 self._decoded = PaginationCursor.decode(self._filters.cursor)
-        return self._decoded  # type: ignore[return-value]
+        return self._decoded
 
     def build_stmt(self) -> Select[tuple[WorkItemORM]]:
         f = self._filters

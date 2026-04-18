@@ -5,6 +5,7 @@ Manages task_dependencies with cycle detection before insert.
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from app.domain.models.task_node import TaskDependency, TaskStatus
@@ -73,7 +74,7 @@ class DependencyService:
             raise DependencyNotFoundError(f"dependency {dep_id} not found")
         await self._deps.remove(dep_id)
 
-    async def get_blocked_tasks(self, work_item_id: UUID) -> list[dict]:
+    async def get_blocked_tasks(self, work_item_id: UUID) -> list[dict[str, Any]]:
         """Return tasks that have at least one non-done predecessor.
 
         Each result dict: { "id": UUID, "title": str, "status": str, "blocked_by": [UUID] }
@@ -97,7 +98,7 @@ class DependencyService:
             blockers = [
                 t
                 for t in targets
-                if node_map.get(t) is not None and node_map[t].status is not TaskStatus.DONE  # type: ignore[comparison-overlap]
+                if node_map.get(t) is not None and node_map[t].status is not TaskStatus.DONE
             ]
             if blockers:
                 result.append(

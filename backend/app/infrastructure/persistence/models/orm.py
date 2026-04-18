@@ -7,6 +7,7 @@ Mappers live in each repository impl and convert ORM rows ↔ domain dataclasses
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -1512,7 +1513,7 @@ class ContextPresetORM(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sources: Mapped[list[dict]] = mapped_column(
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1621,7 +1622,7 @@ class JiraProjectMappingORM(Base):
     local_project_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
     )
-    type_mappings: Mapped[dict] = mapped_column(
+    type_mappings: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
     )
     created_at: Mapped[datetime] = mapped_column(

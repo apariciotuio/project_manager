@@ -211,8 +211,8 @@ class NotificationService:
         deeplink: str,
         idempotency_key: str,
         actor_id: UUID | None = None,
-        quick_action: dict | None = None,
-        extra: dict | None = None,
+        quick_action: dict[str, Any] | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> Notification:
         notification = Notification.create(
             workspace_id=workspace_id,
@@ -274,7 +274,7 @@ class NotificationService:
         *,
         notification_id: UUID,
         actor_id: UUID,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Execute a quick action from the inbox.
 
         Raises:

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -471,11 +472,11 @@ async def _handle_breakdown(
     session: AsyncSession,
     work_item_id: UUID,
     workspace_id: UUID,
-    breakdown: list[dict],
+    breakdown: list[dict[str, Any]],
     request_id: str,
     task_service: object,
     actor_id: UUID,
-) -> dict:
+) -> dict[str, Any]:
     """Pure breakdown logic — extracted for unit testing.
 
     Args:
@@ -529,7 +530,7 @@ async def _handle_breakdown(
                     request_id,
                 )
 
-        node = await task_service.create_node(  # type: ignore[union-attr]
+        node = await task_service.create_node(
             work_item_id=work_item_id,
             parent_id=parent_id,
             title=title,

@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 
@@ -23,7 +24,7 @@ class InboxItem:
     tier_label: str
     event_age: datetime
     deeplink: str
-    quick_action: dict | None
+    quick_action: dict[str, Any] | None
     source: str  # "direct" | "team"
     team_id: UUID | None
 

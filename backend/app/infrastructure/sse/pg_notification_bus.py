@@ -73,7 +73,7 @@ class PgNotificationBus:
         self,
         *,
         dsn: str | None = None,
-        pool: asyncpg.Pool | None = None,  # type: ignore[type-arg]
+        pool: asyncpg.Pool | None = None,
     ) -> None:
         if dsn is None and pool is None:
             raise ValueError("Provide either dsn or pool")
@@ -86,27 +86,27 @@ class PgNotificationBus:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _acquire_pooled(self) -> asyncpg.Connection:  # type: ignore[type-arg]
+    async def _acquire_pooled(self) -> asyncpg.Connection:
         """Acquire a connection for publish (short-lived, returns to pool)."""
         if self._pool is not None:
-            return await self._pool.acquire()  # type: ignore[return-value]
+            return await self._pool.acquire()
         return await asyncpg.connect(self._dsn)
 
-    async def _release_pooled(self, conn: asyncpg.Connection) -> None:  # type: ignore[type-arg]
+    async def _release_pooled(self, conn: asyncpg.Connection) -> None:
         if self._pool is not None:
             await self._pool.release(conn)
         else:
             await conn.close()
 
-    async def _acquire_dedicated(self) -> asyncpg.Connection:  # type: ignore[type-arg]
+    async def _acquire_dedicated(self) -> asyncpg.Connection:
         """Acquire a dedicated connection for LISTEN (lives for subscription duration)."""
         if self._pool is not None:
             # asyncpg pool.acquire() in isolation mode keeps the connection
             # out of the pool until explicitly released.
-            return await self._pool.acquire()  # type: ignore[return-value]
+            return await self._pool.acquire()
         return await asyncpg.connect(self._dsn)
 
-    async def _release_dedicated(self, conn: asyncpg.Connection) -> None:  # type: ignore[type-arg]
+    async def _release_dedicated(self, conn: asyncpg.Connection) -> None:
         if self._pool is not None:
             await self._pool.release(conn)
         else:
@@ -157,7 +157,7 @@ class PgNotificationBus:
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
         def _listener(
-            connection: asyncpg.Connection,  # type: ignore[type-arg]
+            connection: asyncpg.Connection,
             pid: int,
             ch: str,
             payload: str,

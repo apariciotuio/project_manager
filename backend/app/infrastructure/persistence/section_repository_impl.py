@@ -71,7 +71,7 @@ class SectionRepositoryImpl(ISectionRepository):
         existing = await self._session.get(WorkItemSectionORM, section.id)
         if existing is None:
             row = section_to_orm(section)
-            if row.workspace_id is None:  # type: ignore[attr-defined]
+            if row.workspace_id is None:
                 row.workspace_id = await _resolve_workspace_id(self._session, section.work_item_id)
             self._session.add(row)
         else:
@@ -95,7 +95,7 @@ class SectionRepositoryImpl(ISectionRepository):
         )
         rows = [section_to_orm(s) for s in sections]
         for r in rows:
-            if r.workspace_id is None:  # type: ignore[attr-defined]
+            if r.workspace_id is None:
                 r.workspace_id = workspace_id
             self._session.add(r)
         await self._session.flush()
@@ -151,7 +151,7 @@ class ValidatorRepositoryImpl(IValidatorRepository):
 
     async def assign(self, validator: Validator) -> Validator:
         row = validator_to_orm(validator)
-        if row.workspace_id is None:  # type: ignore[attr-defined]
+        if row.workspace_id is None:
             row.workspace_id = await _resolve_workspace_id(self._session, validator.work_item_id)
         self._session.add(row)
         await self._session.flush()
@@ -161,7 +161,7 @@ class ValidatorRepositoryImpl(IValidatorRepository):
         existing = await self._session.get(WorkItemValidatorORM, validator.id)
         if existing is None:
             row = validator_to_orm(validator)
-            if row.workspace_id is None:  # type: ignore[attr-defined]
+            if row.workspace_id is None:
                 row.workspace_id = await _resolve_workspace_id(
                     self._session, validator.work_item_id
                 )
@@ -225,7 +225,7 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
 
     async def get_latest(
         self, work_item_id: UUID, workspace_id: UUID | None = None
-    ) -> WorkItemVersion | None:  # type: ignore[override]
+    ) -> WorkItemVersion | None:
         stmt = (
             select(WorkItemVersionORM)
             .where(WorkItemVersionORM.work_item_id == work_item_id)
@@ -237,7 +237,7 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
 
     async def get(
         self, version_id: UUID, workspace_id: UUID | None = None
-    ) -> WorkItemVersion | None:  # type: ignore[override]
+    ) -> WorkItemVersion | None:
         row = await self._session.get(WorkItemVersionORM, version_id)
         return work_item_version_to_domain(row) if row else None
 

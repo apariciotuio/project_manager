@@ -204,7 +204,7 @@ class SuggestionService:
         latest_version: WorkItemVersion | None = None
         if self._versioning_service is not None and applied_ids:
             n = len(applied_ids)
-            latest_version = await self._versioning_service.create_version(  # type: ignore[assignment]
+            latest_version = await self._versioning_service.create_version(
                 work_item_id=work_item_id,
                 workspace_id=workspace_id,
                 actor_id=actor_id,
@@ -214,7 +214,7 @@ class SuggestionService:
             )
         elif self._versioning_service is not None:
             # Nothing new applied — return the current latest
-            latest_version = await self._versioning_service.get_latest(  # type: ignore[assignment]
+            latest_version = await self._versioning_service.get_latest(
                 work_item_id, workspace_id
             )
 
