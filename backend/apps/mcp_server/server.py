@@ -4,21 +4,94 @@ Thin Python adapter reusing the existing FastAPI application service layer.
 Shipped as a separate process — imports services directly (no HTTP hop).
 
 Transports: stdio (default) + HTTP/SSE (opt-in via --transport flag).
-Auth: mcp_token with mcp:read scope, single-workspace binding.
+Auth: JWT access token supplied via MCP_TOKEN environment variable at server
+      startup.  The token is decoded once; workspace_id and user_id are bound
+      for the entire process lifetime.  Clients cannot override or spoof these
+      values — they are never accepted as tool arguments.
 
 Usage:
-  python -m apps.mcp_server.server                    # stdio
-  python -m apps.mcp_server.server --transport sse    # HTTP/SSE on port 17006
+  MCP_TOKEN=<jwt> python -m apps.mcp_server.server           # stdio
+  MCP_TOKEN=<jwt> python -m apps.mcp_server.server --transport sse
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import logging
+import os
 from typing import Any
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
+
+
+def load_auth_context_from_env() -> tuple[UUID, UUID]:
+    """Parse MCP_TOKEN env var and return (workspace_id, user_id).
+
+    Raises:
+        EnvironmentError: MCP_TOKEN not set.
+        ValueError: token is expired, invalid, or missing required claims.
+    """
+    token = os.environ.get("MCP_TOKEN")
+    if not token:
+        raise EnvironmentError(
+            "MCP_TOKEN environment variable is required. "
+            "Set it to a valid JWT access token before starting the MCP server."
+        )
+    return _decode_token(token)
+
+
+def _decode_token(token: str) -> tuple[UUID, UUID]:
+    """Decode a JWT and extract (workspace_id, user_id).
+
+    Reads AUTH_JWT_SECRET (and optional AUTH_JWT_* overrides) directly from
+    the environment to avoid the get_settings() lru_cache trap at process
+    startup.  The sentinel default matches AuthSettings so the dev default
+    works without extra configuration.
+    """
+    from app.infrastructure.adapters.jwt_adapter import (
+        JwtAdapter,
+        TokenExpiredError,
+        TokenInvalidError,
+    )
+
+    _SENTINEL = "change-me-in-prod-use-32-chars-or-more-please"
+    secret = os.environ.get("AUTH_JWT_SECRET", _SENTINEL)
+    algorithm = os.environ.get("AUTH_JWT_ALGORITHM", "HS256")
+    issuer = os.environ.get("AUTH_JWT_ISSUER", "wmp")
+    audience = os.environ.get("AUTH_JWT_AUDIENCE", "wmp-web")
+
+    adapter = JwtAdapter(secret=secret, algorithm=algorithm, issuer=issuer, audience=audience)
+    try:
+        claims = adapter.decode(token)
+    except TokenExpiredError as exc:
+        raise ValueError(f"MCP_TOKEN has expired: {exc}") from exc
+    except TokenInvalidError as exc:
+        raise ValueError(f"MCP_TOKEN is invalid: {exc}") from exc
+
+    raw_ws = claims.get("workspace_id")
+    if not raw_ws:
+        raise ValueError(
+            "MCP_TOKEN is missing required 'workspace_id' claim. "
+            "The token must be issued for a workspace member."
+        )
+    try:
+        workspace_id = UUID(raw_ws)
+        user_id = UUID(claims["sub"])
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"MCP_TOKEN contains malformed claims: {exc}") from exc
+
+    return workspace_id, user_id
+
+
+def _resolve_auth_context() -> tuple[UUID, UUID]:
+    """Return (workspace_id, user_id) from MCP_TOKEN.
+
+    Thin alias for load_auth_context_from_env; kept separate so tests can
+    patch this single call site inside create_mcp_server without importing
+    the full settings stack.
+    """
+    return load_auth_context_from_env()
 
 # The MCP Python SDK import — guarded so the module loads even if the SDK
 # is not installed (e.g. during tests that only exercise the REST API).
@@ -412,23 +485,13 @@ async def _handle_tool_call(
             from app.infrastructure.persistence.section_repository_impl import (
                 ValidatorRepositoryImpl,
             )
-            from app.domain.ports.cache import ICache
-
-            class _NoOpCache(ICache):
-                async def get(self, key: str) -> str | None:
-                    return None
-
-                async def set(self, key: str, value: str, ttl_seconds: int) -> None:
-                    pass
-
-                async def delete(self, key: str) -> None:
-                    pass
+            from app.infrastructure.adapters.in_memory_cache_adapter import InMemoryCacheAdapter
 
             svc = CompletenessService(
                 work_item_repo=WorkItemRepositoryImpl(session),
                 section_repo=SectionRepositoryImpl(session),
                 validator_repo=ValidatorRepositoryImpl(session),
-                cache=_NoOpCache(),
+                cache=InMemoryCacheAdapter(),
             )
             result_data = await handle_get_work_item_completeness(
                 arguments=arguments,
@@ -666,11 +729,10 @@ def create_mcp_server() -> Any:
 
     @server.call_tool()
     async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        # TODO: extract workspace_id + user_id from MCP auth context
-        from uuid import uuid4
-
-        workspace_id = uuid4()  # placeholder
-        user_id = uuid4()  # placeholder
+        # workspace_id and user_id are bound at server startup from MCP_TOKEN.
+        # Clients cannot override these values — they are never accepted as
+        # tool arguments, so cross-workspace access is structurally impossible.
+        workspace_id, user_id = _resolve_auth_context()
         result = await _handle_tool_call(name, arguments, workspace_id, user_id)
         return [TextContent(type="text", text=result)]
 
