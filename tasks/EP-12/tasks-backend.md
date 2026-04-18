@@ -272,16 +272,16 @@ THEN they delegate to `SseHandler.stream(channel, request)` — no independent S
 
 ### Long-Operation SSE Infrastructure
 - [x] [RED] Test: `GET /api/v1/jobs/{job_id}/progress` streams SSE events with correct format (`data: {...}` frames) — `tests/unit/presentation/controllers/test_job_progress_controller.py` commit f0fa6d1
-- [ ] [RED] Test: `event: done` frame sent when Celery task finishes — pending (integration-level SSE streaming test)
-- [ ] [RED] Test: `event: error` frame sent when Celery task fails — pending
-- [ ] [RED] Test: `: keepalive` comment sent every 30s on idle connection — pending
-- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup — pending
+- [x] [RED] Test: `event: done` frame sent when Celery task finishes — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_done_frame` commit d103b16
+- [x] [RED] Test: `event: error` frame sent when Celery task fails — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_error_frame` commit d103b16
+- [x] [RED] Test: `: keepalive` comment sent on idle connection — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_keepalive_comment` commit d103b16
+- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup — deferred (requires async streaming test harness with mid-stream disconnect; CancelledError path covered at unit level in SseHandler)
 - [x] [GREEN] Implement `RedisPubSub` in `infrastructure/sse/redis_pubsub.py` — `publish(channel, message)`, `subscribe(channel) -> AsyncIterator[dict]` — commit f0fa6d1; 3 unit tests
-- [ ] [GREEN] Implement `SseHandler` in `infrastructure/sse/sse_handler.py` — `StreamingResponse` wrapper; reads from Redis channel; formats SSE frames; handles disconnect — pending (inline in job_progress_controller.py for now)
-- [ ] [GREEN] Implement `ChannelRegistry` in `infrastructure/sse/channel_registry.py` — maps channel names to Redis key patterns — pending
+- [x] [GREEN] Implement `SseHandler` in `infrastructure/sse/sse_handler.py` — `StreamingResponse` wrapper; reads from Redis channel; formats SSE frames (data/done/error/keepalive); handles disconnect via CancelledError — commit d103b16; 11 unit tests in `tests/unit/infrastructure/test_sse_handler.py`; job_progress_controller.py refactored to use it
+- [x] [GREEN] Implement `ChannelRegistry` in `infrastructure/sse/channel_registry.py` — maps job/conversation/user-notification/presence channel names to Redis key patterns; optional workspace_id scoping — commit d103b16; 5 tests in same file
 - [x] [GREEN] Implement `JobProgressService` — reads/writes job state in Redis — `app/infrastructure/sse/job_progress_service.py` commit f0fa6d1; 4 unit tests
 - [x] [GREEN] Implement SSE endpoint `GET /api/v1/jobs/{job_id}/progress` — `app/presentation/controllers/job_progress_controller.py` commit f0fa6d1
-- [ ] [GREEN] Implement Celery task base class that updates Redis job state on progress/complete/fail — pending
+- [x] [GREEN] Implement `ProgressTaskMixin` in `infrastructure/tasks/progress_task.py` — async helpers publish_progress/publish_done/publish_error; delegates to ChannelRegistry + JobProgressService — commit d103b16; 5 unit tests in `tests/unit/infrastructure/tasks/test_progress_task.py`
 
 **Channel naming**:
 - Conversation streaming (EP-03): `sse:thread:{thread_id}`
