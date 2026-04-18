@@ -5,7 +5,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -95,3 +95,33 @@ class SectionLockRepositoryImpl:
             await self._session.flush()
             logger.info("lock.cleanup_expired removed=%d", count)
         return count
+
+    async def get_lock_info_by_work_item_ids(
+        self, work_item_ids: list[UUID]
+    ) -> dict[UUID, dict[str, int | UUID]]:
+        """Fetch lock info for multiple work_items in a single query.
+
+        Returns: {work_item_id: {"count": int, "held_by": UUID | None}, ...}
+        Only includes work_items that have active locks.
+        """
+        if not work_item_ids:
+            return {}
+
+        stmt = (
+            select(
+                SectionLockORM.work_item_id,
+                func.count(SectionLockORM.id).label("lock_count"),
+                SectionLockORM.held_by,  # There's typically one lock per work_item, but group to be safe
+            )
+            .where(SectionLockORM.work_item_id.in_(work_item_ids))
+            .group_by(SectionLockORM.work_item_id, SectionLockORM.held_by)
+        )
+        rows = (await self._session.execute(stmt)).all()
+
+        result: dict[UUID, dict[str, int | UUID]] = {}
+        for row in rows:
+            result[row.work_item_id] = {
+                "count": row.lock_count,
+                "held_by": row.held_by,
+            }
+        return result

@@ -47,7 +47,9 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ## Group 3: `LockBanner` Component
 
-- [ ] LockBanner — DEFERRED: requires unlock-request backend endpoints and SSE lock_acquired/released events. Specification tab already shows lock indicator inline on SectionEditor. Full banner is a future increment.
+- [x] **RED+GREEN** — 7 tests in `__tests__/components/locks/lock-banner.test.tsx` — all pass (2026-04-18)
+- [x] Implement `components/locks/lock-banner.tsx` — inline banner with holder name, relative time, optional unlock-request button, `role="status"` (2026-04-18)
+- [x] **GREEN** — 7/7 tests pass (2026-04-18)
 
 ---
 
@@ -58,56 +60,35 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ---
 
-## Group 5: `UnlockRequestDialog` Component (DEFERRED — backend gap)
+## Group 5: `UnlockRequestDialog` Component
 
-- [ ] **RED** — Write component tests:
-  - `test_renders_reason_field_required`
-  - `test_submit_disabled_when_reason_empty`
-  - `test_submit_enabled_when_reason_has_content`
-  - `test_submit_calls_request_unlock_api`
-  - `test_closes_and_shows_toast_on_success`
-  - `test_shows_error_on_409_request_pending`
-  - `test_shows_error_on_429_rate_limited_with_retry_after`
-  - `test_reason_max_500_chars_enforced`
-  - `test_dialog_accessible_focus_trap`
-
-- [ ] Implement `src/components/locks/UnlockRequestDialog.tsx`
-  - Props: `workItemId: UUID`, `holderDisplayName: string`, `isOpen: boolean`, `onClose: () => void`
-  - Reason `<textarea>`: required, Zod min(1) max(500), character counter
-  - Submit button: disabled when reason empty or submitting
-  - Loading state during API call
-  - On success: close + toast "Unlock request sent to {holder}. You'll be notified when they respond."
-  - On `409`: inline error with existing request info
-  - On `429`: inline error with "Try again in X minutes"
-  - Focus trap within dialog, Escape closes
-
-- [ ] **GREEN** — All dialog tests pass
+- [x] **RED+GREEN** — 10 tests in `__tests__/components/locks/unlock-request-dialog.test.tsx` — all pass (2026-04-18)
+- [x] Implement `components/locks/unlock-request-dialog.tsx`
+  - Props: `sectionId: string`, `holderDisplayName: string`, `isOpen: boolean`, `onClose: () => void`
+  - Reason `<textarea>`: required, max 500 chars enforced, character counter
+  - Submit disabled when reason empty or submitting
+  - On success: close + toast with holder name
+  - On `409`: inline alert error
+  - On `429`: inline alert error with retry-after minutes
+  - `role="dialog"` via Dialog component, Escape closes
+- [x] **GREEN** — 10/10 tests pass (2026-04-18)
+- [x] Extended `lib/types/lock.ts` with `UnlockRequestDTO`, `UnlockRequestEnvelope`, `RespondToRequestBody` (2026-04-18)
+- [x] Extended `lib/api/lock-api.ts` with `requestSectionUnlock`, `respondToUnlockRequest` (2026-04-18)
 
 ---
 
-## Group 6: `HolderResponsePanel` Component (DEFERRED — backend gap)
+## Group 6: `HolderResponsePanel` Component
 
-- [ ] **RED** — Write component tests:
-  - `test_renders_requester_info_and_reason`
-  - `test_shows_countdown_from_120_seconds`
-  - `test_countdown_ticks_down_every_second`
-  - `test_release_button_calls_respond_api_with_release`
-  - `test_ignore_button_calls_respond_api_with_ignore`
-  - `test_panel_not_dismissible_by_click_outside`
-  - `test_panel_not_dismissible_by_escape`
-  - `test_panel_injected_on_unlock_requested_sse_event`
-  - `test_panel_removed_after_respond`
-
-- [ ] Implement `src/components/locks/HolderResponsePanel.tsx`
-  - Props: `request: UnlockRequestDTO`, `workItemId: UUID`, `onRespond: (decision: 'release' | 'ignore') => void`
-  - Countdown derived from `request.expires_at` using `setInterval` at 1s
-  - "[Avatar] {requester_display_name} is asking to edit · Reason: {reason} · Auto-releases in {mm:ss}"
-  - "Release lock" button: primary, red variant — calls `respond-to-request { decision: 'release' }`
-  - "Ignore" button: secondary — calls `respond-to-request { decision: 'ignore' }`
-  - NOT dismissible: no click-outside handler, Escape key does nothing
-  - Accessible: `role="alertdialog"`, `aria-modal="false"` (it's inline, not a modal)
-
-- [ ] **GREEN** — All panel tests pass
+- [x] **RED+GREEN** — 9 tests in `__tests__/components/locks/holder-response-panel.test.tsx` — all pass (2026-04-18)
+- [x] Implement `components/locks/holder-response-panel.tsx`
+  - Props: `sectionId: string`, `request: UnlockRequestDTO`, `requesterDisplayName: string`, `onRespond: (decision: 'release' | 'ignore') => void`
+  - Countdown from `request.expires_at` via `setInterval` at 1s, formatted as mm:ss
+  - Release button (destructive): calls `respondToUnlockRequest` with `action=accept`, triggers `onRespond('release')`
+  - Ignore button (outline): calls `respondToUnlockRequest` with `action=decline`, triggers `onRespond('ignore')`
+  - NOT dismissible: no Escape handler, no click-outside
+  - `role="alertdialog"`, `aria-modal="false"` — inline panel
+- [x] **GREEN** — 9/9 tests pass (2026-04-18)
+- Note: `test_panel_injected_on_unlock_requested_sse_event` — SSE wiring belongs in Group 8 (detail page integration); panel itself is standalone and tested
 
 ---
 

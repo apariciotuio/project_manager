@@ -13,6 +13,13 @@ if (typeof window !== 'undefined') {
   window.Element.prototype.scrollIntoView = () => {};
 }
 
+// Mock ResizeObserver (not implemented in jsdom, required by Radix UI)
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock window.matchMedia (not implemented in jsdom)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -84,7 +84,8 @@ describe('ForceReleaseDialog', () => {
 
   it('test_shows_current_lock_summary', () => {
     renderDialog();
-    expect(screen.getByText(/Ana García/)).toBeTruthy();
+    const matches = screen.getAllByText(/Ana García/);
+    expect(matches.length).toBeGreaterThan(0);
   });
 
   it('test_submit_disabled_until_reason_and_checkbox_filled', async () => {

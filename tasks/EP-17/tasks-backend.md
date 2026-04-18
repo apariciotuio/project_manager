@@ -21,6 +21,15 @@ Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.
   - Fixed: JWT secret now reads from `get_settings().auth.jwt_secret` (project `.env` sets `yoda-dev` secret)
   - Fixed: CSRF headers added to all POST calls
 
+## Quick Fixes — Force Release + List Embed (Kili-BE-17, 2026-04-18)
+
+- [x] **Task 1: force-release reason param** — add optional `reason: str | None` field to POST /sections/{id}/lock/force-release, persist to audit_event.context via AuditService (2026-04-18)
+  - ForceReleaseBody schema with optional reason (max 500 chars)
+  - AuditService injection + log_event call in force_release_lock endpoint
+  - Audit category: 'domain', action: 'force_released_section_lock', context includes reason
+  - Tests: test_force_release_with_reason_persists_to_audit_event, test_force_release_without_reason_persists_none_to_audit_event — GREEN (2 passed)
+- [ ] **Task 2: list-embed lock summary** — GET /work-items should embed lock_summary per item (has_locks, count, held_by_me)
+
 ---
 
 ## Group 0: Setup & Configuration

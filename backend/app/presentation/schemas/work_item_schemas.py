@@ -89,6 +89,14 @@ class OverrideInfo(BaseModel):
     set_at: datetime | None
 
 
+class LockSummary(BaseModel):
+    """Compact lock state for a work item in list view."""
+
+    has_locks: bool
+    count: int = 0  # number of active locks
+    held_by_me: bool = False  # caller holds at least one lock
+
+
 class WorkItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -122,9 +130,12 @@ class WorkItemResponse(BaseModel):
     derived_state: DerivedState | None
     next_step: str | None
     override_info: OverrideInfo | None
+    lock_summary: LockSummary | None = None
 
     @classmethod
-    def from_domain(cls, item: WorkItem, workspace_id: UUID) -> WorkItemResponse:
+    def from_domain(
+        cls, item: WorkItem, workspace_id: UUID, lock_summary: LockSummary | None = None
+    ) -> WorkItemResponse:
         override_info: OverrideInfo | None = None
         if item.has_override:
             override_info = OverrideInfo(
@@ -162,6 +173,7 @@ class WorkItemResponse(BaseModel):
             derived_state=item.derived_state,
             next_step=_NEXT_STEP.get(item.state),
             override_info=override_info,
+            lock_summary=lock_summary,
         )
 
 

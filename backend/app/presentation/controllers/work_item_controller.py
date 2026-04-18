@@ -29,7 +29,9 @@ from app.presentation.dependencies import (
     get_current_user,
     get_draft_service,
     get_work_item_service,
+    get_scoped_session,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.presentation.middleware.auth_middleware import CurrentUser
 from app.presentation.schemas.draft_schemas import SaveCommittedDraftRequest
 from app.presentation.schemas.work_item_schemas import (
@@ -375,6 +377,7 @@ async def list_work_items(
     page_size: int = Query(default=50, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
+    session: AsyncSession = Depends(get_scoped_session),
 ) -> dict[str, Any]:
     if current_user.workspace_id is None:
         raise HTTPException(
@@ -391,11 +394,32 @@ async def list_work_items(
         page_size=page_size,
     )
     page_result = await service.list(current_user.workspace_id, project_id, filters)
+
+    # Fetch lock info for all items in a single query (no N+1)
+    from app.infrastructure.persistence.lock_repository_impl import SectionLockRepositoryImpl
+    from app.presentation.schemas.work_item_schemas import LockSummary
+
+    lock_repo = SectionLockRepositoryImpl(session)
+    work_item_ids = [item.id for item in page_result.items]
+    lock_info = await lock_repo.get_lock_info_by_work_item_ids(work_item_ids)
+
+    # Hydrate responses with lock_summary
+    items = []
+    for item in page_result.items:
+        lock_summary = None
+        if item.id in lock_info:
+            info = lock_info[item.id]
+            lock_summary = LockSummary(
+                has_locks=True,
+                count=info["count"],
+                held_by_me=(info["held_by"] == current_user.id),
+            )
+        else:
+            lock_summary = LockSummary(has_locks=False, count=0, held_by_me=False)
+        items.append(WorkItemResponse.from_domain(item, current_user.workspace_id, lock_summary=lock_summary))
+
     paged = PagedWorkItemResponse(
-        items=[
-            WorkItemResponse.from_domain(item, current_user.workspace_id)
-            for item in page_result.items
-        ],
+        items=items,
         total=page_result.total,
         page=page,
         page_size=page_size,

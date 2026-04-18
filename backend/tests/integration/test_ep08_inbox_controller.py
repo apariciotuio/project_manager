@@ -143,7 +143,7 @@ class TestGetInbox:
     ) -> None:
         user_id, workspace_id, token = seeded
         resp = await http.get(
-            "/api/v1/inbox", headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/inbox", cookies={"access_token": token}
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -164,7 +164,7 @@ class TestGetInbox:
     ) -> None:
         user_id, workspace_id, token = seeded
         resp = await http.get(
-            "/api/v1/inbox", headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/inbox", cookies={"access_token": token}
         )
         assert resp.status_code == 200
         tiers = resp.json()["data"]["tiers"]
@@ -191,7 +191,7 @@ class TestGetInboxCount:
     ) -> None:
         user_id, workspace_id, token = seeded
         resp = await http.get(
-            "/api/v1/inbox/count", headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/inbox/count", cookies={"access_token": token}
         )
         assert resp.status_code == 200
         body = resp.json()
