@@ -4,6 +4,7 @@ Takes the 9 DimensionResults and turns them into a 0..100 completeness score
 plus a level band. Per backend_review.md ALG-4 guards against zero-division
 when all dimensions are marked inapplicable.
 """
+
 from __future__ import annotations
 
 from app.domain.quality.dimension_result import CompletenessResult, DimensionResult

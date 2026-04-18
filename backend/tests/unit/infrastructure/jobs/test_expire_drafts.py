@@ -4,6 +4,7 @@ Uses FakeWorkItemDraftRepository + FakeWorkItemRepository. No DB, no Celery brok
 Tests DraftService.expire_pre_creation_drafts directly and the Celery task via
 eager-mode invocation.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

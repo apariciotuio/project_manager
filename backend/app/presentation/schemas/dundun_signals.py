@@ -5,6 +5,7 @@ gate between the Dundun WS proxy and the FE. Invalid items are dropped;
 valid survivors are forwarded. Size caps protect the FE against runaway LLM
 output.
 """
+
 from __future__ import annotations
 
 import logging
@@ -127,9 +128,7 @@ def validate_signals(raw: Any) -> dict[str, Any]:
 
     # Re-validate top-level fields (conversation_ended, extra fields) safely.
     try:
-        wire = ConversationSignalsWire.model_validate(
-            {**raw, "suggested_sections": valid_items}
-        )
+        wire = ConversationSignalsWire.model_validate({**raw, "suggested_sections": valid_items})
         return wire.model_dump()
     except Exception:  # noqa: BLE001
         logger.warning(

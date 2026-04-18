@@ -1,4 +1,5 @@
 """SQLAlchemy implementation of IAssistantSuggestionRepository — EP-03."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -41,24 +42,18 @@ class AssistantSuggestionRepositoryImpl(IAssistantSuggestionRepository):
         return to_domain(row) if row else None
 
     async def get_by_batch_id(self, batch_id: UUID) -> list[AssistantSuggestion]:
-        stmt = select(AssistantSuggestionORM).where(
-            AssistantSuggestionORM.batch_id == batch_id
-        )
+        stmt = select(AssistantSuggestionORM).where(AssistantSuggestionORM.batch_id == batch_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [to_domain(r) for r in rows]
 
-    async def get_by_dundun_request_id(
-        self, dundun_request_id: str
-    ) -> list[AssistantSuggestion]:
+    async def get_by_dundun_request_id(self, dundun_request_id: str) -> list[AssistantSuggestion]:
         stmt = select(AssistantSuggestionORM).where(
             AssistantSuggestionORM.dundun_request_id == dundun_request_id
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [to_domain(r) for r in rows]
 
-    async def list_pending_for_work_item(
-        self, work_item_id: UUID
-    ) -> list[AssistantSuggestion]:
+    async def list_pending_for_work_item(self, work_item_id: UUID) -> list[AssistantSuggestion]:
         from datetime import UTC
 
         now = datetime.now(UTC)

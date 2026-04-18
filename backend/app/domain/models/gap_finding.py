@@ -1,4 +1,5 @@
 """Gap detection domain models — pure, no I/O."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

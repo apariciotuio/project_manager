@@ -8,14 +8,14 @@ ProgressTask:
   - publish_progress does NOT update persistent job state (hot path, pub only)
   - publish_done/publish_error update JobProgressService state
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
 
-from app.infrastructure.sse.job_progress_service import JobProgressService, JobState
-
+from app.infrastructure.sse.job_progress_service import JobProgressService
 
 # ---------------------------------------------------------------------------
 # Fakes

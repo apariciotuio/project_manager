@@ -6,6 +6,7 @@ GET    /api/v1/saved-searches/{id}/run
 PATCH  /api/v1/saved-searches/{id}
 DELETE /api/v1/saved-searches/{id}
 """
+
 from __future__ import annotations
 
 import time
@@ -63,7 +64,13 @@ async def http(app):
         yield c
 
 
-async def _seed(migrated_database, *, sub: str = "ep09-ss", email: str = "ep09ss@test.com", slug: str = "ep09-ss") -> tuple[User, Workspace, str]:
+async def _seed(
+    migrated_database,
+    *,
+    sub: str = "ep09-ss",
+    email: str = "ep09ss@test.com",
+    slug: str = "ep09-ss",
+) -> tuple[User, Workspace, str]:
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -76,19 +83,23 @@ async def _seed(migrated_database, *, sub: str = "ep09-ss", email: str = "ep09ss
         ws.slug = slug
         await workspaces.create(ws)
         await memberships.create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
         await session.commit()
     await engine.dispose()
 
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    token = jwt.encode({
-        "sub": str(user.id),
-        "email": user.email,
-        "workspace_id": str(ws.id),
-        "is_superadmin": False,
-        "exp": int(time.time()) + 3600,
-    })
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "workspace_id": str(ws.id),
+            "is_superadmin": False,
+            "exp": int(time.time()) + 3600,
+        }
+    )
     return user, ws, token
 
 
@@ -196,16 +207,28 @@ async def test_patch_not_owner_returns_403(http: AsyncClient, migrated_database)
     async with factory() as session:
         users = UserRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
-        user2 = User.from_google_claims(sub="ep09-ss-2", email="ep09ss2@test.com", name="U2", picture=None)
+        user2 = User.from_google_claims(
+            sub="ep09-ss-2", email="ep09ss2@test.com", name="U2", picture=None
+        )
         await users.upsert(user2)
         await memberships.create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user2.id, role="member", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user2.id, role="member", is_default=True
+            )
         )
         await session.commit()
     await engine.dispose()
 
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    token2 = jwt.encode({"sub": str(user2.id), "email": user2.email, "workspace_id": str(ws.id), "is_superadmin": False, "exp": int(time.time()) + 3600})
+    token2 = jwt.encode(
+        {
+            "sub": str(user2.id),
+            "email": user2.email,
+            "workspace_id": str(ws.id),
+            "is_superadmin": False,
+            "exp": int(time.time()) + 3600,
+        }
+    )
 
     r = await http.patch(f"{_BASE}/{ss_id}", json={"name": "hijack"}, cookies=_auth(token2))
     assert r.status_code == 403
@@ -249,7 +272,9 @@ async def test_delete_nonexistent_returns_404(http: AsyncClient, migrated_databa
 async def test_run_saved_search(http: AsyncClient, migrated_database) -> None:
     _, _, token = await _seed(migrated_database)
     # Create a work item first
-    await http.post("/api/v1/work-items", json={"title": "Draft item", "type": "task"}, cookies=_auth(token))
+    await http.post(
+        "/api/v1/work-items", json={"title": "Draft item", "type": "task"}, cookies=_auth(token)
+    )
 
     # Create saved search for drafts
     create_r = await http.post(

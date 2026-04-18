@@ -1,4 +1,5 @@
 """ForceReadyCommand — immutable command for overriding the ready gate."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

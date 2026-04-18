@@ -7,6 +7,7 @@ Routes:
   PATCH  /api/v1/saved-searches/{id}
   DELETE /api/v1/saved-searches/{id}
 """
+
 from __future__ import annotations
 
 import logging
@@ -119,13 +120,17 @@ async def run_saved_search(
     if entity is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}
+            },
         )
     # Only owner or workspace member if shared
     if entity.user_id != current_user.id and not entity.is_shared:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}},
+            detail={
+                "error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}
+            },
         )
 
     # Execute the stored query by reusing the work-item list machinery
@@ -187,16 +192,20 @@ async def update_saved_search(
             query_params=body.query_params,
             is_shared=body.is_shared,
         )
-    except SavedSearchNotFound:
+    except SavedSearchNotFound as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}},
-        )
-    except SavedSearchForbidden:
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}
+            },
+        ) from exc
+    except SavedSearchForbidden as exc:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}},
-        )
+            detail={
+                "error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}
+            },
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -221,13 +230,17 @@ async def delete_saved_search(
             saved_search_id=saved_search_id,
             requesting_user_id=current_user.id,
         )
-    except SavedSearchNotFound:
+    except SavedSearchNotFound as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}},
-        )
-    except SavedSearchForbidden:
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "saved search not found", "details": {}}
+            },
+        ) from exc
+    except SavedSearchForbidden as exc:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}},
-        )
+            detail={
+                "error": {"code": "FORBIDDEN", "message": "not your saved search", "details": {}}
+            },
+        ) from exc

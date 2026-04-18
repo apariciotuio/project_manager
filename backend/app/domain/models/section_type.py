@@ -4,6 +4,7 @@ Every work_item_sections row's section_type must match one of these values.
 Enforced at the application layer; the DB column is VARCHAR(64) with no CHECK
 constraint (app-layer catalog is the source of truth — see section_catalog.py).
 """
+
 from __future__ import annotations
 
 from enum import StrEnum

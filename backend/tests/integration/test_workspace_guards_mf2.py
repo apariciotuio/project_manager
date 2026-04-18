@@ -3,6 +3,7 @@
 A JWT without workspace_id must be rejected with 401 + NO_WORKSPACE on every
 endpoint that routes through get_current_user.
 """
+
 from __future__ import annotations
 
 import time

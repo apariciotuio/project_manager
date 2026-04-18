@@ -1,4 +1,5 @@
 """Mappers for ReviewRequest, ReviewResponse, ValidationRequirement, ValidationStatus — EP-06."""
+
 from __future__ import annotations
 
 from app.domain.models.review import (  # noqa: I001

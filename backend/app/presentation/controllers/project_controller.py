@@ -7,6 +7,7 @@ Routes:
   PATCH  /api/v1/projects/{project_id}
   DELETE /api/v1/projects/{project_id}
 """
+
 from __future__ import annotations
 
 import logging
@@ -100,7 +101,13 @@ async def create_project(
         logger.exception("integrity error creating project", extra={"pgcode": pgcode})
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "INVALID_INPUT", "message": "project could not be created", "details": {}}},
+            detail={
+                "error": {
+                    "code": "INVALID_INPUT",
+                    "message": "project could not be created",
+                    "details": {},
+                }
+            },
         ) from exc
     return _ok(_project_payload(project), "project created")
 

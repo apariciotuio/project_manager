@@ -1,4 +1,5 @@
 """EP-06 — Repository interfaces for Review + Validation."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

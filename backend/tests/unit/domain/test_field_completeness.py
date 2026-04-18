@@ -7,17 +7,15 @@ Scoring algorithm (additive, weights sum to 100):
   - due_date set                : 10 pts
   - owner assigned, not suspended: 15 pts
 """
+
 from __future__ import annotations
 
 from datetime import date
 from uuid import uuid4
 
-import pytest
-
 
 def _make_work_item(**kwargs):  # type: ignore[no-untyped-def]
     from app.domain.models.work_item import WorkItem
-    from app.domain.value_objects.priority import Priority
     from app.domain.value_objects.work_item_type import WorkItemType
 
     defaults: dict = {
@@ -30,7 +28,7 @@ def _make_work_item(**kwargs):  # type: ignore[no-untyped-def]
     defaults.update(kwargs)
     wi = WorkItem.create(**defaults)
     # Allow caller to override post-construction fields
-    for k, v in kwargs.items():
+    for k, _v in kwargs.items():
         if k not in defaults or k in ("owner_suspended_flag",):
             pass
     return wi

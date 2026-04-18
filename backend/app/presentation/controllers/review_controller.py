@@ -9,6 +9,7 @@ Routes:
   GET    /api/v1/review-requests/{id}/response     — get response
   GET    /api/v1/my/reviews                        — reviewer inbox (pending requests for me)
 """
+
 from __future__ import annotations
 
 import logging
@@ -162,7 +163,9 @@ async def get_review_request(
     if req is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "review request not found", "details": {}}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "review request not found", "details": {}}
+            },
         )
     return _ok(_review_request_payload(req))
 

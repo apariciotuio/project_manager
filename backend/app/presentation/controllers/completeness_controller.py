@@ -4,6 +4,7 @@ Routes:
   GET /api/v1/work-items/{id}/completeness — score + dimension breakdown
   GET /api/v1/work-items/{id}/gaps         — list of unfilled dimensions
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,9 +39,7 @@ def _require_workspace(current_user: CurrentUser) -> UUID:
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}
-            },
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     return current_user.workspace_id
 

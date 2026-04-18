@@ -46,9 +46,7 @@ class IWorkItemRepository(ABC):
         """Soft delete — sets deleted_at. Hard delete not supported."""
 
     @abstractmethod
-    async def record_transition(
-        self, transition: StateTransition, workspace_id: UUID
-    ) -> None:
+    async def record_transition(self, transition: StateTransition, workspace_id: UUID) -> None:
         """Insert into append-only state_transitions table."""
 
     @abstractmethod
@@ -61,9 +59,7 @@ class IWorkItemRepository(ABC):
         """Insert into append-only ownership_history table."""
 
     @abstractmethod
-    async def get_transitions(
-        self, item_id: UUID, workspace_id: UUID
-    ) -> Sequence[StateTransition]:
+    async def get_transitions(self, item_id: UUID, workspace_id: UUID) -> Sequence[StateTransition]:
         """Return state transitions for item, ordered triggered_at DESC."""
 
     @abstractmethod

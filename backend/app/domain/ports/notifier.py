@@ -11,6 +11,7 @@ All adapters receive the persisted Notification domain object and are
 responsible for their own error handling. Failures should be logged and
 not propagated to callers (fire-and-forget delivery).
 """
+
 from __future__ import annotations
 
 from abc import abstractmethod

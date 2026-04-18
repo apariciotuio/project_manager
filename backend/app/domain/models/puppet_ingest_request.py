@@ -6,9 +6,10 @@ State machine:
                       → failed (attempts < 3 → re-queued on retry)
                       → skipped (idempotent duplicate)
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -38,7 +39,7 @@ class PuppetIngestRequest:
         source_kind: str,
         work_item_id: UUID | None = None,
         payload: dict[str, Any] | None = None,
-    ) -> "PuppetIngestRequest":
+    ) -> PuppetIngestRequest:
         if source_kind not in ("outbox", "manual", "webhook"):
             raise ValueError(f"Invalid source_kind: {source_kind!r}")
         now = datetime.now(UTC)

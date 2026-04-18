@@ -34,36 +34,26 @@ class TestFromGoogleClaims:
         assert user.updated_at == user.created_at
 
     def test_allows_missing_picture(self) -> None:
-        user = User.from_google_claims(
-            sub="sub", email="x@tuio.com", name="X", picture=None
-        )
+        user = User.from_google_claims(sub="sub", email="x@tuio.com", name="X", picture=None)
         assert user.avatar_url is None
 
     @pytest.mark.parametrize("bad_email", ["", None, "   ", "not-an-email", "@nodomain", "nouser@"])
     def test_rejects_invalid_email(self, bad_email: str | None) -> None:
         with pytest.raises(ValueError, match="email"):
-            User.from_google_claims(
-                sub="sub", email=bad_email, name="Name", picture=None
-            )
+            User.from_google_claims(sub="sub", email=bad_email, name="Name", picture=None)
 
     @pytest.mark.parametrize("bad_sub", ["", None, "   "])
     def test_rejects_missing_sub(self, bad_sub: str | None) -> None:
         with pytest.raises(ValueError, match="sub"):
-            User.from_google_claims(
-                sub=bad_sub, email="x@tuio.com", name="X", picture=None
-            )
+            User.from_google_claims(sub=bad_sub, email="x@tuio.com", name="X", picture=None)
 
     @pytest.mark.parametrize("bad_name", ["", None, "   "])
     def test_rejects_empty_name(self, bad_name: str | None) -> None:
         with pytest.raises(ValueError, match="name"):
-            User.from_google_claims(
-                sub="sub", email="x@tuio.com", name=bad_name, picture=None
-            )
+            User.from_google_claims(sub="sub", email="x@tuio.com", name=bad_name, picture=None)
 
     def test_normalizes_email_lowercase(self) -> None:
-        user = User.from_google_claims(
-            sub="sub", email="Alice@TUIO.com", name="A", picture=None
-        )
+        user = User.from_google_claims(sub="sub", email="Alice@TUIO.com", name="A", picture=None)
         assert user.email == "alice@tuio.com"
 
 

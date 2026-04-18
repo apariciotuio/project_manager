@@ -1,4 +1,5 @@
 """IAssistantSuggestionRepository — domain-layer interface for suggestion persistence."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -24,15 +25,11 @@ class IAssistantSuggestionRepository(ABC):
         """Return all suggestions belonging to a batch."""
 
     @abstractmethod
-    async def get_by_dundun_request_id(
-        self, dundun_request_id: str
-    ) -> list[AssistantSuggestion]:
+    async def get_by_dundun_request_id(self, dundun_request_id: str) -> list[AssistantSuggestion]:
         """Return suggestions tied to a specific Dundun async request."""
 
     @abstractmethod
-    async def list_pending_for_work_item(
-        self, work_item_id: UUID
-    ) -> list[AssistantSuggestion]:
+    async def list_pending_for_work_item(self, work_item_id: UUID) -> list[AssistantSuggestion]:
         """Return non-expired pending suggestions for a work item.
 
         Excludes accepted, rejected, and expired rows.

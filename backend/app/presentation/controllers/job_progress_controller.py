@@ -14,6 +14,7 @@ exposed for test injection only. Production code uses the real dependencies.
 
 _stream_job_progress is module-level to allow monkeypatching in integration tests.
 """
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """EP-10 — Integration tests: DELETE /api/v1/integrations/configs/{id}."""
+
 from __future__ import annotations
 
 import time
@@ -135,9 +136,7 @@ class TestDeleteIntegrationConfig:
         assert del_resp.status_code == 204
 
         # Verify gone from list
-        list_resp = await http.get(
-            "/api/v1/integrations/configs", cookies={"access_token": token}
-        )
+        list_resp = await http.get("/api/v1/integrations/configs", cookies={"access_token": token})
         assert list_resp.status_code == 200
         ids = [c["id"] for c in list_resp.json()["data"]]
         assert config_id not in ids
@@ -187,7 +186,5 @@ class TestDeleteIntegrationConfig:
                 "exp": int(time.time()) + 3600,
             }
         )
-        resp = await http.get(
-            "/api/v1/integrations/configs", cookies={"access_token": jwt}
-        )
+        resp = await http.get("/api/v1/integrations/configs", cookies={"access_token": jwt})
         assert resp.status_code == 401

@@ -1,8 +1,8 @@
 """EP-07 Phase 3 — CommentService unit tests."""
+
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -36,7 +36,11 @@ class FakeCommentRepo(ICommentRepository):
         return self._store.get(comment_id)
 
     async def list_for_work_item(self, work_item_id: UUID) -> list[Comment]:
-        return [c for c in self._store.values() if c.work_item_id == work_item_id and c.deleted_at is None]
+        return [
+            c
+            for c in self._store.values()
+            if c.work_item_id == work_item_id and c.deleted_at is None
+        ]
 
     async def save(self, comment: Comment) -> Comment:
         self._store[comment.id] = comment
@@ -62,7 +66,9 @@ class FakeTimelineRepo(ITimelineEventRepository):
         return [e for e in self._events if e.work_item_id == work_item_id]
 
 
-def _make_service(comment_repo: FakeCommentRepo, timeline_repo: FakeTimelineRepo | None = None) -> CommentService:
+def _make_service(
+    comment_repo: FakeCommentRepo, timeline_repo: FakeTimelineRepo | None = None
+) -> CommentService:
     return CommentService(
         comment_repo=comment_repo,
         timeline_repo=timeline_repo,
@@ -118,10 +124,14 @@ class TestCreateComment:
         # Create root comment
         root = await svc.create(work_item_id=work_item_id, body="root", actor_id=uuid4())
         # Create reply to root
-        reply = await svc.create(work_item_id=work_item_id, body="reply", actor_id=uuid4(), parent_comment_id=root.id)
+        reply = await svc.create(
+            work_item_id=work_item_id, body="reply", actor_id=uuid4(), parent_comment_id=root.id
+        )
         # Attempt reply to reply
         with pytest.raises(NestingExceededError):
-            await svc.create(work_item_id=work_item_id, body="deep", actor_id=uuid4(), parent_comment_id=reply.id)
+            await svc.create(
+                work_item_id=work_item_id, body="deep", actor_id=uuid4(), parent_comment_id=reply.id
+            )
 
     @pytest.mark.asyncio
     async def test_comment_added_timeline_event_emitted(self) -> None:

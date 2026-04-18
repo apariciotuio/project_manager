@@ -15,6 +15,7 @@ Covers:
 Security:
   - Unauthenticated → 401
 """
+
 from __future__ import annotations
 
 import time
@@ -153,9 +154,7 @@ class TestCreateTeam:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_create_returns_201_with_team(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_create_returns_201_with_team(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         resp = await http.post(
             "/api/v1/teams",
@@ -169,9 +168,7 @@ class TestCreateTeam:
         assert data["workspace_id"] == str(workspace_id)
 
     @pytest.mark.asyncio
-    async def test_create_empty_name_returns_422(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_create_empty_name_returns_422(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         resp = await http.post(
             "/api/v1/teams",
@@ -189,9 +186,7 @@ class TestCreateTeam:
 
 class TestListTeams:
     @pytest.mark.asyncio
-    async def test_list_returns_200_with_teams(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_list_returns_200_with_teams(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         # Create a team first
         await http.post(
@@ -219,9 +214,7 @@ class TestListTeams:
 
 class TestGetTeam:
     @pytest.mark.asyncio
-    async def test_get_existing_team_returns_200(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_get_existing_team_returns_200(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         create_resp = await http.post(
             "/api/v1/teams",
@@ -231,22 +224,16 @@ class TestGetTeam:
         )
         team_id = create_resp.json()["data"]["id"]
 
-        resp = await http.get(
-            f"/api/v1/teams/{team_id}", cookies={"access_token": token}
-        )
+        resp = await http.get(f"/api/v1/teams/{team_id}", cookies={"access_token": token})
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert data["id"] == team_id
         assert "members" in data
 
     @pytest.mark.asyncio
-    async def test_get_unknown_team_returns_404(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_get_unknown_team_returns_404(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
-        resp = await http.get(
-            f"/api/v1/teams/{uuid4()}", cookies={"access_token": token}
-        )
+        resp = await http.get(f"/api/v1/teams/{uuid4()}", cookies={"access_token": token})
         assert resp.status_code == 404
 
 
@@ -257,9 +244,7 @@ class TestGetTeam:
 
 class TestUpdateTeam:
     @pytest.mark.asyncio
-    async def test_update_name_returns_200(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_update_name_returns_200(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         create_resp = await http.post(
             "/api/v1/teams",
@@ -287,9 +272,7 @@ class TestUpdateTeam:
 
 class TestDeleteTeam:
     @pytest.mark.asyncio
-    async def test_delete_team_returns_200(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_delete_team_returns_200(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         create_resp = await http.post(
             "/api/v1/teams",
@@ -369,9 +352,7 @@ class TestAddMember:
 
 class TestUpdateMemberRole:
     @pytest.mark.asyncio
-    async def test_demote_last_lead_returns_409(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_demote_last_lead_returns_409(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
         create_resp = await http.post(
             "/api/v1/teams",

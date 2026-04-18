@@ -6,7 +6,7 @@ Validates the `DELETE ... RETURNING verifier` atomic single-use contract and the
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -78,11 +78,9 @@ async def test_consume_returns_none_when_expired(repo, db_session) -> None:
     await repo.create(state="state-exp", verifier="v-exp", ttl_seconds=300)
     # Backdate expires_at beyond now().
     await db_session.execute(
-        text(
-            "UPDATE oauth_states SET expires_at = :exp WHERE state = :s"
-        ),
+        text("UPDATE oauth_states SET expires_at = :exp WHERE state = :s"),
         {
-            "exp": datetime.now(timezone.utc) - timedelta(seconds=1),
+            "exp": datetime.now(UTC) - timedelta(seconds=1),
             "s": "state-exp",
         },
     )
@@ -95,10 +93,8 @@ async def test_cleanup_expired_removes_only_expired(repo, db_session) -> None:
     await repo.create(state="fresh", verifier="vf", ttl_seconds=300)
     await repo.create(state="stale", verifier="vs", ttl_seconds=300)
     await db_session.execute(
-        text(
-            "UPDATE oauth_states SET expires_at = :exp WHERE state = 'stale'"
-        ),
-        {"exp": datetime.now(timezone.utc) - timedelta(hours=1)},
+        text("UPDATE oauth_states SET expires_at = :exp WHERE state = 'stale'"),
+        {"exp": datetime.now(UTC) - timedelta(hours=1)},
     )
     await db_session.commit()
 

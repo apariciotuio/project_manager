@@ -1,4 +1,5 @@
 """EP-07 — Comment entity + TimelineEvent value object."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -16,9 +17,7 @@ from app.domain.models.timeline_event import TimelineActorType, TimelineEvent
 
 class TestComment:
     def test_create_valid(self) -> None:
-        c = Comment.create(
-            work_item_id=uuid4(), body="hello", actor_id=uuid4()
-        )
+        c = Comment.create(work_item_id=uuid4(), body="hello", actor_id=uuid4())
         assert c.anchor_status is AnchorStatus.ACTIVE
         assert c.is_edited is False
         assert c.actor_type is CommentActorType.HUMAN
@@ -53,18 +52,14 @@ class TestComment:
             )
 
     def test_edit_flips_flags(self) -> None:
-        c = Comment.create(
-            work_item_id=uuid4(), body="hello", actor_id=uuid4()
-        )
+        c = Comment.create(work_item_id=uuid4(), body="hello", actor_id=uuid4())
         c.edit("updated body")
         assert c.is_edited is True
         assert c.edited_at is not None
         assert c.body == "updated body"
 
     def test_soft_delete_sets_timestamp(self) -> None:
-        c = Comment.create(
-            work_item_id=uuid4(), body="hello", actor_id=uuid4()
-        )
+        c = Comment.create(work_item_id=uuid4(), body="hello", actor_id=uuid4())
         c.soft_delete()
         assert c.deleted_at is not None
 

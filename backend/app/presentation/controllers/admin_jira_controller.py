@@ -11,6 +11,7 @@ Routes:
 
 NEVER return credentials_ref in any response.
 """
+
 from __future__ import annotations
 
 import logging
@@ -55,7 +56,9 @@ def _config_payload(c: Any) -> dict[str, Any]:
         "auth_type": c.auth_type,
         "state": c.state,
         "last_health_check_status": c.last_health_check_status,
-        "last_health_check_at": c.last_health_check_at.isoformat() if c.last_health_check_at else None,
+        "last_health_check_at": c.last_health_check_at.isoformat()
+        if c.last_health_check_at
+        else None,
         "created_at": c.created_at.isoformat(),
     }
 

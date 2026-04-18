@@ -2,9 +2,9 @@
 
 Uses fake repositories only. No DB/Redis.
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -118,9 +118,7 @@ class TestDraftServiceSaveCommittedDraft:
         await item_repo.save(item, ws_id)
         original_updated_at = item.updated_at
 
-        service = DraftService(
-            draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo
-        )
+        service = DraftService(draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo)
         await service.save_committed_draft(
             item_id=item.id,
             workspace_id=ws_id,
@@ -144,9 +142,7 @@ class TestDraftServiceSaveCommittedDraft:
         item = _make_work_item(state="in_review", owner_id=owner_id)
         await item_repo.save(item, ws_id)
 
-        service = DraftService(
-            draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo
-        )
+        service = DraftService(draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo)
         with pytest.raises(WorkItemInvalidStateError):
             await service.save_committed_draft(
                 item_id=item.id,
@@ -166,9 +162,7 @@ class TestDraftServiceSaveCommittedDraft:
         item = _make_work_item(owner_id=owner_id)
         await item_repo.save(item, ws_id)
 
-        service = DraftService(
-            draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo
-        )
+        service = DraftService(draft_repo=FakeWorkItemDraftRepository(), work_item_repo=item_repo)
         with pytest.raises((WorkItemNotFoundError, PermissionError, Exception)):
             # Non-owner should not be able to save draft — service must enforce authz
             await service.save_committed_draft(

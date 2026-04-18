@@ -1,4 +1,5 @@
 """EP-11 — IIntegrationConfigRepository, IIntegrationExportRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -15,9 +16,7 @@ class IIntegrationConfigRepository(ABC):
     async def get(self, config_id: UUID) -> IntegrationConfig | None: ...
 
     @abstractmethod
-    async def list_active_for_workspace(
-        self, workspace_id: UUID
-    ) -> list[IntegrationConfig]: ...
+    async def list_active_for_workspace(self, workspace_id: UUID) -> list[IntegrationConfig]: ...
 
     @abstractmethod
     async def save(self, config: IntegrationConfig) -> IntegrationConfig: ...

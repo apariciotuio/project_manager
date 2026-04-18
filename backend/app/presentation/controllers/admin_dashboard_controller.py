@@ -3,6 +3,7 @@
 Routes:
   GET /api/v1/admin/dashboard
 """
+
 from __future__ import annotations
 
 import logging

@@ -7,6 +7,7 @@ Covers:
   - page_size defaults to 20 when not supplied
   - Workspace isolation: items from other workspaces never appear
 """
+
 from __future__ import annotations
 
 import time

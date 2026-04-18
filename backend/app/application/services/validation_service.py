@@ -3,6 +3,7 @@
 Single source of truth for "are all required validations satisfied?".
 All mutations recompute the state and persist atomically in the caller's session.
 """
+
 from __future__ import annotations
 
 import logging
@@ -142,12 +143,11 @@ class ValidationService:
         rule = await self._requirements.get(rule_id)
         if rule is None:
             from app.application.services.review_request_service import ValidationRuleNotFoundError
+
             raise ValidationRuleNotFoundError(rule_id)
 
         if rule.required:
-            raise WaiveRequiredRuleError(
-                f"rule {rule_id!r} is required and cannot be waived"
-            )
+            raise WaiveRequiredRuleError(f"rule {rule_id!r} is required and cannot be waived")
 
         vs = await self._statuses.get_by_work_item_and_rule(
             work_item_id=work_item_id, rule_id=rule_id
@@ -186,7 +186,8 @@ class ValidationService:
 
         statuses = await self._statuses.list_for_work_item(work_item_id)
         passed_ids = {
-            s.rule_id for s in statuses
+            s.rule_id
+            for s in statuses
             if s.status is ValidationState.PASSED and s.rule_id in required_rule_ids
         }
         return required_rule_ids <= passed_ids

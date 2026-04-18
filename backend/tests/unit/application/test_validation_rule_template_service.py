@@ -1,4 +1,5 @@
 """Unit tests for ValidationRuleTemplateService — EP-10."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,7 +15,6 @@ from app.domain.models.validation_rule_template import ValidationRuleTemplate
 from app.domain.repositories.validation_rule_template_repository import (
     IValidationRuleTemplateRepository,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fake
@@ -32,13 +32,8 @@ class FakeVRTRepository(IValidationRuleTemplateRepository):
     async def get(self, template_id: Any) -> ValidationRuleTemplate | None:
         return self._store.get(template_id)
 
-    async def list_for_workspace(
-        self, workspace_id: Any
-    ) -> list[ValidationRuleTemplate]:
-        return [
-            t for t in self._store.values()
-            if t.workspace_id == workspace_id and t.active
-        ]
+    async def list_for_workspace(self, workspace_id: Any) -> list[ValidationRuleTemplate]:
+        return [t for t in self._store.values() if t.workspace_id == workspace_id and t.active]
 
     async def list_matching(
         self, *, workspace_id: Any, work_item_type: str | None

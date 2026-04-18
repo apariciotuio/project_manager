@@ -4,6 +4,7 @@ Single-level nesting enforced at the application layer (PostgreSQL CHECK
 cannot express sub-queries). CommentService.create_reply refuses to create a
 reply when the parent already has a non-NULL parent_comment_id.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -71,9 +72,7 @@ class Comment:
             if anchor_end_offset is None or anchor_end_offset < anchor_start_offset:
                 raise AnchorInvalidError("anchor range is invalid")
             if anchor_section_id is None:
-                raise AnchorInvalidError(
-                    "anchor_section_id is required when offsets are provided"
-                )
+                raise AnchorInvalidError("anchor_section_id is required when offsets are provided")
         return cls(
             id=uuid4(),
             work_item_id=work_item_id,

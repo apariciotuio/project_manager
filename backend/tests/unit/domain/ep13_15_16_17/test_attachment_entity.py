@@ -1,4 +1,5 @@
 """Unit tests for Attachment domain model — EP-16."""
+
 from __future__ import annotations
 
 from uuid import uuid4

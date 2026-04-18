@@ -1,4 +1,5 @@
 """EP-06 — ReviewService: request, respond, cancel, list."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -72,9 +73,7 @@ class ReviewService:
             raise ReviewNotFoundError(f"review request {request_id} not found")
 
         if request.status is not ReviewStatus.PENDING:
-            raise ReviewAlreadyClosedError(
-                f"review request {request_id} is not pending"
-            )
+            raise ReviewAlreadyClosedError(f"review request {request_id} is not pending")
 
         response = ReviewResponse.create(
             review_request_id=request_id,

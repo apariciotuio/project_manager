@@ -9,13 +9,13 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class EmailAlreadyLinkedError(Exception):
-    """Raised when an email is already associated with a different Google account."""
-
 from app.domain.models.user import User
 from app.domain.repositories.user_repository import IUserRepository
 from app.infrastructure.persistence.models.orm import UserORM
+
+
+class EmailAlreadyLinkedError(Exception):
+    """Raised when an email is already associated with a different Google account."""
 
 
 def _to_domain(row: UserORM) -> User:

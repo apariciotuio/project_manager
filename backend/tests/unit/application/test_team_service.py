@@ -7,15 +7,14 @@ RED phase: write failing tests for:
 - soft_delete: open reviews guard raises TeamHasOpenReviewsError
 - update_role: happy path promotes / demotes
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.models.team import Team, TeamMembership, TeamRole
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -34,7 +33,11 @@ class FakeTeamRepository:
         return self._store.get(team_id)
 
     async def list_active_for_workspace(self, workspace_id: UUID) -> list[Team]:
-        return [t for t in self._store.values() if t.deleted_at is None and t.workspace_id == workspace_id]
+        return [
+            t
+            for t in self._store.values()
+            if t.deleted_at is None and t.workspace_id == workspace_id
+        ]
 
     async def save(self, team: Team) -> Team:
         self._store[team.id] = team
@@ -65,10 +68,7 @@ class FakeMembershipRepository:
 
     async def get_any(self, team_id: UUID, user_id: UUID) -> TeamMembership | None:
         """Return most recent membership (active or removed) for a user."""
-        matches = [
-            m for m in self._store.values()
-            if m.team_id == team_id and m.user_id == user_id
-        ]
+        matches = [m for m in self._store.values() if m.team_id == team_id and m.user_id == user_id]
         if not matches:
             return None
         return sorted(matches, key=lambda m: m.joined_at, reverse=True)[0]
@@ -118,7 +118,9 @@ def _make_team(workspace_id: UUID | None = None) -> Team:
     )
 
 
-def _make_membership(team_id: UUID, user_id: UUID, role: TeamRole = TeamRole.MEMBER) -> TeamMembership:
+def _make_membership(
+    team_id: UUID, user_id: UUID, role: TeamRole = TeamRole.MEMBER
+) -> TeamMembership:
     m = TeamMembership.create(team_id=team_id, user_id=user_id, role=role)
     return m
 
@@ -136,7 +138,9 @@ class TestRemoveMemberLastLead:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead_id = uuid4()
@@ -153,7 +157,9 @@ class TestRemoveMemberLastLead:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead1_id, lead2_id = uuid4(), uuid4()
@@ -171,7 +177,9 @@ class TestRemoveMemberLastLead:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead_id, member_id = uuid4(), uuid4()
@@ -195,7 +203,9 @@ class TestUpdateRole:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead_id = uuid4()
@@ -211,7 +221,9 @@ class TestUpdateRole:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead1_id, lead2_id = uuid4(), uuid4()
@@ -228,7 +240,9 @@ class TestUpdateRole:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         lead_id, member_id = uuid4(), uuid4()
@@ -276,7 +290,9 @@ class TestAddMemberSuspended:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         user_id = uuid4()
@@ -311,7 +327,9 @@ class TestCreate:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         ws_id = uuid4()
         creator_id = uuid4()
@@ -333,7 +351,9 @@ class TestCreate:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         with pytest.raises(ValueError):
             await svc.create(
@@ -349,7 +369,9 @@ class TestCreate:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         ws_id = uuid4()
         team = await team_repo.create(_make_team(ws_id))
@@ -364,7 +386,9 @@ class TestCreate:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         ws_id = uuid4()
         other_ws_id = uuid4()
@@ -382,7 +406,9 @@ class TestSoftDeleteOpenReviews:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
         review_repo.mark_has_open_reviews(team.id)
@@ -397,7 +423,9 @@ class TestSoftDeleteOpenReviews:
         team_repo = FakeTeamRepository()
         membership_repo = FakeMembershipRepository()
         review_repo = FakeReviewRequestRepository()
-        svc = TeamService(team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo)
+        svc = TeamService(
+            team_repo=team_repo, membership_repo=membership_repo, review_repo=review_repo
+        )
 
         team = await team_repo.create(_make_team())
 

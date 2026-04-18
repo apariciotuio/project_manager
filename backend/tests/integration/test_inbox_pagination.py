@@ -5,6 +5,7 @@ Covers:
   - Supplying cursor returns next page without duplicates
   - page_size=101 → 422
 """
+
 from __future__ import annotations
 
 import time
@@ -13,8 +14,8 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.infrastructure.adapters.jwt_adapter import JwtAdapter
 

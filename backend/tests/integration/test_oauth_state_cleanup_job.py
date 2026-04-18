@@ -5,10 +5,9 @@ Runs the async function against the real testcontainer DB.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -52,7 +51,7 @@ async def _count(engine) -> int:
 
 
 async def test_cleanup_deletes_only_expired_states(clean_db) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for _ in range(4):
         await _seed_state(clean_db, expires_at=now - timedelta(minutes=10))
     for _ in range(2):

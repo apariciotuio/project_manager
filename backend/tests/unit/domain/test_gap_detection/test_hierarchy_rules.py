@@ -1,4 +1,5 @@
 """Tests for hierarchy_rules gap detection rule."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -35,10 +36,7 @@ class TestInitiativeWithoutChildren:
     def test_initiative_no_children_returns_gap(self) -> None:
         item = _work_item(type=WorkItemType.INITIATIVE)
         result = check_hierarchy_rules(item, children=[])
-        assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "children"
-            for f in result
-        )
+        assert any(f.severity == GapSeverity.WARNING and f.dimension == "children" for f in result)
 
     def test_initiative_with_children_no_gap(self) -> None:
         item = _work_item(type=WorkItemType.INITIATIVE)
@@ -60,10 +58,7 @@ class TestTaskWithoutParent:
     def test_task_without_parent_returns_warning(self) -> None:
         item = _work_item(type=WorkItemType.TASK, parent_work_item_id=None)
         result = check_hierarchy_rules(item, children=[])
-        assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "parent"
-            for f in result
-        )
+        assert any(f.severity == GapSeverity.WARNING and f.dimension == "parent" for f in result)
 
     def test_task_with_parent_no_gap(self) -> None:
         parent_id = uuid4()

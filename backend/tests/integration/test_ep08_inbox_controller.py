@@ -10,6 +10,7 @@ Security:
   - Unauthenticated requests → 401
   - Inbox is user-scoped — user A cannot see user B's items
 """
+
 from __future__ import annotations
 
 import time
@@ -138,13 +139,9 @@ class TestGetInbox:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_empty_inbox_returns_tiers_structure(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_empty_inbox_returns_tiers_structure(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
-        resp = await http.get(
-            "/api/v1/inbox", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/inbox", cookies={"access_token": token})
         assert resp.status_code == 200
         body = resp.json()
         assert "data" in body
@@ -159,13 +156,9 @@ class TestGetInbox:
             assert tier["items"] == []
 
     @pytest.mark.asyncio
-    async def test_tier_labels_present(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_tier_labels_present(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
-        resp = await http.get(
-            "/api/v1/inbox", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/inbox", cookies={"access_token": token})
         assert resp.status_code == 200
         tiers = resp.json()["data"]["tiers"]
         assert tiers["1"]["label"] == "Pending reviews"
@@ -186,13 +179,9 @@ class TestGetInboxCount:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_empty_inbox_count(
-        self, http: AsyncClient, seeded
-    ) -> None:
+    async def test_empty_inbox_count(self, http: AsyncClient, seeded) -> None:
         user_id, workspace_id, token = seeded
-        resp = await http.get(
-            "/api/v1/inbox/count", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/inbox/count", cookies={"access_token": token})
         assert resp.status_code == 200
         body = resp.json()
         assert "data" in body

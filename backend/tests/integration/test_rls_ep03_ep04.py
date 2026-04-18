@@ -17,7 +17,6 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import text
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -216,10 +215,7 @@ async def test_ep04_section_versions_rls_isolation(db_session, rls_session) -> N
         )
         count = (
             await rls_session.execute(
-                text(
-                    "SELECT COUNT(*) FROM work_item_section_versions "
-                    "WHERE workspace_id = :ws"
-                ),
+                text("SELECT COUNT(*) FROM work_item_section_versions WHERE workspace_id = :ws"),
                 {"ws": ws_a},
             )
         ).scalar()
@@ -264,10 +260,7 @@ async def test_ep04_section_versions_rls_own_visible(db_session, rls_session) ->
         )
         count = (
             await rls_session.execute(
-                text(
-                    "SELECT COUNT(*) FROM work_item_section_versions "
-                    "WHERE workspace_id = :ws"
-                ),
+                text("SELECT COUNT(*) FROM work_item_section_versions WHERE workspace_id = :ws"),
                 {"ws": ws_a},
             )
         ).scalar()

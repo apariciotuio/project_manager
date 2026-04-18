@@ -13,21 +13,18 @@ Scenarios:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import sqlalchemy as sa
 
 from app.infrastructure.rate_limiting.pg_rate_limiter import PgRateLimiter
-
 
 # ---------------------------------------------------------------------------
 # Fake AsyncSession
 # ---------------------------------------------------------------------------
 
-_WINDOW_START = datetime(2026, 4, 18, 10, 5, 0, tzinfo=timezone.utc)
+_WINDOW_START = datetime(2026, 4, 18, 10, 5, 0, tzinfo=UTC)
 
 
 class _FakeRow:
@@ -54,9 +51,7 @@ class FakeSession:
     def __init__(self) -> None:
         self._buckets: dict[str, int] = {}
 
-    async def execute(
-        self, statement: Any, params: dict | None = None
-    ) -> _FakeResult:
+    async def execute(self, statement: Any, params: dict | None = None) -> _FakeResult:
         identifier = (params or {}).get("identifier", "")
         self._buckets[identifier] = self._buckets.get(identifier, 0) + 1
         count = self._buckets[identifier]
@@ -132,7 +127,9 @@ async def test_db_error_fails_open(caplog: pytest.LogCaptureFixture) -> None:
     """DB failure → request is allowed (fail-open), WARNING is logged."""
     limiter = PgRateLimiter(BrokenSession())
 
-    with caplog.at_level(logging.WARNING, logger="backend.app.infrastructure.rate_limiting.pg_rate_limiter"):
+    with caplog.at_level(
+        logging.WARNING, logger="backend.app.infrastructure.rate_limiting.pg_rate_limiter"
+    ):
         result = await limiter.check("ip:broken", limit=10)
 
     assert result.allowed is True

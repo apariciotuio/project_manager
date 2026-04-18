@@ -1,4 +1,5 @@
 """EP-09 — Unit tests for SavedSearchService."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -26,7 +27,8 @@ class FakeSavedSearchRepo:
 
     async def list_for_user(self, user_id, workspace_id) -> list[SavedSearch]:
         return [
-            s for s in self._store.values()
+            s
+            for s in self._store.values()
             if s.workspace_id == workspace_id and (s.user_id == user_id or s.is_shared)
         ]
 
@@ -52,7 +54,9 @@ class TestCreate:
         svc, _ = _service()
         uid = uuid4()
         wsid = uuid4()
-        result = await svc.create(user_id=uid, workspace_id=wsid, name="my search", query_params={"state": ["draft"]})
+        result = await svc.create(
+            user_id=uid, workspace_id=wsid, name="my search", query_params={"state": ["draft"]}
+        )
         assert result.name == "my search"
         assert result.query_params == {"state": ["draft"]}
         assert result.user_id == uid
@@ -62,7 +66,9 @@ class TestCreate:
     @pytest.mark.asyncio
     async def test_create_shared(self) -> None:
         svc, _ = _service()
-        result = await svc.create(user_id=uuid4(), workspace_id=uuid4(), name="shared", is_shared=True)
+        result = await svc.create(
+            user_id=uuid4(), workspace_id=uuid4(), name="shared", is_shared=True
+        )
         assert result.is_shared is True
 
     @pytest.mark.asyncio
@@ -110,7 +116,9 @@ class TestUpdate:
         svc, _ = _service()
         uid = uuid4()
         entity = await svc.create(user_id=uid, workspace_id=uuid4(), name="old name")
-        updated = await svc.update(saved_search_id=entity.id, requesting_user_id=uid, name="new name")
+        updated = await svc.update(
+            saved_search_id=entity.id, requesting_user_id=uid, name="new name"
+        )
         assert updated.name == "new name"
 
     @pytest.mark.asyncio
@@ -118,7 +126,9 @@ class TestUpdate:
         svc, _ = _service()
         uid = uuid4()
         entity = await svc.create(user_id=uid, workspace_id=uuid4(), name="x")
-        updated = await svc.update(saved_search_id=entity.id, requesting_user_id=uid, is_shared=True)
+        updated = await svc.update(
+            saved_search_id=entity.id, requesting_user_id=uid, is_shared=True
+        )
         assert updated.is_shared is True
 
     @pytest.mark.asyncio

@@ -13,6 +13,7 @@ Scenarios:
     7. Happy path decline → 200, lock still held
     8. Unknown request_id → 404
 """
+
 from __future__ import annotations
 
 import time

@@ -1,10 +1,10 @@
 """EP-05 — TaskNodeRepositoryImpl + TaskDependencyRepositoryImpl integration tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,9 +33,7 @@ async def user_and_work_item(db: AsyncSession):  # type: ignore[return]
     from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
 
     email = f"user_{uuid4().hex[:8]}@test.com"
-    user = User.from_google_claims(
-        sub=f"sub_{uuid4().hex}", email=email, name="T", picture=None
-    )
+    user = User.from_google_claims(sub=f"sub_{uuid4().hex}", email=email, name="T", picture=None)
     user = await UserRepositoryImpl(db).upsert(user)
     ws = Workspace.create_from_email(email=email, created_by=user.id)
     ws = await WorkspaceRepositoryImpl(db).create(ws)
@@ -146,9 +144,7 @@ class TestTaskNodeRepository:
         # root comes before child in materialized_path order
         assert ids.index(root.id) < ids.index(child.id)
 
-    async def test_delete_removes_node(
-        self, db: AsyncSession, user_and_work_item: tuple
-    ) -> None:
+    async def test_delete_removes_node(self, db: AsyncSession, user_and_work_item: tuple) -> None:
         user, item = user_and_work_item
         repo = TaskNodeRepositoryImpl(db)
         node = _make_node(item.id, user.id, title="to delete")
@@ -162,9 +158,7 @@ class TestTaskNodeRepository:
 
 
 class TestTaskDependencyRepository:
-    async def test_add_and_get_by_source(
-        self, db: AsyncSession, user_and_work_item: tuple
-    ) -> None:
+    async def test_add_and_get_by_source(self, db: AsyncSession, user_and_work_item: tuple) -> None:
         user, item = user_and_work_item
         node_repo = TaskNodeRepositoryImpl(db)
         dep_repo = TaskDependencyRepositoryImpl(db)

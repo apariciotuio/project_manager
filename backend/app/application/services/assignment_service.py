@@ -10,6 +10,7 @@ Note: does NOT re-implement reassign logic — delegates item mutation to the
 work_item_repo directly to keep this service thin. Full audit history is
 handled by the event bus subscriber.
 """
+
 from __future__ import annotations
 
 import logging
@@ -68,15 +69,11 @@ class AssignmentService:
         """
         target = await self._users.get_by_id(user_id)
         if target is None or getattr(target, "status", "active") != "active":
-            raise ValidationError(
-                f"user {user_id} is suspended and cannot receive assignments"
-            )
+            raise ValidationError(f"user {user_id} is suspended and cannot receive assignments")
 
         is_member = await self._memberships.is_member(workspace_id, user_id)
         if not is_member:
-            raise ValidationError(
-                f"user {user_id} is not a member of workspace {workspace_id}"
-            )
+            raise ValidationError(f"user {user_id} is not a member of workspace {workspace_id}")
 
         item = await self._items.get(item_id, workspace_id)
         if item is None:
@@ -106,9 +103,7 @@ class AssignmentService:
         )
         return saved
 
-    async def suggest_owner(
-        self, *, item_type: str, workspace_id: UUID
-    ) -> dict[str, Any] | None:
+    async def suggest_owner(self, *, item_type: str, workspace_id: UUID) -> dict[str, Any] | None:
         """Return the first valid suggested owner for the item type.
 
         Returns None if no matching rule or all candidates are suspended/deleted.
@@ -177,7 +172,5 @@ class AssignmentService:
                 )
                 results.append({"item_id": str(item_id), "success": True})
             except (ValidationError, LookupError, Exception) as exc:
-                results.append(
-                    {"item_id": str(item_id), "success": False, "error": str(exc)}
-                )
+                results.append({"item_id": str(item_id), "success": False, "error": str(exc)})
         return results

@@ -6,6 +6,7 @@ Routes:
   GET  /api/v1/work-items/{id}/versions/{version_number}/diff — diff vs previous
   GET  /api/v1/work-items/{id}/versions/diff?from=N&to=M   — arbitrary diff
 """
+
 from __future__ import annotations
 
 import logging
@@ -118,14 +119,26 @@ async def diff_versions(
     if v_from is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"version {from_version} not found", "details": {}}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"version {from_version} not found",
+                    "details": {},
+                }
+            },
         )
 
     v_to = await svc.get_by_number(work_item_id, to_version, workspace_id)
     if v_to is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"version {to_version} not found", "details": {}}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"version {to_version} not found",
+                    "details": {},
+                }
+            },
         )
 
     diff = diff_svc.compute_version_diff(v_from.snapshot, v_to.snapshot)
@@ -166,7 +179,11 @@ async def diff_vs_previous(
         diff = diff_svc.compute_version_diff(empty_snapshot, current.snapshot)
     else:
         prev = await svc.get_by_number(work_item_id, version_number - 1, workspace_id)
-        prev_snapshot = prev.snapshot if prev else {"schema_version": 1, "work_item": {}, "sections": [], "task_node_ids": []}
+        prev_snapshot = (
+            prev.snapshot
+            if prev
+            else {"schema_version": 1, "work_item": {}, "sections": [], "task_node_ids": []}
+        )
         diff = diff_svc.compute_version_diff(prev_snapshot, current.snapshot)
 
     return {

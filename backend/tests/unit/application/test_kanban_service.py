@@ -2,6 +2,7 @@
 
 RED phase: fail until KanbanService is implemented.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,7 +52,7 @@ class FakeSession:
         self._items = items
         self.call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self.call_count += 1
         return _FR(self._items)
 
@@ -60,7 +61,7 @@ class _FR:
     def __init__(self, items: list[object]) -> None:
         self._items = items
 
-    def scalars(self) -> "_SR":
+    def scalars(self) -> _SR:
         return _SR(self._items)
 
     def all(self) -> list[object]:
@@ -228,7 +229,15 @@ class TestKanbanCache:
 
         ws_id = uuid4()
         cached_data = {
-            "columns": [{"key": "draft", "label": "Draft", "total_count": 9, "cards": [], "next_cursor": None}],
+            "columns": [
+                {
+                    "key": "draft",
+                    "label": "Draft",
+                    "total_count": 9,
+                    "cards": [],
+                    "next_cursor": None,
+                }
+            ],
             "group_by": "state",
         }
         cache = FakeCache()

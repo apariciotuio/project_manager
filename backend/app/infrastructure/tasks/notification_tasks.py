@@ -14,6 +14,7 @@ sweep_expired_notifications:
 
 _build_*_deps() deferred imports avoid the lru_cache trap.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,17 +31,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def _build_fan_out_deps(
-    event_type: str, payload: dict[str, Any]
-) -> dict[str, Any]:
+async def _build_fan_out_deps(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Build ExtendedNotificationService + resolve recipients.
 
     Deferred imports avoid lru_cache trap (see project_settings_lru_cache_trap.md).
     Recipients are resolved from the payload. For team events the payload must
     include `team_member_ids`; for direct events `recipient_id` suffices.
     """
-    from app.config.settings import get_settings
     from app.application.services.notification_service import ExtendedNotificationService
+    from app.config.settings import get_settings
     from app.infrastructure.persistence.database import get_session_factory
     from app.infrastructure.persistence.team_repository_impl import NotificationRepositoryImpl
 

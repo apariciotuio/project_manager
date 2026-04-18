@@ -1,4 +1,5 @@
 """Priority — ordered work item priority levels."""
+
 from __future__ import annotations
 
 from enum import StrEnum

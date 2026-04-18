@@ -7,6 +7,7 @@ Tests run against an in-memory fake NotificationRepository to verify:
 - created_at spread across >= 2 distinct dates
 - Idempotency: second run produces same count
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -56,7 +57,7 @@ class FakeNotificationRepository(INotificationRepository):
 # it without a DB. The actual seed script calls this same function.
 # ---------------------------------------------------------------------------
 
-from scripts.seed_notifications import seed_notifications  # type: ignore[import]
+from scripts.seed_notifications import seed_notifications  # type: ignore[import]  # noqa: E402
 
 
 @pytest.fixture

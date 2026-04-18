@@ -1,4 +1,5 @@
 """Mapper: ValidationRuleTemplate ↔ ValidationRuleTemplateORM — EP-10."""
+
 from __future__ import annotations
 
 from app.domain.models.validation_rule_template import ValidationRuleTemplate

@@ -15,19 +15,19 @@ ChannelRegistry:
   - workspace presence channel maps to sse:presence:{workspace_id}
   - workspace_id scoping is embedded in prefix when provided
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from starlette.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Fake pub/sub for SseHandler tests
@@ -106,7 +106,9 @@ def test_channel_registry_workspace_scoped_job_channel() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _make_app_with_sse_handler(events: list[dict[str, Any]], *, keepalive_interval: float = 60.0) -> FastAPI:
+def _make_app_with_sse_handler(
+    events: list[dict[str, Any]], *, keepalive_interval: float = 60.0
+) -> FastAPI:
     """Build a minimal FastAPI app that uses SseHandler for a single route."""
     from app.infrastructure.sse.sse_handler import SseHandler
 
@@ -159,7 +161,7 @@ def test_sse_handler_streams_data_frame_format() -> None:
     # Parse first data frame
     for line in body.splitlines():
         if line.startswith("data: "):
-            parsed = json.loads(line[len("data: "):])
+            parsed = json.loads(line[len("data: ") :])
             assert parsed["type"] == "progress"
             break
     else:
@@ -181,7 +183,7 @@ def test_sse_handler_done_frame_uses_event_field() -> None:
     for i, line in enumerate(lines):
         if line == "event: done":
             data_line = lines[i + 1]
-            parsed = json.loads(data_line[len("data: "):])
+            parsed = json.loads(data_line[len("data: ") :])
             assert parsed["message_id"] == "msg-uuid-99"
             break
     else:

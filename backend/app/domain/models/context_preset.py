@@ -1,4 +1,5 @@
 """ContextPreset domain entity — EP-10 admin context presets."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

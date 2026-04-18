@@ -1,4 +1,5 @@
 """EP-07 — SQLAlchemy implementation for Comment repo."""
+
 from __future__ import annotations
 
 from uuid import UUID

@@ -1,4 +1,5 @@
 """EP-11 — JiraClient protocol."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

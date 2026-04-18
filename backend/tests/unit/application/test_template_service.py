@@ -2,6 +2,7 @@
 
 Uses fake repositories and fake cache. No DB/Redis.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,7 +16,6 @@ from tests.fakes.fake_repositories import FakeCache, FakeTemplateRepository
 
 def _make_template(workspace_id, type_, *, is_system: bool = False):
     from app.domain.models.template import Template
-    from app.domain.value_objects.work_item_type import WorkItemType
 
     return Template(
         id=uuid4(),
@@ -77,7 +77,6 @@ class TestTemplateServiceGet:
         assert result is None
 
     async def test_cache_hit_avoids_db_call(self) -> None:
-        from app.domain.models.template import Template
         from app.domain.value_objects.work_item_type import WorkItemType
 
         ws_id = uuid4()
@@ -88,17 +87,19 @@ class TestTemplateServiceGet:
         tmpl = _make_template(ws_id, WorkItemType.TASK)
         cache.seed(
             f"template:{ws_id}:{WorkItemType.TASK.value}",
-            json.dumps({
-                "id": str(tmpl.id),
-                "workspace_id": str(tmpl.workspace_id),
-                "type": tmpl.type.value,
-                "name": tmpl.name,
-                "content": tmpl.content,
-                "is_system": tmpl.is_system,
-                "created_by": str(tmpl.created_by) if tmpl.created_by else None,
-                "created_at": tmpl.created_at.isoformat(),
-                "updated_at": tmpl.updated_at.isoformat(),
-            }),
+            json.dumps(
+                {
+                    "id": str(tmpl.id),
+                    "workspace_id": str(tmpl.workspace_id),
+                    "type": tmpl.type.value,
+                    "name": tmpl.name,
+                    "content": tmpl.content,
+                    "is_system": tmpl.is_system,
+                    "created_by": str(tmpl.created_by) if tmpl.created_by else None,
+                    "created_at": tmpl.created_at.isoformat(),
+                    "updated_at": tmpl.updated_at.isoformat(),
+                }
+            ),
         )
 
         service = _make_service(template_repo=repo, cache=cache)

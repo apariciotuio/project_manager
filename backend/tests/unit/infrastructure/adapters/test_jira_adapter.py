@@ -2,10 +2,10 @@
 
 Uses httpx.MockTransport to avoid network calls.
 """
+
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -20,7 +20,9 @@ from app.infrastructure.adapters.jira_adapter import (
 )
 
 
-def _mock_transport(status_code: int, body: dict | str, headers: dict | None = None) -> httpx.MockTransport:
+def _mock_transport(
+    status_code: int, body: dict | str, headers: dict | None = None
+) -> httpx.MockTransport:
     """Build a synchronous mock transport that returns a fixed response."""
     raw = json.dumps(body) if isinstance(body, dict) else body
     _headers = {"Content-Type": "application/json", **(headers or {})}
@@ -53,7 +55,11 @@ def _make_client(transport: httpx.MockTransport) -> JiraClient:
 async def test_create_issue_201_returns_jira_issue() -> None:
     transport = _mock_transport(
         201,
-        {"id": "10001", "key": "PROJ-42", "self": "https://example.atlassian.net/rest/api/3/issue/10001"},
+        {
+            "id": "10001",
+            "key": "PROJ-42",
+            "self": "https://example.atlassian.net/rest/api/3/issue/10001",
+        },
     )
     client = _make_client(transport)
 
@@ -213,11 +219,13 @@ async def test_create_issue_5xx_succeeds_on_second_attempt() -> None:
             )
         return httpx.Response(
             201,
-            content=json.dumps({
-                "id": "10001",
-                "key": "PROJ-1",
-                "self": "https://example.atlassian.net/rest/api/3/issue/10001",
-            }).encode(),
+            content=json.dumps(
+                {
+                    "id": "10001",
+                    "key": "PROJ-1",
+                    "self": "https://example.atlassian.net/rest/api/3/issue/10001",
+                }
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
 
@@ -249,11 +257,13 @@ async def test_create_issue_sends_adf_description() -> None:
         captured_body = json.loads(request.content)
         return httpx.Response(
             201,
-            content=json.dumps({
-                "id": "1",
-                "key": "X-1",
-                "self": "https://x.atlassian.net/rest/api/3/issue/1",
-            }).encode(),
+            content=json.dumps(
+                {
+                    "id": "1",
+                    "key": "X-1",
+                    "self": "https://x.atlassian.net/rest/api/3/issue/1",
+                }
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
 

@@ -12,6 +12,7 @@ THEN: task retries via Celery max_retries
 WHEN: no outbox rows
 THEN: task returns {outbox_processed: 0, ingest_dispatched: 0}
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,7 +21,6 @@ from uuid import UUID, uuid4
 import pytest
 
 from tests.fakes.fake_puppet_client import FakePuppetClient
-
 
 # ---------------------------------------------------------------------------
 # In-memory stubs
@@ -50,6 +50,7 @@ class FakeOutboxRepo:
 class FakeIngestRepo:
     def __init__(self) -> None:
         from app.domain.models.puppet_ingest_request import PuppetIngestRequest
+
         self._store: dict[UUID, PuppetIngestRequest] = {}
 
     async def save(self, request: Any) -> None:
@@ -60,7 +61,8 @@ class FakeIngestRepo:
 
     async def claim_queued_batch(self, workspace_id: UUID, limit: int) -> list[Any]:
         queued = [
-            r for r in self._store.values()
+            r
+            for r in self._store.values()
             if r.workspace_id == workspace_id and r.status == "queued"
         ][:limit]
         for r in queued:
@@ -69,8 +71,7 @@ class FakeIngestRepo:
 
     async def has_succeeded_for_work_item(self, work_item_id: UUID) -> bool:
         return any(
-            r.status == "succeeded" and r.work_item_id == work_item_id
-            for r in self._store.values()
+            r.status == "succeeded" and r.work_item_id == work_item_id for r in self._store.values()
         )
 
     async def list_by_workspace(
@@ -86,7 +87,7 @@ class FakeSession:
     async def rollback(self) -> None:
         pass
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -128,7 +129,6 @@ def _make_outbox_row(
 @pytest.mark.asyncio
 async def test_empty_outbox_returns_zero() -> None:
     """WHEN no outbox rows THEN returns zeros without error."""
-    import asyncio
     from app.infrastructure.tasks import puppet_ingest_tasks as module
 
     original = module._build_ingest_deps
@@ -147,7 +147,7 @@ async def test_empty_outbox_returns_zero() -> None:
         ingest_repo = deps["ingest_repo"]
         puppet_client = deps["puppet_client"]
 
-        ingest_svc = PuppetIngestService(ingest_repo=ingest_repo, puppet_client=puppet_client)  # type: ignore[arg-type]
+        PuppetIngestService(ingest_repo=ingest_repo, puppet_client=puppet_client)  # type: ignore[arg-type]
         rows = await outbox_repo.claim_batch(limit=50)
         assert rows == []
     finally:
@@ -209,7 +209,7 @@ async def test_delete_row_calls_puppet_delete_directly() -> None:
     ingest_repo = FakeIngestRepo()
     puppet_client = FakePuppetClient()
 
-    ingest_svc = PuppetIngestService(ingest_repo=ingest_repo, puppet_client=puppet_client)  # type: ignore[arg-type]
+    PuppetIngestService(ingest_repo=ingest_repo, puppet_client=puppet_client)  # type: ignore[arg-type]
 
     rows = await outbox_repo.claim_batch(50)
     for r in rows:
@@ -229,7 +229,9 @@ async def test_puppet_failure_marks_ingest_request_failed() -> None:
     from app.application.services.puppet_ingest_service import PuppetIngestService
 
     class AlwaysFailPuppetClient:
-        async def index_document(self, doc_id: str, content: str, tags: list[str]) -> dict[str, Any]:
+        async def index_document(
+            self, doc_id: str, content: str, tags: list[str]
+        ) -> dict[str, Any]:
             raise RuntimeError("Puppet is down")
 
         async def delete_document(self, doc_id: str) -> None:

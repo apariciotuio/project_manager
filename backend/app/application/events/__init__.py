@@ -3,6 +3,7 @@
 Call register_event_subscribers(bus) once at application startup to wire all
 domain event handlers (timeline, notifications, etc.) to the shared EventBus.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,9 +33,7 @@ def register_event_subscribers(bus: EventBus) -> None:
         register_timeline_subscribers(bus, get_session_factory())
         logger.info("register_event_subscribers: timeline subscribers registered")
     except Exception:
-        logger.exception(
-            "register_event_subscribers: failed to register timeline subscribers"
-        )
+        logger.exception("register_event_subscribers: failed to register timeline subscribers")
 
     # EP-08 — Notification subscribers
     try:
@@ -75,9 +74,7 @@ def register_event_subscribers(bus: EventBus) -> None:
         register_notification_subscribers(bus, _get_notification_svc)
         logger.info("register_event_subscribers: notification subscribers registered")
     except Exception:
-        logger.exception(
-            "register_event_subscribers: failed to register notification subscribers"
-        )
+        logger.exception("register_event_subscribers: failed to register notification subscribers")
 
     # EP-10 — Validation template auto-seed on work item creation
     try:
@@ -86,9 +83,7 @@ def register_event_subscribers(bus: EventBus) -> None:
         )
 
         register_validation_template_subscribers(bus)
-        logger.info(
-            "register_event_subscribers: validation template subscriber registered"
-        )
+        logger.info("register_event_subscribers: validation template subscriber registered")
     except Exception:
         logger.exception(
             "register_event_subscribers: failed to register validation template subscriber"
@@ -154,6 +149,4 @@ def register_event_subscribers(bus: EventBus) -> None:
         bus.subscribe(_WICreatedEvent, _primer_proxy.handle)
         logger.info("register_event_subscribers: chat_primer subscriber registered")
     except Exception:
-        logger.exception(
-            "register_event_subscribers: failed to register chat_primer subscriber"
-        )
+        logger.exception("register_event_subscribers: failed to register chat_primer subscriber")

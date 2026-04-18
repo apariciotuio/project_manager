@@ -6,6 +6,7 @@ Scenarios:
 - work item with type 'task' + type-specific rule for 'bug' only
   → GET /validations returns only the global rule (no 'bug' rules)
 """
+
 from __future__ import annotations
 
 import time
@@ -148,9 +149,7 @@ async def _seed_work_item(migrated_database, work_item_type: str):
 
 
 @pytest.mark.asyncio
-async def test_validations_bug_type_returns_global_and_type_specific(
-    http, migrated_database
-):
+async def test_validations_bug_type_returns_global_and_type_specific(http, migrated_database):
     """Bug work item → global_rule + bug_only_rule both returned."""
     _, _, wi_id, token = await _seed_work_item(migrated_database, "bug")
 
@@ -166,9 +165,7 @@ async def test_validations_bug_type_returns_global_and_type_specific(
 
 
 @pytest.mark.asyncio
-async def test_validations_task_type_returns_only_global(
-    http, migrated_database
-):
+async def test_validations_task_type_returns_only_global(http, migrated_database):
     """Task work item → only global_rule, not bug_only_rule."""
     _, _, wi_id, token = await _seed_work_item(migrated_database, "task")
 
@@ -180,4 +177,6 @@ async def test_validations_task_type_returns_only_global(
     data = resp.json()["data"]
     all_rule_ids = {r["rule_id"] for r in data["required"] + data["recommended"]}
     assert "global_rule" in all_rule_ids, "global rule must always appear"
-    assert "bug_only_rule" not in all_rule_ids, "bug-specific rule must NOT appear for task work items"
+    assert "bug_only_rule" not in all_rule_ids, (
+        "bug-specific rule must NOT appear for task work items"
+    )

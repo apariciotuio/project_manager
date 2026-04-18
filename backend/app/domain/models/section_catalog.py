@@ -10,6 +10,7 @@ Bootstrap pattern:
 Only section types actually needed per WorkItemType are declared. A section_type
 absent from a type's list is not applicable — CompletenessService skips it.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

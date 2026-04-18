@@ -9,6 +9,7 @@ Covers:
 
 Auth: JWT in cookie. Workspace-scoped sessions. FakeCache for Redis.
 """
+
 from __future__ import annotations
 
 import time
@@ -152,7 +153,9 @@ def _auth(token: str) -> dict:
 @pytest.mark.asyncio
 async def test_get_specification_empty(http, seeded):
     _, _, wi_id, token = seeded
-    resp = await http.get(f"/api/v1/work-items/{wi_id}/specification", cookies={"access_token": token})
+    resp = await http.get(
+        f"/api/v1/work-items/{wi_id}/specification", cookies={"access_token": token}
+    )
     assert resp.status_code == 200
     data = resp.json()["data"]
     assert data["work_item_id"] == str(wi_id)
@@ -171,8 +174,9 @@ async def test_get_specification_with_sections(http, seeded, migrated_database):
     _, _, wi_id, token = seeded
 
     # Seed sections via spec-gen callback
-    from tests.integration.test_spec_gen_callback import _sign
-    import json, hashlib, hmac as _hmac
+    import hashlib
+    import hmac as _hmac
+    import json
 
     payload = {
         "agent": "wm_spec_gen_agent",
@@ -214,8 +218,9 @@ async def test_patch_section_updates_content(http, seeded, migrated_database):
     user_id, _, wi_id, token = seeded
 
     # Bootstrap sections first
-    from tests.integration.test_spec_gen_callback import _sign
-    import json, hashlib, hmac as _hmac
+    import hashlib
+    import hmac as _hmac
+    import json
 
     payload = {
         "agent": "wm_spec_gen_agent",

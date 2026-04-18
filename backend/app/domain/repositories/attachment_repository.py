@@ -1,4 +1,5 @@
 """EP-16 — Attachment repository interface."""
+
 from __future__ import annotations
 
 from typing import Protocol

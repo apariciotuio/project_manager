@@ -5,10 +5,7 @@ from __future__ import annotations
 import base64
 import json
 
-import pytest
-
 from app.presentation.pagination.cursor import decode_cursor, encode_cursor
-
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -17,7 +14,10 @@ from app.presentation.pagination.cursor import decode_cursor, encode_cursor
 
 def test_round_trip_preserves_values() -> None:
     """encode → decode returns the original data unchanged."""
-    payload = {"last_sort_value": "2024-01-15T10:00:00", "last_id": "550e8400-e29b-41d4-a716-446655440000"}
+    payload = {
+        "last_sort_value": "2024-01-15T10:00:00",
+        "last_id": "550e8400-e29b-41d4-a716-446655440000",
+    }
     token = encode_cursor(payload)
     result = decode_cursor(token)
     assert result == payload
@@ -46,7 +46,9 @@ def test_decode_returns_none_on_tampered_body() -> None:
     parts = token.rsplit(".", 1)
     assert len(parts) == 2
     # Corrupt the body
-    fake_body = base64.urlsafe_b64encode(json.dumps({"last_id": "evil"}).encode()).rstrip(b"=").decode()
+    fake_body = (
+        base64.urlsafe_b64encode(json.dumps({"last_id": "evil"}).encode()).rstrip(b"=").decode()
+    )
     tampered = f"{fake_body}.{parts[1]}"
     assert decode_cursor(tampered) is None
 
@@ -58,8 +60,9 @@ def test_decode_returns_none_on_missing_separator() -> None:
 
 def test_decode_returns_none_on_malformed_json() -> None:
     """Token with non-JSON body is rejected."""
-    import hmac
     import hashlib
+    import hmac
+
     from app.config.settings import get_settings
 
     secret = get_settings().auth.jwt_secret.encode()

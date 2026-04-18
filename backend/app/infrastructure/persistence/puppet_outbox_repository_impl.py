@@ -1,4 +1,5 @@
 """EP-13 — Puppet sync outbox repository implementation."""
+
 from __future__ import annotations
 
 import logging
@@ -89,10 +90,14 @@ class PuppetOutboxRepositoryImpl:
         await self._session.flush()
         # Re-fetch to get updated state
         refreshed = (
-            await self._session.execute(
-                select(PuppetSyncOutboxORM).where(PuppetSyncOutboxORM.id.in_(ids))
+            (
+                await self._session.execute(
+                    select(PuppetSyncOutboxORM).where(PuppetSyncOutboxORM.id.in_(ids))
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [_row_to_dict(r) for r in refreshed]
 
     async def mark_success(self, row_id: UUID) -> None:

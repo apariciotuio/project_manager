@@ -1,4 +1,5 @@
 """Unit tests for RoutingRule service operations — EP-10."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -15,7 +16,6 @@ from app.domain.repositories.project_repository import (
     IProjectRepository,
     IRoutingRuleRepository,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -35,7 +35,8 @@ class FakeProjectRepository(IProjectRepository):
 
     async def list_active_for_workspace(self, workspace_id: Any) -> list[Project]:
         return [
-            p for p in self._store.values()
+            p
+            for p in self._store.values()
             if p.workspace_id == workspace_id and p.deleted_at is None
         ]
 
@@ -62,17 +63,14 @@ class FakeRoutingRuleRepository(IRoutingRuleRepository):
         self, workspace_id: Any, work_item_type: str, project_id: Any
     ) -> RoutingRule | None:
         candidates = [
-            r for r in self._store.values()
-            if r.workspace_id == workspace_id
-            and r.work_item_type == work_item_type
-            and r.active
+            r
+            for r in self._store.values()
+            if r.workspace_id == workspace_id and r.work_item_type == work_item_type and r.active
         ]
         # project-specific first, then workspace-level, ordered by priority
         project_rules = [r for r in candidates if r.project_id == project_id]
         ws_rules = [r for r in candidates if r.project_id is None]
-        all_candidates = sorted(
-            project_rules or ws_rules, key=lambda r: r.priority, reverse=True
-        )
+        all_candidates = sorted(project_rules or ws_rules, key=lambda r: r.priority, reverse=True)
         return all_candidates[0] if all_candidates else None
 
     async def save(self, rule: RoutingRule) -> RoutingRule:
@@ -169,9 +167,7 @@ class TestUpdateRoutingRule:
         rule = await svc.create_routing_rule(
             workspace_id=ws, work_item_type="task", created_by=uuid4(), priority=1
         )
-        updated = await svc.update_routing_rule(
-            rule.id, workspace_id=ws, priority=10
-        )
+        updated = await svc.update_routing_rule(rule.id, workspace_id=ws, priority=10)
         assert updated.priority == 10
 
     @pytest.mark.asyncio
@@ -229,7 +225,9 @@ class TestMatchRouting:
         ws = uuid4()
         team = uuid4()
         await svc.create_routing_rule(
-            workspace_id=ws, work_item_type="task", created_by=uuid4(),
+            workspace_id=ws,
+            work_item_type="task",
+            created_by=uuid4(),
             suggested_team_id=team,
         )
         match = await svc.match_routing(ws, "task")

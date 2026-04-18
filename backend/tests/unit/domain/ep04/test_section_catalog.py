@@ -1,4 +1,5 @@
 """EP-04 Phase 2 — catalog invariants."""
+
 from __future__ import annotations
 
 import pytest

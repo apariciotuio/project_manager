@@ -18,6 +18,7 @@ ReviewDismissedEvent (== cancelled):
 ValidationStatusChangedEvent:
   { work_item_id, rule_id, workspace_id, new_status, occurred_at }
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -38,10 +39,10 @@ class ReviewRequestedEvent(Event):
     work_item_id: UUID
     review_request_id: UUID
     requester_id: UUID
-    reviewer_id: UUID | None        # None when reviewer_type=team
+    reviewer_id: UUID | None  # None when reviewer_type=team
     workspace_id: UUID
-    reviewer_type: str              # "user" | "team"
-    team_id: UUID | None = None     # set when reviewer_type=team
+    reviewer_type: str  # "user" | "team"
+    team_id: UUID | None = None  # set when reviewer_type=team
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=_now)
 
@@ -55,7 +56,7 @@ class ReviewRespondedEvent(Event):
     requester_id: UUID
     reviewer_id: UUID | None
     workspace_id: UUID
-    decision: str                   # "approved" | "rejected" | "changes_requested"
+    decision: str  # "approved" | "rejected" | "changes_requested"
     response_content: str | None = None
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=_now)
@@ -81,6 +82,6 @@ class ValidationStatusChangedEvent(Event):
     work_item_id: UUID
     rule_id: str
     workspace_id: UUID
-    new_status: str                 # "pending" | "passed" | "waived" | "obsolete"
+    new_status: str  # "pending" | "passed" | "waived" | "obsolete"
     event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=_now)

@@ -5,6 +5,7 @@ the dependency checks the caller's active workspace membership and returns
 403 when any required capability is missing. Superadmin bypasses the check
 but the bypass is logged for audit.
 """
+
 from __future__ import annotations
 
 import logging

@@ -2,6 +2,7 @@
 
 Uses fake thread repo and fake Dundun. No DB, no HTTP.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -26,6 +27,7 @@ WORKSPACE_ID = uuid4()
 def _fixed_clock(dt: datetime):
     def _now() -> datetime:
         return dt
+
     return _now
 
 
@@ -56,7 +58,7 @@ class TestGetOrCreateThread:
         user_id = uuid4()
         work_item_id = uuid4()
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,user_id, work_item_id)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, work_item_id)
 
         assert isinstance(thread, ConversationThread)
         assert thread.user_id == user_id
@@ -70,8 +72,8 @@ class TestGetOrCreateThread:
         user_id = uuid4()
         work_item_id = uuid4()
 
-        t1 = await service.get_or_create_thread(WORKSPACE_ID,user_id, work_item_id)
-        t2 = await service.get_or_create_thread(WORKSPACE_ID,user_id, work_item_id)
+        t1 = await service.get_or_create_thread(WORKSPACE_ID, user_id, work_item_id)
+        t2 = await service.get_or_create_thread(WORKSPACE_ID, user_id, work_item_id)
 
         assert t1.id == t2.id
         assert t1.dundun_conversation_id == t2.dundun_conversation_id
@@ -84,8 +86,8 @@ class TestGetOrCreateThread:
         service = _make_service(thread_repo=repo)
         user_id = uuid4()
 
-        t1 = await service.get_or_create_thread(WORKSPACE_ID,user_id, uuid4())
-        t2 = await service.get_or_create_thread(WORKSPACE_ID,user_id, uuid4())
+        t1 = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
+        t2 = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
 
         assert t1.id != t2.id
 
@@ -96,7 +98,7 @@ class TestGetOrCreateThread:
         user_id = uuid4()
         work_item_id = uuid4()
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,user_id, work_item_id)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, work_item_id)
         await service.archive_thread(thread.id)
 
         # Verify it's archived
@@ -105,7 +107,7 @@ class TestGetOrCreateThread:
         assert archived.deleted_at is not None
 
         # Resurrect via get_or_create
-        resurrected = await service.get_or_create_thread(WORKSPACE_ID,user_id, work_item_id)
+        resurrected = await service.get_or_create_thread(WORKSPACE_ID, user_id, work_item_id)
 
         assert resurrected.id == thread.id
         assert resurrected.deleted_at is None
@@ -115,7 +117,7 @@ class TestGetOrCreateThread:
         service = _make_service(thread_repo=repo)
         user_id = uuid4()
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,user_id, None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, None)
 
         assert thread.work_item_id is None
         assert thread.is_general_thread is True
@@ -133,7 +135,7 @@ class TestGetHistory:
         service = _make_service(thread_repo=repo, dundun=dundun)
         user_id = uuid4()
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,user_id, None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, None)
         conv_id = thread.dundun_conversation_id
         dundun.history_by_conversation[conv_id] = [
             {"role": "user", "content": "hello"},
@@ -150,7 +152,7 @@ class TestGetHistory:
         dundun = FakeDundunClient()
         service = _make_service(thread_repo=repo, dundun=dundun)
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,uuid4(), None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, uuid4(), None)
         frames = await service.get_history(thread.id)
 
         assert frames == []
@@ -161,11 +163,9 @@ class TestGetHistory:
         now = datetime.now(UTC)
         service = _make_service(thread_repo=repo, dundun=dundun, now=_fixed_clock(now))
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,uuid4(), None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, uuid4(), None)
         conv_id = thread.dundun_conversation_id
-        dundun.history_by_conversation[conv_id] = [
-            {"role": "assistant", "content": "final answer"}
-        ]
+        dundun.history_by_conversation[conv_id] = [{"role": "assistant", "content": "final answer"}]
 
         await service.get_history(thread.id)
 
@@ -191,7 +191,7 @@ class TestArchiveThread:
         now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
         service = _make_service(thread_repo=repo, now=_fixed_clock(now))
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,uuid4(), None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, uuid4(), None)
         await service.archive_thread(thread.id)
 
         stored = await repo.get_by_id(thread.id)
@@ -203,7 +203,7 @@ class TestArchiveThread:
         dundun = FakeDundunClient()
         service = _make_service(thread_repo=repo, dundun=dundun)
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,uuid4(), None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, uuid4(), None)
         await service.archive_thread(thread.id)
 
         # No Dundun calls from archive
@@ -219,7 +219,7 @@ class TestArchiveThread:
         now = datetime.now(UTC)
         service = _make_service(thread_repo=repo, now=_fixed_clock(now))
 
-        thread = await service.get_or_create_thread(WORKSPACE_ID,uuid4(), None)
+        thread = await service.get_or_create_thread(WORKSPACE_ID, uuid4(), None)
         await service.archive_thread(thread.id)
         await service.archive_thread(thread.id)  # idempotent
 
@@ -239,8 +239,8 @@ class TestListForUser:
         service = _make_service(thread_repo=repo)
         user_id = uuid4()
 
-        t1 = await service.get_or_create_thread(WORKSPACE_ID,user_id, uuid4())
-        t2 = await service.get_or_create_thread(WORKSPACE_ID,user_id, uuid4())
+        t1 = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
+        t2 = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
         await service.archive_thread(t2.id)
 
         threads = await service.list_for_user(user_id)
@@ -260,8 +260,8 @@ class TestListForUser:
         user_id = uuid4()
         wi_id = uuid4()
 
-        await service.get_or_create_thread(WORKSPACE_ID,user_id, wi_id)
-        await service.get_or_create_thread(WORKSPACE_ID,user_id, uuid4())  # other item
+        await service.get_or_create_thread(WORKSPACE_ID, user_id, wi_id)
+        await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())  # other item
 
         threads = await service.list_for_user(user_id, work_item_id=wi_id)
 

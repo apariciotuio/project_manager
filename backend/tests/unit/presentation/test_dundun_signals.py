@@ -3,6 +3,7 @@
 8 triangulation cases covering valid, invalid, oversized, and normalisation paths.
 RED phase: these tests fail before dundun_signals.py exists.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -107,9 +108,7 @@ class TestValidateSignals:
 
         raw = {
             "conversation_ended": False,
-            "suggested_sections": [
-                {"section_type": "problem_statement", "proposed_content": "P"}
-            ],
+            "suggested_sections": [{"section_type": "problem_statement", "proposed_content": "P"}],
         }
         result = validate_signals(raw)
         assert result["suggested_sections"][0]["section_type"] == "problem_statement"
@@ -166,8 +165,7 @@ class TestSuggestedSectionsListCap:
         oversize = _MAX_SUGGESTED_SECTIONS + 10
         raw = {
             "suggested_sections": [
-                {"section_type": f"sec_{i}", "proposed_content": "x"}
-                for i in range(oversize)
+                {"section_type": f"sec_{i}", "proposed_content": "x"} for i in range(oversize)
             ]
         }
         result = validate_signals(raw)
@@ -210,9 +208,7 @@ class TestSuggestedSectionsListCap:
 class TestInvalidReasonsSanitised:
     """SEC-LOG-001: invalid_reasons must not leak raw input values to logs."""
 
-    def test_invalid_reasons_exclude_input_values(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_invalid_reasons_exclude_input_values(self, caplog: pytest.LogCaptureFixture) -> None:
         import logging
 
         from app.presentation.schemas.dundun_signals import validate_signals
@@ -236,9 +232,7 @@ class TestInvalidReasonsSanitised:
         # The sanitised summary should still name the field + error type.
         assert "proposed_content" in joined or "suggested_sections_dropped" in joined
 
-    def test_invalid_reasons_format_is_loc_and_type(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_invalid_reasons_format_is_loc_and_type(self, caplog: pytest.LogCaptureFixture) -> None:
         import logging
 
         from app.presentation.schemas.dundun_signals import validate_signals

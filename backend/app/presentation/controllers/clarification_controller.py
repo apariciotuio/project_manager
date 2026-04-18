@@ -6,6 +6,7 @@ Routes:
 Deferred (owned by EP-04):
   POST /api/v1/work-items/{id}/gaps/ai-review — AI review dispatch
 """
+
 from __future__ import annotations
 
 import logging

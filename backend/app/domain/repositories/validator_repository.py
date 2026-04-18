@@ -1,4 +1,5 @@
 """EP-04 — IValidatorRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

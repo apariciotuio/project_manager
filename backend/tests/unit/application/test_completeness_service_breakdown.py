@@ -12,6 +12,7 @@ THEN the breakdown dimension score is 0.0
 WHEN compute() is called and task_repo is None (not injected)
 THEN breakdown defaults to 0 tasks (backward-compat)
 """
+
 from __future__ import annotations
 
 from typing import Any

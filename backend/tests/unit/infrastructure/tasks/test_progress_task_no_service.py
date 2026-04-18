@@ -14,12 +14,12 @@ Cases:
   - publish_done payload contains message_id in done frame
   - publish_error payload contains message key in error frame
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fake publisher

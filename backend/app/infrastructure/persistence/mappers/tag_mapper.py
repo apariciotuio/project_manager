@@ -1,4 +1,5 @@
 """Mappers for Tag and WorkItemTag — EP-15."""
+
 from __future__ import annotations
 
 from app.domain.models.tag import Tag, WorkItemTag

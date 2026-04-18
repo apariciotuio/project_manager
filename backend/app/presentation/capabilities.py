@@ -24,6 +24,7 @@ Semantics:
   gate on authentication alone; the empty-list branch exists so callers
   can wire a placeholder without special-casing in the route definition.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,9 +46,7 @@ class _CapabilityRepo(Protocol):
     so tests can pass a fake without implementing the whole interface.
     """
 
-    async def get_capabilities_for(
-        self, user_id: UUID, workspace_id: UUID
-    ) -> list[str] | None: ...
+    async def get_capabilities_for(self, user_id: UUID, workspace_id: UUID) -> list[str] | None: ...
 
 
 def build_require_capabilities(
@@ -100,8 +99,7 @@ def build_require_capabilities(
         missing = required_set - held
         if missing:
             logger.warning(
-                "capability_check_denied user_id=%s workspace_id=%s "
-                "required=%s held=%s missing=%s",
+                "capability_check_denied user_id=%s workspace_id=%s required=%s held=%s missing=%s",
                 user.id,
                 user.workspace_id,
                 sorted(required_set),

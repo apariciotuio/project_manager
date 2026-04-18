@@ -1,4 +1,5 @@
 """GapDetector — orchestrates all rule functions and returns a GapReport."""
+
 from __future__ import annotations
 
 from app.domain.gap_detection.rules.acceptance_criteria import check_acceptance_criteria

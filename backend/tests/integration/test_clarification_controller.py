@@ -7,6 +7,7 @@ Scenarios:
     - 200 with empty list when no BLOCKING gaps
     - 200 with up to 3 questions when BLOCKING gaps exist
 """
+
 from __future__ import annotations
 
 import time
@@ -160,9 +161,7 @@ class TestGetGapQuestions:
         )
         assert resp.status_code == 404
 
-    async def test_returns_questions_structure(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_returns_questions_structure(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         wi = await _create_work_item(http, token, title="Gap test item")
 

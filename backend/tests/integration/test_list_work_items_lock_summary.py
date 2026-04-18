@@ -6,10 +6,10 @@ Scenario:
     2. Single DB query for all locks (no N+1)
     3. held_by_me reflects caller_id
 """
+
 from __future__ import annotations
 
 import time
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -58,7 +58,6 @@ async def app(migrated_database):
 
     from app.main import create_app as _create_app
     from app.presentation.dependencies import get_cache_adapter
-
     from tests.fakes.fake_repositories import FakeCache
 
     fastapi_app = _create_app()
@@ -220,12 +219,8 @@ def _auth_headers(token: str) -> dict:
     }
 
 
-async def _acquire_lock_for_section(
-    http: AsyncClient, section_id, user_id, token: str
-) -> None:
+async def _acquire_lock_for_section(http: AsyncClient, section_id, user_id, token: str) -> None:
     """Helper to acquire a lock on a section."""
-    from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
-    from sqlalchemy.ext.asyncio import create_async_engine as _create_engine, async_sessionmaker
 
     url = _ACQUIRE_LOCK_URL.format(section_id=section_id)
     resp = await http.post(url, headers=_auth_headers(token))
@@ -245,6 +240,7 @@ async def test_list_work_items_includes_lock_summary_per_item(http, seeded, migr
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         from sqlalchemy import select
+
         from app.infrastructure.persistence.models.orm import WorkItemSectionORM
 
         # Get sections for wi1 and wi2
@@ -304,12 +300,11 @@ async def test_list_work_items_held_by_me_reflects_caller(http, seeded, migrated
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         from sqlalchemy import select
+
         from app.infrastructure.persistence.models.orm import WorkItemSectionORM
 
         result = await session.execute(
-            select(WorkItemSectionORM).where(
-                WorkItemSectionORM.work_item_id == seeded["wi1_id"]
-            )
+            select(WorkItemSectionORM).where(WorkItemSectionORM.work_item_id == seeded["wi1_id"])
         )
         wi1_section = result.scalar_one()
 

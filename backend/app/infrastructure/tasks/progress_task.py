@@ -19,6 +19,7 @@ Usage:
         ...
         await mixin.publish_done(job_id, message_id="msg-uuid")
 """
+
 from __future__ import annotations
 
 import logging

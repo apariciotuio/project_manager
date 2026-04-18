@@ -3,6 +3,7 @@
 A Dundun suggestion callback for a work item with 2 existing versions must
 produce suggestions with version_number_target == 3, not hardcoded 1.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -194,9 +195,7 @@ async def test_suggestion_callback_version_target_from_repo(
 
 
 @pytest.mark.asyncio
-async def test_suggestion_callback_version_target_no_versions(
-    http, migrated_database
-):
+async def test_suggestion_callback_version_target_no_versions(http, migrated_database):
     """Suggestion for a work item with no versions should have version_number_target == 1."""
     from app.domain.models.user import User
     from app.domain.models.work_item import WorkItem

@@ -8,12 +8,12 @@ Scenarios:
   DELETE /api/v1/threads/{id} — archive; 404 on missing; 404 on wrong user
   Unauthenticated → 401
 """
+
 from __future__ import annotations
 
 import time
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -55,8 +55,8 @@ async def app(migrated_database):
 
     from app.main import create_app as _create_app
     from app.presentation.dependencies import get_cache_adapter, get_dundun_client
-    from tests.fakes.fake_repositories import FakeCache
     from tests.fakes.fake_dundun_client import FakeDundunClient
+    from tests.fakes.fake_repositories import FakeCache
 
     fastapi_app = _create_app()
 
@@ -143,17 +143,13 @@ class TestListThreads:
         resp = await http.get("/api/v1/threads")
         assert resp.status_code == 401
 
-    async def test_empty_list_for_new_user(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_empty_list_for_new_user(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.get("/api/v1/threads", cookies={"access_token": token})
         assert resp.status_code == 200
         assert resp.json()["data"] == []
 
-    async def test_lists_only_own_threads(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_lists_only_own_threads(self, http: AsyncClient, migrated_database) -> None:
         user_a, _ws_a, token_a = await _seed(migrated_database)
         user_b, _ws_b, token_b = await _seed(migrated_database)
 
@@ -218,9 +214,7 @@ class TestCreateThread:
 
 
 class TestGetThread:
-    async def test_owner_can_get_thread(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_owner_can_get_thread(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         r = await http.post("/api/v1/threads", json={}, cookies={"access_token": token})
         thread_id = r.json()["data"]["id"]
@@ -229,9 +223,7 @@ class TestGetThread:
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == thread_id
 
-    async def test_other_user_gets_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_other_user_gets_404(self, http: AsyncClient, migrated_database) -> None:
         # IDOR: cross-user fetch must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
@@ -242,16 +234,12 @@ class TestGetThread:
         resp = await http.get(f"/api/v1/threads/{thread_id}", cookies={"access_token": token_b})
         assert resp.status_code == 404
 
-    async def test_missing_thread_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_missing_thread_returns_404(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.get(f"/api/v1/threads/{uuid4()}", cookies={"access_token": token})
         assert resp.status_code == 404
 
-    async def test_cross_workspace_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_cross_workspace_returns_404(self, http: AsyncClient, migrated_database) -> None:
         """SEC-AUTH-001 (code-review Must Fix): same user, different workspace_id
         in the JWT → 404 (same response as missing, no existence leak).
 
@@ -307,9 +295,7 @@ class TestGetThread:
             }
         )
 
-        resp = await http.get(
-            f"/api/v1/threads/{thread_id}", cookies={"access_token": cross_token}
-        )
+        resp = await http.get(f"/api/v1/threads/{thread_id}", cookies={"access_token": cross_token})
         assert resp.status_code == 404, (
             f"Cross-workspace GET must return 404 (no existence leak); got {resp.status_code}"
         )
@@ -333,9 +319,7 @@ class TestGetThread:
 
 
 class TestGetThreadHistory:
-    async def test_returns_empty_history(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_returns_empty_history(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         r = await http.post("/api/v1/threads", json={}, cookies={"access_token": token})
         thread_id = r.json()["data"]["id"]
@@ -346,9 +330,7 @@ class TestGetThreadHistory:
         assert resp.status_code == 200
         assert resp.json()["data"] == []
 
-    async def test_wrong_user_gets_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_wrong_user_gets_404(self, http: AsyncClient, migrated_database) -> None:
         # IDOR: cross-user fetch must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
@@ -361,13 +343,9 @@ class TestGetThreadHistory:
         )
         assert resp.status_code == 404
 
-    async def test_missing_thread_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_missing_thread_returns_404(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
-        resp = await http.get(
-            f"/api/v1/threads/{uuid4()}/history", cookies={"access_token": token}
-        )
+        resp = await http.get(f"/api/v1/threads/{uuid4()}/history", cookies={"access_token": token})
         assert resp.status_code == 404
 
 
@@ -377,21 +355,15 @@ class TestGetThreadHistory:
 
 
 class TestDeleteThread:
-    async def test_owner_can_archive(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_owner_can_archive(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         r = await http.post("/api/v1/threads", json={}, cookies={"access_token": token})
         thread_id = r.json()["data"]["id"]
 
-        resp = await http.delete(
-            f"/api/v1/threads/{thread_id}", cookies={"access_token": token}
-        )
+        resp = await http.delete(f"/api/v1/threads/{thread_id}", cookies={"access_token": token})
         assert resp.status_code == 204
 
-    async def test_other_user_gets_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_other_user_gets_404(self, http: AsyncClient, migrated_database) -> None:
         # IDOR: cross-user delete must NOT leak existence — same 404 as missing.
         _user_a, _ws_a, token_a = await _seed(migrated_database)
         _user_b, _ws_b, token_b = await _seed(migrated_database)
@@ -399,14 +371,10 @@ class TestDeleteThread:
         r = await http.post("/api/v1/threads", json={}, cookies={"access_token": token_a})
         thread_id = r.json()["data"]["id"]
 
-        resp = await http.delete(
-            f"/api/v1/threads/{thread_id}", cookies={"access_token": token_b}
-        )
+        resp = await http.delete(f"/api/v1/threads/{thread_id}", cookies={"access_token": token_b})
         assert resp.status_code == 404
 
-    async def test_missing_thread_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_missing_thread_returns_404(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.delete(f"/api/v1/threads/{uuid4()}", cookies={"access_token": token})
         assert resp.status_code == 404

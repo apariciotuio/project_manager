@@ -21,8 +21,6 @@ When adding a real backend:
 
 from __future__ import annotations
 
-from typing import Any
-
 
 class NoOpCounter:
     """Counter that accepts .inc() calls and always reports value=0."""

@@ -2,6 +2,7 @@
 
 RED phase: fail until PipelineQueryService is implemented.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -31,6 +32,7 @@ class FakeCache:
 
 class _RowAgg:
     """Fake aggregate row: state, cnt, avg_age_days."""
+
     def __init__(self, state: str, cnt: int, avg_age: float = 0.0) -> None:
         self.state = state
         self.cnt = cnt
@@ -56,7 +58,7 @@ class FakeSession:
         self._items = items
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self._call_count += 1
         return _FR(agg_rows=self._agg_rows, items=self._items, call=self._call_count)
 
@@ -72,7 +74,7 @@ class _FR:
             return self._agg_rows
         return self._items
 
-    def scalars(self) -> "_ScalarResult":
+    def scalars(self) -> _ScalarResult:
         return _ScalarResult(self._items)
 
 

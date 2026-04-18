@@ -11,6 +11,7 @@ Rules:
 - INITIATIVE without children → warning (gap on dimension "children")
 - TASK / REQUIREMENT / ENHANCEMENT without parent_work_item_id → warning (dimension "parent")
 """
+
 from __future__ import annotations
 
 from app.domain.models.gap_finding import GapFinding, GapSeverity

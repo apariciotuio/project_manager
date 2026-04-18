@@ -56,7 +56,9 @@ def encode_cursor(payload: dict[str, object]) -> str:
     Returns:
         URL-safe string suitable for inclusion in a response ``pagination.cursor`` field.
     """
-    body = base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True).encode()).rstrip(b"=").decode()
+    body = (
+        base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True).encode()).rstrip(b"=").decode()
+    )
     sig = _sign(body)
     return f"{body}.{sig}"
 

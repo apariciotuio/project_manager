@@ -1,4 +1,5 @@
 """EP-08 — TeamService + NotificationService."""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -161,9 +162,7 @@ class TeamService:
         if membership.role == TeamRole.LEAD:
             lead_count = await self._memberships.count_active_leads(team_id)
             if lead_count <= 1:
-                raise LastLeadError(
-                    f"cannot remove the last lead from team {team_id}"
-                )
+                raise LastLeadError(f"cannot remove the last lead from team {team_id}")
         membership.remove()
         return await self._memberships.save(membership)
 
@@ -183,9 +182,7 @@ class TeamService:
         if membership.role == TeamRole.LEAD and new_role != TeamRole.LEAD:
             lead_count = await self._memberships.count_active_leads(team_id)
             if lead_count <= 1:
-                raise LastLeadError(
-                    f"cannot demote the last lead of team {team_id}"
-                )
+                raise LastLeadError(f"cannot demote the last lead of team {team_id}")
         membership.role = new_role
         return await self._memberships.save(membership)
 
@@ -284,16 +281,13 @@ class NotificationService:
             NotificationNotFoundError: notification not found.
             StaleActionError: notification is already actioned.
         """
-        from typing import Any
 
         notification = await self._notifications.get(notification_id)
         if notification is None:
             raise NotificationNotFoundError(f"notification {notification_id} not found")
 
         if notification.state == NotificationState.ACTIONED:
-            raise StaleActionError(
-                f"notification {notification_id} is already actioned"
-            )
+            raise StaleActionError(f"notification {notification_id} is already actioned")
 
         quick_action = notification.quick_action
         if quick_action is None or "action" not in quick_action:

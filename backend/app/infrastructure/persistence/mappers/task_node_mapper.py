@@ -1,4 +1,5 @@
 """Mappers for TaskNode + TaskDependency — EP-05."""
+
 from __future__ import annotations
 
 from app.domain.models.task_node import TaskDependency, TaskGenerationSource, TaskNode, TaskStatus

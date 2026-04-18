@@ -419,6 +419,7 @@ class _AsyncWsMock:
     async def recv(self) -> str:
         if not self._frames:
             from websockets import ConnectionClosed as _CC
+
             raise _CC(None, None)
         return self._frames.pop(0)
 

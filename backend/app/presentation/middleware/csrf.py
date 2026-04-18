@@ -33,7 +33,9 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 def _csrf_error() -> JSONResponse:
     return JSONResponse(
         status_code=403,
-        content={"error": {"code": "CSRF_TOKEN_INVALID", "message": "CSRF token missing or invalid"}},
+        content={
+            "error": {"code": "CSRF_TOKEN_INVALID", "message": "CSRF token missing or invalid"}
+        },
     )
 
 

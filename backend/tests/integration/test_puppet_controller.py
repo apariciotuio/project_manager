@@ -24,12 +24,12 @@ Scenarios:
     - Failed row → reset to queued
     - Row from different workspace → 404
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
-import logging
 from uuid import uuid4
 
 import pytest
@@ -143,14 +143,18 @@ async def seeded(migrated_database):
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
-        user = User.from_google_claims(sub="puppet-sub", email="puppet@test.com", name="Puppet", picture=None)
+        user = User.from_google_claims(
+            sub="puppet-sub", email="puppet@test.com", name="Puppet", picture=None
+        )
         await UserRepositoryImpl(session).upsert(user)
 
         ws = Workspace.create_from_email(email="puppet@test.com", created_by=user.id)
         ws.slug = "puppet-test"
         await WorkspaceRepositoryImpl(session).create(ws)
         await WorkspaceMembershipRepositoryImpl(session).create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
 
         wi = WorkItem.create(
@@ -254,10 +258,12 @@ async def test_callback_succeeded_updates_row(http, seeded, migrated_database):
     # Verify DB row
     engine = create_async_engine(migrated_database.database.url)
     async with engine.begin() as conn:
-        row = (await conn.execute(
-            text("SELECT status, puppet_doc_id FROM puppet_ingest_requests WHERE id = :id"),
-            {"id": str(ingest_id)},
-        )).fetchone()
+        row = (
+            await conn.execute(
+                text("SELECT status, puppet_doc_id FROM puppet_ingest_requests WHERE id = :id"),
+                {"id": str(ingest_id)},
+            )
+        ).fetchone()
     await engine.dispose()
     assert row is not None
     assert row[0] == "succeeded"
@@ -295,10 +301,12 @@ async def test_callback_idempotent_on_succeeded_row(http, seeded, migrated_datab
     # Doc id not changed
     engine = create_async_engine(migrated_database.database.url)
     async with engine.begin() as conn:
-        row = (await conn.execute(
-            text("SELECT puppet_doc_id FROM puppet_ingest_requests WHERE id = :id"),
-            {"id": str(ingest_id)},
-        )).fetchone()
+        row = (
+            await conn.execute(
+                text("SELECT puppet_doc_id FROM puppet_ingest_requests WHERE id = :id"),
+                {"id": str(ingest_id)},
+            )
+        ).fetchone()
     await engine.dispose()
     assert row[0] == "old-doc-id"
 
@@ -449,10 +457,12 @@ async def test_retry_failed_row_resets_to_queued(http, seeded, migrated_database
     # Verify DB
     engine = create_async_engine(migrated_database.database.url)
     async with engine.begin() as conn:
-        row = (await conn.execute(
-            text("SELECT status, attempts FROM puppet_ingest_requests WHERE id = :id"),
-            {"id": str(ingest_id)},
-        )).fetchone()
+        row = (
+            await conn.execute(
+                text("SELECT status, attempts FROM puppet_ingest_requests WHERE id = :id"),
+                {"id": str(ingest_id)},
+            )
+        ).fetchone()
     await engine.dispose()
     assert row[0] == "queued"
     assert row[1] == 0

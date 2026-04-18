@@ -3,6 +3,7 @@
 WHEN: state transitions are applied
 THEN: status, fields, and invariants behave correctly
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

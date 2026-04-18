@@ -16,9 +16,7 @@ def repo(db_session) -> UserRepositoryImpl:
 
 
 async def test_upsert_inserts_new_user(repo, db_session) -> None:
-    user = User.from_google_claims(
-        sub="sub-1", email="alice@tuio.com", name="Alice", picture=None
-    )
+    user = User.from_google_claims(sub="sub-1", email="alice@tuio.com", name="Alice", picture=None)
     saved = await repo.upsert(user)
     await db_session.commit()
 
@@ -30,9 +28,7 @@ async def test_upsert_inserts_new_user(repo, db_session) -> None:
 
 
 async def test_upsert_updates_existing_user_by_google_sub(repo, db_session) -> None:
-    original = User.from_google_claims(
-        sub="sub-2", email="bob@tuio.com", name="Bob", picture=None
-    )
+    original = User.from_google_claims(sub="sub-2", email="bob@tuio.com", name="Bob", picture=None)
     await repo.upsert(original)
     await db_session.commit()
 

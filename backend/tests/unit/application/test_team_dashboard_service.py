@@ -2,10 +2,11 @@
 
 RED phase: fail until TeamDashboardService is implemented.
 """
+
 from __future__ import annotations
 
 import json
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -44,7 +45,7 @@ class FakeSession:
         self._blocked_count = blocked_count
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self._call_count += 1
         return _FR(
             rows=self._state_rows,

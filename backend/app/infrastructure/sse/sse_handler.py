@@ -16,6 +16,7 @@ Disconnect cleanup: when the ASGI server cancels the generator (client
 disconnects), asyncio.CancelledError propagates into PgNotificationBus.subscribe
 which always runs its finally block — issuing UNLISTEN and releasing the connection.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -39,7 +40,7 @@ class _PubSubProto(Protocol):
         channel: str,
         max_messages: int | None = None,
         poll_interval: float = 0.05,
-    ) -> AsyncGenerator[dict[str, Any], None]: ...
+    ) -> AsyncGenerator[dict[str, Any]]: ...
 
 
 class SseHandler:

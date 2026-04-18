@@ -1,4 +1,5 @@
 """SQLAlchemy implementation of IConversationThreadRepository — EP-03."""
+
 from __future__ import annotations
 
 from uuid import UUID

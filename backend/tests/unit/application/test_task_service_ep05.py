@@ -1,15 +1,16 @@
 """EP-05 — TaskService unit tests: split, merge, reorder, section links."""
+
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
 from app.application.services.task_service import (
     TaskNodeNotFoundError,
     TaskService,
 )
+from app.domain.models.task_node import TaskGenerationSource, TaskNode
 from tests.unit.fakes.fake_task_repositories import (
     FakeTaskDependencyRepository,
     FakeTaskNodeRepository,
@@ -205,12 +206,18 @@ class TestTaskServiceMerge:
         await node_repo.save(parent_b)
 
         child_a = TaskNode.create(
-            work_item_id=wi, parent_id=parent_a.id, title="CA",
-            display_order=1, created_by=actor,
+            work_item_id=wi,
+            parent_id=parent_a.id,
+            title="CA",
+            display_order=1,
+            created_by=actor,
         )
         child_b = TaskNode.create(
-            work_item_id=wi, parent_id=parent_b.id, title="CB",
-            display_order=1, created_by=actor,
+            work_item_id=wi,
+            parent_id=parent_b.id,
+            title="CB",
+            display_order=1,
+            created_by=actor,
         )
         await node_repo.save(child_a)
         await node_repo.save(child_b)
@@ -279,8 +286,11 @@ class TestTaskServiceReorder:
         await node_repo.save(root_sibling)
 
         child = TaskNode.create(
-            work_item_id=wi, parent_id=parent.id, title="child",
-            display_order=1, created_by=actor,
+            work_item_id=wi,
+            parent_id=parent.id,
+            title="child",
+            display_order=1,
+            created_by=actor,
         )
         await node_repo.save(child)
 
@@ -302,6 +312,4 @@ class TestTaskServiceReorder:
         await node_repo.save(n1)
 
         with pytest.raises(TaskNodeNotFoundError):
-            await svc.reorder(
-                work_item_id=wi, ordered_ids=[n1.id, uuid4()], actor_id=actor
-            )
+            await svc.reorder(work_item_id=wi, ordered_ids=[n1.id, uuid4()], actor_id=actor)

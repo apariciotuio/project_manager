@@ -24,7 +24,6 @@ from sqlalchemy.pool import NullPool
 
 from app.infrastructure.adapters.jwt_adapter import JwtAdapter
 
-
 # ---------------------------------------------------------------------------
 # Token helpers
 # ---------------------------------------------------------------------------
@@ -32,6 +31,7 @@ from app.infrastructure.adapters.jwt_adapter import JwtAdapter
 
 def _make_token(user_id: object, workspace_id: object, *, is_superadmin: bool = False) -> str:
     from app.config.settings import get_settings
+
     settings = get_settings()
     jwt_adapter = JwtAdapter(
         secret=settings.auth.jwt_secret,

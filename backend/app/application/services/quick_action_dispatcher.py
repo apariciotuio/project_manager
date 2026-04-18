@@ -7,6 +7,7 @@ etc. (SD-4 from backend_review.md).
 Handlers are registered at app startup via register().  The dispatcher itself
 is a plain dict-based registry — no ABCs, no factories, no indirection.
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,8 +60,7 @@ class QuickActionDispatcher:
         handler = self._handlers.get(action_type)
         if handler is None:
             raise ValueError(
-                f"unknown action type: {action_type!r}. "
-                f"Registered: {list(self._handlers)}"
+                f"unknown action type: {action_type!r}. Registered: {list(self._handlers)}"
             )
         logger.info(
             "quick_action.dispatch action=%s subject=%s actor=%s",

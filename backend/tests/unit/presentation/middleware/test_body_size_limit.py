@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
@@ -88,7 +87,9 @@ def test_413_response_has_error_body() -> None:
 
 def test_attachment_path_uses_large_limit() -> None:
     """Paths in large_body_prefixes get the larger limit instead of default."""
-    app = _build_app(max_body_bytes=_1_KiB, large_body_prefixes=["/upload"], large_body_limit=5 * _1_MiB)
+    app = _build_app(
+        max_body_bytes=_1_KiB, large_body_prefixes=["/upload"], large_body_limit=5 * _1_MiB
+    )
     with TestClient(app, raise_server_exceptions=False) as client:
         # 2 MiB — exceeds default 1 KiB but within 5 MiB large limit
         size = 2 * _1_MiB
@@ -103,7 +104,9 @@ def test_attachment_path_uses_large_limit() -> None:
 
 def test_attachment_path_still_enforces_large_limit() -> None:
     """Attachment paths reject bodies exceeding the large limit."""
-    app = _build_app(max_body_bytes=_1_KiB, large_body_prefixes=["/upload"], large_body_limit=2 * _1_MiB)
+    app = _build_app(
+        max_body_bytes=_1_KiB, large_body_prefixes=["/upload"], large_body_limit=2 * _1_MiB
+    )
     with TestClient(app, raise_server_exceptions=False) as client:
         size = 3 * _1_MiB
         resp = client.post(
@@ -125,6 +128,7 @@ def test_no_content_length_header_passes_through() -> None:
 
 def test_get_request_no_body_passes() -> None:
     """GET requests (no body) are never rejected."""
+
     async def get_handler(request: Request) -> Response:
         return PlainTextResponse("ok")
 

@@ -18,7 +18,9 @@ def to_domain(row: OwnershipHistoryORM) -> OwnershipRecord:
     # previous_owner_id == new_owner_id.
     return OwnershipRecord(
         work_item_id=row.work_item_id,
-        previous_owner_id=row.previous_owner_id if row.previous_owner_id is not None else row.new_owner_id,
+        previous_owner_id=row.previous_owner_id
+        if row.previous_owner_id is not None
+        else row.new_owner_id,
         new_owner_id=row.new_owner_id,
         changed_by=row.changed_by,
         changed_at=row.changed_at,

@@ -9,18 +9,19 @@ Scenarios:
 Strategy: override get_export_service with a controllable fake. For background task
 audit assertions we use a capture-based fake AuditService and pass it through.
 """
+
 from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.infrastructure.adapters.jira_adapter import JiraAuthError, JiraIssue
+from app.infrastructure.adapters.jira_adapter import JiraIssue
 
 _CSRF_TOKEN = "test-csrf-ep12-jira"
 _WORKSPACE_ID = uuid4()
@@ -65,7 +66,11 @@ async def app_success(audit_capture):
     """App with fake ExportService (success) and captured AuditService."""
     from app.application.services.export_service import ExportService
     from app.main import create_app
-    from app.presentation.dependencies import get_audit_service, get_current_user, get_export_service
+    from app.presentation.dependencies import (
+        get_audit_service,
+        get_current_user,
+        get_export_service,
+    )
     from app.presentation.middleware.auth_middleware import CurrentUser
 
     fastapi_app = create_app()
@@ -101,7 +106,11 @@ async def app_failure(audit_capture):
     """App with fake ExportService that raises JiraAuthError in background."""
     from app.application.services.export_service import ExportService
     from app.main import create_app
-    from app.presentation.dependencies import get_audit_service, get_current_user, get_export_service
+    from app.presentation.dependencies import (
+        get_audit_service,
+        get_current_user,
+        get_export_service,
+    )
     from app.presentation.middleware.auth_middleware import CurrentUser
 
     fastapi_app = create_app()
@@ -213,7 +222,9 @@ async def test_jira_export_completed_failure_emits_audit(http_failure, audit_cap
     await asyncio.sleep(0.1)
 
     completed = audit_capture.find(action="jira_export_completed")
-    assert len(completed) >= 1, f"expected jira_export_completed failure, got {audit_capture.events}"
+    assert len(completed) >= 1, (
+        f"expected jira_export_completed failure, got {audit_capture.events}"
+    )
     ev = completed[0]
     assert ev["category"] == "domain"
     ctx = ev.get("context", {})

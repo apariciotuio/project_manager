@@ -7,6 +7,7 @@ Scenarios:
   PATCH /api/v1/suggestion-items/{item_id}      — accept/reject
   IDOR: unauthenticated → 401
 """
+
 from __future__ import annotations
 
 import time
@@ -158,6 +159,7 @@ async def _seed_suggestion(migrated_database, work_item_id, user_id, batch_id=No
     # Derive workspace_id from the work item row so RLS and FK line up.
     async with factory() as _lookup_session:
         from sqlalchemy import text as _sql
+
         row = (
             await _lookup_session.execute(
                 _sql("SELECT workspace_id FROM work_items WHERE id = :wid"),
@@ -201,9 +203,7 @@ class TestGenerateSuggestions:
         resp = await http.post(f"/api/v1/work-items/{uuid4()}/suggestion-sets", json={})
         assert resp.status_code == 401
 
-    async def test_returns_202_with_batch_id(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_returns_202_with_batch_id(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         work_item_id = uuid4()
 
@@ -243,9 +243,7 @@ class TestListSuggestionSets:
         resp = await http.get(f"/api/v1/work-items/{uuid4()}/suggestion-sets")
         assert resp.status_code == 401
 
-    async def test_returns_pending_suggestions(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_returns_pending_suggestions(self, http: AsyncClient, migrated_database) -> None:
         user, _ws, token = await _seed(migrated_database)
         wi_id = await _seed_work_item(http, token)
         await _seed_suggestion(migrated_database, UUID(wi_id), user.id)
@@ -257,9 +255,7 @@ class TestListSuggestionSets:
         assert resp.status_code == 200
         assert len(resp.json()["data"]) == 1
 
-    async def test_empty_for_unknown_work_item(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_empty_for_unknown_work_item(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.get(
             f"/api/v1/work-items/{uuid4()}/suggestion-sets",
@@ -279,9 +275,7 @@ class TestGetSuggestionBatch:
         resp = await http.get(f"/api/v1/suggestion-sets/{uuid4()}")
         assert resp.status_code == 401
 
-    async def test_returns_batch_with_items(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_returns_batch_with_items(self, http: AsyncClient, migrated_database) -> None:
         user, _ws, token = await _seed(migrated_database)
         wi_id = await _seed_work_item(http, token)
         batch_id = uuid4()
@@ -296,9 +290,7 @@ class TestGetSuggestionBatch:
         assert data["batch_id"] == str(batch_id)
         assert len(data["items"]) == 1
 
-    async def test_unknown_batch_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_unknown_batch_returns_404(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.get(
             f"/api/v1/suggestion-sets/{uuid4()}",
@@ -314,14 +306,10 @@ class TestGetSuggestionBatch:
 
 class TestPatchSuggestionItem:
     async def test_unauthenticated_returns_401(self, http: AsyncClient) -> None:
-        resp = await http.patch(
-            f"/api/v1/suggestion-items/{uuid4()}", json={"status": "accepted"}
-        )
+        resp = await http.patch(f"/api/v1/suggestion-items/{uuid4()}", json={"status": "accepted"})
         assert resp.status_code == 401
 
-    async def test_accept_pending_suggestion(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_accept_pending_suggestion(self, http: AsyncClient, migrated_database) -> None:
         user, _ws, token = await _seed(migrated_database)
         wi_id = await _seed_work_item(http, token)
         suggestion = await _seed_suggestion(migrated_database, UUID(wi_id), user.id)
@@ -334,9 +322,7 @@ class TestPatchSuggestionItem:
         assert resp.status_code == 200
         assert resp.json()["data"]["status"] == "accepted"
 
-    async def test_reject_pending_suggestion(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_reject_pending_suggestion(self, http: AsyncClient, migrated_database) -> None:
         user, _ws, token = await _seed(migrated_database)
         wi_id = await _seed_work_item(http, token)
         suggestion = await _seed_suggestion(migrated_database, UUID(wi_id), user.id)
@@ -349,9 +335,7 @@ class TestPatchSuggestionItem:
         assert resp.status_code == 200
         assert resp.json()["data"]["status"] == "rejected"
 
-    async def test_invalid_status_returns_422(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_invalid_status_returns_422(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.patch(
             f"/api/v1/suggestion-items/{uuid4()}",
@@ -360,9 +344,7 @@ class TestPatchSuggestionItem:
         )
         assert resp.status_code == 422
 
-    async def test_unknown_item_returns_404(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_unknown_item_returns_404(self, http: AsyncClient, migrated_database) -> None:
         _user, _ws, token = await _seed(migrated_database)
         resp = await http.patch(
             f"/api/v1/suggestion-items/{uuid4()}",

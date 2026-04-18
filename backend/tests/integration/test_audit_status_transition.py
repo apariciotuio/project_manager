@@ -17,7 +17,7 @@ from uuid import UUID
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.domain.models.user import User
@@ -61,7 +61,7 @@ async def app(migrated_database):
 
     _db_url = migrated_database.database.url
 
-    def _nullpool_engine() -> "AsyncEngine":
+    def _nullpool_engine() -> AsyncEngine:
         if db_module._engine is None:
             db_module._engine = create_async_engine(_db_url, poolclass=NullPool)
         return db_module._engine
@@ -178,9 +178,7 @@ def _headers() -> dict[str, str]:
     return {"X-CSRF-Token": _CSRF_TOKEN}
 
 
-async def _get_audit_rows(
-    migrated_database, *, action: str
-) -> list[AuditEventORM]:
+async def _get_audit_rows(migrated_database, *, action: str) -> list[AuditEventORM]:
     engine = create_async_engine(migrated_database.database.url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -238,9 +236,7 @@ async def test_valid_transition_writes_success_audit(http, migrated_database) ->
     assert "ip_address" in ctx, f"expected ip_address in context, got: {ctx}"
 
 
-async def test_valid_transition_audit_records_actor_and_workspace(
-    http, migrated_database
-) -> None:
+async def test_valid_transition_audit_records_actor_and_workspace(http, migrated_database) -> None:
     """Success audit row carries actor_id and workspace_id."""
     user, ws = await _seed(migrated_database)
     token = _mint_jwt(user, ws)

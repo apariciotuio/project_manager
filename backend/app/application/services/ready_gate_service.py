@@ -4,6 +4,7 @@ Pure — no side effects. Called by WorkItemService.transition() when target_sta
 Injected as a callable (Callable[[UUID, UUID, str], Awaitable[GateResult]]) so EP-01's
 WorkItemService doesn't need to import EP-06 types directly at module load time.
 """
+
 from __future__ import annotations
 
 import logging

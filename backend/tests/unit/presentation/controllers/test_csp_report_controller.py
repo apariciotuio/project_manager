@@ -6,6 +6,7 @@ POST /api/v1/csp-report
 - Returns 204
 - Logs at WARNING level
 """
+
 from __future__ import annotations
 
 import json
@@ -79,10 +80,17 @@ def test_csp_report_logs_at_warning(caplog: pytest.LogCaptureFixture) -> None:
     app = _build_app()
     client = TestClient(app)
 
-    with caplog.at_level(logging.WARNING, logger="app.presentation.controllers.csp_report_controller"):
+    with caplog.at_level(
+        logging.WARNING, logger="app.presentation.controllers.csp_report_controller"
+    ):
         client.post(
             "/api/v1/csp-report",
-            json={"csp-report": {"blocked-uri": "https://evil.com", "violated-directive": "script-src 'self'"}},
+            json={
+                "csp-report": {
+                    "blocked-uri": "https://evil.com",
+                    "violated-directive": "script-src 'self'",
+                }
+            },
         )
 
     assert any(r.levelno >= logging.WARNING for r in caplog.records)
@@ -93,15 +101,15 @@ def test_csp_report_log_contains_violation_details(caplog: pytest.LogCaptureFixt
     app = _build_app()
     client = TestClient(app)
 
-    with caplog.at_level(logging.WARNING, logger="app.presentation.controllers.csp_report_controller"):
+    with caplog.at_level(
+        logging.WARNING, logger="app.presentation.controllers.csp_report_controller"
+    ):
         client.post(
             "/api/v1/csp-report",
             json={"csp-report": {"blocked-uri": "https://tracking.evil.com/pixel.js"}},
         )
 
-    assert any(
-        "tracking.evil.com" in r.getMessage() for r in caplog.records
-    )
+    assert any("tracking.evil.com" in r.getMessage() for r in caplog.records)
 
 
 def test_csp_report_no_auth_required() -> None:

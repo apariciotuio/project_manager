@@ -1,4 +1,5 @@
 """Unit tests for TaskService.get_node_with_breadcrumb and search_tasks — EP-05 Commit 2."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -21,7 +22,6 @@ def _make_node(
     display_order=0,
     materialized_path="",
 ) -> TaskNode:
-    from app.application.services.task_service import TaskService
     node = TaskNode.create(
         work_item_id=work_item_id,
         parent_id=parent_id,
@@ -36,6 +36,7 @@ def _make_node(
 
 def _service(node_repo=None, dep_repo=None, link_repo=None):
     from app.application.services.task_service import TaskService
+
     return TaskService(
         node_repo=node_repo or FakeTaskNodeRepository(),
         dep_repo=dep_repo or FakeTaskDependencyRepository(),
@@ -74,9 +75,7 @@ class TestGetNodeWithBreadcrumb:
         root.materialized_path = str(root.id)
         await repo.save(root)
 
-        child = _make_node(
-            work_item_id=wi_id, parent_id=root.id, title="Child"
-        )
+        child = _make_node(work_item_id=wi_id, parent_id=root.id, title="Child")
         child.materialized_path = f"{root.id}.{child.id}"
         await repo.save(child)
 

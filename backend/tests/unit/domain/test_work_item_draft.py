@@ -1,10 +1,9 @@
 """Unit tests for WorkItemDraft domain entity. RED phase — EP-02 Phase 2."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
-
-import pytest
 
 
 class TestWorkItemDraftConstruction:

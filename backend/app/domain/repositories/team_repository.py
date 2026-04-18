@@ -1,4 +1,5 @@
 """EP-08 — ITeamRepository, ITeamMembershipRepository, INotificationRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -72,9 +73,7 @@ class INotificationRepository(ABC):
         ...
 
     @abstractmethod
-    async def bulk_insert_idempotent(
-        self, notifications: list[Notification]
-    ) -> list[Notification]:
+    async def bulk_insert_idempotent(self, notifications: list[Notification]) -> list[Notification]:
         """Insert a batch of notifications, skipping any that already exist.
 
         Uses INSERT ... ON CONFLICT DO NOTHING semantics. Safe for Celery retries.
@@ -83,9 +82,7 @@ class INotificationRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_idempotency_key(
-        self, idempotency_key: str
-    ) -> Notification | None: ...
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Notification | None: ...
 
     @abstractmethod
     async def get(self, notification_id: UUID) -> Notification | None: ...

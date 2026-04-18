@@ -1,10 +1,10 @@
 """EP-13 — Pydantic schemas for Puppet callback + search + admin endpoints."""
+
 from __future__ import annotations
 
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Puppet ingest callback (Puppet → our platform)

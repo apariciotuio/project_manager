@@ -3,6 +3,7 @@
 Adjacency list tree with materialised path. Status FSM is enforced in the
 application layer (TaskService), not at the DB level.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -77,9 +78,7 @@ class TaskNode:
         self.updated_by = actor_id
         self.updated_at = datetime.now(UTC)
 
-    def mark_done(
-        self, actor_id: UUID, predecessor_statuses: list[TaskStatus]
-    ) -> None:
+    def mark_done(self, actor_id: UUID, predecessor_statuses: list[TaskStatus]) -> None:
         if any(s is not TaskStatus.DONE for s in predecessor_statuses):
             raise PredecessorNotDoneError(
                 "cannot mark task as done while predecessors are still open"

@@ -3,6 +3,7 @@
 Phase 3.7: apply_accepted_batch writes accepted suggestions to sections and
 triggers versioning. Requires SectionService + VersioningService injected.
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,8 +50,8 @@ class SuggestionService:
         dundun_client: DundunClient,
         callback_url: str,
         now: Callable[[], datetime] = _utcnow,
-        section_service: "SectionService | None" = None,
-        versioning_service: "VersioningService | None" = None,
+        section_service: SectionService | None = None,
+        versioning_service: VersioningService | None = None,
         workspace_id: UUID | None = None,
     ) -> None:
         self._suggestion_repo = suggestion_repo
@@ -92,9 +93,7 @@ class SuggestionService:
         )
         return batch_id
 
-    async def list_pending_for_work_item(
-        self, work_item_id: UUID
-    ) -> list[AssistantSuggestion]:
+    async def list_pending_for_work_item(self, work_item_id: UUID) -> list[AssistantSuggestion]:
         """Return non-expired pending suggestions for a work item."""
         return await self._suggestion_repo.list_pending_for_work_item(work_item_id)
 
@@ -119,9 +118,7 @@ class SuggestionService:
             raise ValueError(f"Cannot transition to status {new_status!r} via update_single_status")
 
         await self._suggestion_repo.update_status([item_id], new_status, now)
-        logger.info(
-            "suggestion_status_updated id=%s status=%s", item_id, new_status.value
-        )
+        logger.info("suggestion_status_updated id=%s status=%s", item_id, new_status.value)
         return updated
 
     async def apply_accepted_batch(
@@ -154,7 +151,8 @@ class SuggestionService:
         now = self._now()
         # Suggestions eligible for this apply pass: accepted + have a section_id
         to_apply = [
-            s for s in suggestions
+            s
+            for s in suggestions
             if s.status == SuggestionStatus.ACCEPTED and s.section_id is not None
         ]
         # Already applied are skipped (idempotency) but don't trigger the "nothing to do" error
@@ -177,9 +175,7 @@ class SuggestionService:
         # (the first batch is what creates v1).
         if to_apply and self._versioning_service is not None:
             target = suggestions[0].version_number_target
-            latest = await self._versioning_service.get_latest(
-                work_item_id, workspace_id
-            )
+            latest = await self._versioning_service.get_latest(work_item_id, workspace_id)
             current = latest.version_number if latest is not None else 0
             expected = target - 1 if latest is None else target
             if current != expected:

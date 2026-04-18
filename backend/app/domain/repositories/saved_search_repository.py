@@ -1,4 +1,5 @@
 """EP-09 — ISavedSearchRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -15,9 +16,7 @@ class ISavedSearchRepository(ABC):
     async def get(self, saved_search_id: UUID) -> SavedSearch | None: ...
 
     @abstractmethod
-    async def list_for_user(
-        self, user_id: UUID, workspace_id: UUID
-    ) -> list[SavedSearch]: ...
+    async def list_for_user(self, user_id: UUID, workspace_id: UUID) -> list[SavedSearch]: ...
 
     @abstractmethod
     async def list_for_workspace(self, workspace_id: UUID) -> list[SavedSearch]: ...

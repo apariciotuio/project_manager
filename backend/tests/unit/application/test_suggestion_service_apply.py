@@ -8,6 +8,7 @@ Covers:
   - raises LookupError when batch not found
   - returns correct applied_count, skipped_count, and latest_version
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -17,7 +18,6 @@ import pytest
 
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeAssistantSuggestionRepository
-
 
 # ---------------------------------------------------------------------------
 # Domain imports (deferred to avoid import-time side effects in RED phase)
@@ -94,8 +94,6 @@ class _FakeVersioningService:
 
     def __init__(self) -> None:
         from app.domain.models.work_item_version import (
-            VersionActorType,
-            VersionTrigger,
             WorkItemVersion,
         )
 
@@ -341,9 +339,7 @@ class TestApplyVersionConflictGuard:
         )
         await repo.create_batch([s])
 
-        svc, _, _, versioning = _make_service(
-            suggestion_repo=repo, workspace_id=workspace_id
-        )
+        svc, _, _, versioning = _make_service(suggestion_repo=repo, workspace_id=workspace_id)
         result = await svc.apply_accepted_batch(batch_id=batch_id, actor_id=uuid4())
         assert result["applied_count"] == 1
 
@@ -463,9 +459,7 @@ class TestApplyVersionConflictGuard:
         )
         await repo.create_batch([a, b])
 
-        svc, _, _, versioning = _make_service(
-            suggestion_repo=repo, workspace_id=workspace_id
-        )
+        svc, _, _, versioning = _make_service(suggestion_repo=repo, workspace_id=workspace_id)
 
         # First apply wins — creates v1.
         first = await svc.apply_accepted_batch(batch_id=batch_a, actor_id=uuid4())

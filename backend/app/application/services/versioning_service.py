@@ -9,8 +9,10 @@ to SERIALIZABLE before the read-then-write so the DB serialisation layer
 turns the race into a conflict the caller can translate into
 VersionConflictError.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import Any
 from uuid import UUID
@@ -73,13 +75,9 @@ class VersioningService:
         SET TRANSACTION ISOLATION LEVEL statement must fire at the start of
         the DB transaction.
         """
-        try:
-            await self._session.execute(
-                text("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
-            )
-        except Exception:
-            # Session may already be in SERIALIZABLE; continue
-            pass
+        # Session may already be in SERIALIZABLE; continue silently.
+        with contextlib.suppress(Exception):
+            await self._session.execute(text("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"))
 
         if snapshot is None:
             snapshot = await self._build_snapshot(work_item_id, workspace_id)
@@ -110,9 +108,7 @@ class VersioningService:
         )
         return version
 
-    async def get_latest(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> WorkItemVersion | None:
+    async def get_latest(self, work_item_id: UUID, workspace_id: UUID) -> WorkItemVersion | None:
         return await self._repo.get_latest(work_item_id, workspace_id)
 
     async def get_by_number(
@@ -137,9 +133,7 @@ class VersioningService:
             before_version=before_version,
         )
 
-    async def _build_snapshot(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> dict[str, Any]:
+    async def _build_snapshot(self, work_item_id: UUID, workspace_id: UUID) -> dict[str, Any]:
         """Build v1 snapshot from current DB state."""
         snapshot: dict[str, Any] = {
             "schema_version": 1,

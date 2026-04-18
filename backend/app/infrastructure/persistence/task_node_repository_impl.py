@@ -1,4 +1,5 @@
 """EP-05 — TaskNodeRepositoryImpl + TaskDependencyRepositoryImpl + TaskSectionLinkRepositoryImpl."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -61,8 +62,10 @@ class TaskNodeRepositoryImpl(ITaskNodeRepository):
         return [task_node_to_domain(r) for r in rows]
 
     async def count_by_work_item(self, work_item_id: UUID) -> int:
-        stmt = select(func.count()).select_from(TaskNodeORM).where(
-            TaskNodeORM.work_item_id == work_item_id
+        stmt = (
+            select(func.count())
+            .select_from(TaskNodeORM)
+            .where(TaskNodeORM.work_item_id == work_item_id)
         )
         result = await self._session.execute(stmt)
         return result.scalar_one()
@@ -85,23 +88,16 @@ class TaskNodeRepositoryImpl(ITaskNodeRepository):
         return node
 
     async def delete(self, node_id: UUID) -> None:
-        await self._session.execute(
-            delete(TaskNodeORM).where(TaskNodeORM.id == node_id)
-        )
+        await self._session.execute(delete(TaskNodeORM).where(TaskNodeORM.id == node_id))
         await self._session.flush()
 
     async def get_tree_recursive(self, work_item_id: UUID) -> list[TaskNode]:
-        result = await self._session.execute(
-            _RECURSIVE_CTE, {"work_item_id": work_item_id}
-        )
+        result = await self._session.execute(_RECURSIVE_CTE, {"work_item_id": work_item_id})
         ids = [row[0] for row in result]
         if not ids:
             return []
         stmt = select(TaskNodeORM).where(TaskNodeORM.id.in_(ids))
-        rows_map = {
-            r.id: r
-            for r in (await self._session.execute(stmt)).scalars().all()
-        }
+        rows_map = {r.id: r for r in (await self._session.execute(stmt)).scalars().all()}
         # Preserve ordering from CTE
         return [task_node_to_domain(rows_map[i]) for i in ids if i in rows_map]
 
@@ -115,16 +111,12 @@ class TaskDependencyRepositoryImpl(ITaskDependencyRepository):
         return task_dependency_to_domain(row) if row else None
 
     async def get_by_source(self, source_id: UUID) -> list[TaskDependency]:
-        stmt = select(TaskDependencyORM).where(
-            TaskDependencyORM.source_id == source_id
-        )
+        stmt = select(TaskDependencyORM).where(TaskDependencyORM.source_id == source_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [task_dependency_to_domain(r) for r in rows]
 
     async def get_by_target(self, target_id: UUID) -> list[TaskDependency]:
-        stmt = select(TaskDependencyORM).where(
-            TaskDependencyORM.target_id == target_id
-        )
+        stmt = select(TaskDependencyORM).where(TaskDependencyORM.target_id == target_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [task_dependency_to_domain(r) for r in rows]
 
@@ -144,9 +136,7 @@ class TaskDependencyRepositoryImpl(ITaskDependencyRepository):
         return dep
 
     async def remove(self, dep_id: UUID) -> None:
-        await self._session.execute(
-            delete(TaskDependencyORM).where(TaskDependencyORM.id == dep_id)
-        )
+        await self._session.execute(delete(TaskDependencyORM).where(TaskDependencyORM.id == dep_id))
         await self._session.flush()
 
 

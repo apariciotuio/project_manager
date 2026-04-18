@@ -73,9 +73,7 @@ class DundunHTTPClient:
         self._transport = transport
         # WebSocket base URL: swap http(s) → ws(s)
         self._ws_base = (
-            base_url.rstrip("/")
-            .replace("https://", "wss://")
-            .replace("http://", "ws://")
+            base_url.rstrip("/").replace("https://", "wss://").replace("http://", "ws://")
         )
 
     def _build_http_client(self) -> httpx.AsyncClient:
@@ -155,7 +153,7 @@ class DundunHTTPClient:
         conversation_id: str,
         user_id: UUID,
         work_item_id: UUID | None,
-    ) -> AsyncIterator["_DundunWSBridge"]:
+    ) -> AsyncIterator[_DundunWSBridge]:
         """Open a bidirectional Dundun /ws/chat connection.
 
         The prior async-generator shape only yielded frames — no way to push

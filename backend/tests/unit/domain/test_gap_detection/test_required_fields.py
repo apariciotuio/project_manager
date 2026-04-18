@@ -1,4 +1,5 @@
 """Tests for required_fields gap detection rule."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -33,8 +34,7 @@ def _work_item(
 
 def _has_blocking_desc(findings: list[GapFinding]) -> bool:
     return any(
-        f.dimension == "description" and f.severity == GapSeverity.BLOCKING
-        for f in findings
+        f.dimension == "description" and f.severity == GapSeverity.BLOCKING for f in findings
     )
 
 
@@ -50,16 +50,14 @@ class TestRequiredFieldsIdea:
         item = _work_item(type=WorkItemType.IDEA, description=None)
         result = check_required_fields(item)
         assert any(
-            f.severity == GapSeverity.BLOCKING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.BLOCKING and f.dimension == "description" for f in result
         )
 
     def test_empty_description_returns_blocking(self) -> None:
         item = _work_item(type=WorkItemType.IDEA, description="")
         result = check_required_fields(item)
         assert any(
-            f.severity == GapSeverity.BLOCKING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.BLOCKING and f.dimension == "description" for f in result
         )
 
 
@@ -132,9 +130,7 @@ class TestRequiredFieldsBusinessChange:
     """BUSINESS_CHANGE requires: title, description."""
 
     def test_all_present_returns_empty(self) -> None:
-        item = _work_item(
-            type=WorkItemType.BUSINESS_CHANGE, description="Business change desc"
-        )
+        item = _work_item(type=WorkItemType.BUSINESS_CHANGE, description="Business change desc")
         result = check_required_fields(item)
         assert result == []
 

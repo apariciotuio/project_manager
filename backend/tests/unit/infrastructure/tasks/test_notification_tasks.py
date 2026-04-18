@@ -9,6 +9,7 @@ Injection strategy:
   - FakeNotificationService tracks calls; FakeNotificationRepository records
     inserted rows
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +21,6 @@ import pytest
 
 from app.domain.models.team import Notification, NotificationState
 
-
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------
@@ -31,9 +31,7 @@ class FakeNotificationRepo:
         self._store: dict[str, Notification] = {}  # idempotency_key -> Notification
         self.archived: list[UUID] = []
 
-    async def bulk_insert_idempotent(
-        self, notifications: list[Notification]
-    ) -> list[Notification]:
+    async def bulk_insert_idempotent(self, notifications: list[Notification]) -> list[Notification]:
         result = []
         for n in notifications:
             if n.idempotency_key not in self._store:
@@ -200,8 +198,16 @@ class TestFanOutNotification:
             "extra": {},
         }
 
-        asyncio.run(_run_fan_out(event_type="review.requested", payload=payload, recipients=[recipient], svc=svc))
-        asyncio.run(_run_fan_out(event_type="review.requested", payload=payload, recipients=[recipient], svc=svc))
+        asyncio.run(
+            _run_fan_out(
+                event_type="review.requested", payload=payload, recipients=[recipient], svc=svc
+            )
+        )
+        asyncio.run(
+            _run_fan_out(
+                event_type="review.requested", payload=payload, recipients=[recipient], svc=svc
+            )
+        )
 
         # Still only one stored row — idempotency_key collision skipped
         assert len(repo.all_notifications()) == 1
@@ -223,7 +229,9 @@ class TestFanOutNotification:
         assert result["inserted"] == 0
         assert len(repo.all_notifications()) == 0
 
-    def test_fan_out_notification_enqueues_via_service(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_fan_out_notification_enqueues_via_service(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """fan_out_notification calls bulk_enqueue exactly once."""
         repo = FakeNotificationRepo()
         svc = FakeExtendedNotificationService(repo)
@@ -259,6 +267,7 @@ class TestFanOutNotification:
 # ---------------------------------------------------------------------------
 # Helper: _run_fan_out (called without going through Celery task wrapper)
 # ---------------------------------------------------------------------------
+
 
 async def mod_run_fan_out(
     *,
@@ -307,9 +316,7 @@ class TestSweepExpiredNotifications:
 
         monkeypatch.setattr(mod, "_build_sweep_deps", _fake_build)
 
-    def test_archives_stale_read_notifications(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_archives_stale_read_notifications(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Read notifications > 30 days old → archived_at set."""
         repo = FakeNotificationRepo()
         old_read_at = datetime.now(UTC) - timedelta(days=31)
@@ -330,9 +337,7 @@ class TestSweepExpiredNotifications:
         assert result["archived_read"] == 1
         assert result["archived_actioned"] == 0
 
-    def test_archives_stale_actioned_notifications(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_archives_stale_actioned_notifications(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Actioned notifications > 90 days old → archived_at set."""
         repo = FakeNotificationRepo()
         old_actioned_at = datetime.now(UTC) - timedelta(days=91)
@@ -353,9 +358,7 @@ class TestSweepExpiredNotifications:
         assert result["archived_actioned"] == 1
         assert result["archived_read"] == 0
 
-    def test_leaves_active_notifications_untouched(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_leaves_active_notifications_untouched(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Recent unread notifications are not archived."""
         repo = FakeNotificationRepo()
         n = _make_notification(

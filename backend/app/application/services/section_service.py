@@ -7,6 +7,7 @@ Cache is invalidated after DB commit so stale completeness scores are evicted.
 EP-07 phase 3.6: VersioningService injected optionally. When present,
 update_section calls create_version after a successful content change.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -45,7 +46,7 @@ class SectionService:
         section_version_repo: ISectionVersionRepository,
         work_item_repo: IWorkItemRepository,
         cache: ICache | None = None,
-        versioning_service: "VersioningService | None" = None,
+        versioning_service: VersioningService | None = None,
     ) -> None:
         self._sections = section_repo
         self._versions = section_version_repo
@@ -57,9 +58,7 @@ class SectionService:
         if self._cache is not None:
             await self._cache.delete(f"{_COMPLETENESS_CACHE_PREFIX}{work_item_id}")
 
-    async def list_for_work_item(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> list[Section]:
+    async def list_for_work_item(self, work_item_id: UUID, workspace_id: UUID) -> list[Section]:
         work_item = await self._work_items.get(work_item_id, workspace_id)
         if work_item is None:
             raise SectionNotFoundError(f"work item {work_item_id} not found")

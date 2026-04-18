@@ -4,6 +4,7 @@ RED phase: these tests verify that event handlers build the correct idempotency
 keys, call NotificationService.enqueue with the right parameters, and that
 duplicate events do NOT call enqueue a second time.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,7 +21,6 @@ from app.application.events.events import (
     WorkItemStateChangedEvent,
 )
 from app.domain.value_objects.work_item_state import WorkItemState
-
 
 # ---------------------------------------------------------------------------
 # Fake NotificationService
@@ -73,9 +73,7 @@ def _register(bus: EventBus, svc: FakeNotificationService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_state_changed_notifies_owner(
-    bus: EventBus, svc: FakeNotificationService
-) -> None:
+async def test_state_changed_notifies_owner(bus: EventBus, svc: FakeNotificationService) -> None:
     _register(bus, svc)
     owner_id = uuid4()
     evt = WorkItemStateChangedEvent(
@@ -141,9 +139,7 @@ async def test_owner_changed_notifies_previous_and_new(
 
 
 @pytest.mark.asyncio
-async def test_owner_changed_idempotent(
-    bus: EventBus, svc: FakeNotificationService
-) -> None:
+async def test_owner_changed_idempotent(bus: EventBus, svc: FakeNotificationService) -> None:
     _register(bus, svc)
     evt = WorkItemOwnerChangedEvent(
         work_item_id=uuid4(),
@@ -182,9 +178,7 @@ async def test_review_requested_notifies_reviewer(
 
 
 @pytest.mark.asyncio
-async def test_review_requested_idempotent(
-    bus: EventBus, svc: FakeNotificationService
-) -> None:
+async def test_review_requested_idempotent(bus: EventBus, svc: FakeNotificationService) -> None:
     _register(bus, svc)
     evt = ReviewRequestedEvent(
         work_item_id=uuid4(),
@@ -227,9 +221,7 @@ async def test_review_responded_notifies_requester(
 
 
 @pytest.mark.asyncio
-async def test_comment_added_notifies_owner(
-    bus: EventBus, svc: FakeNotificationService
-) -> None:
+async def test_comment_added_notifies_owner(bus: EventBus, svc: FakeNotificationService) -> None:
     _register(bus, svc)
     owner_id = uuid4()
     evt = CommentAddedEvent(

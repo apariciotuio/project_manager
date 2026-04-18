@@ -3,6 +3,7 @@
 EP-01 base: idea, bug, enhancement, task, initiative, spike, business_change, requirement.
 EP-14 extensions: milestone, story (hierarchy types).
 """
+
 from __future__ import annotations
 
 from enum import StrEnum

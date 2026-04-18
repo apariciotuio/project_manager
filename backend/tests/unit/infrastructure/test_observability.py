@@ -13,7 +13,6 @@ from app.infrastructure.observability.metrics import (
 )
 from app.infrastructure.observability.tracing import span
 
-
 # ---------------------------------------------------------------------------
 # Metrics — Counter
 # ---------------------------------------------------------------------------
@@ -105,13 +104,11 @@ def test_span_context_manager_is_noop() -> None:
 
 def test_span_nested_does_not_raise() -> None:
     """Nested spans do not raise."""
-    with span("outer"):
-        with span("inner"):
-            pass  # must not raise
+    with span("outer"), span("inner"):
+        pass  # must not raise
 
 
 def test_span_exception_propagates() -> None:
     """Exceptions inside a span propagate normally — the span doesn't swallow them."""
-    with pytest.raises(ValueError, match="boom"):
-        with span("broken.op"):
-            raise ValueError("boom")
+    with pytest.raises(ValueError, match="boom"), span("broken.op"):
+        raise ValueError("boom")

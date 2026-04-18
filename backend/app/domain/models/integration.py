@@ -1,4 +1,5 @@
 """EP-11 — IntegrationConfig + IntegrationExport domain entities."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

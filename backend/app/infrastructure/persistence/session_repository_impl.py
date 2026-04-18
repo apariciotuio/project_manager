@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import delete, func, select, update
@@ -58,15 +58,13 @@ class SessionRepositoryImpl(ISessionRepository):
         stmt = (
             update(SessionORM)
             .where(SessionORM.id == session_id, SessionORM.revoked_at.is_(None))
-            .values(revoked_at=datetime.now(timezone.utc))
+            .values(revoked_at=datetime.now(UTC))
         )
         await self._session.execute(stmt)
         await self._session.flush()
 
     async def delete_expired(self) -> int:
-        stmt = delete(SessionORM).where(
-            SessionORM.expires_at < datetime.now(timezone.utc)
-        )
+        stmt = delete(SessionORM).where(SessionORM.expires_at < datetime.now(UTC))
         result = await self._session.execute(stmt)
         await self._session.flush()
         return result.rowcount or 0

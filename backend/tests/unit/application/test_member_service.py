@@ -1,4 +1,5 @@
 """Unit tests for MemberService — EP-10 admin members."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -6,15 +7,11 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.audit_service import AuditService
 from app.application.services.member_service import (
-    ALL_CAPABILITIES,
-    CannotGrantUnpossessedCapabilityError,
-    CannotSuspendLastAdminError,
     DuplicateActiveMemberError,
-    InvitePendingError,
-    InviteNotResendableError,
     InvalidCapabilityError,
+    InviteNotResendableError,
+    InvitePendingError,
     MemberNotFoundError,
     MemberService,
 )
@@ -53,7 +50,9 @@ class FakeInvitationRepo(IInvitationRepository):
         self._by_id[invitation.id] = invitation
         return invitation
 
-    async def list_for_workspace(self, workspace_id: UUID, *, state: str | None = None) -> list[Invitation]:
+    async def list_for_workspace(
+        self, workspace_id: UUID, *, state: str | None = None
+    ) -> list[Invitation]:
         result = [i for i in self._by_id.values() if i.workspace_id == workspace_id]
         if state:
             result = [i for i in result if i.state == state]
@@ -74,10 +73,15 @@ class FakeMembershipRepo(IWorkspaceMembershipRepository):
     async def get_active_by_user_id(self, user_id: UUID) -> list[WorkspaceMembership]:
         return [m for m in self._by_id.values() if m.user_id == user_id and m.state == "active"]
 
-    async def get_for_user_and_workspace(self, user_id: UUID, workspace_id: UUID) -> WorkspaceMembership | None:
+    async def get_for_user_and_workspace(
+        self, user_id: UUID, workspace_id: UUID
+    ) -> WorkspaceMembership | None:
         return next(
-            (m for m in self._by_id.values()
-             if m.user_id == user_id and m.workspace_id == workspace_id and m.state == "active"),
+            (
+                m
+                for m in self._by_id.values()
+                if m.user_id == user_id and m.workspace_id == workspace_id and m.state == "active"
+            ),
             None,
         )
 
@@ -104,17 +108,21 @@ _WS_ID = uuid4()
 _ACTOR_ID = uuid4()
 
 
-def _make_service(invitation_repo: FakeInvitationRepo | None = None) -> tuple[MemberService, FakeAuditService]:
+def _make_service(
+    invitation_repo: FakeInvitationRepo | None = None,
+) -> tuple[MemberService, FakeAuditService]:
     inv_repo = invitation_repo or FakeInvitationRepo()
     audit = FakeAuditService()
 
     # Fake SQLAlchemy session that returns nothing
     session = AsyncMock()
-    session.execute = AsyncMock(return_value=MagicMock(
-        scalar_one_or_none=MagicMock(return_value=None),
-        scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
-        all=MagicMock(return_value=[]),
-    ))
+    session.execute = AsyncMock(
+        return_value=MagicMock(
+            scalar_one_or_none=MagicMock(return_value=None),
+            scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+            all=MagicMock(return_value=[]),
+        )
+    )
     session.flush = AsyncMock()
 
     svc = MemberService(
@@ -159,6 +167,7 @@ class TestInviteMember:
 
         # Simulate existing active membership via session mock
         from unittest.mock import AsyncMock, MagicMock
+
         existing_row = MagicMock()
         existing_row.id = uuid4()
         existing_row.workspace_id = _WS_ID
@@ -167,10 +176,11 @@ class TestInviteMember:
         existing_row.state = "active"
         existing_row.is_default = True
         from datetime import UTC, datetime
+
         existing_row.joined_at = datetime.now(UTC)
-        svc._session.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=existing_row)
-        ))
+        svc._session.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=existing_row))
+        )
 
         with pytest.raises(DuplicateActiveMemberError):
             await svc.invite_member(
@@ -233,7 +243,7 @@ class TestInviteMember:
         inv_repo = FakeInvitationRepo()
         svc, _ = _make_service(inv_repo)
 
-        result = await svc.invite_member(
+        await svc.invite_member(
             _WS_ID,
             email="cap@example.com",
             context_labels=[],

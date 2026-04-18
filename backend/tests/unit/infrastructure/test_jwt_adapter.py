@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -31,7 +31,7 @@ def test_encode_decode_roundtrip(adapter: JwtAdapter) -> None:
         "sub": "user-123",
         "email": "a@tuio.com",
         "workspace_id": "ws-1",
-        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=15)).timestamp()),
+        "exp": int((datetime.now(UTC) + timedelta(minutes=15)).timestamp()),
     }
     token = adapter.encode(claims)
     decoded = adapter.decode(token)
@@ -42,7 +42,7 @@ def test_encode_decode_roundtrip(adapter: JwtAdapter) -> None:
 
 def test_decode_rejects_tampered_signature(adapter: JwtAdapter) -> None:
     token = adapter.encode(
-        {"sub": "u", "exp": int((datetime.now(timezone.utc) + timedelta(minutes=15)).timestamp())}
+        {"sub": "u", "exp": int((datetime.now(UTC) + timedelta(minutes=15)).timestamp())}
     )
     tampered = token[:-4] + "XXXX"
     with pytest.raises(TokenInvalidError):
@@ -50,7 +50,7 @@ def test_decode_rejects_tampered_signature(adapter: JwtAdapter) -> None:
 
 
 def test_decode_rejects_expired_token(adapter: JwtAdapter) -> None:
-    past = int((datetime.now(timezone.utc) - timedelta(seconds=10)).timestamp())
+    past = int((datetime.now(UTC) - timedelta(seconds=10)).timestamp())
     token = adapter.encode({"sub": "u", "exp": past})
     with pytest.raises(TokenExpiredError):
         adapter.decode(token)
@@ -64,7 +64,7 @@ def test_decode_rejects_token_signed_with_different_secret(adapter: JwtAdapter) 
         audience="wmp-web",
     )
     token = other.encode(
-        {"sub": "u", "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp())}
+        {"sub": "u", "exp": int((datetime.now(UTC) + timedelta(minutes=5)).timestamp())}
     )
     with pytest.raises(TokenInvalidError):
         adapter.decode(token)
@@ -100,7 +100,7 @@ def test_near_expiry_boundary(adapter: JwtAdapter) -> None:
 
 
 def _future_exp() -> int:
-    return int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp())
+    return int((datetime.now(UTC) + timedelta(minutes=5)).timestamp())
 
 
 def test_encode_stamps_iss_and_aud(adapter: JwtAdapter) -> None:

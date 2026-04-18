@@ -11,6 +11,7 @@ scope prefix (sse:ws:{workspace_id}:job:{job_id}) for multi-tenant isolation.
 Other channel types embed their own scoping implicitly (thread_id / user_id are
 globally unique UUIDs, so no additional workspace prefix is needed).
 """
+
 from __future__ import annotations
 
 from uuid import UUID

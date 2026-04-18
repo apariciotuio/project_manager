@@ -1,4 +1,5 @@
 """WorkItemRepositoryImpl integration tests for EP-02 extensions (draft_data, template_id)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -38,9 +39,7 @@ async def ctx(db_session: AsyncSession):
 
 
 class TestWorkItemRepositoryEP02:
-    async def test_save_and_load_draft_data_preserves_nested_structure(
-        self, ctx
-    ) -> None:
+    async def test_save_and_load_draft_data_preserves_nested_structure(self, ctx) -> None:
         user, ws, repo = ctx["user"], ctx["ws"], ctx["repo"]
         item = WorkItem.create(
             title="Draft item",

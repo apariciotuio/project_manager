@@ -1,4 +1,5 @@
 """WorkItemState — primary FSM states for WorkItem."""
+
 from __future__ import annotations
 
 from enum import StrEnum

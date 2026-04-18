@@ -7,7 +7,7 @@ of the real SQLAlchemy impls.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.domain.models.audit_event import AuditEvent
@@ -73,9 +73,7 @@ class FakeSessionRepository(ISessionRepository):
         return session
 
     async def get_by_token_hash(self, token_hash: str) -> Session | None:
-        return next(
-            (s for s in self._by_id.values() if s.token_hash == token_hash), None
-        )
+        return next((s for s in self._by_id.values() if s.token_hash == token_hash), None)
 
     async def revoke(self, session_id: UUID) -> None:
         s = self._by_id.get(session_id)
@@ -83,7 +81,7 @@ class FakeSessionRepository(ISessionRepository):
             s.revoke()
 
     async def delete_expired(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired = [sid for sid, s in self._by_id.items() if s.expires_at < now]
         for sid in expired:
             del self._by_id[sid]
@@ -160,7 +158,7 @@ class FakeOAuthStateRepository(IOAuthStateRepository):
 
         self._rows[state] = (
             verifier,
-            datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds),
+            datetime.now(UTC) + timedelta(seconds=ttl_seconds),
             return_to,
             last_chosen_workspace_id,
         )
@@ -171,7 +169,7 @@ class FakeOAuthStateRepository(IOAuthStateRepository):
             return None
         verifier, expires_at, return_to, last_chosen_workspace_id = row
         del self._rows[state]
-        if expires_at <= datetime.now(timezone.utc):
+        if expires_at <= datetime.now(UTC):
             return None
         return ConsumedOAuthState(
             verifier=verifier,
@@ -180,7 +178,7 @@ class FakeOAuthStateRepository(IOAuthStateRepository):
         )
 
     async def cleanup_expired(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired = [s for s, (_, exp, _, _) in self._rows.items() if exp < now]
         for s in expired:
             del self._rows[s]
@@ -245,9 +243,7 @@ class FakeWorkItemRepository(IWorkItemRepository):
     async def delete(self, item_id: UUID, workspace_id: UUID) -> None:
         self._items.pop((workspace_id, item_id), None)
 
-    async def record_transition(
-        self, transition: StateTransition, workspace_id: UUID
-    ) -> None:
+    async def record_transition(self, transition: StateTransition, workspace_id: UUID) -> None:
         self.transitions.append(transition)
 
     async def record_ownership_change(
@@ -258,9 +254,7 @@ class FakeWorkItemRepository(IWorkItemRepository):
     ) -> None:
         self.ownership_records.append(record)
 
-    async def get_transitions(
-        self, item_id: UUID, workspace_id: UUID
-    ) -> list[StateTransition]:
+    async def get_transitions(self, item_id: UUID, workspace_id: UUID) -> list[StateTransition]:
         return sorted(
             [t for t in self.transitions if t.work_item_id == item_id],
             key=lambda t: t.triggered_at,
@@ -302,11 +296,7 @@ class FakeWorkItemRepository(IWorkItemRepository):
                 rows = [r for r in rows if r.owner_id == filters.owner_id]
         rows = sorted(rows, key=lambda r: (r.created_at, r.id), reverse=True)
         if cursor is not None:
-            rows = [
-                r
-                for r in rows
-                if (r.created_at, r.id) < (cursor.created_at, cursor.id)
-            ]
+            rows = [r for r in rows if (r.created_at, r.id) < (cursor.created_at, cursor.id)]
         has_next = len(rows) > page_size
         page = rows[:page_size]
         next_cursor: str | None = None
@@ -343,11 +333,7 @@ class FakeAuditRepository(IAuditRepository):
             rows = [e for e in rows if e.action == action]
         rows = sorted(rows, key=lambda e: (e.created_at, e.id), reverse=True)
         if cursor is not None:
-            rows = [
-                e
-                for e in rows
-                if (e.created_at, e.id) < (cursor.created_at, cursor.id)
-            ]
+            rows = [e for e in rows if (e.created_at, e.id) < (cursor.created_at, cursor.id)]
         has_next = len(rows) > page_size
         page = rows[:page_size]
         next_cursor: str | None = None
@@ -393,7 +379,6 @@ class FakeWorkItemDraftRepository:
 
     def __init__(self) -> None:
         from app.domain.models.work_item_draft import WorkItemDraft
-        from app.domain.value_objects.draft_conflict import DraftConflict
 
         self._by_user_workspace: dict[tuple, WorkItemDraft] = {}
 
@@ -411,7 +396,6 @@ class FakeWorkItemDraftRepository:
                 server_data=existing.data,
             )
 
-        import copy
         from datetime import UTC, datetime, timedelta
 
         new_version = (existing.local_version + 1) if existing is not None else 1
@@ -434,8 +418,9 @@ class FakeWorkItemDraftRepository:
         return self._by_user_workspace.get((user_id, workspace_id))
 
     async def delete(self, draft_id: object, user_id: object) -> None:
-        from app.domain.exceptions import DraftForbiddenError, WorkItemDraftNotFoundError
         from uuid import UUID
+
+        from app.domain.exceptions import DraftForbiddenError, WorkItemDraftNotFoundError
 
         assert isinstance(draft_id, UUID)
         assert isinstance(user_id, UUID)
@@ -481,12 +466,9 @@ class FakeGapFindingRepository:
         self._rows.extend(findings)
         return list(findings)
 
-    async def get_active_for_work_item(
-        self, work_item_id: UUID, source: str | None = None
-    ) -> list:
+    async def get_active_for_work_item(self, work_item_id: UUID, source: str | None = None) -> list:
         result = [
-            f for f in self._rows
-            if f.work_item_id == work_item_id and f.invalidated_at is None
+            f for f in self._rows if f.work_item_id == work_item_id and f.invalidated_at is None
         ]
         if source is not None:
             result = [f for f in result if f.source == source]
@@ -524,9 +506,7 @@ class FakeConversationThreadRepository:
     async def get_by_id(self, thread_id: UUID) -> object:
         return self._by_id.get(thread_id)
 
-    async def get_by_user_and_work_item(
-        self, user_id: UUID, work_item_id: UUID | None
-    ) -> object:
+    async def get_by_user_and_work_item(self, user_id: UUID, work_item_id: UUID | None) -> object:
         for t in self._by_id.values():
             if t.user_id == user_id and t.work_item_id == work_item_id:
                 return t
@@ -589,20 +569,20 @@ class FakeAssistantSuggestionRepository:
         return [s for s in self._by_id.values() if s.dundun_request_id == dundun_request_id]
 
     async def list_pending_for_work_item(self, work_item_id: UUID) -> list:
-        from app.domain.models.assistant_suggestion import SuggestionStatus
         from datetime import UTC, datetime
+
+        from app.domain.models.assistant_suggestion import SuggestionStatus
 
         now = datetime.now(UTC)
         return [
-            s for s in self._by_id.values()
+            s
+            for s in self._by_id.values()
             if s.work_item_id == work_item_id
             and s.status == SuggestionStatus.PENDING
             and s.expires_at > now
         ]
 
-    async def update_status(
-        self, ids: list, status: object, now: datetime
-    ) -> int:
+    async def update_status(self, ids: list, status: object, now: datetime) -> int:
         import dataclasses
 
         count = 0
@@ -618,7 +598,6 @@ class FakeTemplateRepository:
     """In-memory ITemplateRepository for unit tests."""
 
     def __init__(self) -> None:
-        from app.domain.models.template import Template
 
         self._by_id: dict = {}
 
@@ -652,6 +631,7 @@ class FakeTemplateRepository:
                 and tmpl.type == template.type
             ):
                 from uuid import UUID
+
                 ws_id = template.workspace_id if template.workspace_id else UUID(int=0)
                 raise DuplicateTemplateError(ws_id, template.type.value)
         self._by_id[template.id] = template

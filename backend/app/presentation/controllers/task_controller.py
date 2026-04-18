@@ -15,6 +15,7 @@ workspace_id is guaranteed non-None by get_scoped_session (used by all service d
 The explicit _require_workspace guard below mirrors every other controller for
 consistency and ensures type narrowing holds at the call site.
 """
+
 from __future__ import annotations
 
 import logging
@@ -114,7 +115,9 @@ def _require_workspace(user: CurrentUser) -> None:
     if user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
 
@@ -192,7 +195,13 @@ async def get_task(
     if result is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"task {node_id} not found", "details": {}}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"task {node_id} not found",
+                    "details": {},
+                }
+            },
         )
     node, breadcrumb = result
     payload = _node_payload(node)
@@ -501,15 +510,17 @@ async def get_blocked_tasks(
 ) -> dict[str, Any]:
     _require_workspace(current_user)
     blocked = await dep_service.get_blocked_tasks(work_item_id)
-    return _ok([
-        {
-            "id": str(item["id"]),
-            "title": item["title"],
-            "status": item["status"],
-            "blocked_by": [str(b) for b in item["blocked_by"]],
-        }
-        for item in blocked
-    ])
+    return _ok(
+        [
+            {
+                "id": str(item["id"]),
+                "title": item["title"],
+                "status": item["status"],
+                "blocked_by": [str(b) for b in item["blocked_by"]],
+            }
+            for item in blocked
+        ]
+    )
 
 
 @router.post("/tasks/{node_id}/dependencies", status_code=http_status.HTTP_201_CREATED)

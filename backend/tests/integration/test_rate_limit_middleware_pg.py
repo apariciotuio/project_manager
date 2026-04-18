@@ -9,6 +9,7 @@ Scenarios:
   - Over limit → 429 with Retry-After + X-RateLimit-* headers
   - DB failure → fail-open (200 + WARNING logged)
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +26,6 @@ from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.rate_limiting.pg_rate_limiter import (
     PgRateLimiter,
     RateLimitMiddleware,
-    RateLimitResult,
 )
 
 
@@ -168,7 +168,6 @@ async def test_429_includes_retry_after_header(migrated_database) -> None:
 @pytest.mark.asyncio
 async def test_db_failure_fails_open_with_warning(caplog: pytest.LogCaptureFixture) -> None:
     """When the session factory raises, middleware fails open and logs WARNING."""
-    from sqlalchemy.ext.asyncio import async_sessionmaker
 
     class _BrokenSession:
         async def execute(self, *args, **kwargs):
@@ -205,6 +204,5 @@ async def test_db_failure_fails_open_with_warning(caplog: pytest.LogCaptureFixtu
     assert resp.status_code == 200
     warning_msgs = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
     assert any(
-        "rate limit" in m.lower() or "fail" in m.lower() or "db" in m.lower()
-        for m in warning_msgs
+        "rate limit" in m.lower() or "fail" in m.lower() or "db" in m.lower() for m in warning_msgs
     ), f"Expected a warning log, got: {warning_msgs}"

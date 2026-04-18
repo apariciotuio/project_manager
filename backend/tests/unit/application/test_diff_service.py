@@ -1,4 +1,5 @@
 """EP-07 Phase 3 — DiffService unit tests."""
+
 from __future__ import annotations
 
 import time
@@ -71,12 +72,19 @@ class TestComputeVersionDiff:
 
     def test_reordered_section(self) -> None:
         svc = DiffService()
-        a = _snap({"title": "T"}, [_section("problem", "x", order=0), _section("goal", "y", order=1)])
-        b = _snap({"title": "T"}, [_section("problem", "x", order=1), _section("goal", "y", order=0)])
+        a = _snap(
+            {"title": "T"}, [_section("problem", "x", order=0), _section("goal", "y", order=1)]
+        )
+        b = _snap(
+            {"title": "T"}, [_section("problem", "x", order=1), _section("goal", "y", order=0)]
+        )
         result = svc.compute_version_diff(a, b)
         types = {s["section_type"]: s["change_type"] for s in result["sections"]}
         # content unchanged but order changed
-        assert types["problem"] == SectionChangeType.REORDERED or types["problem"] == SectionChangeType.UNCHANGED
+        assert (
+            types["problem"] == SectionChangeType.REORDERED
+            or types["problem"] == SectionChangeType.UNCHANGED
+        )
 
     def test_from_version_greater_raises(self) -> None:
         svc = DiffService()
@@ -114,7 +122,7 @@ class TestComputeSectionDiff:
     def test_performance_100kb_under_2s(self) -> None:
         svc = DiffService()
         # ~50KB per side
-        text_a = ("line of text here\n" * 2800)
+        text_a = "line of text here\n" * 2800
         text_b = ("line of text here\n" * 2799) + "modified line\n"
         start = time.perf_counter()
         svc.compute_section_diff(text_a, text_b)

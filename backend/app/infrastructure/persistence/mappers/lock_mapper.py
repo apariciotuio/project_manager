@@ -1,4 +1,5 @@
 """Mappers for SectionLock — EP-17."""
+
 from __future__ import annotations
 
 from app.domain.models.section_lock import SectionLock

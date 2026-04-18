@@ -1,4 +1,5 @@
 """SQLAlchemy impl for IInvitationRepository."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -60,9 +61,7 @@ class InvitationRepositoryImpl(IInvitationRepository):
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return _to_domain(row) if row else None
 
-    async def get_active_by_email(
-        self, workspace_id: UUID, email: str
-    ) -> Invitation | None:
+    async def get_active_by_email(self, workspace_id: UUID, email: str) -> Invitation | None:
         stmt = (
             select(InvitationORM)
             .where(
@@ -93,9 +92,7 @@ class InvitationRepositoryImpl(IInvitationRepository):
     async def list_for_workspace(
         self, workspace_id: UUID, *, state: str | None = None
     ) -> list[Invitation]:
-        stmt = select(InvitationORM).where(
-            InvitationORM.workspace_id == workspace_id
-        )
+        stmt = select(InvitationORM).where(InvitationORM.workspace_id == workspace_id)
         if state is not None:
             stmt = stmt.where(InvitationORM.state == state)
         stmt = stmt.order_by(InvitationORM.created_at.desc()).limit(500)

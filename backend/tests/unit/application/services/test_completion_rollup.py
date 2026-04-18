@@ -1,12 +1,10 @@
 """Unit tests for CompletionRollupService — EP-05 Commit 3."""
+
 from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
-from tests.unit.fakes.fake_task_repositories import FakeTaskNodeRepository
 
 
 def _make_node(
@@ -35,14 +33,19 @@ class TestCompletionRollupService:
 
     def _service(self):
         from app.application.services.completion_rollup_service import CompletionRollupService
+
         return CompletionRollupService()
 
     def test_all_descendants_done_gives_rollup_done(self) -> None:
         svc = self._service()
         wi = uuid4()
         parent = _make_node(work_item_id=wi, title="Parent", status=TaskStatus.DRAFT)
-        child_a = _make_node(work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.DONE)
-        child_b = _make_node(work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE)
+        child_a = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.DONE
+        )
+        child_b = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE
+        )
 
         rollup = svc.compute_rollup(parent, [child_a, child_b])
         assert rollup == "done"
@@ -51,8 +54,12 @@ class TestCompletionRollupService:
         svc = self._service()
         wi = uuid4()
         parent = _make_node(work_item_id=wi, title="Parent")
-        child_a = _make_node(work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.IN_PROGRESS)
-        child_b = _make_node(work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE)
+        child_a = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.IN_PROGRESS
+        )
+        child_b = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE
+        )
 
         rollup = svc.compute_rollup(parent, [child_a, child_b])
         assert rollup == "in_progress"
@@ -61,8 +68,12 @@ class TestCompletionRollupService:
         svc = self._service()
         wi = uuid4()
         parent = _make_node(work_item_id=wi, title="Parent")
-        child_a = _make_node(work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.DRAFT)
-        child_b = _make_node(work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE)
+        child_a = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CA", status=TaskStatus.DRAFT
+        )
+        child_b = _make_node(
+            work_item_id=wi, parent_id=parent.id, title="CB", status=TaskStatus.DONE
+        )
 
         rollup = svc.compute_rollup(parent, [child_a, child_b])
         assert rollup == "draft"
@@ -92,7 +103,13 @@ class TestCompletionRollupService:
 
         parent = _make_node(work_item_id=wi, title="Parent", display_order=0)
         parent.materialized_path = str(parent.id)
-        child = _make_node(work_item_id=wi, parent_id=parent.id, title="Child", status=TaskStatus.DONE, display_order=0)
+        child = _make_node(
+            work_item_id=wi,
+            parent_id=parent.id,
+            title="Child",
+            status=TaskStatus.DONE,
+            display_order=0,
+        )
         child.materialized_path = f"{parent.id}.{child.id}"
 
         all_nodes = [parent, child]
@@ -102,8 +119,8 @@ class TestCompletionRollupService:
         parent_entry = next(e for e in enriched if e["id"] == str(parent.id))
         child_entry = next(e for e in enriched if e["id"] == str(child.id))
 
-        assert parent_entry["rollup_status"] == "done"   # all children done
-        assert child_entry["rollup_status"] == "draft"   # leaf with no children
+        assert parent_entry["rollup_status"] == "done"  # all children done
+        assert child_entry["rollup_status"] == "draft"  # leaf with no children
 
     def test_in_progress_child_propagates_up(self) -> None:
         """Parent rollup reflects deepest in_progress descendant."""
@@ -112,8 +129,13 @@ class TestCompletionRollupService:
 
         parent = _make_node(work_item_id=wi, title="P", display_order=0)
         parent.materialized_path = str(parent.id)
-        child = _make_node(work_item_id=wi, parent_id=parent.id, title="C",
-                           status=TaskStatus.IN_PROGRESS, display_order=0)
+        child = _make_node(
+            work_item_id=wi,
+            parent_id=parent.id,
+            title="C",
+            status=TaskStatus.IN_PROGRESS,
+            display_order=0,
+        )
         child.materialized_path = f"{parent.id}.{child.id}"
 
         enriched = svc.enrich_tree([parent, child])

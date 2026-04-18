@@ -11,6 +11,7 @@ Security:
   - User A cannot see User B's notifications (IDOR)
   - Unauthenticated requests → 401
 """
+
 from __future__ import annotations
 
 import time
@@ -204,9 +205,7 @@ async def test_unread_count_returns_correct_number(http, seeded, migrated_databa
         await session.commit()
     await engine.dispose()
 
-    resp = await http.get(
-        "/api/v1/notifications/unread-count", cookies={"access_token": token_a}
-    )
+    resp = await http.get("/api/v1/notifications/unread-count", cookies={"access_token": token_a})
     assert resp.status_code == 200
     assert resp.json()["data"]["count"] == 2
 
@@ -227,9 +226,7 @@ async def test_mark_single_read(http, seeded, migrated_database):
         await session.commit()
     await engine.dispose()
 
-    resp = await http.patch(
-        f"/api/v1/notifications/{n.id}/read", cookies={"access_token": token_a}
-    )
+    resp = await http.patch(f"/api/v1/notifications/{n.id}/read", cookies={"access_token": token_a})
     assert resp.status_code in (200, 204)
 
 
@@ -256,15 +253,11 @@ async def test_mark_all_read_only_updates_own(http, seeded, migrated_database):
     async with factory() as session:
         await _create_notification(session, recipient_id=user_a, workspace_id=ws_id)
         await _create_notification(session, recipient_id=user_a, workspace_id=ws_id)
-        n_b = await _create_notification(
-            session, recipient_id=user_b, workspace_id=ws_id
-        )
+        n_b = await _create_notification(session, recipient_id=user_b, workspace_id=ws_id)
         await session.commit()
     await engine.dispose()
 
-    resp = await http.post(
-        "/api/v1/notifications/mark-all-read", cookies={"access_token": token_a}
-    )
+    resp = await http.post("/api/v1/notifications/mark-all-read", cookies={"access_token": token_a})
     assert resp.status_code in (200, 204)
 
     # user_b's notification should still be unread
@@ -300,8 +293,6 @@ async def test_idor_mark_read_another_users_notification(http, seeded, migrated_
     await engine.dispose()
 
     # Token B tries to mark user A's notification
-    resp = await http.patch(
-        f"/api/v1/notifications/{n.id}/read", cookies={"access_token": token_b}
-    )
+    resp = await http.patch(f"/api/v1/notifications/{n.id}/read", cookies={"access_token": token_b})
     # Should be 404 (not found for caller) — not 200
     assert resp.status_code == 404

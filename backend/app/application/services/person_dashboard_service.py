@@ -4,6 +4,7 @@ Aggregates per-user metrics: owned items by state, pending reviews,
 inbox (unread notifications), overload indicator.
 Redis cache TTL 120s per user.
 """
+
 from __future__ import annotations
 
 import json
@@ -83,19 +84,14 @@ class PersonDashboardService:
                 WorkItemORM.workspace_id == workspace_id,
             )
         )
-        pending_reviews_count: int = (
-            (await self._session.execute(reviews_stmt)).scalar() or 0
-        )
+        pending_reviews_count: int = (await self._session.execute(reviews_stmt)).scalar() or 0
 
         # Unread notification count (inbox)
-        notif_stmt = (
-            select(func.count(NotificationORM.id))
-            .where(
-                NotificationORM.recipient_id == user_id,
-                NotificationORM.workspace_id == workspace_id,
-                NotificationORM.read_at.is_(None),
-                NotificationORM.archived_at.is_(None),
-            )
+        notif_stmt = select(func.count(NotificationORM.id)).where(
+            NotificationORM.recipient_id == user_id,
+            NotificationORM.workspace_id == workspace_id,
+            NotificationORM.read_at.is_(None),
+            NotificationORM.archived_at.is_(None),
         )
         inbox_count: int = (await self._session.execute(notif_stmt)).scalar() or 0
 

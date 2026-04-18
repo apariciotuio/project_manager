@@ -3,6 +3,7 @@
 Builds SQLAlchemy SELECT statements for the advanced work-items list endpoint.
 No DB access here — pure statement construction for testability.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -45,9 +46,7 @@ class WorkItemListQueryBuilder:
 
     def build_stmt(self) -> Select[tuple[WorkItemORM]]:
         f = self._filters
-        stmt = select(WorkItemORM).where(
-            WorkItemORM.workspace_id == self._workspace_id
-        )
+        stmt = select(WorkItemORM).where(WorkItemORM.workspace_id == self._workspace_id)
 
         # ------------------------------------------------------------------
         # Filters
@@ -127,8 +126,10 @@ class WorkItemListQueryBuilder:
     def build_count_stmt(self) -> Select[tuple[int]]:
         """Count query with the same WHERE clause (no sort/limit)."""
         f = self._filters
-        stmt = select(func.count()).select_from(WorkItemORM).where(
-            WorkItemORM.workspace_id == self._workspace_id
+        stmt = (
+            select(func.count())
+            .select_from(WorkItemORM)
+            .where(WorkItemORM.workspace_id == self._workspace_id)
         )
         if not f.include_deleted:
             stmt = stmt.where(WorkItemORM.deleted_at.is_(None))

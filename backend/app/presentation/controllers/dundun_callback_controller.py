@@ -12,6 +12,7 @@ Agents handled:
   wm_spec_gen_agent    — EP-04 (upserts sections, invalidates completeness cache)
   wm_breakdown_agent   — EP-05 (creates task nodes from LLM breakdown)
 """
+
 from __future__ import annotations
 
 import logging
@@ -221,6 +222,7 @@ async def _handle_suggestion(
     from app.infrastructure.persistence.work_item_version_repository_impl import (
         WorkItemVersionRepositoryImpl,
     )
+
     version_repo = WorkItemVersionRepositoryImpl(session)
     latest_version = await version_repo.get_latest(work_item_id, workspace_id)
     version_number_target = (latest_version.version_number if latest_version else 0) + 1
@@ -408,6 +410,7 @@ async def _handle_spec_gen(
             if work_item_type_str is not None:
                 try:
                     from app.domain.value_objects.work_item_type import WorkItemType
+
                     wt = WorkItemType(work_item_type_str)
                     configs = catalog_for(wt)
                     for cfg in configs:
@@ -438,6 +441,7 @@ async def _handle_spec_gen(
     try:
         cache_key = f"completeness:{work_item_id}"
         from app.presentation.dependencies import _IN_MEMORY_CACHE as _cache
+
         if _cache is not None:
             await _cache.delete(cache_key)
     except Exception as _cache_err:
@@ -499,10 +503,14 @@ async def _handle_breakdown(
             continue
 
         parent_title = (
-            item.get("parent_title") if isinstance(item, dict) else getattr(item, "parent_title", None)
+            item.get("parent_title")
+            if isinstance(item, dict)
+            else getattr(item, "parent_title", None)
         )
         description = (
-            item.get("description", "") if isinstance(item, dict) else getattr(item, "description", "")
+            item.get("description", "")
+            if isinstance(item, dict)
+            else getattr(item, "description", "")
         ) or ""
 
         # Resolve parent: look up in title_to_node built so far.
@@ -574,10 +582,7 @@ async def _handle_breakdown_callback(
     actor_actor_id: UUID
     stmt = select(WorkItemORM.creator_id).where(WorkItemORM.id == work_item_id)
     row = (await session.execute(stmt)).scalar_one_or_none()
-    if row is None:
-        actor_actor_id = uuid4()
-    else:
-        actor_actor_id = row
+    actor_actor_id = uuid4() if row is None else row
 
     from app.application.services.task_service import TaskService
     from app.infrastructure.persistence.task_node_repository_impl import (
@@ -597,7 +602,11 @@ async def _handle_breakdown_callback(
         work_item_id=work_item_id,
         workspace_id=workspace_id,
         breakdown=[
-            {"title": item.title, "parent_title": item.parent_title, "description": item.description}
+            {
+                "title": item.title,
+                "parent_title": item.parent_title,
+                "description": item.description,
+            }
             for item in breakdown_items
         ],
         request_id=payload.request_id,
@@ -612,5 +621,8 @@ async def _handle_breakdown_callback(
         work_item_id,
         payload.request_id,
     )
-    return _ok(payload.agent, result["created_count"],
-               f"created={result['created_count']} skipped={result['skipped_count']}")
+    return _ok(
+        payload.agent,
+        result["created_count"],
+        f"created={result['created_count']} skipped={result['skipped_count']}",
+    )

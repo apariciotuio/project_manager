@@ -9,6 +9,7 @@ Routes:
 
 All endpoints require admin role (workspace admin or superadmin).
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,6 @@ from app.application.services.validation_rule_template_service import (
     ValidationRuleTemplateService,
 )
 from app.presentation.dependencies import (
-    get_current_user,
     get_validation_rule_template_service,
     require_admin,
 )
@@ -129,9 +129,7 @@ async def get_validation_rule_template(
 ) -> dict[str, Any]:
     assert current_user.workspace_id is not None
     try:
-        template = await service.get(
-            template_id, workspace_id=current_user.workspace_id
-        )
+        template = await service.get(template_id, workspace_id=current_user.workspace_id)
     except ValidationRuleTemplateNotFoundError as exc:
         raise _not_found() from exc
     return _ok(_template_payload(template))

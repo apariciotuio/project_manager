@@ -1,4 +1,5 @@
 """Mappers for Project, RoutingRule — EP-10."""
+
 from __future__ import annotations
 
 from app.domain.models.project import Project, RoutingRule

@@ -2,6 +2,7 @@
 
 Tasks: 4.15 (get_checklist), 4.16 (on_review_closed), 4.17 (waive_validation).
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

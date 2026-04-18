@@ -1,4 +1,5 @@
 """Mappers for Team, TeamMembership, Notification — EP-08."""
+
 from __future__ import annotations
 
 from app.domain.models.team import Notification, NotificationState, Team, TeamMembership, TeamRole

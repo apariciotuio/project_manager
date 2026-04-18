@@ -3,18 +3,17 @@
 WHEN: enqueue / dispatch_pending are called
 THEN: correct state transitions, idempotency, and retry logic
 """
+
 from __future__ import annotations
 
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-import pytest_asyncio
 
 from app.application.services.puppet_ingest_service import PuppetIngestService
 from app.domain.models.puppet_ingest_request import PuppetIngestRequest
 from tests.fakes.fake_puppet_client import FakePuppetClient
-
 
 # ---------------------------------------------------------------------------
 # In-memory repository fake
@@ -31,11 +30,10 @@ class FakePuppetIngestRepo:
     async def get(self, request_id: UUID) -> PuppetIngestRequest | None:
         return self._store.get(request_id)
 
-    async def claim_queued_batch(
-        self, workspace_id: UUID, limit: int
-    ) -> list[PuppetIngestRequest]:
+    async def claim_queued_batch(self, workspace_id: UUID, limit: int) -> list[PuppetIngestRequest]:
         queued = [
-            r for r in self._store.values()
+            r
+            for r in self._store.values()
             if r.workspace_id == workspace_id and r.status == "queued"
         ][:limit]
         for row in queued:
@@ -44,8 +42,7 @@ class FakePuppetIngestRepo:
 
     async def has_succeeded_for_work_item(self, work_item_id: UUID) -> bool:
         return any(
-            r.status == "succeeded" and r.work_item_id == work_item_id
-            for r in self._store.values()
+            r.status == "succeeded" and r.work_item_id == work_item_id for r in self._store.values()
         )
 
     async def list_by_workspace(
@@ -58,7 +55,7 @@ class FakePuppetIngestRepo:
         rows = [r for r in self._store.values() if r.workspace_id == workspace_id]
         if status:
             rows = [r for r in rows if r.status == status]
-        return rows[offset:offset + limit]
+        return rows[offset : offset + limit]
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +234,7 @@ async def test_dispatch_skips_when_work_item_already_succeeded(
     svc = PuppetIngestService(ingest_repo=fake_repo, puppet_client=fake_puppet)  # type: ignore[arg-type]
 
     # First request — succeeds
-    req1 = await svc.enqueue(workspace_id, wi_id, payload={"content": "v1"})
+    await svc.enqueue(workspace_id, wi_id, payload={"content": "v1"})
     await svc.dispatch_pending(workspace_id)
 
     first_call_count = len(fake_puppet.index_calls)

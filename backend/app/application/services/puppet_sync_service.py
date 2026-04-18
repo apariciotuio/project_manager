@@ -3,6 +3,7 @@
 Enqueues index/delete operations into the puppet_sync_outbox table. The Celery
 drain_puppet_outbox task reads the outbox and calls PuppetClient.
 """
+
 from __future__ import annotations
 
 import logging

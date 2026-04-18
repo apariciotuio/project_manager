@@ -3,6 +3,7 @@
 Fire-and-forget: emit() never raises. Handler exceptions are logged and execution continues.
 Thread-safety: not required — asyncio single-threaded.
 """
+
 from __future__ import annotations
 
 import logging

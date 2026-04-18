@@ -1,4 +1,5 @@
 """Invitation domain entity — EP-10 admin members."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

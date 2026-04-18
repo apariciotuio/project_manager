@@ -1,4 +1,5 @@
 """Mapper between StoredGapFinding domain entity and GapFindingORM."""
+
 from __future__ import annotations
 
 from app.domain.models.gap_finding import GapSeverity, StoredGapFinding

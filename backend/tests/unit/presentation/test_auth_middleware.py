@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -18,9 +18,7 @@ from app.presentation.middleware.auth_middleware import (
 
 @pytest.fixture
 def jwt_adapter() -> JwtAdapter:
-    return JwtAdapter(
-        secret="mw-test-secret-must-be-at-least-32b", algorithm="HS256"
-    )
+    return JwtAdapter(secret="mw-test-secret-must-be-at-least-32b", algorithm="HS256")
 
 
 @pytest.fixture
@@ -41,15 +39,13 @@ def app(jwt_adapter: JwtAdapter) -> FastAPI:
 
 
 async def _call(app: FastAPI, *, cookie: str | None = None):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         cookies = {"access_token": cookie} if cookie else None
         return await client.get("/me", cookies=cookies)
 
 
 def _valid_token(adapter: JwtAdapter, **overrides) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(uuid4()),
         "email": "a@tuio.com",
@@ -72,9 +68,7 @@ async def test_missing_cookie_returns_401_missing_token(app) -> None:
 async def test_valid_token_injects_current_user(app, jwt_adapter) -> None:
     sub = uuid4()
     ws = uuid4()
-    token = _valid_token(
-        jwt_adapter, sub=str(sub), workspace_id=str(ws), is_superadmin=True
-    )
+    token = _valid_token(jwt_adapter, sub=str(sub), workspace_id=str(ws), is_superadmin=True)
     resp = await _call(app, cookie=token)
     assert resp.status_code == 200
     body = resp.json()
@@ -84,7 +78,7 @@ async def test_valid_token_injects_current_user(app, jwt_adapter) -> None:
 
 
 async def test_expired_token_returns_401_token_expired(app, jwt_adapter) -> None:
-    past = int((datetime.now(timezone.utc) - timedelta(seconds=5)).timestamp())
+    past = int((datetime.now(UTC) - timedelta(seconds=5)).timestamp())
     token = _valid_token(jwt_adapter, exp=past)
     resp = await _call(app, cookie=token)
     assert resp.status_code == 401
@@ -100,9 +94,7 @@ async def test_tampered_token_returns_401_invalid_token(app, jwt_adapter) -> Non
 
 
 async def test_token_signed_with_different_secret_returns_invalid(app) -> None:
-    other = JwtAdapter(
-        secret="other-secret-also-32-bytes-long-xx", algorithm="HS256"
-    )
+    other = JwtAdapter(secret="other-secret-also-32-bytes-long-xx", algorithm="HS256")
     token = _valid_token(other)
     resp = await _call(app, cookie=token)
     assert resp.status_code == 401

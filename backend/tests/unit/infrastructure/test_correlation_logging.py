@@ -9,15 +9,12 @@ from __future__ import annotations
 import json
 import logging
 
-import pytest
-
 from app.config.logging import (
     CorrelationIdFilter,
     JsonFormatter,
     configure_logging,
     correlation_id_var,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -60,7 +57,7 @@ def test_json_formatter_includes_correlation_id_field() -> None:
 
     assert len(records) == 1
     formatted = JsonFormatter().format(records[0])
-    parsed = json.loads(formatted)
+    json.loads(formatted)
     # correlation_id must be present in the JSON blob after reset — but the
     # formatter captures the ContextVar at format-time, so we format inside the token scope.
     token2 = correlation_id_var.set(cid)

@@ -5,6 +5,7 @@ adds 3 tasks via the task API, then asserts:
   1. GET /completeness returns breakdown dimension with score >= 0.8
   2. Creating a task invalidates the completeness cache (second fetch is not stale)
 """
+
 from __future__ import annotations
 
 import time

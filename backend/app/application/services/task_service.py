@@ -4,6 +4,7 @@ Orchestrates TaskNode lifecycle: create, update, delete, move, split, merge,
 reorder, and status FSM. All tree mutations maintain materialized_path. Status
 transitions check predecessor dependencies before allowing mark_done.
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -165,7 +166,7 @@ class TaskService:
             if desc.id == node.id:
                 continue
             if desc.materialized_path.startswith(old_prefix + "."):
-                desc.materialized_path = new_prefix + desc.materialized_path[len(old_prefix):]
+                desc.materialized_path = new_prefix + desc.materialized_path[len(old_prefix) :]
                 desc.updated_at = now
                 desc.updated_by = actor_id
                 await self._nodes.save(desc)
@@ -209,9 +210,7 @@ class TaskService:
     # Single node + breadcrumb (EP-05 Commit 2)
     # ------------------------------------------------------------------
 
-    async def get_node_with_breadcrumb(
-        self, node_id: UUID
-    ) -> tuple[TaskNode, list[dict]] | None:
+    async def get_node_with_breadcrumb(self, node_id: UUID) -> tuple[TaskNode, list[dict]] | None:
         """Return (node, breadcrumb) where breadcrumb = [{id, title}, ...] root→parent.
 
         Breadcrumb is derived from materialized_path without extra DB queries:
@@ -247,9 +246,7 @@ class TaskService:
     # Search (EP-05 Commit 2)
     # ------------------------------------------------------------------
 
-    async def search_tasks(
-        self, *, work_item_id: UUID, q: str
-    ) -> list[dict]:
+    async def search_tasks(self, *, work_item_id: UUID, q: str) -> list[dict]:
         """Return [{id, title}] for tasks whose title ILIKE '%q%' within work_item.
 
         Returns [] without DB query when len(q) < 2.
@@ -260,11 +257,7 @@ class TaskService:
 
         nodes = await self._nodes.get_by_work_item(work_item_id)
         q_lower = q.lower()
-        results = [
-            {"id": str(n.id), "title": n.title}
-            for n in nodes
-            if q_lower in n.title.lower()
-        ]
+        results = [{"id": str(n.id), "title": n.title} for n in nodes if q_lower in n.title.lower()]
         return results[:10]
 
     # ------------------------------------------------------------------
@@ -293,7 +286,8 @@ class TaskService:
             section_ids = await self._links.get_by_task(task_id)
 
         from datetime import UTC, datetime
-        now = datetime.now(UTC)
+
+        datetime.now(UTC)
 
         node_a = TaskNode.create(
             work_item_id=source.work_item_id,
@@ -304,9 +298,7 @@ class TaskService:
             description=description_a,
             source=TaskGenerationSource.MANUAL,
         )
-        node_a.materialized_path = self._build_path(
-            self._parent_path(source), node_a.id
-        )
+        node_a.materialized_path = self._build_path(self._parent_path(source), node_a.id)
 
         node_b = TaskNode.create(
             work_item_id=source.work_item_id,
@@ -317,9 +309,7 @@ class TaskService:
             description=description_b,
             source=TaskGenerationSource.MANUAL,
         )
-        node_b.materialized_path = self._build_path(
-            self._parent_path(source), node_b.id
-        )
+        node_b.materialized_path = self._build_path(self._parent_path(source), node_b.id)
 
         await self._nodes.save(node_a)
         await self._nodes.save(node_b)
@@ -423,6 +413,7 @@ class TaskService:
         All IDs must exist in work_item and share the same parent_id.
         """
         from datetime import UTC, datetime
+
         nodes_by_id: dict[UUID, TaskNode] = {}
         for nid in ordered_ids:
             node = await self._nodes.get(nid)
@@ -493,11 +484,7 @@ class TaskService:
         # Fetch future siblings (children of new_parent_id, excluding moving node)
         all_nodes = await self._nodes.get_by_work_item(node.work_item_id)
         future_siblings = sorted(
-            [
-                n
-                for n in all_nodes
-                if n.parent_id == new_parent_id and n.id != node_id
-            ],
+            [n for n in all_nodes if n.parent_id == new_parent_id and n.id != node_id],
             key=lambda n: n.display_order,
         )
 
@@ -548,7 +535,7 @@ class TaskService:
             if desc.id == node.id:
                 continue
             if old_prefix and desc.materialized_path.startswith(old_prefix + "."):
-                desc.materialized_path = new_prefix + desc.materialized_path[len(old_prefix):]
+                desc.materialized_path = new_prefix + desc.materialized_path[len(old_prefix) :]
                 desc.updated_at = now
                 desc.updated_by = actor_id
                 await self._nodes.save(desc)
@@ -576,25 +563,19 @@ class TaskService:
         from datetime import UTC, datetime
 
         all_nodes = await self._nodes.get_by_work_item(work_item_id)
-        actual_siblings = {
-            n.id: n for n in all_nodes if n.parent_id == parent_id
-        }
+        actual_siblings = {n.id: n for n in all_nodes if n.parent_id == parent_id}
 
         provided_set = set(ordered_ids)
 
         # Check all provided ids are siblings
         non_siblings = provided_set - actual_siblings.keys()
         if non_siblings:
-            raise ValueError(
-                f"ids not children of parent_id={parent_id}: {non_siblings}"
-            )
+            raise ValueError(f"ids not children of parent_id={parent_id}: {non_siblings}")
 
         # Check no sibling is missing (PARTIAL)
         missing = actual_siblings.keys() - provided_set
         if missing:
-            raise ValueError(
-                f"PARTIAL: ordered_ids is missing siblings: {missing}"
-            )
+            raise ValueError(f"PARTIAL: ordered_ids is missing siblings: {missing}")
 
         now = datetime.now(UTC)
         result: list[TaskNode] = []

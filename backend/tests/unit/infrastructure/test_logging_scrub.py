@@ -1,4 +1,5 @@
 """[RED] Logging formatter scrubs sensitive keys from log records."""
+
 from __future__ import annotations
 
 import json
@@ -24,6 +25,7 @@ def _format_record(formatter: logging.Formatter, **extra: Any) -> dict[str, Any]
 class TestJsonFormatterScrubsSensitiveKeys:
     def _formatter(self) -> logging.Formatter:
         from app.config.logging import JsonFormatter
+
         return JsonFormatter()
 
     def test_password_is_redacted(self) -> None:

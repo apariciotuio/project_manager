@@ -7,6 +7,7 @@ Routes:
 Response shape matches EP-03 frontend useTimeline hook:
   { data: { events: [...], has_more: bool, next_cursor: str | null } }
 """
+
 from __future__ import annotations
 
 import logging

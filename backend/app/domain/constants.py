@@ -1,4 +1,5 @@
 """Domain-level constants shared across application and domain layers."""
+
 from __future__ import annotations
 
 from uuid import UUID

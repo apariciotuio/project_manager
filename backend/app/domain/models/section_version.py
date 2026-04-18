@@ -1,4 +1,5 @@
 """EP-04 — SectionVersion (append-only)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

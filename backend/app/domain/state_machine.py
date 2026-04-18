@@ -1,4 +1,5 @@
 """WorkItem state machine — pure graph membership check, zero business logic."""
+
 from __future__ import annotations
 
 from app.domain.value_objects.work_item_state import WorkItemState

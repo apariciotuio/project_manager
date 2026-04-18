@@ -8,6 +8,7 @@ Scenarios:
   - credential_fingerprint is first 8 hex chars of SHA-256(encrypted_credentials)
   - raw secret NEVER appears in context
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -225,7 +226,9 @@ async def test_delete_integration_config_emits_credential_delete_audit(
     assert str(row.entity_id) == config_id
     ctx = row.context or {}
     assert ctx.get("outcome") == "success"
-    assert ctx.get("integration_type") is None or True  # integration_type not available on delete — ok
+    assert (
+        ctx.get("integration_type") is None or True
+    )  # integration_type not available on delete — ok
 
 
 @pytest.mark.asyncio

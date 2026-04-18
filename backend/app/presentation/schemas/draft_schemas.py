@@ -1,12 +1,12 @@
 """Pydantic v2 schemas for WorkItemDraft endpoints — EP-02."""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 _MAX_DRAFT_DATA_SIZE = 65536  # 64KB guard — reject strings over this limit in draft_data
 

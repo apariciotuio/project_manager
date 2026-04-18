@@ -2,6 +2,7 @@
 
 Pure DFS — O(V + E). Runs synchronously in DependencyService before insert.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict

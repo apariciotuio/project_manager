@@ -6,6 +6,7 @@ Routes:
   PATCH  /api/v1/comments/{id}             — edit
   DELETE /api/v1/comments/{id}             — soft-delete
 """
+
 from __future__ import annotations
 
 import logging
@@ -103,9 +104,7 @@ async def create_comment(
     except NestingExceededError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": {"code": "NESTING_EXCEEDED", "message": str(exc), "details": {}}
-            },
+            detail={"error": {"code": "NESTING_EXCEEDED", "message": str(exc), "details": {}}},
         ) from exc
     except CommentNotFoundError as exc:
         raise HTTPException(
@@ -115,9 +114,7 @@ async def create_comment(
     except AnchorInvalidError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": {"code": "ANCHOR_INVALID", "message": str(exc), "details": {}}
-            },
+            detail={"error": {"code": "ANCHOR_INVALID", "message": str(exc), "details": {}}},
         ) from exc
     except ValueError as exc:
         raise HTTPException(

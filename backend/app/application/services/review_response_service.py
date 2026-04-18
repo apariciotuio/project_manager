@@ -9,10 +9,10 @@ to CHANGES_REQUESTED on the work item.
 Events emitted:
 - ReviewRespondedEvent (always, on success)
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from uuid import UUID
 
 from app.application.events.event_bus import EventBus
@@ -23,10 +23,8 @@ from app.application.services.review_request_service import (
     ReviewWithResponses,
 )
 from app.domain.models.review import (
-    ContentRequiredError,
     ReviewAlreadyClosedError,
     ReviewDecision,
-    ReviewRequest,
     ReviewResponse,
     ReviewStatus,
 )
@@ -65,9 +63,7 @@ class ReviewResponseService:
             raise ReviewNotFoundError(f"review request {request_id} not found")
 
         if request.status is not ReviewStatus.PENDING:
-            raise ReviewAlreadyClosedError(
-                f"review request {request_id} is not pending"
-            )
+            raise ReviewAlreadyClosedError(f"review request {request_id} is not pending")
 
         # Authorization: only designated reviewer can respond
         if request.reviewer_id is not None and request.reviewer_id != responder_id:

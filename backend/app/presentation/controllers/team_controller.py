@@ -10,6 +10,7 @@ Routes:
   DELETE /api/v1/teams/{team_id}/members/{user_id}
   PATCH  /api/v1/teams/{team_id}/members/{user_id}/role
 """
+
 from __future__ import annotations
 
 import logging
@@ -138,10 +139,7 @@ async def list_teams(
     teams = await service.list_for_workspace(current_user.workspace_id)
     # Single batch query for all teams' members — avoids N+1.
     members_by_team = await service.list_members_for_teams([t.id for t in teams])
-    payloads = [
-        _team_payload(t, members=members_by_team.get(t.id, []))
-        for t in teams
-    ]
+    payloads = [_team_payload(t, members=members_by_team.get(t.id, [])) for t in teams]
     return _ok(payloads)
 
 
@@ -205,7 +203,10 @@ async def update_team(
     team.updated_at = datetime.now(UTC)
     updated_team = await service._teams.save(team)
     members_by_team = await service.list_members_for_teams([updated_team.id])
-    return _ok(_team_payload(updated_team, members=members_by_team.get(updated_team.id, [])), "team updated")
+    return _ok(
+        _team_payload(updated_team, members=members_by_team.get(updated_team.id, [])),
+        "team updated",
+    )
 
 
 @router.delete("/teams/{team_id}", status_code=http_status.HTTP_204_NO_CONTENT)
@@ -257,9 +258,7 @@ async def add_member(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        membership = await service.add_member(
-            team_id=team_id, user_id=body.user_id, role=body.role
-        )
+        membership = await service.add_member(team_id=team_id, user_id=body.user_id, role=body.role)
     except TeamNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -322,9 +321,7 @@ async def update_member_role(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        membership = await service.update_role(
-            team_id=team_id, user_id=user_id, new_role=body.role
-        )
+        membership = await service.update_role(team_id=team_id, user_id=user_id, new_role=body.role)
     except MembershipNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

@@ -14,8 +14,7 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -37,7 +36,6 @@ from app.infrastructure.persistence.session_context import with_workspace
 from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
 from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
 from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -92,9 +90,7 @@ def _make_work_item(
 async def ctx(db_session):
     """Provide a dict with user, workspace, project_id, and repo wired to db_session."""
     user = await _make_user(db_session, sub="wi-owner", email="owner@acme.io")
-    ws = await _make_workspace(
-        db_session, created_by_id=user.id, slug_email="owner@acme.io"
-    )
+    ws = await _make_workspace(db_session, created_by_id=user.id, slug_email="owner@acme.io")
     project_id = uuid4()
     await with_workspace(db_session, ws.id)
     repo = WorkItemRepositoryImpl(db_session)
@@ -263,12 +259,18 @@ async def test_list_filter_by_type(ctx) -> None:
     project_id = ctx["project_id"]
 
     bug = _make_work_item(
-        owner_id=user.id, creator_id=user.id, project_id=project_id,
-        title="A bug", type=WorkItemType.BUG,
+        owner_id=user.id,
+        creator_id=user.id,
+        project_id=project_id,
+        title="A bug",
+        type=WorkItemType.BUG,
     )
     task = _make_work_item(
-        owner_id=user.id, creator_id=user.id, project_id=project_id,
-        title="A task", type=WorkItemType.TASK,
+        owner_id=user.id,
+        creator_id=user.id,
+        project_id=project_id,
+        title="A task",
+        type=WorkItemType.TASK,
     )
     await repo.save(bug, ws.id)
     await repo.save(task, ws.id)
@@ -315,7 +317,9 @@ async def test_list_pagination_math(ctx) -> None:
 
     for i in range(5):
         item = _make_work_item(
-            owner_id=user.id, creator_id=user.id, project_id=project_id,
+            owner_id=user.id,
+            creator_id=user.id,
+            project_id=project_id,
             title=f"Item {i:02d}",
         )
         await repo.save(item, ws.id)
@@ -478,9 +482,7 @@ async def test_record_ownership_change_and_get_desc_ordered(ctx) -> None:
     project_id = ctx["project_id"]
 
     # Need a second user to reassign to
-    new_owner = await _make_user(
-        ctx["session"], sub="wi-new-owner", email="new_owner@acme.io"
-    )
+    new_owner = await _make_user(ctx["session"], sub="wi-new-owner", email="new_owner@acme.io")
     await with_workspace(ctx["session"], ws.id)
 
     item = _make_work_item(
@@ -657,9 +659,7 @@ async def test_save_with_nonexistent_owner_raises_user_not_found(ctx) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_rls_default_deny_without_workspace_context(
-    db_session, rls_session
-) -> None:
+async def test_rls_default_deny_without_workspace_context(db_session, rls_session) -> None:
     """Rows exist in work_items but SELECT via wmp_app without set_config returns 0 rows.
 
     Proves RLS default-denies when app.current_workspace is not set.

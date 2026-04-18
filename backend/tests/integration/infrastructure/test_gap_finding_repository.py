@@ -11,16 +11,16 @@ Covers:
 - invalidate_for_work_item returns count of updated rows
 - invalidate_for_work_item returns 0 when no active findings to invalidate
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.gap_finding import GapSeverity, StoredGapFinding
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -161,7 +161,9 @@ class TestGapFindingRepositoryInsertMany:
         )
 
         _user, item = user_and_work_item
-        [result] = await GapFindingRepositoryImpl(db).insert_many([_make_finding(item.id, workspace_id=item.workspace_id)])
+        [result] = await GapFindingRepositoryImpl(db).insert_many(
+            [_make_finding(item.id, workspace_id=item.workspace_id)]
+        )
 
         assert result.created_at is not None
         assert result.invalidated_at is None
@@ -174,7 +176,9 @@ class TestGapFindingRepositoryInsertMany:
         )
 
         _user, item = user_and_work_item
-        finding = _make_finding(item.id, workspace_id=item.workspace_id, source="dundun", severity=GapSeverity.BLOCKING)
+        finding = _make_finding(
+            item.id, workspace_id=item.workspace_id, source="dundun", severity=GapSeverity.BLOCKING
+        )
 
         [result] = await GapFindingRepositoryImpl(db).insert_many([finding])
 
@@ -194,7 +198,9 @@ class TestGapFindingRepositoryGetActive:
         repo = GapFindingRepositoryImpl(db)
 
         active = _make_finding(item.id, workspace_id=item.workspace_id)
-        invalidated = _make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))
+        invalidated = _make_finding(
+            item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC)
+        )
         [a, inv] = await repo.insert_many([active, invalidated])
 
         results = await repo.get_active_for_work_item(item.id)
@@ -233,7 +239,9 @@ class TestGapFindingRepositoryGetActive:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        finding = _make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))
+        finding = _make_finding(
+            item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC)
+        )
         await repo.insert_many([finding])
 
         results = await repo.get_active_for_work_item(item.id)
@@ -264,10 +272,12 @@ class TestGapFindingRepositoryInvalidate:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        await repo.insert_many([
-            _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
-            _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
-        ])
+        await repo.insert_many(
+            [
+                _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
+                _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
+            ]
+        )
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC))
 
@@ -285,10 +295,12 @@ class TestGapFindingRepositoryInvalidate:
         _user, item = user_and_work_item
         repo = GapFindingRepositoryImpl(db)
 
-        [rule_f, dundun_f] = await repo.insert_many([
-            _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
-            _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
-        ])
+        [rule_f, dundun_f] = await repo.insert_many(
+            [
+                _make_finding(item.id, workspace_id=item.workspace_id, source="rule"),
+                _make_finding(item.id, workspace_id=item.workspace_id, source="dundun"),
+            ]
+        )
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC), source="rule")
 
@@ -309,7 +321,13 @@ class TestGapFindingRepositoryInvalidate:
         repo = GapFindingRepositoryImpl(db)
 
         # insert already-invalidated finding
-        await repo.insert_many([_make_finding(item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC))])
+        await repo.insert_many(
+            [
+                _make_finding(
+                    item.id, workspace_id=item.workspace_id, invalidated_at=datetime.now(UTC)
+                )
+            ]
+        )
 
         count = await repo.invalidate_for_work_item(item.id, datetime.now(UTC))
 
@@ -325,16 +343,15 @@ class TestGapFindingRepositoryInvalidate:
             GapFindingRepositoryImpl,
         )
         from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
-        from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
 
         user, item = user_and_work_item
 
         # Fetch workspace_id for the work item
-        from app.infrastructure.persistence.models.orm import WorkItemORM
         from sqlalchemy import select
-        row = (
-            await db.execute(select(WorkItemORM).where(WorkItemORM.id == item.id))
-        ).scalar_one()
+
+        from app.infrastructure.persistence.models.orm import WorkItemORM
+
+        row = (await db.execute(select(WorkItemORM).where(WorkItemORM.id == item.id))).scalar_one()
         ws_id = row.workspace_id
 
         other_item = WorkItem(
@@ -370,10 +387,12 @@ class TestGapFindingRepositoryInvalidate:
         await db.flush()
 
         repo = GapFindingRepositoryImpl(db)
-        await repo.insert_many([
-            _make_finding(item.id, workspace_id=item.workspace_id),
-            _make_finding(other_item.id, workspace_id=other_item.workspace_id),
-        ])
+        await repo.insert_many(
+            [
+                _make_finding(item.id, workspace_id=item.workspace_id),
+                _make_finding(other_item.id, workspace_id=other_item.workspace_id),
+            ]
+        )
 
         await repo.invalidate_for_work_item(item.id, datetime.now(UTC))
 

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from collections.abc import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.applications import Starlette
@@ -13,10 +10,8 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
-from starlette.types import ASGIApp
 
 from app.presentation.middleware.request_logging import RequestLoggingMiddleware
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,6 +93,7 @@ def test_authorization_header_not_logged(caplog: pytest.LogCaptureFixture) -> No
 
 def test_request_body_not_logged(caplog: pytest.LogCaptureFixture) -> None:
     """Request bodies are never logged (PII / secret risk)."""
+
     async def post_handler(request: Request) -> Response:
         await request.body()
         return PlainTextResponse("ok", status_code=200)

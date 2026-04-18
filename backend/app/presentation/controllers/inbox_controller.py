@@ -7,6 +7,7 @@ Routes:
 Auth: all endpoints require a valid session with workspace_id.
 IDOR: InboxService only returns items belonging to the authenticated user.
 """
+
 from __future__ import annotations
 
 import logging

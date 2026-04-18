@@ -12,6 +12,7 @@ Covers:
 - list_for_user with work_item_id filter
 - update persists mutations (preview, archived)
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -23,7 +24,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.conversation_thread import ConversationThread
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -169,16 +169,16 @@ class TestConversationThreadRepositoryCreate:
         await repo.create(thread1)
         await db.flush()
 
-        thread2 = _make_thread(user.id, item.id, workspace_id=item.workspace_id)  # same (user, work_item)
+        thread2 = _make_thread(
+            user.id, item.id, workspace_id=item.workspace_id
+        )  # same (user, work_item)
         with pytest.raises(IntegrityError):
             await repo.create(thread2)
             await db.flush()
 
 
 class TestConversationThreadRepositoryGet:
-    async def test_get_by_id_returns_entity(
-        self, db: AsyncSession, user_and_work_item
-    ) -> None:
+    async def test_get_by_id_returns_entity(self, db: AsyncSession, user_and_work_item) -> None:
         from app.infrastructure.persistence.conversation_thread_repository_impl import (
             ConversationThreadRepositoryImpl,
         )
@@ -261,7 +261,9 @@ class TestConversationThreadRepositoryGet:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
         dundun_id = f"dun_{uuid4().hex}"
-        created = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id, dundun_id=dundun_id))
+        created = await repo.create(
+            _make_thread(user.id, item.id, workspace_id=item.workspace_id, dundun_id=dundun_id)
+        )
 
         fetched = await repo.get_by_dundun_conversation_id(dundun_id)
 
@@ -340,8 +342,12 @@ class TestConversationThreadRepositoryList:
         user, item = user_and_work_item
         repo = ConversationThreadRepositoryImpl(db)
 
-        item_thread = await repo.create(_make_thread(user.id, item.id, workspace_id=item.workspace_id))
-        general_thread = await repo.create(_make_thread(user.id, None, workspace_id=item.workspace_id))
+        item_thread = await repo.create(
+            _make_thread(user.id, item.id, workspace_id=item.workspace_id)
+        )
+        general_thread = await repo.create(
+            _make_thread(user.id, None, workspace_id=item.workspace_id)
+        )
 
         results = await repo.list_for_user(user.id, work_item_id=item.id)
 
@@ -375,9 +381,7 @@ class TestConversationThreadRepositoryUpdate:
         assert result.last_message_preview == "Hello world"
         assert result.last_message_at is not None
 
-    async def test_update_archives_thread(
-        self, db: AsyncSession, user_and_work_item
-    ) -> None:
+    async def test_update_archives_thread(self, db: AsyncSession, user_and_work_item) -> None:
         from app.infrastructure.persistence.conversation_thread_repository_impl import (
             ConversationThreadRepositoryImpl,
         )

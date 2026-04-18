@@ -8,6 +8,7 @@ POST /api/v1/csp-report
 
 Spec: EP-12 tasks-backend.md — Group 2, Content Security Policy
 """
+
 from __future__ import annotations
 
 import logging

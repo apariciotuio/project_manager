@@ -9,10 +9,10 @@ Rollup logic:
   - If any descendant status='in_progress' → rollup='in_progress'
   - Else → rollup='draft'
 """
+
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from app.domain.models.task_node import TaskNode, TaskStatus
 
@@ -54,24 +54,25 @@ class CompletionRollupService:
         for node in all_nodes:
             prefix = node.materialized_path + "."
             descendants = [
-                n for n in all_nodes
-                if n.id != node.id and n.materialized_path.startswith(prefix)
+                n for n in all_nodes if n.id != node.id and n.materialized_path.startswith(prefix)
             ]
             rollup = self.compute_rollup(node, descendants)
-            result.append({
-                "id": str(node.id),
-                "work_item_id": str(node.work_item_id),
-                "parent_id": str(node.parent_id) if node.parent_id else None,
-                "title": node.title,
-                "description": node.description,
-                "display_order": node.display_order,
-                "status": node.status.value,
-                "generation_source": node.generation_source.value,
-                "materialized_path": node.materialized_path,
-                "rollup_status": rollup,
-                "created_at": node.created_at.isoformat(),
-                "updated_at": node.updated_at.isoformat(),
-                "created_by": str(node.created_by),
-                "updated_by": str(node.updated_by),
-            })
+            result.append(
+                {
+                    "id": str(node.id),
+                    "work_item_id": str(node.work_item_id),
+                    "parent_id": str(node.parent_id) if node.parent_id else None,
+                    "title": node.title,
+                    "description": node.description,
+                    "display_order": node.display_order,
+                    "status": node.status.value,
+                    "generation_source": node.generation_source.value,
+                    "materialized_path": node.materialized_path,
+                    "rollup_status": rollup,
+                    "created_at": node.created_at.isoformat(),
+                    "updated_at": node.updated_at.isoformat(),
+                    "created_by": str(node.created_by),
+                    "updated_by": str(node.updated_by),
+                }
+            )
         return result

@@ -1,4 +1,5 @@
 """Unit tests for JiraConfigService — EP-10 Jira integration."""
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -9,7 +10,6 @@ from app.application.services.jira_config_service import (
     InvalidBaseUrlError,
     JiraConfigDisabledError,
     JiraConfigExistsError,
-    JiraConfigNotFoundError,
     JiraConfigService,
 )
 from app.domain.models.jira_config import JiraConfig, JiraProjectMapping
@@ -44,8 +44,11 @@ class FakeJiraConfigRepo(IJiraConfigRepository):
         self, workspace_id: UUID, project_id: UUID | None = None
     ) -> JiraConfig | None:
         return next(
-            (c for c in self._configs.values()
-             if c.workspace_id == workspace_id and c.project_id == project_id),
+            (
+                c
+                for c in self._configs.values()
+                if c.workspace_id == workspace_id and c.project_id == project_id
+            ),
             None,
         )
 
@@ -53,7 +56,9 @@ class FakeJiraConfigRepo(IJiraConfigRepository):
         self._mappings[mapping.id] = mapping
         return mapping
 
-    async def get_mapping_by_id(self, mapping_id: UUID, workspace_id: UUID) -> JiraProjectMapping | None:
+    async def get_mapping_by_id(
+        self, mapping_id: UUID, workspace_id: UUID
+    ) -> JiraProjectMapping | None:
         m = self._mappings.get(mapping_id)
         return m if m and m.workspace_id == workspace_id else None
 
@@ -129,13 +134,19 @@ class TestJiraConfigCreate:
     async def test_create_duplicate_workspace_config_raises_409(self) -> None:
         svc, repo, _ = _make_service()
         await svc.create_config(
-            _WS_ID, base_url="https://jira.example.com",
-            auth_type="basic", credentials_ref="T1", actor_id=_ACTOR_ID
+            _WS_ID,
+            base_url="https://jira.example.com",
+            auth_type="basic",
+            credentials_ref="T1",
+            actor_id=_ACTOR_ID,
         )
         with pytest.raises(JiraConfigExistsError):
             await svc.create_config(
-                _WS_ID, base_url="https://jira2.example.com",
-                auth_type="basic", credentials_ref="T2", actor_id=_ACTOR_ID
+                _WS_ID,
+                base_url="https://jira2.example.com",
+                auth_type="basic",
+                credentials_ref="T2",
+                actor_id=_ACTOR_ID,
             )
 
 
@@ -144,8 +155,11 @@ class TestJiraConfigHealthCheck:
     async def test_three_failures_transitions_to_error(self) -> None:
         svc, repo, audit = _make_service()
         config = await svc.create_config(
-            _WS_ID, base_url="https://jira.example.com",
-            auth_type="basic", credentials_ref="T", actor_id=_ACTOR_ID
+            _WS_ID,
+            base_url="https://jira.example.com",
+            auth_type="basic",
+            credentials_ref="T",
+            actor_id=_ACTOR_ID,
         )
 
         for _ in range(3):
@@ -158,8 +172,11 @@ class TestJiraConfigHealthCheck:
     async def test_recovery_from_error_state(self) -> None:
         svc, repo, audit = _make_service()
         config = await svc.create_config(
-            _WS_ID, base_url="https://jira.example.com",
-            auth_type="basic", credentials_ref="T", actor_id=_ACTOR_ID
+            _WS_ID,
+            base_url="https://jira.example.com",
+            auth_type="basic",
+            credentials_ref="T",
+            actor_id=_ACTOR_ID,
         )
         for _ in range(3):
             await svc.record_health_check(_WS_ID, config.id, status="auth_failure")
@@ -174,8 +191,11 @@ class TestJiraConfigHealthCheck:
     async def test_test_connection_disabled_raises_409(self) -> None:
         svc, _, _ = _make_service()
         config = await svc.create_config(
-            _WS_ID, base_url="https://jira.example.com",
-            auth_type="basic", credentials_ref="T", actor_id=_ACTOR_ID
+            _WS_ID,
+            base_url="https://jira.example.com",
+            auth_type="basic",
+            credentials_ref="T",
+            actor_id=_ACTOR_ID,
         )
         await svc.update_config(_WS_ID, config.id, state="disabled", actor_id=_ACTOR_ID)
 
@@ -188,8 +208,11 @@ class TestJiraCredentialsNotInAudit:
     async def test_credentials_ref_never_in_audit_payload(self) -> None:
         svc, _, audit = _make_service()
         await svc.create_config(
-            _WS_ID, base_url="https://jira.example.com",
-            auth_type="basic", credentials_ref="SUPERSECRET", actor_id=_ACTOR_ID
+            _WS_ID,
+            base_url="https://jira.example.com",
+            auth_type="basic",
+            credentials_ref="SUPERSECRET",
+            actor_id=_ACTOR_ID,
         )
 
         for event in audit.events:

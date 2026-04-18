@@ -3,6 +3,7 @@
 All events are frozen dataclasses subclassing Event. Each carries event_id and
 occurred_at for idempotency and ordering.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

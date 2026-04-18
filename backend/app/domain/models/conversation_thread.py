@@ -1,4 +1,5 @@
 """ConversationThread domain entity — pure, no I/O. History owned by Dundun."""
+
 from __future__ import annotations
 
 import dataclasses

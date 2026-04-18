@@ -1,4 +1,5 @@
 """IWorkItemDraftRepository — domain-layer interface for pre-creation draft persistence."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

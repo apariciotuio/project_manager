@@ -1,4 +1,5 @@
 """DraftConflict value object — returned by IWorkItemDraftRepository.upsert on version mismatch."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

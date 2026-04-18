@@ -16,17 +16,14 @@ Cases:
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from starlette.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Fake pub/sub
@@ -90,7 +87,7 @@ def test_done_event_payload_in_data_line() -> None:
     lines = body.splitlines()
     for i, line in enumerate(lines):
         if line == "event: done":
-            data = json.loads(lines[i + 1][len("data: "):])
+            data = json.loads(lines[i + 1][len("data: ") :])
             assert data["status"] == "finished"
             return
     pytest.fail("event: done not found in output")
@@ -108,7 +105,7 @@ def test_error_event_payload_in_data_line() -> None:
     lines = body.splitlines()
     for i, line in enumerate(lines):
         if line == "event: error":
-            data = json.loads(lines[i + 1][len("data: "):])
+            data = json.loads(lines[i + 1][len("data: ") :])
             assert data["reason"] == "disk_full"
             return
     pytest.fail("event: error not found in output")

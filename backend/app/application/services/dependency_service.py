@@ -2,6 +2,7 @@
 
 Manages task_dependencies with cycle detection before insert.
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -83,6 +84,7 @@ class DependencyService:
 
         # Map source -> list of target node ids
         from collections import defaultdict
+
         source_to_targets: dict[UUID, list[UUID]] = defaultdict(list)
         for edge in edges:
             source_to_targets[edge.source_id].append(edge.target_id)
@@ -93,15 +95,17 @@ class DependencyService:
             if not targets:
                 continue
             blockers = [
-                t for t in targets
-                if node_map.get(t) is not None
-                and node_map[t].status is not TaskStatus.DONE  # type: ignore[comparison-overlap]
+                t
+                for t in targets
+                if node_map.get(t) is not None and node_map[t].status is not TaskStatus.DONE  # type: ignore[comparison-overlap]
             ]
             if blockers:
-                result.append({
-                    "id": node.id,
-                    "title": node.title,
-                    "status": node.status.value,
-                    "blocked_by": blockers,
-                })
+                result.append(
+                    {
+                        "id": node.id,
+                        "title": node.title,
+                        "status": node.status.value,
+                        "blocked_by": blockers,
+                    }
+                )
         return result

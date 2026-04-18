@@ -6,12 +6,12 @@ Tests:
   DELETE /api/v1/work-item-drafts/{id}
   PATCH /api/v1/work-items/{id}/draft
 """
+
 from __future__ import annotations
 
 import time
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -26,7 +26,6 @@ from app.infrastructure.persistence.workspace_membership_repository_impl import 
     WorkspaceMembershipRepositoryImpl,
 )
 from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -79,8 +78,10 @@ async def _seed(migrated_database, *, role: str = "admin"):
         memberships = WorkspaceMembershipRepositoryImpl(session)
 
         user = User.from_google_claims(
-            sub=f"sub-{uuid4().hex[:8]}", email=f"u{uuid4().hex[:6]}@test.com",
-            name="U", picture=None
+            sub=f"sub-{uuid4().hex[:8]}",
+            email=f"u{uuid4().hex[:6]}@test.com",
+            name="U",
+            picture=None,
         )
         await users.upsert(user)
         ws = Workspace.create_from_email(email=user.email, created_by=user.id)
@@ -238,8 +239,10 @@ class TestDeleteWorkItemDrafts:
             users2 = UserRepositoryImpl(session)
             memberships2 = WorkspaceMembershipRepositoryImpl(session)
             user2 = User.from_google_claims(
-                sub=f"sub-{uuid4().hex[:8]}", email=f"u2-{uuid4().hex[:6]}@test.com",
-                name="U2", picture=None
+                sub=f"sub-{uuid4().hex[:8]}",
+                email=f"u2-{uuid4().hex[:6]}@test.com",
+                name="U2",
+                picture=None,
             )
             await users2.upsert(user2)
             await memberships2.create(
@@ -290,9 +293,7 @@ class TestPatchWorkItemDraft:
         )
         return r.json()["data"]["id"]
 
-    async def test_draft_state_item_returns_200(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_draft_state_item_returns_200(self, http: AsyncClient, migrated_database) -> None:
         user, ws, token = await _seed(migrated_database)
         item_id = await self._create_work_item(http, token, ws.id)
 
@@ -306,9 +307,7 @@ class TestPatchWorkItemDraft:
         assert body["data"]["id"] == item_id
         assert "draft_saved_at" in body["data"]
 
-    async def test_non_draft_state_returns_409(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_non_draft_state_returns_409(self, http: AsyncClient, migrated_database) -> None:
         user, ws, token = await _seed(migrated_database)
         item_id = await self._create_work_item(http, token, ws.id)
 

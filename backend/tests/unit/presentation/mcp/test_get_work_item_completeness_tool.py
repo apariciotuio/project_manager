@@ -11,6 +11,7 @@ Scenarios:
 - invalid UUID raises ValueError
 - missing work_item_id raises KeyError
 """
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -18,7 +19,6 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
-
 from apps.mcp_server.tools.get_work_item_completeness import handle_get_work_item_completeness
 
 WORKSPACE_ID = uuid4()

@@ -3,6 +3,7 @@ require workspace_id in token (enforced by require_admin).
 
 A token without workspace_id must be rejected with 401.
 """
+
 from __future__ import annotations
 
 import time

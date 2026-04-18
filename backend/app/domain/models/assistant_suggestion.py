@@ -1,4 +1,5 @@
 """AssistantSuggestion domain entity and SuggestionBatch value object — pure, no I/O."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -17,7 +18,9 @@ class SuggestionStatus(Enum):
     APPLIED = "applied"
 
 
-_TERMINAL = frozenset({SuggestionStatus.ACCEPTED, SuggestionStatus.REJECTED, SuggestionStatus.APPLIED})
+_TERMINAL = frozenset(
+    {SuggestionStatus.ACCEPTED, SuggestionStatus.REJECTED, SuggestionStatus.APPLIED}
+)
 
 
 def _now() -> datetime:

@@ -1,4 +1,5 @@
 """SQLAlchemy implementation of ITemplateRepository — EP-02."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -85,9 +86,7 @@ class TemplateRepositoryImpl(ITemplateRepository):
             raise _classify_integrity_error(exc, template) from exc
         return _to_domain(row)
 
-    async def update(
-        self, template_id: UUID, *, name: str | None, content: str | None
-    ) -> Template:
+    async def update(self, template_id: UUID, *, name: str | None, content: str | None) -> Template:
         values: dict[str, object] = {"updated_at": datetime.now(UTC)}
         if name is not None:
             values["name"] = name
@@ -116,10 +115,6 @@ class TemplateRepositoryImpl(ITemplateRepository):
 
     async def list_for_workspace(self, workspace_id: UUID) -> list[Template]:
         # Hard cap to keep unbounded queries safe until pagination ships.
-        stmt = (
-            select(TemplateORM)
-            .where(TemplateORM.workspace_id == workspace_id)
-            .limit(500)
-        )
+        stmt = select(TemplateORM).where(TemplateORM.workspace_id == workspace_id).limit(500)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_to_domain(r) for r in rows]

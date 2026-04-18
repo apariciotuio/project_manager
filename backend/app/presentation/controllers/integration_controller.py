@@ -6,6 +6,7 @@ Routes:
   POST /api/v1/work-items/{work_item_id}/export
   GET  /api/v1/work-items/{work_item_id}/exports
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -329,9 +330,7 @@ async def delete_integration_config(
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        await service.delete_config(
-            config_id, workspace_id=current_user.workspace_id
-        )
+        await service.delete_config(config_id, workspace_id=current_user.workspace_id)
     except IntegrationConfigNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

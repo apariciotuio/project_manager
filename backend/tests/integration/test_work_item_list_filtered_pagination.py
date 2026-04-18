@@ -7,6 +7,7 @@ Covers:
   - ?sort=title_asc overrides default keyset order (keyset on title,id)
   - Sort + cursor combined (title_asc) returns consistent pages
 """
+
 from __future__ import annotations
 
 import time
@@ -201,7 +202,7 @@ async def test_q_filter_no_match_returns_empty(http, seeded):
 @pytest.mark.asyncio
 async def test_creator_id_filter_returns_only_that_creator_items(http, seeded):
     token1, token2 = seeded["token1"], seeded["token2"]
-    user1_id, user2_id = seeded["user1_id"], seeded["user2_id"]
+    user1_id, _user2_id = seeded["user1_id"], seeded["user2_id"]
 
     await _create_item(http, token1, "User1 item A")
     await _create_item(http, token1, "User1 item B")
@@ -221,7 +222,7 @@ async def test_creator_id_filter_returns_only_that_creator_items(http, seeded):
 
 @pytest.mark.asyncio
 async def test_creator_id_filter_other_creator_returns_empty(http, seeded):
-    token1, token2 = seeded["token1"], seeded["token2"]
+    token1, _token2 = seeded["token1"], seeded["token2"]
     user2_id = seeded["user2_id"]
 
     # Only user1 creates items; filter by user2

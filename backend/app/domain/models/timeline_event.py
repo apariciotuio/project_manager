@@ -3,6 +3,7 @@
 Append-only audit row written via the outbox pattern from domain service
 hooks. workspace_id is denormalised for fast workspace-scoped queries.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

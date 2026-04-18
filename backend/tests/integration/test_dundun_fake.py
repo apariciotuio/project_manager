@@ -4,6 +4,7 @@ Uses FastAPI TestClient against the fake app directly — no Docker required.
 The fake app lives at infra/dundun-fake/app.py; we import it by path to avoid
 adding it to the main backend package.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -17,9 +18,7 @@ from fastapi.testclient import TestClient
 # Import infra/dundun-fake/app.py without adding it to the main package tree
 # ---------------------------------------------------------------------------
 
-_FAKE_APP_PATH = (
-    Path(__file__).parent.parent.parent.parent / "infra" / "dundun-fake" / "app.py"
-)
+_FAKE_APP_PATH = Path(__file__).parent.parent.parent.parent / "infra" / "dundun-fake" / "app.py"
 
 
 def _load_fake_app() -> object:

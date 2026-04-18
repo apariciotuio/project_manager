@@ -1,4 +1,5 @@
 """EP-17 — LockUnlockRequest repository interface."""
+
 from __future__ import annotations
 
 from typing import Protocol

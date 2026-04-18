@@ -2,6 +2,7 @@
 
 POST /api/v1/search  — Puppet-backed semantic search
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,7 +41,9 @@ async def search_work_items(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     try:

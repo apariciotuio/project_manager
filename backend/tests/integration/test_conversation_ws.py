@@ -9,9 +9,9 @@ Scenarios:
 WS auth tests use starlette.testclient.TestClient (synchronous).
 Frame-forwarding test uses an async approach via httpx + starlette transport.
 """
+
 from __future__ import annotations
 
-import asyncio
 import time
 from uuid import uuid4
 
@@ -153,17 +153,15 @@ class TestConversationWS:
     def test_invalid_token_closes_4401(self, app) -> None:
         """Invalid JWT → 4401."""
         client = TestClient(app, raise_server_exceptions=False)
-        with pytest.raises(Exception):
-            with client.websocket_connect(
-                f"{_WS_BASE}/{uuid4()}?token=invalid.jwt.token"
-            ) as ws:
-                ws.receive_json()
+        with (
+            pytest.raises(Exception),
+            client.websocket_connect(f"{_WS_BASE}/{uuid4()}?token=invalid.jwt.token") as ws,
+        ):
+            ws.receive_json()
 
 
 class TestConversationWSAsync:
-    async def test_valid_token_unknown_thread_rejected(
-        self, app, migrated_database
-    ) -> None:
+    async def test_valid_token_unknown_thread_rejected(self, app, migrated_database) -> None:
         """Valid JWT but thread_id not found → WebSocket closes (4403)."""
         user, _ws, token = await _seed(migrated_database)
 
@@ -175,9 +173,7 @@ class TestConversationWSAsync:
         def _run() -> None:
             client = TestClient(app, raise_server_exceptions=False)
             try:
-                with client.websocket_connect(
-                    f"{_WS_BASE}/{uuid4()}?token={token}"
-                ) as ws:
+                with client.websocket_connect(f"{_WS_BASE}/{uuid4()}?token={token}") as ws:
                     ws.receive_json()
                 result["connected"] = True
             except Exception as exc:
@@ -191,9 +187,7 @@ class TestConversationWSAsync:
         # Connection should be closed (either error or no data)
         assert not result.get("connected"), "Expected rejection, but connected successfully"
 
-    async def test_valid_handshake_receives_upstream_frame(
-        self, app, migrated_database
-    ) -> None:
+    async def test_valid_handshake_receives_upstream_frame(self, app, migrated_database) -> None:
         """Valid token + owned thread: upstream fake frame is forwarded to client."""
         user, _ws, token = await _seed(migrated_database)
 
@@ -220,9 +214,7 @@ class TestConversationWSAsync:
         def _run() -> None:
             client = TestClient(app, raise_server_exceptions=False)
             try:
-                with client.websocket_connect(
-                    f"{_WS_BASE}/{thread_id}?token={token}"
-                ) as ws:
+                with client.websocket_connect(f"{_WS_BASE}/{thread_id}?token={token}") as ws:
                     frame = ws.receive_json()
                     received.append(frame)
             except Exception as exc:
@@ -240,9 +232,7 @@ class TestConversationWSAsync:
         if received:
             assert received[0].get("type") == "progress"
 
-    async def test_mismatched_workspace_rejected(
-        self, app, migrated_database
-    ) -> None:
+    async def test_mismatched_workspace_rejected(self, app, migrated_database) -> None:
         """SEC-AUTH-001: thread.workspace_id != user.workspace_id → 4403.
 
         Even when the authenticated user owns the thread by user_id, if the JWT
@@ -307,9 +297,7 @@ class TestConversationWSAsync:
         def _run() -> None:
             client = TestClient(app, raise_server_exceptions=False)
             try:
-                with client.websocket_connect(
-                    f"{_WS_BASE}/{thread_id}?token={cross_token}"
-                ) as ws:
+                with client.websocket_connect(f"{_WS_BASE}/{thread_id}?token={cross_token}") as ws:
                     ws.receive_json()
                 result["connected"] = True
             except Exception as exc:
@@ -323,9 +311,7 @@ class TestConversationWSAsync:
         t = threading.Thread(target=_run)
         t.start()
         t.join(timeout=5)
-        assert not result.get("connected"), (
-            "Expected WS rejection for mismatched workspace_id"
-        )
+        assert not result.get("connected"), "Expected WS rejection for mismatched workspace_id"
         # Must be 4403 — distinguishes authorization failure (right token,
         # wrong scope) from 4401 authentication failure (bad token).
         assert result.get("close_code") == 4403, (

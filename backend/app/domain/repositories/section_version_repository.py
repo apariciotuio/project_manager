@@ -1,4 +1,5 @@
 """EP-04 — ISectionVersionRepository (append-only)."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

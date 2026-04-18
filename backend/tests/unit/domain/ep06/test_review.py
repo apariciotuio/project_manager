@@ -1,4 +1,5 @@
 """EP-06 — ReviewRequest state machine + ReviewResponse validation + ValidationStatus."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -9,11 +10,11 @@ from app.domain.models.review import (
     ContentRequiredError,
     ReviewAlreadyClosedError,
     ReviewDecision,
+    ReviewerType,
     ReviewInvariantError,
     ReviewRequest,
     ReviewResponse,
     ReviewStatus,
-    ReviewerType,
     ValidationState,
     ValidationStatus,
     ValidationTransitionError,
@@ -133,7 +134,9 @@ class TestReviewRequestInvariant:
                 validation_rule_id=None,
                 status=ReviewStatus.PENDING,
                 requested_by=uuid4(),
-                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                requested_at=__import__("datetime").datetime.now(
+                    __import__("datetime").timezone.utc
+                ),
                 cancelled_at=None,
             )
 
@@ -149,7 +152,9 @@ class TestReviewRequestInvariant:
                 validation_rule_id=None,
                 status=ReviewStatus.PENDING,
                 requested_by=uuid4(),
-                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                requested_at=__import__("datetime").datetime.now(
+                    __import__("datetime").timezone.utc
+                ),
                 cancelled_at=None,
             )
 
@@ -165,7 +170,9 @@ class TestReviewRequestInvariant:
                 validation_rule_id=None,
                 status=ReviewStatus.PENDING,
                 requested_by=uuid4(),
-                requested_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                requested_at=__import__("datetime").datetime.now(
+                    __import__("datetime").timezone.utc
+                ),
                 cancelled_at=None,
             )
 

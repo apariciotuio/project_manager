@@ -11,6 +11,7 @@ IDOR: all mutation endpoints verify notification.recipient_id == current_user.id
 before taking action. Unauthorized access returns 404 (not 403) to avoid leaking
 the existence of the notification.
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,7 +47,9 @@ router = APIRouter(tags=["notifications"])
 _STREAM_TOKEN_TTL_SECONDS = 300  # 5 minutes
 _SSE_NOTIFICATION_CHANNEL_PREFIX = "sse:notification:"
 
-_NOT_FOUND_DETAIL = {"error": {"code": "NOT_FOUND", "message": "notification not found", "details": {}}}
+_NOT_FOUND_DETAIL = {
+    "error": {"code": "NOT_FOUND", "message": "notification not found", "details": {}}
+}
 
 
 def _ok(data: object, message: str = "ok") -> dict[str, Any]:
@@ -123,9 +126,7 @@ async def get_unread_count(
     service: ExtendedNotificationService = Depends(get_extended_notification_service),
 ) -> dict[str, Any]:
     workspace_id = _require_workspace(current_user)
-    count = await service.unread_count(
-        user_id=current_user.id, workspace_id=workspace_id
-    )
+    count = await service.unread_count(user_id=current_user.id, workspace_id=workspace_id)
     return _ok({"count": count})
 
 
@@ -135,9 +136,7 @@ async def mark_all_read(
     service: ExtendedNotificationService = Depends(get_extended_notification_service),
 ) -> dict[str, Any]:
     workspace_id = _require_workspace(current_user)
-    updated = await service.mark_all_read(
-        user_id=current_user.id, workspace_id=workspace_id
-    )
+    updated = await service.mark_all_read(user_id=current_user.id, workspace_id=workspace_id)
     return _ok({"updated_count": updated})
 
 
@@ -270,7 +269,13 @@ async def stream_notifications(
     if claims.get("purpose") != "sse_notifications":
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "INVALID_STREAM_TOKEN", "message": "wrong token purpose", "details": {}}},
+            detail={
+                "error": {
+                    "code": "INVALID_STREAM_TOKEN",
+                    "message": "wrong token purpose",
+                    "details": {},
+                }
+            },
         )
 
     user_id = claims["sub"]
@@ -278,9 +283,7 @@ async def stream_notifications(
 
     from app.config.settings import get_settings
 
-    db_url = get_settings().database.url.replace(
-        "postgresql+asyncpg://", "postgresql://"
-    )
+    db_url = get_settings().database.url.replace("postgresql+asyncpg://", "postgresql://")
     bus = PgNotificationBus(dsn=db_url)
     handler = SseHandler(bus)
     return handler.stream(channel)

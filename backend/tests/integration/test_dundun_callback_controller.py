@@ -10,6 +10,7 @@ Scenarios:
   - Valid HMAC, wm_quick_action_agent → 501
   - Valid HMAC, status=error → 200, nothing persisted, error logged
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -129,14 +130,18 @@ async def seeded_ids(migrated_database):
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
-        user = User.from_google_claims(sub="cb-test-sub", email="cb@test.com", name="CB", picture=None)
+        user = User.from_google_claims(
+            sub="cb-test-sub", email="cb@test.com", name="CB", picture=None
+        )
         await UserRepositoryImpl(session).upsert(user)
 
         ws = Workspace.create_from_email(email="cb@test.com", created_by=user.id)
         ws.slug = "cb-test"
         await WorkspaceRepositoryImpl(session).create(ws)
         await WorkspaceMembershipRepositoryImpl(session).create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
 
         wi = WorkItem.create(
@@ -303,7 +308,11 @@ async def test_gap_callback_persists_three_findings(http, seeded_ids, migrated_d
         "status": "success",
         "work_item_id": str(wi_id),
         "gap_findings": [
-            {"dimension": "description", "severity": "blocking", "message": "Description too short"},
+            {
+                "dimension": "description",
+                "severity": "blocking",
+                "message": "Description too short",
+            },
             {"dimension": "acceptance_criteria", "severity": "warning", "message": "No AC found"},
             {"dimension": "title", "severity": "info", "message": "Title could be clearer"},
         ],
@@ -392,7 +401,9 @@ async def test_quick_action_returns_501(http):
 
 
 @pytest.mark.asyncio
-async def test_error_status_returns_200_nothing_persisted(http, seeded_ids, migrated_database, caplog):
+async def test_error_status_returns_200_nothing_persisted(
+    http, seeded_ids, migrated_database, caplog
+):
     user_id, _ws_id, wi_id = seeded_ids
     request_id = str(uuid4())
 
@@ -406,7 +417,9 @@ async def test_error_status_returns_200_nothing_persisted(http, seeded_ids, migr
 
     import logging
 
-    with caplog.at_level(logging.WARNING, logger="app.presentation.controllers.dundun_callback_controller"):
+    with caplog.at_level(
+        logging.WARNING, logger="app.presentation.controllers.dundun_callback_controller"
+    ):
         resp = await _post(http, payload)
 
     assert resp.status_code == 200
@@ -421,7 +434,9 @@ async def test_error_status_returns_200_nothing_persisted(http, seeded_ids, migr
         count = result.scalar()
     await engine.dispose()
     assert count == 0
-    assert any("Dundun internal timeout" in r.message or request_id in r.message for r in caplog.records)
+    assert any(
+        "Dundun internal timeout" in r.message or request_id in r.message for r in caplog.records
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ Types that require WHEN/THEN pattern in their description:
 
 Exempt: TASK, SPIKE (they never require formal acceptance criteria).
 """
+
 from __future__ import annotations
 
 import re

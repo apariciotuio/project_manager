@@ -30,7 +30,7 @@ from starlette.responses import Response
 _DEFAULT_CSP: dict[str, str] = {
     "default-src": "'self'",
     "script-src": "'self'",
-    "style-src": "'self' 'unsafe-inline'",   # unsafe-inline for styles is acceptable; scripts are the risk
+    "style-src": "'self' 'unsafe-inline'",  # unsafe-inline for styles is acceptable; scripts are the risk
     "img-src": "'self' data:",
     "font-src": "'self'",
     "connect-src": "'self'",
@@ -80,8 +80,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         if request.headers.get("x-forwarded-proto") == "https":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         return response

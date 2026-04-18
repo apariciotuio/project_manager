@@ -6,6 +6,7 @@ Zero business logic here.
 workspace_id is guaranteed non-None by get_scoped_session — it raises 401 before
 reaching any handler if the JWT has no workspace_id claim.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -13,6 +14,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
 from app.application.commands.delete_work_item_command import DeleteWorkItemCommand
@@ -28,10 +30,9 @@ from app.domain.value_objects.work_item_type import WorkItemType
 from app.presentation.dependencies import (
     get_current_user,
     get_draft_service,
-    get_work_item_service,
     get_scoped_session,
+    get_work_item_service,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.presentation.middleware.auth_middleware import CurrentUser
 from app.presentation.schemas.draft_schemas import SaveCommittedDraftRequest
 from app.presentation.schemas.work_item_schemas import (
@@ -73,7 +74,9 @@ async def create_work_item(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = CreateWorkItemCommand(
         title=body.title,
@@ -111,7 +114,9 @@ async def get_work_item(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     item = await service.get(item_id, current_user.workspace_id)
     return _ok(_response(item, current_user.workspace_id))
@@ -132,7 +137,9 @@ async def update_work_item(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = UpdateWorkItemCommand(
         item_id=item_id,
@@ -163,7 +170,9 @@ async def delete_work_item(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = DeleteWorkItemCommand(
         item_id=item_id,
@@ -222,7 +231,9 @@ async def force_ready_work_item(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = ForceReadyCommand(
         item_id=item_id,
@@ -250,7 +261,9 @@ async def reassign_owner(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     cmd = ReassignOwnerCommand(
         item_id=item_id,
@@ -277,7 +290,9 @@ async def get_transitions(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     transitions = await service.get_transitions(item_id, current_user.workspace_id)
     return _ok(
@@ -311,7 +326,9 @@ async def get_ownership_history(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     history = await service.get_ownership_history(item_id, current_user.workspace_id)
     return _ok(
@@ -351,7 +368,9 @@ async def save_committed_draft(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     await draft_service.save_committed_draft(
         item_id=item_id,
@@ -382,7 +401,9 @@ async def list_work_items(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     filters = WorkItemFilters(
         state=state,
@@ -416,7 +437,9 @@ async def list_work_items(
             )
         else:
             lock_summary = LockSummary(has_locks=False, count=0, held_by_me=False)
-        items.append(WorkItemResponse.from_domain(item, current_user.workspace_id, lock_summary=lock_summary))
+        items.append(
+            WorkItemResponse.from_domain(item, current_user.workspace_id, lock_summary=lock_summary)
+        )
 
     paged = PagedWorkItemResponse(
         items=items,
@@ -474,7 +497,9 @@ async def list_all_work_items(  # noqa: PLR0913
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
@@ -483,6 +508,7 @@ async def list_all_work_items(  # noqa: PLR0913
     if cursor is not None:
         try:
             from app.domain.pagination import PaginationCursor as DomainCursor
+
             DomainCursor.decode(cursor)
         except ValueError as exc:
             raise HTTPException(
@@ -573,7 +599,9 @@ async def list_all_work_items(  # noqa: PLR0913
     return {
         "data": {
             "items": [
-                WorkItemResponse.from_domain(item, current_user.workspace_id).model_dump(mode="json")
+                WorkItemResponse.from_domain(item, current_user.workspace_id).model_dump(
+                    mode="json"
+                )
                 for item in items
             ],
             "next_cursor": next_cursor,

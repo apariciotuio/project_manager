@@ -1,4 +1,5 @@
 """EP-05 — TaskNode + cycle detection."""
+
 from __future__ import annotations
 
 from uuid import uuid4

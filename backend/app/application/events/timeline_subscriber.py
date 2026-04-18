@@ -6,13 +6,12 @@ fire-and-forget (errors are swallowed by the EventBus — see event_bus.py).
 Handlers receive domain events from WorkItemService, ReviewService, etc. and
 translate them into timeline_events rows via TimelineService.
 """
+
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
 from typing import Any
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.application.events.event_bus import Event, EventBus
 from app.application.events.events import (
@@ -39,9 +38,7 @@ def _make_state_changed_handler(
         async with session_factory() as session:
             svc = TimelineService(timeline_repo=TimelineEventRepositoryImpl(session))
             actor_type = TimelineActorType.HUMAN if event.actor_id else TimelineActorType.SYSTEM
-            summary = (
-                f"State changed from {event.from_state.value} to {event.to_state.value}"
-            )
+            summary = f"State changed from {event.from_state.value} to {event.to_state.value}"
             if len(summary) > 255:
                 summary = summary[:255]
             await svc.append(

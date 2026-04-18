@@ -4,6 +4,7 @@ Thin orchestration on top of the dimension checkers + ScoreCalculator. Cache
 plumbing is intentionally left as a direct pass-through to ICache so tests can
 swap in a FakeCache.
 """
+
 from __future__ import annotations
 
 import json
@@ -66,9 +67,7 @@ class CompletenessService:
         self._cache = cache
         self._task_nodes = task_node_repo
 
-    async def compute(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> CompletenessResult:
+    async def compute(self, work_item_id: UUID, workspace_id: UUID) -> CompletenessResult:
         cached = await self._cache.get(_cache_key(work_item_id))
         if cached:
             return _deserialise(cached)
@@ -86,9 +85,7 @@ class CompletenessService:
         dims = dimension_checkers.check_all(work_item, sections, validators, task_count=task_count)
         result = score_calc.compute(dims)
 
-        await self._cache.set(
-            _cache_key(work_item_id), _serialise(result), ttl_seconds=_CACHE_TTL
-        )
+        await self._cache.set(_cache_key(work_item_id), _serialise(result), ttl_seconds=_CACHE_TTL)
         return result
 
     async def invalidate(self, work_item_id: UUID) -> None:
@@ -99,9 +96,7 @@ class GapService:
     def __init__(self, completeness: CompletenessService) -> None:
         self._completeness = completeness
 
-    async def list(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> list[dict[str, Any]]:
+    async def list(self, work_item_id: UUID, workspace_id: UUID) -> list[dict[str, Any]]:
         result = await self._completeness.compute(work_item_id, workspace_id)
         return [
             {

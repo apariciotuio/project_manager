@@ -1,4 +1,5 @@
 """EP-04 Phase 5 — SectionService cache invalidation tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

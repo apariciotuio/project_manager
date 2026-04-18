@@ -1,4 +1,5 @@
 """EP-04 Phase 2 — Section entity invariants."""
+
 from __future__ import annotations
 
 from uuid import uuid4

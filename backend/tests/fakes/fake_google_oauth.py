@@ -6,7 +6,6 @@ from urllib.parse import urlencode
 
 from app.infrastructure.adapters.google_oauth_adapter import (
     GoogleClaims,
-    OAuthExchangeError,
 )
 
 

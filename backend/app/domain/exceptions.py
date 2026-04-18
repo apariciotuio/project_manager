@@ -1,4 +1,5 @@
 """Domain exceptions for WorkItem and related entities."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -128,8 +129,7 @@ class WorkItemInvalidStateError(Exception):
 
     def __init__(self, item_id: UUID, expected_state: str, actual_state: str) -> None:
         super().__init__(
-            f"Work item {item_id} must be in {expected_state!r} state, "
-            f"but is in {actual_state!r}"
+            f"Work item {item_id} must be in {expected_state!r} state, but is in {actual_state!r}"
         )
         self.item_id = item_id
         self.expected_state = expected_state
@@ -179,8 +179,7 @@ class InvalidSuggestionStateError(Exception):
         self, suggestion_id: UUID, current_status: object, attempted_transition: str
     ) -> None:
         super().__init__(
-            f"Cannot {attempted_transition} suggestion {suggestion_id} "
-            f"in state {current_status!r}"
+            f"Cannot {attempted_transition} suggestion {suggestion_id} in state {current_status!r}"
         )
         self.suggestion_id = suggestion_id
         self.current_status = current_status

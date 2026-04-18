@@ -1,4 +1,5 @@
 """ClarificationService — gap detection, AI review dispatch, question generation — EP-03."""
+
 from __future__ import annotations
 
 import json
@@ -37,19 +38,21 @@ def _cache_key(work_item_id: UUID, updated_at: datetime) -> str:
 
 
 def _serialize_report(report: GapReport) -> str:
-    return json.dumps({
-        "work_item_id": str(report.work_item_id),
-        "score": report.score,
-        "findings": [
-            {
-                "dimension": f.dimension,
-                "severity": f.severity.value,
-                "message": f.message,
-                "source": f.source,
-            }
-            for f in report.findings
-        ],
-    })
+    return json.dumps(
+        {
+            "work_item_id": str(report.work_item_id),
+            "score": report.score,
+            "findings": [
+                {
+                    "dimension": f.dimension,
+                    "severity": f.severity.value,
+                    "message": f.message,
+                    "source": f.source,
+                }
+                for f in report.findings
+            ],
+        }
+    )
 
 
 def _deserialize_report(raw: str) -> GapReport:
@@ -88,9 +91,7 @@ class ClarificationService:
         self._cache = cache
         self._callback_url = callback_url
 
-    async def get_gap_report(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> GapReport:
+    async def get_gap_report(self, work_item_id: UUID, workspace_id: UUID) -> GapReport:
         """Return gap report for a work item.
 
         Cache key embeds updated_at — invalidation is automatic on item update.
@@ -112,9 +113,7 @@ class ClarificationService:
         logger.info("gap_report_generated work_item=%s score=%.2f", work_item_id, report.score)
         return report
 
-    async def trigger_ai_review(
-        self, work_item_id: UUID, workspace_id: UUID, user_id: UUID
-    ) -> str:
+    async def trigger_ai_review(self, work_item_id: UUID, workspace_id: UUID, user_id: UUID) -> str:
         """Invoke Dundun wm_gap_agent asynchronously. Returns request_id immediately."""
         from app.domain.exceptions import WorkItemNotFoundError
 
@@ -138,14 +137,10 @@ class ClarificationService:
             payload={"work_item": work_item_dict},
         )
         request_id: str = result["request_id"]
-        logger.info(
-            "ai_review_triggered work_item=%s request_id=%s", work_item_id, request_id
-        )
+        logger.info("ai_review_triggered work_item=%s request_id=%s", work_item_id, request_id)
         return request_id
 
-    async def get_next_questions(
-        self, work_item_id: UUID, workspace_id: UUID
-    ) -> list[str]:
+    async def get_next_questions(self, work_item_id: UUID, workspace_id: UUID) -> list[str]:
         """Return up to 3 human-readable questions from BLOCKING findings."""
         report = await self.get_gap_report(work_item_id, workspace_id)
         blocking = [f for f in report.findings if f.severity == GapSeverity.BLOCKING]

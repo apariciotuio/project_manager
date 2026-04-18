@@ -6,6 +6,7 @@ Routes:
   PATCH  /templates/{id}         — update template (admin only)
   DELETE /templates/{id}         — delete template (admin only)
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -63,7 +64,13 @@ async def get_template(
         if current_user.workspace_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+                detail={
+                    "error": {
+                        "code": "NO_WORKSPACE",
+                        "message": "no workspace in token",
+                        "details": {},
+                    }
+                },
             )
         tmpls = await service.list_for_workspace(current_user.workspace_id)
         return _ok([TemplateResponse.from_domain(t).model_dump(mode="json") for t in tmpls])
@@ -95,7 +102,9 @@ async def create_template(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 
@@ -121,7 +130,9 @@ async def update_template(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 
@@ -145,7 +156,9 @@ async def delete_template(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     role = await _resolve_role(membership_repo, current_user.id, current_user.workspace_id)
 

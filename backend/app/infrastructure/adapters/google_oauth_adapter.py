@@ -78,21 +78,15 @@ class GoogleOAuthAdapter:
                 },
             )
             if token_resp.status_code >= 400:
-                raise OAuthExchangeError(
-                    f"Google token endpoint returned {token_resp.status_code}"
-                )
+                raise OAuthExchangeError(f"Google token endpoint returned {token_resp.status_code}")
             token_data = token_resp.json()
             id_token = token_data.get("id_token")
             if not id_token:
                 raise OAuthExchangeError("Google response missing id_token")
 
-            info_resp = await client.get(
-                _TOKENINFO_ENDPOINT, params={"id_token": id_token}
-            )
+            info_resp = await client.get(_TOKENINFO_ENDPOINT, params={"id_token": id_token})
             if info_resp.status_code >= 400:
-                raise OAuthExchangeError(
-                    f"Google tokeninfo returned {info_resp.status_code}"
-                )
+                raise OAuthExchangeError(f"Google tokeninfo returned {info_resp.status_code}")
             info = info_resp.json()
 
         # --- validate token claims ---
@@ -100,30 +94,23 @@ class GoogleOAuthAdapter:
         # iss must be one of the known Google issuers
         iss = info.get("iss")
         if iss not in _VALID_ISSUERS:
-            raise OAuthExchangeError(
-                f"invalid_id_token: unexpected issuer {iss!r}"
-            )
+            raise OAuthExchangeError(f"invalid_id_token: unexpected issuer {iss!r}")
 
         # aud must match our client_id
         if info.get("aud") != self._client_id:
-            raise OAuthExchangeError(
-                f"id_token audience mismatch: got {info.get('aud')!r}"
-            )
+            raise OAuthExchangeError(f"id_token audience mismatch: got {info.get('aud')!r}")
 
         # exp must be in the future
         exp = info.get("exp")
         try:
             if int(exp) <= int(time.time()):
                 raise OAuthExchangeError("invalid_id_token: token has expired")
-        except (TypeError, ValueError):
-            raise OAuthExchangeError("invalid_id_token: missing or invalid exp claim")
+        except (TypeError, ValueError) as e:
+            raise OAuthExchangeError("invalid_id_token: missing or invalid exp claim") from e
 
         # email_verified — accept both string "true" and bool True; default to "false"
         raw_verified = info.get("email_verified", "false")
-        if isinstance(raw_verified, bool):
-            verified = raw_verified
-        else:
-            verified = str(raw_verified).lower() == "true"
+        verified = raw_verified if isinstance(raw_verified, bool) else str(raw_verified).lower() == "true"
         if not verified:
             raise OAuthExchangeError("Google email not verified")
 

@@ -1,8 +1,9 @@
 """EP-08 — Team, TeamMembership, Notification repository implementations."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -185,12 +186,8 @@ class NotificationRepositoryImpl(INotificationRepository):
         await self._session.flush()
         return notification
 
-    async def get_by_idempotency_key(
-        self, idempotency_key: str
-    ) -> Notification | None:
-        stmt = select(NotificationORM).where(
-            NotificationORM.idempotency_key == idempotency_key
-        )
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Notification | None:
+        stmt = select(NotificationORM).where(NotificationORM.idempotency_key == idempotency_key)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return notification_to_domain(row) if row else None
 
@@ -223,10 +220,10 @@ class NotificationRepositoryImpl(INotificationRepository):
         total_stmt = select(func.count()).select_from(base.subquery())
         total: int = (await self._session.execute(total_stmt)).scalar_one()
         rows = (
-            await self._session.execute(
-                base.offset((page - 1) * page_size).limit(page_size)
-            )
-        ).scalars().all()
+            (await self._session.execute(base.offset((page - 1) * page_size).limit(page_size)))
+            .scalars()
+            .all()
+        )
         return Page(
             items=[notification_to_domain(r) for r in rows],
             total=total,
@@ -242,15 +239,11 @@ class NotificationRepositoryImpl(INotificationRepository):
         cursor: PaginationCursor | None,
         page_size: int,
     ) -> PaginationResult:
-        from datetime import timezone
         from uuid import UUID as _UUID
 
-        stmt = (
-            select(NotificationORM)
-            .where(
-                NotificationORM.recipient_id == user_id,
-                NotificationORM.workspace_id == workspace_id,
-            )
+        stmt = select(NotificationORM).where(
+            NotificationORM.recipient_id == user_id,
+            NotificationORM.workspace_id == workspace_id,
         )
         if cursor is not None:
             stmt = stmt.where(
@@ -277,7 +270,7 @@ class NotificationRepositoryImpl(INotificationRepository):
             last = rows[-1]
             ts = last.created_at
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
             next_cursor = PaginationCursor(
                 id=_UUID(str(last.id)),
                 created_at=ts,
@@ -289,9 +282,7 @@ class NotificationRepositoryImpl(INotificationRepository):
             next_cursor=next_cursor,
         )
 
-    async def bulk_insert_idempotent(
-        self, notifications: list[Notification]
-    ) -> list[Notification]:
+    async def bulk_insert_idempotent(self, notifications: list[Notification]) -> list[Notification]:
         """Insert a batch of notifications, skipping duplicates (ON CONFLICT DO NOTHING).
 
         Iterates and delegates to create() which already handles idempotency.

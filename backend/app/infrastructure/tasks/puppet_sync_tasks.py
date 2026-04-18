@@ -8,6 +8,7 @@ _build_deps is monkeypatch-able for tests.
 
 # TODO(pg-jobs): crash mid-run = silent failure; move to pg jobs table if reliability needed.
 """
+
 from __future__ import annotations
 
 import logging

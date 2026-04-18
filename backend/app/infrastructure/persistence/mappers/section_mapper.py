@@ -1,4 +1,5 @@
 """Mappers for Section, SectionVersion, Validator, WorkItemVersion — EP-04."""
+
 from __future__ import annotations
 
 from app.domain.models.section import Section

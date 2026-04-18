@@ -5,7 +5,7 @@ All collaborators are fakes; no DB, no HTTP.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -68,9 +68,7 @@ def oauth_states() -> FakeOAuthStateRepository:
 
 @pytest.fixture
 def jwt_adapter() -> JwtAdapter:
-    return JwtAdapter(
-        secret="unit-test-secret-at-least-32-bytes-x", algorithm="HS256"
-    )
+    return JwtAdapter(secret="unit-test-secret-at-least-32-bytes-x", algorithm="HS256")
 
 
 @pytest.fixture
@@ -118,9 +116,7 @@ def service(
 # ---------------------------------------------------------------------------
 
 
-async def test_initiate_oauth_persists_state_and_returns_google_url(
-    service, oauth_states
-) -> None:
+async def test_initiate_oauth_persists_state_and_returns_google_url(service, oauth_states) -> None:
     result = await service.initiate_oauth()
 
     assert "state=" in result.authorization_url
@@ -154,16 +150,17 @@ async def test_callback_with_single_active_membership_succeeds(
     )
 
     result = await service.handle_callback(
-        code="auth-code", state=init.state, ip_address="10.0.0.1", user_agent="ua",
+        code="auth-code",
+        state=init.state,
+        ip_address="10.0.0.1",
+        user_agent="ua",
     )
 
     assert result.outcome.kind == "single"
     assert result.outcome.workspace_id == ws_id
     assert result.tokens is not None
     # Session persisted with the refresh token hash
-    stored = await sessions.get_by_token_hash(
-        Session.hash_token(result.tokens.refresh_token)
-    )
+    stored = await sessions.get_by_token_hash(Session.hash_token(result.tokens.refresh_token))
     assert stored is not None and stored.user_id == existing.id
     # Audit event for login_success
     assert any(e.action == "login_success" for e in audit_repo.events)
@@ -177,13 +174,14 @@ async def test_callback_with_zero_active_memberships_raises_and_emits_block(
     # No membership created → 0 active
     with pytest.raises(NoWorkspaceAccessError):
         await service.handle_callback(
-            code="c", state=init.state, ip_address=None, user_agent=None,
+            code="c",
+            state=init.state,
+            ip_address=None,
+            user_agent=None,
         )
 
     # audit event emitted
-    assert any(
-        e.action == "login_blocked_no_workspace" for e in audit_repo.events
-    )
+    assert any(e.action == "login_blocked_no_workspace" for e in audit_repo.events)
     # User row still created (Google claims present) so admin can grant access later
     assert await users.get_by_google_sub("sub-alice") is not None
 
@@ -209,16 +207,17 @@ async def test_callback_with_multiple_memberships_returns_picker(
     )
 
     result = await service.handle_callback(
-        code="c", state=init.state, ip_address=None, user_agent=None,
+        code="c",
+        state=init.state,
+        ip_address=None,
+        user_agent=None,
     )
     assert result.outcome.kind == "picker"
     # tokens still issued — user is authenticated, just needs to pick a workspace
     assert result.tokens is not None
 
 
-async def test_callback_respects_last_chosen_workspace(
-    service, users, memberships
-) -> None:
+async def test_callback_respects_last_chosen_workspace(service, users, memberships) -> None:
     """last_chosen_workspace_id is persisted in the state row, not passed at callback time."""
     existing = User.from_google_claims(
         sub="sub-alice", email="alice@tuio.com", name="Alice", picture=None
@@ -257,7 +256,10 @@ async def test_callback_respects_last_chosen_workspace(
 async def test_callback_with_unknown_state_raises_invalid_state(service) -> None:
     with pytest.raises(InvalidStateError):
         await service.handle_callback(
-            code="c", state="nonexistent", ip_address=None, user_agent=None,
+            code="c",
+            state="nonexistent",
+            ip_address=None,
+            user_agent=None,
         )
 
 
@@ -266,12 +268,18 @@ async def test_callback_consumes_state_once(service, oauth_states) -> None:
     # First callback fails (no membership) but must still consume the state.
     with pytest.raises(NoWorkspaceAccessError):
         await service.handle_callback(
-            code="c", state=init.state, ip_address=None, user_agent=None,
+            code="c",
+            state=init.state,
+            ip_address=None,
+            user_agent=None,
         )
     # Replay must fail as invalid state, not NoWorkspaceAccessError.
     with pytest.raises(InvalidStateError):
         await service.handle_callback(
-            code="c", state=init.state, ip_address=None, user_agent=None,
+            code="c",
+            state=init.state,
+            ip_address=None,
+            user_agent=None,
         )
 
 
@@ -283,12 +291,13 @@ async def test_callback_when_google_fails_preserves_audit(
 
     with pytest.raises(OAuthExchangeError):
         await service.handle_callback(
-            code="c", state=init.state, ip_address="10.0.0.1", user_agent=None,
+            code="c",
+            state=init.state,
+            ip_address="10.0.0.1",
+            user_agent=None,
         )
 
-    assert any(
-        e.action == "login_failed_oauth_exchange" for e in audit_repo.events
-    )
+    assert any(e.action == "login_failed_oauth_exchange" for e in audit_repo.events)
     # No user row touched
     assert await users.get_by_google_sub("sub-alice") is None
 
@@ -302,9 +311,7 @@ async def test_seeded_email_becomes_superadmin_on_first_login(
     service, users, memberships, google, audit_repo
 ) -> None:
     init = await service.initiate_oauth()
-    google._claims = GoogleClaims(
-        sub="sub-root", email="root@tuio.com", name="Root", picture=None
-    )
+    google._claims = GoogleClaims(sub="sub-root", email="root@tuio.com", name="Root", picture=None)
     # Give root at least one active membership so the flow completes
     # (membership must exist before login since seed happens in-flow)
     # Here we let the membership be added post-upsert manually for test clarity.
@@ -313,7 +320,10 @@ async def test_seeded_email_becomes_superadmin_on_first_login(
     # — not straightforward here. Instead, assert superadmin flag even with no_access.
     with pytest.raises(NoWorkspaceAccessError):
         await service.handle_callback(
-            code="c", state=init.state, ip_address=None, user_agent=None,
+            code="c",
+            state=init.state,
+            ip_address=None,
+            user_agent=None,
         )
 
     stored = await users.get_by_email("root@tuio.com")
@@ -327,13 +337,9 @@ async def test_seeded_email_becomes_superadmin_on_first_login(
 # ---------------------------------------------------------------------------
 
 
-async def test_refresh_token_happy_path(
-    service, users, sessions, memberships
-) -> None:
+async def test_refresh_token_happy_path(service, users, sessions, memberships) -> None:
     # Set up existing login session
-    user = User.from_google_claims(
-        sub="s-r", email="r@tuio.com", name="R", picture=None
-    )
+    user = User.from_google_claims(sub="s-r", email="r@tuio.com", name="R", picture=None)
     await users.upsert(user)
     ws_id = uuid4()
     await memberships.create(
@@ -344,8 +350,11 @@ async def test_refresh_token_happy_path(
     raw = "raw-refresh-xyz"
     await sessions.create(
         Session.create(
-            user_id=user.id, raw_token=raw, ttl_seconds=3600,
-            ip_address=None, user_agent=None,
+            user_id=user.id,
+            raw_token=raw,
+            ttl_seconds=3600,
+            ip_address=None,
+            user_agent=None,
         )
     )
 
@@ -357,16 +366,17 @@ async def test_refresh_token_happy_path(
 
 
 async def test_refresh_token_expired_raises(service, users, sessions) -> None:
-    user = User.from_google_claims(
-        sub="s-e", email="e@tuio.com", name="E", picture=None
-    )
+    user = User.from_google_claims(sub="s-e", email="e@tuio.com", name="E", picture=None)
     await users.upsert(user)
     raw = "raw-exp"
     session = Session.create(
-        user_id=user.id, raw_token=raw, ttl_seconds=3600,
-        ip_address=None, user_agent=None,
+        user_id=user.id,
+        raw_token=raw,
+        ttl_seconds=3600,
+        ip_address=None,
+        user_agent=None,
     )
-    session.expires_at = datetime.now(timezone.utc) - timedelta(seconds=10)
+    session.expires_at = datetime.now(UTC) - timedelta(seconds=10)
     await sessions.create(session)
 
     with pytest.raises(SessionExpiredError):
@@ -374,14 +384,15 @@ async def test_refresh_token_expired_raises(service, users, sessions) -> None:
 
 
 async def test_refresh_token_revoked_raises(service, users, sessions) -> None:
-    user = User.from_google_claims(
-        sub="s-rev", email="rv@tuio.com", name="Rv", picture=None
-    )
+    user = User.from_google_claims(sub="s-rev", email="rv@tuio.com", name="Rv", picture=None)
     await users.upsert(user)
     raw = "raw-rev"
     session = Session.create(
-        user_id=user.id, raw_token=raw, ttl_seconds=3600,
-        ip_address=None, user_agent=None,
+        user_id=user.id,
+        raw_token=raw,
+        ttl_seconds=3600,
+        ip_address=None,
+        user_agent=None,
     )
     await sessions.create(session)
     await sessions.revoke(session.id)
@@ -400,17 +411,16 @@ async def test_refresh_token_unknown_raises(service) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_logout_revokes_session_and_audits(
-    service, users, sessions, audit_repo
-) -> None:
-    user = User.from_google_claims(
-        sub="s-l", email="l@tuio.com", name="L", picture=None
-    )
+async def test_logout_revokes_session_and_audits(service, users, sessions, audit_repo) -> None:
+    user = User.from_google_claims(sub="s-l", email="l@tuio.com", name="L", picture=None)
     await users.upsert(user)
     raw = "raw-logout"
     session = Session.create(
-        user_id=user.id, raw_token=raw, ttl_seconds=3600,
-        ip_address=None, user_agent=None,
+        user_id=user.id,
+        raw_token=raw,
+        ttl_seconds=3600,
+        ip_address=None,
+        user_agent=None,
     )
     await sessions.create(session)
 
@@ -436,9 +446,7 @@ async def test_refresh_token_idor_rejects_non_member_workspace(
     service, users, sessions, memberships
 ) -> None:
     """User A must not be able to mint a token for a workspace they don't belong to."""
-    user = User.from_google_claims(
-        sub="s-idor", email="idor@tuio.com", name="IDOR", picture=None
-    )
+    user = User.from_google_claims(sub="s-idor", email="idor@tuio.com", name="IDOR", picture=None)
     await users.upsert(user)
     ws_owned = uuid4()
     ws_foreign = uuid4()
@@ -450,8 +458,11 @@ async def test_refresh_token_idor_rejects_non_member_workspace(
     raw = "raw-idor"
     await sessions.create(
         Session.create(
-            user_id=user.id, raw_token=raw, ttl_seconds=3600,
-            ip_address=None, user_agent=None,
+            user_id=user.id,
+            raw_token=raw,
+            ttl_seconds=3600,
+            ip_address=None,
+            user_agent=None,
         )
     )
 
@@ -459,20 +470,19 @@ async def test_refresh_token_idor_rejects_non_member_workspace(
         await service.refresh_token(raw_refresh_token=raw, workspace_id=ws_foreign)
 
 
-async def test_refresh_token_suspended_user_raises(
-    service, users, sessions
-) -> None:
-    user = User.from_google_claims(
-        sub="s-sus", email="sus@tuio.com", name="Sus", picture=None
-    )
+async def test_refresh_token_suspended_user_raises(service, users, sessions) -> None:
+    user = User.from_google_claims(sub="s-sus", email="sus@tuio.com", name="Sus", picture=None)
     await users.upsert(user)
     user.status = "suspended"  # mutate after upsert to simulate admin action
 
     raw = "raw-sus"
     await sessions.create(
         Session.create(
-            user_id=user.id, raw_token=raw, ttl_seconds=3600,
-            ip_address=None, user_agent=None,
+            user_id=user.id,
+            raw_token=raw,
+            ttl_seconds=3600,
+            ip_address=None,
+            user_agent=None,
         )
     )
 
@@ -480,20 +490,19 @@ async def test_refresh_token_suspended_user_raises(
         await service.refresh_token(raw_refresh_token=raw, workspace_id=None)
 
 
-async def test_refresh_token_deleted_user_raises(
-    service, users, sessions
-) -> None:
-    user = User.from_google_claims(
-        sub="s-del", email="del@tuio.com", name="Del", picture=None
-    )
+async def test_refresh_token_deleted_user_raises(service, users, sessions) -> None:
+    user = User.from_google_claims(sub="s-del", email="del@tuio.com", name="Del", picture=None)
     await users.upsert(user)
     user.status = "deleted"
 
     raw = "raw-del"
     await sessions.create(
         Session.create(
-            user_id=user.id, raw_token=raw, ttl_seconds=3600,
-            ip_address=None, user_agent=None,
+            user_id=user.id,
+            raw_token=raw,
+            ttl_seconds=3600,
+            ip_address=None,
+            user_agent=None,
         )
     )
 

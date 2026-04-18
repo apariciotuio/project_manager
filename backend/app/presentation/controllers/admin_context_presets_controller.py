@@ -7,6 +7,7 @@ Routes:
   PATCH  /api/v1/admin/context-presets/{id}
   DELETE /api/v1/admin/context-presets/{id}
 """
+
 from __future__ import annotations
 
 import logging
@@ -173,9 +174,7 @@ async def delete_preset(
 ) -> None:
     assert current_user.workspace_id is not None
     try:
-        await service.delete_preset(
-            current_user.workspace_id, preset_id, current_user.id
-        )
+        await service.delete_preset(current_user.workspace_id, preset_id, current_user.id)
     except ContextPresetNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

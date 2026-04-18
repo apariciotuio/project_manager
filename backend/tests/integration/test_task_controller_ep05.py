@@ -3,6 +3,7 @@
 Tests split, merge, reorder, dependency add/remove/list, tree endpoint,
 and blocked tasks endpoint.
 """
+
 from __future__ import annotations
 
 import time

@@ -2,6 +2,7 @@
 
 Puppet is always the fake in tests (PUPPET_USE_FAKE=true from settings).
 """
+
 from __future__ import annotations
 
 import time
@@ -65,25 +66,31 @@ async def _seed(migrated_database) -> tuple[User, Workspace, str]:
         users = UserRepositoryImpl(session)
         workspaces = WorkspaceRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
-        user = User.from_google_claims(sub="ep09-search", email="ep09search@test.com", name="S", picture=None)
+        user = User.from_google_claims(
+            sub="ep09-search", email="ep09search@test.com", name="S", picture=None
+        )
         await users.upsert(user)
         ws = Workspace.create_from_email(email="ep09search@test.com", created_by=user.id)
         ws.slug = "ep09-search"
         await workspaces.create(ws)
         await memberships.create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
         await session.commit()
     await engine.dispose()
 
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    token = jwt.encode({
-        "sub": str(user.id),
-        "email": user.email,
-        "workspace_id": str(ws.id),
-        "is_superadmin": False,
-        "exp": int(time.time()) + 3600,
-    })
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "workspace_id": str(ws.id),
+            "is_superadmin": False,
+            "exp": int(time.time()) + 3600,
+        }
+    )
     return user, ws, token
 
 

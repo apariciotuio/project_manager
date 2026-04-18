@@ -6,6 +6,7 @@ Uses fakes only — no DB, no HTTP, no Dundun.
 8+ cases covering: happy path, empty/None/whitespace input,
 already-primed guard, Dundun failure, unknown work item, duplicate event.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

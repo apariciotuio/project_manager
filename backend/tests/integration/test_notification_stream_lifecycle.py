@@ -25,13 +25,13 @@ subscribe().  We override the stream endpoint's internal bus by monkey-patching
 `stream_notifications` to inject a FakePubSub via dependency override on
 get_jwt_adapter + module-level patch of PgNotificationBus.subscribe.
 """
+
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from collections.abc import AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -54,7 +54,7 @@ _CSRF_COOKIES = {"csrf_token": _CSRF_TOKEN}
 
 def _make_access_token(*, workspace_id: str | None = None, is_superadmin: bool = False) -> str:
     adapter = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": str(uuid4()),
         "email": f"{uuid4().hex[:8]}@tuio.com",
@@ -271,11 +271,7 @@ async def test_stream_valid_token_returns_event_stream_content_type(
     """Valid stream token → 200 text/event-stream response."""
     import app.infrastructure.sse.pg_notification_bus as bus_mod
 
-    fake_pubsub = FakePubSub(
-        [{"type": "done", "payload": {"message_id": "test-msg"}}]
-    )
-
-    original_init = bus_mod.PgNotificationBus.__init__
+    fake_pubsub = FakePubSub([{"type": "done", "payload": {"message_id": "test-msg"}}])
 
     def _patched_init(self, *, dsn=None, pool=None):  # noqa: ANN001
         self._dsn = dsn
@@ -311,9 +307,7 @@ async def test_stream_valid_token_delivers_done_frame(
     """Valid stream token + fake pubsub emitting done → done frame in body."""
     import app.infrastructure.sse.pg_notification_bus as bus_mod
 
-    fake_pubsub = FakePubSub(
-        [{"type": "done", "payload": {"message_id": "notif-final"}}]
-    )
+    fake_pubsub = FakePubSub([{"type": "done", "payload": {"message_id": "notif-final"}}])
 
     def _patched_init(self, *, dsn=None, pool=None):  # noqa: ANN001
         self._dsn = dsn
@@ -342,7 +336,7 @@ async def test_stream_valid_token_delivers_done_frame(
     # Verify message_id is in the data line
     for line in body.splitlines():
         if line.startswith("data: ") and "notif-final" in line:
-            parsed = json.loads(line[len("data: "):])
+            parsed = json.loads(line[len("data: ") :])
             assert parsed["message_id"] == "notif-final"
             break
     else:

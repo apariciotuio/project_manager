@@ -5,6 +5,7 @@ Routes:
   POST /work-item-drafts          — upsert draft (versioned)
   DELETE /work-item-drafts/{id}  — discard draft
 """
+
 from __future__ import annotations
 
 from typing import Any

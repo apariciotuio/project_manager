@@ -10,9 +10,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
 from httpx import ASGITransport, AsyncClient
-from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.application.services.auth_service import (

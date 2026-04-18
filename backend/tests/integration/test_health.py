@@ -28,8 +28,6 @@ async def test_health_includes_correlation_id_header(client: AsyncClient) -> Non
 @pytest.mark.integration
 async def test_health_propagates_provided_correlation_id(client: AsyncClient) -> None:
     custom_id = "test-correlation-id-12345"
-    response = await client.get(
-        "/api/v1/health", headers={"X-Correlation-Id": custom_id}
-    )
+    response = await client.get("/api/v1/health", headers={"X-Correlation-Id": custom_id})
 
     assert response.headers["X-Correlation-Id"] == custom_id

@@ -1,4 +1,5 @@
 """EP-10 — ValidationRuleTemplate domain entity."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -42,9 +43,7 @@ class ValidationRuleTemplate:
         if len(name) > 80:
             raise ValueError("name exceeds 80 characters")
         if requirement_type not in _REQUIREMENT_TYPES:
-            raise ValueError(
-                f"requirement_type must be one of {sorted(_REQUIREMENT_TYPES)}"
-            )
+            raise ValueError(f"requirement_type must be one of {sorted(_REQUIREMENT_TYPES)}")
         now = datetime.now(UTC)
         return cls(
             id=uuid4(),

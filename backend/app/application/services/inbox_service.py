@@ -9,6 +9,7 @@ Tier labels (fixed by spec):
   3 — Blocking items
   4 — Decisions needed
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -63,9 +64,7 @@ class InboxService:
                 "total": N
             }
         """
-        items = await self._inbox.get_inbox(
-            user_id, workspace_id, item_type=item_type
-        )
+        items = await self._inbox.get_inbox(user_id, workspace_id, item_type=item_type)
 
         tiers: dict[str, dict[str, Any]] = {
             str(tier): {"label": label, "items": [], "count": 0}
@@ -89,9 +88,7 @@ class InboxService:
         item_type: str | None = None,
     ) -> dict[str, Any]:
         """Return per-tier counts and total."""
-        raw = await self._inbox.get_counts(
-            user_id, workspace_id, item_type=item_type
-        )
+        raw = await self._inbox.get_counts(user_id, workspace_id, item_type=item_type)
         by_tier = {str(tier): raw.get(tier, 0) for tier in _TIER_LABELS}
         total = sum(by_tier.values())
         return {"by_tier": by_tier, "total": total}

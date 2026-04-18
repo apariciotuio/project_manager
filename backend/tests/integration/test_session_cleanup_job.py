@@ -7,10 +7,9 @@ case returns 0.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -69,7 +68,7 @@ async def _seed_session(engine, *, user_id, expires_at, revoked_at=None) -> None
                 revoked_at=revoked_at,
                 ip_address=None,
                 user_agent=None,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         )
         await s.commit()
@@ -84,7 +83,7 @@ async def _count_sessions(engine) -> int:
 
 async def test_cleanup_deletes_only_expired_sessions(clean_db) -> None:
     user = await _seed_user(clean_db)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # 2 expired, 3 active
     for _ in range(2):
         await _seed_session(clean_db, user_id=user.id, expires_at=now - timedelta(hours=1))

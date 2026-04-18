@@ -7,6 +7,7 @@ Security notes:
   - Uses hmac.compare_digest for constant-time comparison.
   - Never raises — all failure modes return False so callers can return 401.
 """
+
 from __future__ import annotations
 
 import hashlib

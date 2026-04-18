@@ -1,4 +1,5 @@
 """Mapper for SavedSearch — EP-09."""
+
 from __future__ import annotations
 
 from app.domain.models.saved_search import SavedSearch

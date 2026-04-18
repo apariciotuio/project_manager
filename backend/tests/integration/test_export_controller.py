@@ -3,12 +3,12 @@
 Strategy: override get_current_user + get_export_service to avoid DB/Jira deps.
 Tests exercise the controller layer only: auth guard, workspace guard, 202 response.
 """
+
 from __future__ import annotations
 
-import secrets
 from typing import Any
 from unittest.mock import AsyncMock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -38,7 +38,9 @@ _WORKSPACE_ID = uuid4()
 _USER_ID = uuid4()
 _WORK_ITEM_ID = uuid4()
 
-_JIRA_ISSUE = JiraIssue(key="PROJ-99", self_url="https://example.atlassian.net/rest/api/3/issue/99", id="99")
+_JIRA_ISSUE = JiraIssue(
+    key="PROJ-99", self_url="https://example.atlassian.net/rest/api/3/issue/99", id="99"
+)
 
 
 @pytest_asyncio.fixture
@@ -79,6 +81,7 @@ async def app_with_overrides():
 async def app_unauthenticated():
     """App where get_current_user raises 401."""
     from fastapi import HTTPException
+
     from app.main import create_app
     from app.presentation.dependencies import get_current_user
 
@@ -161,7 +164,9 @@ async def http_no_ws(app_no_workspace) -> AsyncClient:
 
 @pytest.mark.asyncio
 async def test_export_to_jira_returns_202(http: AsyncClient) -> None:
-    resp = await _post(http, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"})
+    resp = await _post(
+        http, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"}
+    )
     assert resp.status_code == 202
     body = resp.json()
     assert body["data"]["status"] == "queued"
@@ -170,14 +175,18 @@ async def test_export_to_jira_returns_202(http: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_export_to_jira_requires_authentication(http_unauthed: AsyncClient) -> None:
-    resp = await _post(http_unauthed, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"})
+    resp = await _post(
+        http_unauthed, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"}
+    )
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_export_to_jira_requires_workspace(http_no_ws: AsyncClient) -> None:
     """User authenticated but has no active workspace — should 401."""
-    resp = await _post(http_no_ws, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"})
+    resp = await _post(
+        http_no_ws, f"/api/v1/work-items/{_WORK_ITEM_ID}/export/jira", {"project_key": "PROJ"}
+    )
     assert resp.status_code == 401
     body = resp.json()
     assert body["error"]["code"] == "NO_WORKSPACE"

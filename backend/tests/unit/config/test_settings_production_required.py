@@ -1,4 +1,5 @@
 """[RED] Startup validation: required secrets must be set in production."""
+
 from __future__ import annotations
 
 import pytest

@@ -5,6 +5,7 @@ Tasks are now plain async functions; tests call them directly via asyncio.run().
 Injection strategy: monkeypatch `app.infrastructure.tasks.dundun_tasks._build_deps`
 to return FakeDundunClient + fake repos, bypassing the real DB session factory.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -173,6 +174,7 @@ def test_invoke_suggestion_agent_raises_on_server_error(monkeypatch: pytest.Monk
         }
 
     import app.infrastructure.tasks.dundun_tasks as tasks_module
+
     monkeypatch.setattr(tasks_module, "_build_deps", _fail_build_deps)
 
     async def _failing_invoke(**_kwargs: Any) -> dict[str, Any]:
@@ -339,6 +341,7 @@ def test_build_deps_raises_in_production_with_fake_flag(monkeypatch: pytest.Monk
         app = _FakeAppSettings()
 
     import app.config.settings as settings_module
+
     monkeypatch.setattr(settings_module, "get_settings", lambda: _FakeSettings())
 
     with pytest.raises(RuntimeError, match="FakeDundunClient not allowed in production"):

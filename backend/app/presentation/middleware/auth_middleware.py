@@ -64,9 +64,7 @@ def build_current_user_dependency(
             raise _unauthorized("INVALID_TOKEN", "access token is invalid") from None
 
         try:
-            workspace_id = (
-                UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
-            )
+            workspace_id = UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
             return CurrentUser(
                 id=UUID(claims["sub"]),
                 email=claims["email"],
@@ -75,8 +73,6 @@ def build_current_user_dependency(
             )
         except (KeyError, ValueError) as exc:
             logger.warning("malformed JWT claims: %s", exc)
-            raise _unauthorized(
-                "INVALID_TOKEN", "access token claims are malformed"
-            ) from exc
+            raise _unauthorized("INVALID_TOKEN", "access token claims are malformed") from exc
 
     return get_current_user

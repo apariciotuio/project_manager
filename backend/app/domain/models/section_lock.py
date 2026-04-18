@@ -1,4 +1,5 @@
 """EP-17 — SectionLock domain model."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,9 +39,7 @@ class SectionLock:
     def release(self, user_id: UUID) -> None:
         """Release the lock; raises LockConflictError if not owned by user_id."""
         if self.held_by != user_id:
-            raise LockConflictError(
-                f"Lock held by {self.held_by}, cannot be released by {user_id}"
-            )
+            raise LockConflictError(f"Lock held by {self.held_by}, cannot be released by {user_id}")
 
     def force_release(self) -> None:
         """Admin override — no ownership check."""

@@ -5,6 +5,7 @@ Routes:
   GET    /api/v1/work-items/{id}/attachments   — list
   DELETE /api/v1/attachments/{id}              — soft-delete
 """
+
 from __future__ import annotations
 
 import logging

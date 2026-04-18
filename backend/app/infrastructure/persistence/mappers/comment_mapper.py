@@ -1,4 +1,5 @@
 """Mapper for Comment — EP-07."""
+
 from __future__ import annotations
 
 from app.domain.models.comment import AnchorStatus, Comment, CommentActorType

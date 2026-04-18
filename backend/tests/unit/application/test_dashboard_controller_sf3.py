@@ -2,6 +2,7 @@
 
 Tests that user A cannot view user B's metrics unless A is a superadmin.
 """
+
 from __future__ import annotations
 
 import time
@@ -24,13 +25,15 @@ def _make_token(
     is_superadmin: bool = False,
 ) -> str:
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    return jwt.encode({
-        "sub": str(user_id),
-        "email": "test@test.com",
-        "workspace_id": str(workspace_id),
-        "is_superadmin": is_superadmin,
-        "exp": int(time.time()) + 3600,
-    })
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "email": "test@test.com",
+            "workspace_id": str(workspace_id),
+            "is_superadmin": is_superadmin,
+            "exp": int(time.time()) + 3600,
+        }
+    )
 
 
 @pytest.fixture
@@ -38,8 +41,8 @@ def app_with_fake_service(override_settings) -> FastAPI:
     """Stand-alone FastAPI app with faked PersonDashboardService dependency."""
     from app.main import create_app
     from app.presentation.dependencies import (
-        get_person_dashboard_service,
         get_cache_adapter,
+        get_person_dashboard_service,
     )
     from tests.fakes.fake_repositories import FakeCache
 

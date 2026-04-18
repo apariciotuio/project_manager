@@ -11,24 +11,24 @@ Scenarios:
 - Truncation: >100 projects → truncated list + _truncated flag
 - Deleted projects are not returned
 """
+
 from __future__ import annotations
 
-import pytest
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-from app.domain.models.project import Project
+import pytest
 
+from app.domain.models.project import Project
 from apps.mcp_server.tools.list_projects import (
-    ProjectSummary,
     handle_list_projects,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_project(
     name: str,
@@ -60,6 +60,7 @@ def _fake_service(projects: list[Project]) -> MagicMock:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestListProjectsShape:
     @pytest.mark.asyncio
@@ -150,7 +151,7 @@ class TestListProjectsCrossWorkspaceIsolation:
     async def test_projects_from_workspace_b_never_appear(self) -> None:
         """Service already scopes by workspace — tool passes workspace_id through."""
         ws_a = uuid4()
-        ws_b = uuid4()
+        uuid4()
 
         # Service for workspace A returns only A's projects
         project_a = _make_project("A-Project", workspace_id=ws_a)

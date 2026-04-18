@@ -2,22 +2,22 @@
 
 Tasks: 4.22 (gate passed → state=ready), 4.22 (gate blocked → ReadyGateBlockedError).
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
 
-from app.application.commands.transition_state_command import TransitionStateCommand
-from app.application.services.ready_gate_service import Blocker, GateResult
-from app.application.services.work_item_service import WorkItemService
-from app.domain.exceptions import MandatoryValidationsPendingError, ReadyGateBlockedError
-from app.domain.value_objects.work_item_state import WorkItemState
 import app.application.services.work_item_service as _wis_module
+from app.application.commands.transition_state_command import TransitionStateCommand
 from app.application.events.event_bus import Event, EventBus
 from app.application.services.audit_service import AuditService
-from app.domain.models.audit_event import AuditEvent
+from app.application.services.ready_gate_service import Blocker, GateResult
+from app.application.services.work_item_service import WorkItemService
+from app.domain.exceptions import ReadyGateBlockedError
 from app.domain.models.work_item import WorkItem
+from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
 from tests.fakes.fake_repositories import (
     FakeAuditRepository,
@@ -118,7 +118,9 @@ class TestReadyGateIntegration:
         assert saved.state is WorkItemState.READY
 
     @pytest.mark.asyncio
-    async def test_gate_blocked_raises_ready_gate_blocked_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_gate_blocked_raises_ready_gate_blocked_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(_wis_module, "COMPLETENESS_READY_THRESHOLD", 0)
         svc, item_repo, workspace_id = _make_svc(ready_gate=GateAlwaysBlocks())
         item, owner_id = _make_ready_item(workspace_id)
@@ -139,7 +141,9 @@ class TestReadyGateIntegration:
         assert exc_info.value.blockers[0].rule_id == "spec_review"
 
     @pytest.mark.asyncio
-    async def test_no_gate_injected_bypasses_validation(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_no_gate_injected_bypasses_validation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """When ready_gate=None, only completeness gate is checked (backwards compat)."""
         monkeypatch.setattr(_wis_module, "COMPLETENESS_READY_THRESHOLD", 0)
         svc, item_repo, workspace_id = _make_svc(ready_gate=None)

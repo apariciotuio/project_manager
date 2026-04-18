@@ -99,9 +99,7 @@ def _ensure_wmp_app_role(migrated_database, postgres_container):
         "postgresql+psycopg2://", "postgresql://"
     )
     with psycopg.connect(sync_url, autocommit=True) as conn:
-        row = conn.execute(
-            "SELECT 1 FROM pg_roles WHERE rolname = 'wmp_app'"
-        ).fetchone()
+        row = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'wmp_app'").fetchone()
         if not row:
             conn.execute("CREATE ROLE wmp_app NOSUPERUSER LOGIN PASSWORD 'wmp_app'")
 

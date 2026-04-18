@@ -17,9 +17,7 @@ class FakePuppetClient:
     def register_doc(self, doc_id: str, content: str, tags: list[str]) -> None:
         self._docs[doc_id] = {"doc_id": doc_id, "content": content, "tags": tags}
 
-    async def index_document(
-        self, doc_id: str, content: str, tags: list[str]
-    ) -> dict[str, Any]:
+    async def index_document(self, doc_id: str, content: str, tags: list[str]) -> dict[str, Any]:
         self._docs[doc_id] = {"doc_id": doc_id, "content": content, "tags": tags}
         self.index_calls.append({"doc_id": doc_id, "content": content, "tags": tags})
         return {"doc_id": doc_id, "status": "indexed"}

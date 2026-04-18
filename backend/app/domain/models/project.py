@@ -1,4 +1,5 @@
 """EP-10 — Project, RoutingRule domain entities."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

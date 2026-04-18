@@ -3,6 +3,7 @@
 Only tests generate + list_pending + update_single_status.
 apply_partial is deferred to EP-04+EP-07.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -12,7 +13,6 @@ import pytest
 
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeAssistantSuggestionRepository
-
 
 # ---------------------------------------------------------------------------
 # Helpers

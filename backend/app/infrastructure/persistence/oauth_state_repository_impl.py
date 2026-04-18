@@ -7,7 +7,7 @@ the browser can never succeed twice.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert
@@ -37,7 +37,7 @@ class OAuthStateRepositoryImpl(IOAuthStateRepository):
     ) -> None:
         if ttl_seconds <= 0:
             raise ValueError("ttl_seconds must be positive")
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+        expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
         stmt = insert(OAuthStateORM).values(
             state=state,
             verifier=verifier,
@@ -50,9 +50,7 @@ class OAuthStateRepositoryImpl(IOAuthStateRepository):
             await self._session.flush()
         except IntegrityError as exc:
             await self._session.rollback()
-            raise OAuthStateCollisionError(
-                f"duplicate oauth state PK: {state!r}"
-            ) from exc
+            raise OAuthStateCollisionError(f"duplicate oauth state PK: {state!r}") from exc
 
     async def consume(self, state: str) -> ConsumedOAuthState | None:
         stmt = (

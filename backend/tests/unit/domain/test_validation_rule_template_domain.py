@@ -1,4 +1,5 @@
 """Unit tests for ValidationRuleTemplate domain entity — EP-10 commit 2."""
+
 from __future__ import annotations
 
 from uuid import uuid4

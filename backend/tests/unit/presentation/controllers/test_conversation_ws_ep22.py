@@ -13,6 +13,7 @@ Covers:
   - _enrich_inbound_frame: all-invalid → empty suggested_sections list (present)
   - _enrich_inbound_frame: non-response frames forwarded verbatim
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

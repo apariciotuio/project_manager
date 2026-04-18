@@ -11,6 +11,7 @@ Covers:
   GET    /api/v1/work-items/{id}/versions/{n}/diff — diff vs previous
   GET    /api/v1/work-items/{id}/versions/diff?from=&to=  — arbitrary diff
 """
+
 from __future__ import annotations
 
 import time
@@ -253,10 +254,14 @@ async def test_edit_comment_other_user(http, seeded, migrated_database):
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         uid2 = uuid4().hex[:6]
-        user2 = User.from_google_claims(sub=f"ep07b-{uid2}", email=f"ep07b-{uid2}@test.com", name="EP07B", picture=None)
+        user2 = User.from_google_claims(
+            sub=f"ep07b-{uid2}", email=f"ep07b-{uid2}@test.com", name="EP07B", picture=None
+        )
         await UserRepositoryImpl(session).upsert(user2)
         await WorkspaceMembershipRepositoryImpl(session).create(
-            WorkspaceMembership.create(workspace_id=ws_id, user_id=user2.id, role="member", is_default=False)
+            WorkspaceMembership.create(
+                workspace_id=ws_id, user_id=user2.id, role="member", is_default=False
+            )
         )
         await session.commit()
     await engine.dispose()
@@ -309,18 +314,22 @@ async def test_reply_to_reply_rejected(http, seeded):
     _, _, wi_id, token = seeded
 
     # Create root
-    root = (await http.post(
-        f"/api/v1/work-items/{wi_id}/comments",
-        json={"body": "root"},
-        cookies={"access_token": token},
-    )).json()["data"]
+    root = (
+        await http.post(
+            f"/api/v1/work-items/{wi_id}/comments",
+            json={"body": "root"},
+            cookies={"access_token": token},
+        )
+    ).json()["data"]
 
     # Create reply to root
-    reply = (await http.post(
-        f"/api/v1/work-items/{wi_id}/comments",
-        json={"body": "reply", "parent_comment_id": root["id"]},
-        cookies={"access_token": token},
-    )).json()["data"]
+    reply = (
+        await http.post(
+            f"/api/v1/work-items/{wi_id}/comments",
+            json={"body": "reply", "parent_comment_id": root["id"]},
+            cookies={"access_token": token},
+        )
+    ).json()["data"]
 
     # Attempt reply to reply
     resp = await http.post(
@@ -433,6 +442,7 @@ async def test_list_versions_with_data(http, seeded, migrated_database):
     from app.infrastructure.persistence.work_item_version_repository_impl import (
         WorkItemVersionRepositoryImpl,
     )
+
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -465,6 +475,7 @@ async def test_get_version_snapshot(http, seeded, migrated_database):
     from app.infrastructure.persistence.work_item_version_repository_impl import (
         WorkItemVersionRepositoryImpl,
     )
+
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -498,6 +509,7 @@ async def test_diff_arbitrary_versions(http, seeded, migrated_database):
     from app.infrastructure.persistence.work_item_version_repository_impl import (
         WorkItemVersionRepositoryImpl,
     )
+
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:

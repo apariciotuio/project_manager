@@ -1,4 +1,5 @@
 """EP-08 — Team + TeamMembership + Notification."""
+
 from __future__ import annotations
 
 from uuid import uuid4

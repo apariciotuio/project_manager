@@ -6,7 +6,6 @@ repos, audit, sessions, state storage) runs against the real implementations.
 
 from __future__ import annotations
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -134,9 +133,7 @@ async def test_callback_happy_path_sets_cookies_and_redirects(http, migrated_dat
 
     state = parse_qs(urlparse(init.headers["location"]).query)["state"][0]
 
-    resp = await http.get(
-        f"/api/v1/auth/google/callback?code=dummy-code&state={state}"
-    )
+    resp = await http.get(f"/api/v1/auth/google/callback?code=dummy-code&state={state}")
 
     assert resp.status_code == 302
     assert "/workspace/tuio" in resp.headers["location"]
@@ -183,9 +180,7 @@ async def test_callback_no_workspace_redirects(http, migrated_database) -> None:
     async with factory() as session:
         users = UserRepositoryImpl(session)
         await users.upsert(
-            User.from_google_claims(
-                sub="sub-alice", email="alice@tuio.com", name="A", picture=None
-            )
+            User.from_google_claims(sub="sub-alice", email="alice@tuio.com", name="A", picture=None)
         )
         await session.commit()
     await eng.dispose()
@@ -231,9 +226,7 @@ async def test_me_authenticated_returns_user_and_workspace(http, migrated_databa
     )
     assert access, "access_token cookie must be set by callback"
 
-    resp = await http.get(
-        "/api/v1/auth/me", cookies={"access_token": access}
-    )
+    resp = await http.get("/api/v1/auth/me", cookies={"access_token": access})
     assert resp.status_code == 200, resp.text
     body = resp.json()["data"]
     assert body["email"] == "alice@tuio.com"
@@ -313,9 +306,7 @@ async def test_refresh_without_cookie_returns_401(http) -> None:
 
 
 async def test_refresh_with_unknown_token_returns_401(http) -> None:
-    resp = await http.post(
-        "/api/v1/auth/refresh", cookies={"refresh_token": "never-issued"}
-    )
+    resp = await http.post("/api/v1/auth/refresh", cookies={"refresh_token": "never-issued"})
     assert resp.status_code == 401
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -33,8 +33,11 @@ async def _persisted_user(users, db_session, *, sub: str, email: str) -> UUID:
 async def test_create_persists_session(sessions, users, db_session) -> None:
     user_id = await _persisted_user(users, db_session, sub="s-1", email="a@tuio.com")
     session = Session.create(
-        user_id=user_id, raw_token="tok1", ttl_seconds=60,
-        ip_address="10.0.0.1", user_agent="ua",
+        user_id=user_id,
+        raw_token="tok1",
+        ttl_seconds=60,
+        ip_address="10.0.0.1",
+        user_agent="ua",
     )
     await sessions.create(session)
     await db_session.commit()
@@ -57,8 +60,11 @@ async def test_revoke_sets_timestamp(sessions, users, db_session) -> None:
 
     user_id = await _persisted_user(users, db_session, sub="s-2", email="b@tuio.com")
     session = Session.create(
-        user_id=user_id, raw_token="tok2", ttl_seconds=60,
-        ip_address=None, user_agent=None,
+        user_id=user_id,
+        raw_token="tok2",
+        ttl_seconds=60,
+        ip_address=None,
+        user_agent=None,
     )
     await sessions.create(session)
     await db_session.commit()
@@ -68,9 +74,7 @@ async def test_revoke_sets_timestamp(sessions, users, db_session) -> None:
 
     # get_by_token_hash filters revoked sessions — use raw ORM query to assert
     row = (
-        await db_session.execute(
-            select(SessionORM).where(SessionORM.id == session.id)
-        )
+        await db_session.execute(select(SessionORM).where(SessionORM.id == session.id))
     ).scalar_one_or_none()
     assert row is not None
     assert row.revoked_at is not None, "revoke must set revoked_at"
@@ -83,14 +87,20 @@ async def test_revoke_sets_timestamp(sessions, users, db_session) -> None:
 async def test_delete_expired_removes_only_expired(sessions, users, db_session) -> None:
     user_id = await _persisted_user(users, db_session, sub="s-3", email="c@tuio.com")
     fresh = Session.create(
-        user_id=user_id, raw_token="fresh", ttl_seconds=3600,
-        ip_address=None, user_agent=None,
+        user_id=user_id,
+        raw_token="fresh",
+        ttl_seconds=3600,
+        ip_address=None,
+        user_agent=None,
     )
     expired = Session.create(
-        user_id=user_id, raw_token="expired", ttl_seconds=3600,
-        ip_address=None, user_agent=None,
+        user_id=user_id,
+        raw_token="expired",
+        ttl_seconds=3600,
+        ip_address=None,
+        user_agent=None,
     )
-    expired.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    expired.expires_at = datetime.now(UTC) - timedelta(minutes=1)
     await sessions.create(fresh)
     await sessions.create(expired)
     await db_session.commit()

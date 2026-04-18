@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-
-from app.infrastructure.adapters.jwt_adapter import (
-    JwtAdapter,
-    TokenExpiredError,
-    TokenInvalidError,
-)
-from app.presentation.dependencies import get_jwt_adapter
 
 from app.application.services.auth_service import (
     AuthService,
@@ -26,6 +19,11 @@ from app.application.services.auth_service import (
     UserSuspendedError,
 )
 from app.infrastructure.adapters.google_oauth_adapter import OAuthExchangeError
+from app.infrastructure.adapters.jwt_adapter import (
+    JwtAdapter,
+    TokenExpiredError,
+    TokenInvalidError,
+)
 from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
 from app.infrastructure.persistence.workspace_repository_impl import (
     WorkspaceRepositoryImpl,
@@ -33,6 +31,7 @@ from app.infrastructure.persistence.workspace_repository_impl import (
 from app.presentation.dependencies import (
     get_auth_service,
     get_current_user,
+    get_jwt_adapter,
     get_user_repo,
     get_workspace_repo,
 )
@@ -206,17 +205,13 @@ async def google_callback(
             location = f"/workspace/{slug}"
 
     response = RedirectResponse(url=location, status_code=302)
-    access_ttl = max(1, int((tokens.access_token_expires_at - datetime.now(timezone.utc)).total_seconds()))
+    access_ttl = max(1, int((tokens.access_token_expires_at - datetime.now(UTC)).total_seconds()))
     refresh_ttl = max(
         1,
-        int((tokens.refresh_token_expires_at - datetime.now(timezone.utc)).total_seconds()),
+        int((tokens.refresh_token_expires_at - datetime.now(UTC)).total_seconds()),
     )
-    _set_access_cookie(
-        response, tokens.access_token, access_ttl, secure=secure_cookies
-    )
-    _set_refresh_cookie(
-        response, tokens.refresh_token, refresh_ttl, secure=secure_cookies
-    )
+    _set_access_cookie(response, tokens.access_token, access_ttl, secure=secure_cookies)
+    _set_refresh_cookie(response, tokens.refresh_token, refresh_ttl, secure=secure_cookies)
     _set_csrf_cookie(response, access_ttl, secure=secure_cookies)
     return response
 
@@ -245,9 +240,7 @@ async def refresh_token(
         workspace_id = ws.id if ws else None
 
     try:
-        pair = await auth.refresh_token(
-            raw_refresh_token=refresh_token, workspace_id=workspace_id
-        )
+        pair = await auth.refresh_token(raw_refresh_token=refresh_token, workspace_id=workspace_id)
     except SessionExpiredError:
         _clear_cookies(response, secure=secure_cookies)
         raise HTTPException(
@@ -275,11 +268,9 @@ async def refresh_token(
 
     access_ttl = max(
         1,
-        int((pair.access_token_expires_at - datetime.now(timezone.utc)).total_seconds()),
+        int((pair.access_token_expires_at - datetime.now(UTC)).total_seconds()),
     )
-    _set_access_cookie(
-        response, pair.access_token, access_ttl, secure=secure_cookies
-    )
+    _set_access_cookie(response, pair.access_token, access_ttl, secure=secure_cookies)
     _set_csrf_cookie(response, access_ttl, secure=secure_cookies)
     return {
         "data": {
@@ -311,8 +302,16 @@ async def logout(
 
     secure_cookies = request.url.scheme == "https"
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/", httponly=True, secure=secure_cookies, samesite="lax")
-    response.delete_cookie(REFRESH_TOKEN_COOKIE, path=REFRESH_COOKIE_PATH, httponly=True, secure=secure_cookies, samesite="lax")
+    response.delete_cookie(
+        ACCESS_TOKEN_COOKIE, path="/", httponly=True, secure=secure_cookies, samesite="lax"
+    )
+    response.delete_cookie(
+        REFRESH_TOKEN_COOKIE,
+        path=REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=secure_cookies,
+        samesite="lax",
+    )
     return response
 
 

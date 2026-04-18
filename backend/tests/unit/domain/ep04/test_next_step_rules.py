@@ -2,12 +2,11 @@
 
 One test per rule. Rules are tested in isolation by controlling inputs.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from uuid import UUID, uuid4
-
-import pytest
 
 from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
 from app.domain.quality.next_step_rules import evaluate
@@ -130,7 +129,9 @@ class TestInClarificationRule:
 
     def test_unfilled_dims_returns_fill_gaps(self) -> None:
         dims = [
-            DimensionResult("acceptance_criteria", weight=0.22, applicable=True, filled=False, score=0.0),
+            DimensionResult(
+                "acceptance_criteria", weight=0.22, applicable=True, filled=False, score=0.0
+            ),
         ]
         wi = _WI(owner_id=uuid4(), state=WorkItemState.IN_CLARIFICATION)
         result = evaluate(wi, _completeness(30, dims), [])
@@ -162,8 +163,12 @@ class TestAssignValidatorsRule:
     def test_no_validators_returns_assign_validators(self) -> None:
         dims = [
             DimensionResult(
-                "validations", weight=0.12, applicable=True, filled=False, score=0.0,
-                message="assign validator"
+                "validations",
+                weight=0.12,
+                applicable=True,
+                filled=False,
+                score=0.0,
+                message="assign validator",
             ),
         ]
         wi = _WI(owner_id=uuid4(), state=WorkItemState.IN_REVIEW)

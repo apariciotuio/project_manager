@@ -6,6 +6,7 @@ All domain errors inherit from DomainError and reference a code from this regist
 The TS mirror lives at frontend/lib/errors/codes.ts — keep in sync manually.
 When the registry exceeds ~50 codes, consider codegen.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -140,6 +141,8 @@ class ConfigurationError(DomainError):
 
     code = "CONFIGURATION_ERROR"
 
-    def __init__(self, variable_name: str, reason: str = "required in production but not set") -> None:
+    def __init__(
+        self, variable_name: str, reason: str = "required in production but not set"
+    ) -> None:
         super().__init__(f"Configuration error: {variable_name} — {reason}", field=variable_name)
         self.variable_name = variable_name

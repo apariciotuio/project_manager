@@ -1,4 +1,5 @@
 """WorkItem domain entity — pure, no infrastructure or ORM dependencies."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -123,9 +124,7 @@ class WorkItem:
             return DerivedState.BLOCKED
         return DerivedState.IN_PROGRESS
 
-    def can_transition_to(
-        self, target: WorkItemState, actor_id: UUID
-    ) -> tuple[bool, str]:
+    def can_transition_to(self, target: WorkItemState, actor_id: UUID) -> tuple[bool, str]:
         if actor_id != self.owner_id:
             return False, "not_owner"
         if not is_valid_transition(self.state, target):

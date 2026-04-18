@@ -1,4 +1,5 @@
 """EP-13 — IPuppetIngestRequestRepository interface."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -12,7 +13,9 @@ class IPuppetIngestRequestRepository(Protocol):
 
     async def get(self, request_id: UUID) -> PuppetIngestRequest | None: ...
 
-    async def claim_queued_batch(self, workspace_id: UUID, limit: int) -> list[PuppetIngestRequest]: ...
+    async def claim_queued_batch(
+        self, workspace_id: UUID, limit: int
+    ) -> list[PuppetIngestRequest]: ...
 
     async def has_succeeded_for_work_item(self, work_item_id: UUID) -> bool: ...
 

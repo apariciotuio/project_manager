@@ -1,4 +1,5 @@
 """Tests for content_quality gap detection rule."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -42,17 +43,14 @@ class TestDescriptionLength:
         item = _work_item(description="Too short")  # 9 chars
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_description_exactly_50_chars_no_gap(self) -> None:
         item = _work_item(description="A" * 50)
         result = check_content_quality(item)
         length_gaps = [
-            f
-            for f in result
-            if f.dimension == "description" and "short" in f.message.lower()
+            f for f in result if f.dimension == "description" and "short" in f.message.lower()
         ]
         assert length_gaps == []
 
@@ -60,17 +58,14 @@ class TestDescriptionLength:
         item = _work_item(description="A" * 49)
         result = check_content_quality(item)
         assert any(
-            f.dimension == "description" and f.severity == GapSeverity.WARNING
-            for f in result
+            f.dimension == "description" and f.severity == GapSeverity.WARNING for f in result
         )
 
     def test_description_51_chars_no_length_gap(self) -> None:
         item = _work_item(description="A" * 51)
         result = check_content_quality(item)
         length_gaps = [
-            f
-            for f in result
-            if f.dimension == "description" and "short" in f.message.lower()
+            f for f in result if f.dimension == "description" and "short" in f.message.lower()
         ]
         assert length_gaps == []
 
@@ -80,40 +75,35 @@ class TestVaguePhrases:
         item = _work_item(description="TBD")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_todo_alone_returns_warning(self) -> None:
         item = _work_item(description="TODO")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_na_alone_returns_warning(self) -> None:
         item = _work_item(description="N/A")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_tbd_lowercase_returns_warning(self) -> None:
         item = _work_item(description="tbd")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_todo_lowercase_returns_warning(self) -> None:
         item = _work_item(description="todo")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
     def test_tbd_in_longer_text_no_vague_gap(self) -> None:
@@ -122,9 +112,7 @@ class TestVaguePhrases:
         item = _work_item(description=base * 2)
         result = check_content_quality(item)
         vague_gaps = [
-            f
-            for f in result
-            if "vague" in f.message.lower() or "placeholder" in f.message.lower()
+            f for f in result if "vague" in f.message.lower() or "placeholder" in f.message.lower()
         ]
         assert vague_gaps == []
 
@@ -134,9 +122,7 @@ class TestVaguePhrases:
         item = _work_item(description=base * 2)
         result = check_content_quality(item)
         vague_gaps = [
-            f
-            for f in result
-            if "vague" in f.message.lower() or "placeholder" in f.message.lower()
+            f for f in result if "vague" in f.message.lower() or "placeholder" in f.message.lower()
         ]
         assert vague_gaps == []
 
@@ -144,8 +130,7 @@ class TestVaguePhrases:
         item = _work_item(description="  TBD  ")
         result = check_content_quality(item)
         assert any(
-            f.severity == GapSeverity.WARNING and f.dimension == "description"
-            for f in result
+            f.severity == GapSeverity.WARNING and f.dimension == "description" for f in result
         )
 
 

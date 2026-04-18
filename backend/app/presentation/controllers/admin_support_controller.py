@@ -8,6 +8,7 @@ Routes:
   POST /api/v1/admin/support/reassign-owner
   POST /api/v1/admin/support/failed-exports/retry-all
 """
+
 from __future__ import annotations
 
 import logging
@@ -117,12 +118,16 @@ async def reassign_owner(
     except ReassignTargetInactiveError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "reassign_target_inactive", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "reassign_target_inactive", "message": str(exc), "details": {}}
+            },
         ) from exc
     except ReassignTerminalItemError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "reassign_terminal_item", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "reassign_terminal_item", "message": str(exc), "details": {}}
+            },
         ) from exc
     except SupportError as exc:
         raise HTTPException(
@@ -139,12 +144,12 @@ async def retry_all_failed_exports(
 ) -> dict[str, Any]:
     assert current_user.workspace_id is not None
     try:
-        result = await service.retry_all_failed_exports(
-            current_user.workspace_id, current_user.id
-        )
+        result = await service.retry_all_failed_exports(current_user.workspace_id, current_user.id)
     except RetryAllRateLimitedError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={"error": {"code": "retry_all_rate_limited", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "retry_all_rate_limited", "message": str(exc), "details": {}}
+            },
         ) from exc
     return _ok(result, "retries queued")

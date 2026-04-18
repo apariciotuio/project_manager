@@ -15,6 +15,7 @@ ValidationStatus no-regression table:
     waived   -> *        BLOCKED
     obsolete -> *        BLOCKED
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,9 +68,9 @@ class WaiveRequiredRuleError(Exception):
     """waive() called on a required validation rule."""
 
 
-_TERMINAL_VALIDATION_STATES = frozenset({
-    ValidationState.PASSED, ValidationState.WAIVED, ValidationState.OBSOLETE
-})
+_TERMINAL_VALIDATION_STATES = frozenset(
+    {ValidationState.PASSED, ValidationState.WAIVED, ValidationState.OBSOLETE}
+)
 
 
 @dataclass
@@ -95,11 +96,12 @@ class ReviewRequest:
                 raise ReviewInvariantError(
                     "reviewer_type=user requires reviewer_id set and team_id unset"
                 )
-        elif self.reviewer_type is ReviewerType.TEAM:
-            if self.team_id is None or self.reviewer_id is not None:
-                raise ReviewInvariantError(
-                    "reviewer_type=team requires team_id set and reviewer_id unset"
-                )
+        elif self.reviewer_type is ReviewerType.TEAM and (
+            self.team_id is None or self.reviewer_id is not None
+        ):
+            raise ReviewInvariantError(
+                "reviewer_type=team requires team_id set and reviewer_id unset"
+            )
 
     @classmethod
     def create_for_user(
@@ -151,17 +153,13 @@ class ReviewRequest:
 
     def cancel(self) -> None:
         if self.status is not ReviewStatus.PENDING:
-            raise ReviewAlreadyClosedError(
-                f"cannot cancel review in status {self.status.value}"
-            )
+            raise ReviewAlreadyClosedError(f"cannot cancel review in status {self.status.value}")
         self.status = ReviewStatus.CANCELLED
         self.cancelled_at = datetime.now(UTC)
 
     def close(self) -> None:
         if self.status is not ReviewStatus.PENDING:
-            raise ReviewAlreadyClosedError(
-                f"cannot close review in status {self.status.value}"
-            )
+            raise ReviewAlreadyClosedError(f"cannot close review in status {self.status.value}")
         self.status = ReviewStatus.CLOSED
 
 
@@ -184,9 +182,7 @@ class ReviewResponse:
         content: str | None = None,
     ) -> ReviewResponse:
         if decision is not ReviewDecision.APPROVED and not (content or "").strip():
-            raise ContentRequiredError(
-                "content is required when decision is not 'approved'"
-            )
+            raise ContentRequiredError("content is required when decision is not 'approved'")
         return cls(
             id=uuid4(),
             review_request_id=review_request_id,
@@ -247,18 +243,14 @@ class ValidationStatus:
         if self.status is ValidationState.PASSED:
             return  # idempotent
         if self.status in _TERMINAL_VALIDATION_STATES:
-            raise ValidationTransitionError(
-                f"cannot mark passed from state {self.status.value!r}"
-            )
+            raise ValidationTransitionError(f"cannot mark passed from state {self.status.value!r}")
         self.status = ValidationState.PASSED
         self.passed_at = datetime.now(UTC)
         self.passed_by_review_request_id = by_review_request_id
 
     def mark_waived(self, *, waived_by: UUID, waive_reason: str | None = None) -> None:
         if self.status in _TERMINAL_VALIDATION_STATES:
-            raise ValidationTransitionError(
-                f"cannot waive from state {self.status.value!r}"
-            )
+            raise ValidationTransitionError(f"cannot waive from state {self.status.value!r}")
         self.status = ValidationState.WAIVED
         self.waived_at = datetime.now(UTC)
         self.waived_by = waived_by

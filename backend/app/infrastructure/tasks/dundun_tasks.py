@@ -109,6 +109,7 @@ async def invoke_suggestion_agent(
     session = deps.get("_session")
     try:
         from app.config.settings import get_settings
+
         settings = get_settings()
 
         # Idempotency check: scan existing batch rows for a prior request_id.
@@ -117,8 +118,7 @@ async def invoke_suggestion_agent(
         for row in existing:
             if row.dundun_request_id:
                 logger.info(
-                    "invoke_suggestion_agent skipped (already invoked) "
-                    "batch_id=%s request_id=%s",
+                    "invoke_suggestion_agent skipped (already invoked) batch_id=%s request_id=%s",
                     batch_id,
                     row.dundun_request_id,
                 )
@@ -164,6 +164,7 @@ async def invoke_gap_agent(
     session = deps.get("_session")
     try:
         from app.config.settings import get_settings
+
         settings = get_settings()
 
         result = await dundun_client.invoke_agent(
@@ -213,6 +214,7 @@ async def invoke_quick_action_agent(
     session = deps.get("_session")
     try:
         from app.config.settings import get_settings
+
         settings = get_settings()
 
         payload: dict[str, str] = {

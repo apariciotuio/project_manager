@@ -1,4 +1,5 @@
 """EP-07 Phase 1 — WorkItemVersion domain entity tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -39,7 +40,13 @@ class TestWorkItemVersionInvariants:
             _make(version_number=-1)
 
     def test_valid_triggers(self) -> None:
-        for t in ("content_edit", "state_transition", "review_outcome", "breakdown_change", "manual"):
+        for t in (
+            "content_edit",
+            "state_transition",
+            "review_outcome",
+            "breakdown_change",
+            "manual",
+        ):
             v = _make(trigger=t)
             assert v.trigger == VersionTrigger(t)
 

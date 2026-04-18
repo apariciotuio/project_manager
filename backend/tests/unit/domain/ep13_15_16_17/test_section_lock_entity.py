@@ -1,4 +1,5 @@
 """Unit tests for SectionLock domain model — EP-17."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

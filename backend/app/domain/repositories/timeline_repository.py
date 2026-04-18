@@ -1,4 +1,5 @@
 """EP-07 — Repository interface for TimelineEvent."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

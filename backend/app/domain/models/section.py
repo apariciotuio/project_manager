@@ -4,6 +4,7 @@ One row per (work_item_id, section_type). Mutable content; version increments
 on every save. An append-only SectionVersion row is written before overwriting
 content (see SectionRepository.save).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

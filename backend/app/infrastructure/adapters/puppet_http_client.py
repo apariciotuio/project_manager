@@ -12,6 +12,7 @@ no workspace concept; isolation via category = 'wm_<workspace_id>'.
 
 Outbound auth: Authorization: Bearer <api_key>
 """
+
 from __future__ import annotations
 
 import json
@@ -78,9 +79,7 @@ class PuppetHTTPClient:
             )
         return PuppetClientError(f"Puppet error {status}: {body}")
 
-    async def index_document(
-        self, doc_id: str, content: str, tags: list[str]
-    ) -> dict[str, Any]:
+    async def index_document(self, doc_id: str, content: str, tags: list[str]) -> dict[str, Any]:
         """Upsert a document into Puppet.
 
         TODO: Puppet platform-ingestion (/api/v1/documents) is PENDING.
@@ -130,9 +129,7 @@ class PuppetHTTPClient:
                 headers=self._headers(),
             )
         if response.status_code >= 400:
-            raise PuppetClientError(
-                f"Puppet search error {response.status_code}: {response.text}"
-            )
+            raise PuppetClientError(f"Puppet search error {response.status_code}: {response.text}")
         data: list[dict[str, Any]] = response.json()
         return data
 
@@ -140,7 +137,5 @@ class PuppetHTTPClient:
         async with self._build_client() as client:
             response = await client.get(_HEALTH_PATH, headers=self._headers())
         if response.status_code >= 400:
-            raise PuppetClientError(
-                f"Puppet health error {response.status_code}: {response.text}"
-            )
+            raise PuppetClientError(f"Puppet health error {response.status_code}: {response.text}")
         return response.json()  # type: ignore[no-any-return]

@@ -7,6 +7,7 @@ modifying the EP-08 base that other parts of the app already import.
 Controllers should inject ExtendedNotificationService via
 get_extended_notification_service in dependencies.py.
 """
+
 from __future__ import annotations
 
 import logging

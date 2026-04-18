@@ -12,6 +12,7 @@ Uses httpx/TestClient with a minimal FastAPI app. PgNotificationBus and
 JobProgressService are faked via dependency overrides and module-level
 monkeypatching — no real Postgres LISTEN/NOTIFY needed here.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,7 +32,6 @@ from app.presentation.controllers.job_progress_controller import (
     router,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,9 +63,8 @@ def _make_app(
         loop = asyncio.new_event_loop()
         loop.run_until_complete(svc.set_state("test-job", JobState.RUNNING))
         # Overwrite with provided state dict by directly writing to store
-        import time
-        from app.infrastructure.sse.job_progress_service import _Entry
-        from app.infrastructure.sse.job_progress_service import _JOB_TTL
+        from app.infrastructure.sse.job_progress_service import _JOB_TTL, _Entry
+
         svc._store["test-job"] = _Entry(job_state, _JOB_TTL)
         loop.close()
 
@@ -120,7 +119,7 @@ def test_sse_job_progress_done_frame() -> None:
     assert "event: done" in body
     for line in body.splitlines():
         if line.startswith("data: ") and "msg-final" in line:
-            parsed = json.loads(line[len("data: "):])
+            parsed = json.loads(line[len("data: ") :])
             assert parsed["message_id"] == "msg-final"
             break
     else:
@@ -130,7 +129,11 @@ def test_sse_job_progress_done_frame() -> None:
 def test_sse_job_progress_error_frame() -> None:
     """Streaming ends with event: error frame when job fails."""
     events = [
-        {"type": "error", "payload": {"message": "upstream crashed"}, "channel": "sse:job:test-job"},
+        {
+            "type": "error",
+            "payload": {"message": "upstream crashed"},
+            "channel": "sse:job:test-job",
+        },
     ]
     app = _make_app(job_state={"state": "running", "progress": 0}, stream_events=events)
     client = TestClient(app)
@@ -187,8 +190,6 @@ def test_sse_job_progress_progress_frame_format() -> None:
     body = resp.text
     lines = body.splitlines()
     found = any(
-        '"pct": 25' in line or '"pct":25' in line
-        for line in lines
-        if line.startswith("data: ")
+        '"pct": 25' in line or '"pct":25' in line for line in lines if line.startswith("data: ")
     )
     assert found, f"progress frame not found. body=\n{body}"

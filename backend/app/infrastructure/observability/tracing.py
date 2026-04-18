@@ -20,8 +20,8 @@ When adding a real backend:
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 
 class NoOpSpan:
@@ -38,7 +38,7 @@ class NoOpSpan:
 
 
 @contextmanager
-def span(name: str) -> Generator[NoOpSpan, None, None]:
+def span(name: str) -> Generator[NoOpSpan]:
     """Create a tracing span context.
 
     Args:

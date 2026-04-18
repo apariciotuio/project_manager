@@ -9,14 +9,14 @@ Covers:
 - NotificationService.execute_action: review already resolved → StaleActionError
 - NotificationService.execute_action: notification not found → NotFoundError
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
 
-from app.domain.models.team import Notification, NotificationState
-
+from app.domain.models.team import Notification
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -46,10 +46,12 @@ class FakeNotificationRepository:
 
     async def list_unread_for_user(self, *a, **kw):
         from app.domain.queries.page import Page
+
         return Page(items=[], total=0, page=1, page_size=20)
 
     async def list_inbox_cursor(self, *a, **kw):
         from app.infrastructure.pagination import PaginationResult
+
         return PaginationResult(rows=[], has_next=False, next_cursor=None)
 
     async def unread_count(self, *a, **kw):
@@ -142,12 +144,15 @@ class TestExecuteAction:
 
         dispatcher.register("approve", fake_approve)
 
-        svc = NotificationService(
-            notification_repo=repo, quick_action_dispatcher=dispatcher
-        )
+        svc = NotificationService(notification_repo=repo, quick_action_dispatcher=dispatcher)
 
         n = _make_notification(
-            quick_action={"action": "approve", "endpoint": "/x", "method": "POST", "payload_schema": {}}
+            quick_action={
+                "action": "approve",
+                "endpoint": "/x",
+                "method": "POST",
+                "payload_schema": {},
+            }
         )
         await repo.create(n)
 
@@ -169,9 +174,7 @@ class TestExecuteAction:
 
         repo = FakeNotificationRepository()
         dispatcher = QuickActionDispatcher()
-        svc = NotificationService(
-            notification_repo=repo, quick_action_dispatcher=dispatcher
-        )
+        svc = NotificationService(notification_repo=repo, quick_action_dispatcher=dispatcher)
 
         with pytest.raises(NotificationNotFoundError):
             await svc.execute_action(
@@ -189,12 +192,15 @@ class TestExecuteAction:
 
         repo = FakeNotificationRepository()
         dispatcher = QuickActionDispatcher()
-        svc = NotificationService(
-            notification_repo=repo, quick_action_dispatcher=dispatcher
-        )
+        svc = NotificationService(notification_repo=repo, quick_action_dispatcher=dispatcher)
 
         n = _make_notification(
-            quick_action={"action": "approve", "endpoint": "/x", "method": "POST", "payload_schema": {}}
+            quick_action={
+                "action": "approve",
+                "endpoint": "/x",
+                "method": "POST",
+                "payload_schema": {},
+            }
         )
         n.mark_actioned()
         await repo.create(n)

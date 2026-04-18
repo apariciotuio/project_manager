@@ -1,4 +1,5 @@
 """Mappers for Attachment — EP-16."""
+
 from __future__ import annotations
 
 from app.domain.models.attachment import Attachment

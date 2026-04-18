@@ -1,4 +1,5 @@
 """Unit tests for WorkItem enums and value objects — RED phase."""
+
 from __future__ import annotations
 
 import pytest

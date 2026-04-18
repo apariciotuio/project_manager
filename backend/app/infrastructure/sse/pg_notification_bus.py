@@ -24,6 +24,7 @@ LISTEN/NOTIFY is per-connection: messages are delivered only to the Postgres
 connection that issued LISTEN. This is fine for single-worker Uvicorn.
 Multi-worker deployments need a shared broker — document this before scaling.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -180,7 +181,7 @@ class PgNotificationBus:
                     data = await asyncio.wait_for(queue.get(), timeout=poll_interval)
                     yield data
                     count += 1
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if max_messages is not None:
                         # bounded iteration with no message — keep waiting
                         continue

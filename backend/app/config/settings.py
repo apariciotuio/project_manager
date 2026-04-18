@@ -25,7 +25,7 @@ def _csv_to_kv_dict(value: object) -> object:
                 continue
             eq_idx = pair.index("=")
             k = pair[:eq_idx].strip()
-            v = pair[eq_idx + 1:].strip()
+            v = pair[eq_idx + 1 :].strip()
             result[k] = v
         return result
     return value
@@ -57,6 +57,7 @@ class AppSettings(BaseSettings):
         if self.env.lower() not in _PRODUCTION_ENVS:
             return self
         from app.domain.errors.codes import ConfigurationError  # deferred — avoid circular
+
         if not self.cors_allowed_origins:
             raise ConfigurationError("cors_allowed_origins")
         return self
@@ -87,22 +88,25 @@ class AuthSettings(BaseSettings):
     jwt_issuer: str = "wmp"
     jwt_audience: str = "wmp-web"
     jwt_expire_minutes: int = 60
-    access_token_ttl_seconds: int = 900          # 15 min — override per env for DX (see .env.development)
-    refresh_token_ttl_seconds: int = 2_592_000   # 30 days
-    oauth_state_ttl_seconds: int = 300           # 5 min
-    rate_limit_per_minute: int = 10              # slowapi: 10 req/min per IP on /auth/* (override for CI/dev)
+    access_token_ttl_seconds: int = 900  # 15 min — override per env for DX (see .env.development)
+    refresh_token_ttl_seconds: int = 2_592_000  # 30 days
+    oauth_state_ttl_seconds: int = 300  # 5 min
+    rate_limit_per_minute: int = 10  # slowapi: 10 req/min per IP on /auth/* (override for CI/dev)
     allowed_domains: Annotated[list[str], NoDecode] = Field(default_factory=list)
     seed_superadmin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
-    _split_lists = field_validator(
-        "allowed_domains", "seed_superadmin_emails", mode="before"
-    )(_csv_to_list)
+    _split_lists = field_validator("allowed_domains", "seed_superadmin_emails", mode="before")(
+        _csv_to_list
+    )
 
     @model_validator(mode="after")
     def _validate_production_secrets(self) -> "AuthSettings":
         if self.app_env.lower() not in _PRODUCTION_ENVS:
             return self
-        from app.domain.errors.codes import ConfigurationError  # deferred — avoids circular at module load
+        from app.domain.errors.codes import (
+            ConfigurationError,  # deferred — avoids circular at module load
+        )
+
         if self.jwt_secret == _AUTH_JWT_SECRET_SENTINEL:
             raise ConfigurationError("jwt_secret")
         return self
@@ -131,6 +135,7 @@ class DundunSettings(BaseSettings):
         if self.app_env.lower() not in _PRODUCTION_ENVS:
             return self
         from app.domain.errors.codes import ConfigurationError
+
         if self.api_key == _DUNDUN_API_KEY_SENTINEL:
             raise ConfigurationError("api_key")
         if self.callback_secret == _DUNDUN_CALLBACK_SECRET_SENTINEL:
@@ -161,6 +166,7 @@ class PuppetSettings(BaseSettings):
         if self.app_env.lower() not in _PRODUCTION_ENVS:
             return self
         from app.domain.errors.codes import ConfigurationError
+
         if self.api_key == _PUPPET_API_KEY_SENTINEL:
             raise ConfigurationError("api_key")
         if self.callback_secret == _PUPPET_CALLBACK_SECRET_SENTINEL:
@@ -188,6 +194,7 @@ class JiraSettings(BaseSettings):
         if self.app_env.lower() not in _PRODUCTION_ENVS:
             return self
         from app.domain.errors.codes import ConfigurationError
+
         if self.api_token.get_secret_value() == _JIRA_API_TOKEN_SENTINEL:
             raise ConfigurationError("jira.api_token")
         return self

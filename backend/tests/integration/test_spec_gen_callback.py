@@ -8,6 +8,7 @@ Scenarios:
   - Empty sections list → 200, count=0
   - Re-delivery (same request_id) → sections updated idempotently
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -179,23 +180,29 @@ async def test_spec_gen_upserts_existing_section(http, seeded_ids, migrated_data
     _user_id, _ws_id, wi_id = seeded_ids
 
     # First call — creates
-    resp = await _post(http, {
-        "agent": "wm_spec_gen_agent",
-        "request_id": str(uuid4()),
-        "status": "success",
-        "work_item_id": str(wi_id),
-        "sections": [{"dimension": "summary", "content": "initial content"}],
-    })
+    resp = await _post(
+        http,
+        {
+            "agent": "wm_spec_gen_agent",
+            "request_id": str(uuid4()),
+            "status": "success",
+            "work_item_id": str(wi_id),
+            "sections": [{"dimension": "summary", "content": "initial content"}],
+        },
+    )
     assert resp.status_code == 200
 
     # Second call — updates same section
-    resp2 = await _post(http, {
-        "agent": "wm_spec_gen_agent",
-        "request_id": str(uuid4()),
-        "status": "success",
-        "work_item_id": str(wi_id),
-        "sections": [{"dimension": "summary", "content": "updated content by agent"}],
-    })
+    resp2 = await _post(
+        http,
+        {
+            "agent": "wm_spec_gen_agent",
+            "request_id": str(uuid4()),
+            "status": "success",
+            "work_item_id": str(wi_id),
+            "sections": [{"dimension": "summary", "content": "updated content by agent"}],
+        },
+    )
     assert resp2.status_code == 200
 
     # Verify only 1 row, with updated content
@@ -293,21 +300,27 @@ async def test_spec_gen_section_versions_written(http, seeded_ids, migrated_data
     _user_id, _ws_id, wi_id = seeded_ids
 
     # First upsert
-    await _post(http, {
-        "agent": "wm_spec_gen_agent",
-        "request_id": str(uuid4()),
-        "status": "success",
-        "work_item_id": str(wi_id),
-        "sections": [{"dimension": "summary", "content": "v1"}],
-    })
+    await _post(
+        http,
+        {
+            "agent": "wm_spec_gen_agent",
+            "request_id": str(uuid4()),
+            "status": "success",
+            "work_item_id": str(wi_id),
+            "sections": [{"dimension": "summary", "content": "v1"}],
+        },
+    )
     # Second upsert — should create version row
-    await _post(http, {
-        "agent": "wm_spec_gen_agent",
-        "request_id": str(uuid4()),
-        "status": "success",
-        "work_item_id": str(wi_id),
-        "sections": [{"dimension": "summary", "content": "v2"}],
-    })
+    await _post(
+        http,
+        {
+            "agent": "wm_spec_gen_agent",
+            "request_id": str(uuid4()),
+            "status": "success",
+            "work_item_id": str(wi_id),
+            "sections": [{"dimension": "summary", "content": "v2"}],
+        },
+    )
 
     engine = create_async_engine(migrated_database.database.url)
     factory = async_sessionmaker(engine, expire_on_commit=False)

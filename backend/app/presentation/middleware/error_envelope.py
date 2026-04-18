@@ -8,6 +8,7 @@ Wire up via ``register_domain_error_handler(app)`` called after the existing
 ``register_error_handlers(app)`` in main.py so DomainError takes precedence
 over the catch-all Exception handler.
 """
+
 from __future__ import annotations
 
 import logging

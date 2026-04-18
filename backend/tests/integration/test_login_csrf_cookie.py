@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, urlparse
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -110,7 +109,7 @@ def _parse_cookie_attrs(cookie_header: str) -> dict[str, str]:
     """Parse a single Set-Cookie header string into a dict of attr -> value."""
     parts = [p.strip() for p in cookie_header.split(";")]
     attrs: dict[str, str] = {}
-    for i, part in enumerate(parts):
+    for _i, part in enumerate(parts):
         if "=" in part:
             k, v = part.split("=", 1)
             attrs[k.strip().lower()] = v.strip()

@@ -15,13 +15,14 @@ THEN completeness:{work_item_id} is deleted from cache
 WHEN no cache is injected
 THEN mutations succeed without error (backward-compat)
 """
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
+from app.domain.models.task_node import TaskNode
 
 
 class _FakeCache:
@@ -178,9 +179,13 @@ class TestTaskServiceCacheInvalidation:
         )
         work_item_id = uuid4()
         actor = uuid4()
-        n1 = TaskNode.create(work_item_id=work_item_id, parent_id=None, title="n1", display_order=1, created_by=actor)
+        n1 = TaskNode.create(
+            work_item_id=work_item_id, parent_id=None, title="n1", display_order=1, created_by=actor
+        )
         n1.materialized_path = str(n1.id)
-        n2 = TaskNode.create(work_item_id=work_item_id, parent_id=None, title="n2", display_order=2, created_by=actor)
+        n2 = TaskNode.create(
+            work_item_id=work_item_id, parent_id=None, title="n2", display_order=2, created_by=actor
+        )
         n2.materialized_path = str(n2.id)
         await node_repo.save(n1)
         await node_repo.save(n2)

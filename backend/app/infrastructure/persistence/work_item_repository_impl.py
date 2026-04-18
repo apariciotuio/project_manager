@@ -3,23 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import UTC
 from uuid import UUID
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sqlalchemy as sa
 from app.domain.exceptions import InvalidWorkItemError, UserNotFoundError
 from app.domain.models.work_item import WorkItem
+from app.domain.pagination import PaginationCursor as DomainPaginationCursor
 from app.domain.queries.page import Page
 from app.domain.queries.work_item_filters import WorkItemFilters
+from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
-from app.domain.pagination import PaginationCursor as DomainPaginationCursor
-from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
 from app.infrastructure.pagination import PaginationCursor, PaginationResult
 from app.infrastructure.persistence.mappers import (
     ownership_record_mapper,
@@ -133,9 +133,7 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
         await self._session.execute(stmt)
         await self._session.flush()
 
-    async def record_transition(
-        self, transition: StateTransition, workspace_id: UUID
-    ) -> None:
+    async def record_transition(self, transition: StateTransition, workspace_id: UUID) -> None:
         row = state_transition_mapper.to_orm(transition, workspace_id=workspace_id)
         self._session.add(row)
         await self._session.flush()
@@ -154,9 +152,7 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
         self._session.add(row)
         await self._session.flush()
 
-    async def get_transitions(
-        self, item_id: UUID, workspace_id: UUID
-    ) -> Sequence[StateTransition]:
+    async def get_transitions(self, item_id: UUID, workspace_id: UUID) -> Sequence[StateTransition]:
         stmt = (
             select(StateTransitionORM)
             .where(
@@ -224,29 +220,27 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
             last = rows[-1]
             sort = filters.sort
             if sort == SortOption.updated_desc or sort == SortOption.updated_asc:
-                from datetime import timezone
                 ts = last.updated_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv: object = ts.isoformat() if ts else ""
             elif sort == SortOption.created_desc:
-                from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv = ts.isoformat() if ts else ""
             elif sort == SortOption.title_asc:
                 sv = last.title
             elif sort == SortOption.completeness_desc:
                 sv = last.completeness_score or 0
             else:
-                from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv = ts.isoformat() if ts else ""
 
             from uuid import UUID as _UUID
+
             next_cursor = DomainPaginationCursor(
                 sort_value=sv,
                 last_id=_UUID(str(last.id)),
@@ -296,11 +290,13 @@ def _classify_integrity_error(exc: IntegrityError) -> Exception:
     msg = str(exc.orig).lower()
 
     # FK violation on user columns
-    if "owner_id" in msg or "creator_id" in msg:
-        if "foreign key" in msg or "fk" in msg or "violates" in msg:
-            # Extract UUID from message if possible; fall back to zero UUID
-            from uuid import UUID as _UUID
-            return UserNotFoundError(_UUID(int=0))
+    if ("owner_id" in msg or "creator_id" in msg) and (
+        "foreign key" in msg or "fk" in msg or "violates" in msg
+    ):
+        # Extract UUID from message if possible; fall back to zero UUID
+        from uuid import UUID as _UUID
+
+        return UserNotFoundError(_UUID(int=0))
 
     # CHECK constraint violations
     if _CHECK_TITLE in msg:

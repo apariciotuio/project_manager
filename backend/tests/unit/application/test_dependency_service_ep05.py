@@ -1,4 +1,5 @@
 """EP-05 — DependencyService unit tests: add, remove, blocked tasks."""
+
 from __future__ import annotations
 
 from uuid import uuid4

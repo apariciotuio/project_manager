@@ -3,6 +3,7 @@
 Routes:
   GET /api/v1/work-items/{id}/ready-gate — check if item can transition to READY
 """
+
 from __future__ import annotations
 
 import logging

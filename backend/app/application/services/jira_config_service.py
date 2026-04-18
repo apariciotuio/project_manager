@@ -1,4 +1,5 @@
 """JiraConfigService — EP-10 Jira integration admin CRUD."""
+
 from __future__ import annotations
 
 import logging
@@ -152,9 +153,7 @@ class JiraConfigService:
             )
         return updated
 
-    async def test_connection(
-        self, workspace_id: UUID, config_id: UUID
-    ) -> dict[str, str]:
+    async def test_connection(self, workspace_id: UUID, config_id: UUID) -> dict[str, str]:
         """Always returns HTTP 200; result is in body."""
         config = await self._repo.get_by_id(config_id, workspace_id)
         if config is None:

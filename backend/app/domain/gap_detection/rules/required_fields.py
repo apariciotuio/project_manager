@@ -3,6 +3,7 @@
 Each WorkItemType has required fields. Missing or empty required fields
 emit a GapFinding with severity=BLOCKING.
 """
+
 from __future__ import annotations
 
 from app.domain.models.gap_finding import GapFinding, GapSeverity

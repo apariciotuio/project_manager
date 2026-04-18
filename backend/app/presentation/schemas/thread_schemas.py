@@ -1,4 +1,5 @@
 """Pydantic request/response schemas for conversation thread endpoints — EP-03 Phase 7."""
+
 from __future__ import annotations
 
 from datetime import datetime

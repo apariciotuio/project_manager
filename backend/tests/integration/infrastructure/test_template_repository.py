@@ -8,6 +8,7 @@ Covers:
 - get_system_default returns system template
 - update / delete round-trips
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -15,14 +16,12 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.exceptions import DuplicateTemplateError, TemplateNotFoundError
 from app.domain.models.template import Template
 from app.domain.models.workspace import Workspace
 from app.domain.value_objects.work_item_type import WorkItemType
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,7 +36,9 @@ def _make_user_email() -> str:
     return f"user_{uuid4().hex[:8]}@test.com"
 
 
-def _make_template(workspace_id: object, type_: WorkItemType, *, is_system: bool = False) -> Template:
+def _make_template(
+    workspace_id: object, type_: WorkItemType, *, is_system: bool = False
+) -> Template:
     from uuid import UUID
 
     ws_id = workspace_id if isinstance(workspace_id, UUID) else None
@@ -113,9 +114,7 @@ class TestTemplateRepositoryGet:
         )
         assert result is None
 
-    async def test_get_system_default_returns_system_template(
-        self, db: AsyncSession
-    ) -> None:
+    async def test_get_system_default_returns_system_template(self, db: AsyncSession) -> None:
         from app.infrastructure.persistence.template_repository_impl import (
             TemplateRepositoryImpl,
         )
@@ -130,9 +129,7 @@ class TestTemplateRepositoryGet:
         assert result.is_system is True
         assert result.workspace_id is None
 
-    async def test_get_system_default_returns_none_when_absent(
-        self, db: AsyncSession
-    ) -> None:
+    async def test_get_system_default_returns_none_when_absent(self, db: AsyncSession) -> None:
         from app.infrastructure.persistence.template_repository_impl import (
             TemplateRepositoryImpl,
         )
@@ -161,11 +158,10 @@ class TestTemplateRepositoryConstraints:
         self, db: AsyncSession, workspace: Workspace
     ) -> None:
         """DB CHECK constraint: is_system=TRUE + workspace_id IS NOT NULL → error."""
-        from sqlalchemy import text
 
         with pytest.raises(Exception):  # IntegrityError or ValueError from domain
             # This would violate the Template domain invariant or DB constraint
-            tmpl = Template(
+            Template(
                 id=uuid4(),
                 workspace_id=workspace.id,  # violates is_system invariant
                 type=WorkItemType.BUG,
@@ -195,9 +191,7 @@ class TestTemplateRepositoryUpdate:
         assert updated.name == "New Name"
         assert updated.content == "## Updated"
 
-    async def test_update_nonexistent_raises_not_found(
-        self, db: AsyncSession
-    ) -> None:
+    async def test_update_nonexistent_raises_not_found(self, db: AsyncSession) -> None:
         from app.infrastructure.persistence.template_repository_impl import (
             TemplateRepositoryImpl,
         )
@@ -207,9 +201,7 @@ class TestTemplateRepositoryUpdate:
 
 
 class TestTemplateRepositoryDelete:
-    async def test_delete_removes_template(
-        self, db: AsyncSession, workspace: Workspace
-    ) -> None:
+    async def test_delete_removes_template(self, db: AsyncSession, workspace: Workspace) -> None:
         from app.infrastructure.persistence.template_repository_impl import (
             TemplateRepositoryImpl,
         )
@@ -223,9 +215,7 @@ class TestTemplateRepositoryDelete:
         result = await repo.get_by_workspace_and_type(workspace.id, WorkItemType.SPIKE)
         assert result is None
 
-    async def test_delete_nonexistent_raises_not_found(
-        self, db: AsyncSession
-    ) -> None:
+    async def test_delete_nonexistent_raises_not_found(self, db: AsyncSession) -> None:
         from app.infrastructure.persistence.template_repository_impl import (
             TemplateRepositoryImpl,
         )

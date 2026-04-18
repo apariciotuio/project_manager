@@ -1,4 +1,5 @@
 """EP-07 Phase 3 — TimelineService unit tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -43,7 +44,8 @@ class FakeTimelineRepo(ITimelineEventRepository):
             results = [e for e in results if e.occurred_at <= to_date]
         if before_occurred_at is not None and before_id is not None:
             results = [
-                e for e in results
+                e
+                for e in results
                 if e.occurred_at < before_occurred_at
                 or (e.occurred_at == before_occurred_at and e.id < before_id)
             ]
@@ -103,7 +105,9 @@ class TestTimelineService:
         await repo.insert(_event(wid, ws, event_type="state_transition"))
         await repo.insert(_event(wid, ws, event_type="comment_added"))
 
-        result = await svc.list_events(work_item_id=wid, workspace_id=ws, event_types=["state_transition"])
+        result = await svc.list_events(
+            work_item_id=wid, workspace_id=ws, event_types=["state_transition"]
+        )
         assert all(e.event_type == "state_transition" for e in result["events"])
 
     @pytest.mark.asyncio

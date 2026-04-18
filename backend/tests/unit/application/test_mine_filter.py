@@ -2,6 +2,7 @@
 
 RED phase: these tests will fail until _apply_mine_filter is implemented.
 """
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -20,6 +21,7 @@ def _builder(user_id: UUID, **kw: object) -> WorkItemListQueryBuilder:
 
 def _stmt_str(b: WorkItemListQueryBuilder) -> str:
     from sqlalchemy.dialects import postgresql
+
     stmt = b.build_stmt()
     return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": False}))
 

@@ -1,4 +1,5 @@
 """Tests for GapFinding, GapReport, GapSeverity domain models."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -92,9 +93,7 @@ class TestGapReport:
             GapFinding(
                 dimension="title", severity=GapSeverity.BLOCKING, message="m", source="rule"
             ),
-            GapFinding(
-                dimension="desc", severity=GapSeverity.WARNING, message="m2", source="rule"
-            ),
+            GapFinding(dimension="desc", severity=GapSeverity.WARNING, message="m2", source="rule"),
         ]
         report = GapReport(work_item_id=uuid4(), findings=findings, score=0.75)
         assert len(report.findings) == 2

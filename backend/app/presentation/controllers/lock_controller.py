@@ -9,6 +9,7 @@ Routes:
   POST   /api/v1/sections/{id}/lock/unlock-request       — request lock holder to release
   POST   /api/v1/sections/{id}/lock/respond              — lock holder accepts/declines request
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,6 +21,7 @@ from fastapi import status as http_status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.audit_service import AuditService
 from app.domain.models.lock_unlock_request import (
     AlreadyRespondedError,
     LockUnlockRequest,
@@ -35,9 +37,8 @@ from app.infrastructure.persistence.lock_unlock_request_repository_impl import (
 )
 from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
 from app.infrastructure.sse.pg_notification_bus import PgNotificationBus
-from app.presentation.dependencies import get_current_user, get_scoped_session, get_audit_service
+from app.presentation.dependencies import get_audit_service, get_current_user, get_scoped_session
 from app.presentation.middleware.auth_middleware import CurrentUser
-from app.application.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +363,7 @@ async def respond_to_unlock_request(
             await lock_repo.delete(section_id)
         else:
             unlock_request.decline(body.note)
-    except AlreadyRespondedError:
+    except AlreadyRespondedError as e:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
             detail={
@@ -372,7 +373,7 @@ async def respond_to_unlock_request(
                     "details": {},
                 }
             },
-        )
+        ) from e
 
     await req_repo.save(unlock_request)
     await session.commit()

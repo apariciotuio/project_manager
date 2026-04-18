@@ -4,6 +4,7 @@ Routes:
   GET  /api/v1/workspaces/mine    — list workspaces the current user belongs to
   POST /api/v1/workspaces/select  — set active workspace (updates session)
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -17,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.models.orm import (
-    SessionORM,
     UserORM,
     WorkspaceMembershipORM,
     WorkspaceORM,

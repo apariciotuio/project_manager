@@ -1,4 +1,5 @@
 """Repository interface for ContextPreset."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -21,6 +22,4 @@ class IContextPresetRepository(ABC):
     async def save(self, preset: ContextPreset) -> ContextPreset: ...
 
     @abstractmethod
-    async def get_by_name(
-        self, workspace_id: UUID, name: str
-    ) -> ContextPreset | None: ...
+    async def get_by_name(self, workspace_id: UUID, name: str) -> ContextPreset | None: ...

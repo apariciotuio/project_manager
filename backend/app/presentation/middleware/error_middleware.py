@@ -88,9 +88,7 @@ async def _oauth_exchange_handler(_: Request, exc: OAuthExchangeError) -> JSONRe
     )
 
 
-async def _validation_error_handler(
-    _: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
     errors = exc.errors()
     # Special case: WorkItemUpdateRequest rejects `state` field via extra="forbid".
     # Return a dedicated hint so clients know to use the transitions endpoint.
@@ -110,8 +108,7 @@ async def _validation_error_handler(
         field = str(loc[-1]) if loc else None
         # Pydantic v2 errors may contain non-serializable objects (e.g. ValueError in ctx)
         serializable_errors = [
-            {k: (str(v) if k == "ctx" else v) for k, v in e.items()}
-            for e in errors
+            {k: (str(v) if k == "ctx" else v) for k, v in e.items()} for e in errors
         ]
         details: dict[str, Any] = {"errors": serializable_errors}
         if field:
@@ -131,9 +128,7 @@ async def _validation_error_handler(
 # ---------------------------------------------------------------------------
 
 
-async def _invalid_transition_handler(
-    _: Request, exc: InvalidTransitionError
-) -> JSONResponse:
+async def _invalid_transition_handler(_: Request, exc: InvalidTransitionError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
         content=_envelope(
@@ -184,18 +179,14 @@ async def _owner_suspended_handler(_: Request, exc: OwnerSuspendedError) -> JSON
     )
 
 
-async def _target_user_suspended_handler(
-    _: Request, exc: TargetUserSuspendedError
-) -> JSONResponse:
+async def _target_user_suspended_handler(_: Request, exc: TargetUserSuspendedError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
         content=_envelope("TARGET_USER_SUSPENDED", str(exc)),
     )
 
 
-async def _work_item_not_found_handler(
-    _: Request, exc: WorkItemNotFoundError
-) -> JSONResponse:
+async def _work_item_not_found_handler(_: Request, exc: WorkItemNotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=404,
         content=_envelope("WORK_ITEM_NOT_FOUND", str(exc)),
@@ -211,9 +202,7 @@ async def _cannot_delete_non_draft_handler(
     )
 
 
-async def _creator_not_member_handler(
-    _: Request, exc: CreatorNotMemberError
-) -> JSONResponse:
+async def _creator_not_member_handler(_: Request, exc: CreatorNotMemberError) -> JSONResponse:
     return JSONResponse(
         status_code=403,
         content=_envelope("CREATOR_NOT_MEMBER", str(exc)),
@@ -238,9 +227,7 @@ async def _work_item_invalid_state_handler(
     )
 
 
-async def _duplicate_template_handler(
-    _: Request, exc: DuplicateTemplateError
-) -> JSONResponse:
+async def _duplicate_template_handler(_: Request, exc: DuplicateTemplateError) -> JSONResponse:
     return JSONResponse(
         status_code=409,
         content=_envelope(
@@ -251,18 +238,14 @@ async def _duplicate_template_handler(
     )
 
 
-async def _template_forbidden_handler(
-    _: Request, exc: TemplateForbiddenError
-) -> JSONResponse:
+async def _template_forbidden_handler(_: Request, exc: TemplateForbiddenError) -> JSONResponse:
     return JSONResponse(
         status_code=403,
         content=_envelope("FORBIDDEN", str(exc)),
     )
 
 
-async def _template_not_found_handler(
-    _: Request, exc: TemplateNotFoundError
-) -> JSONResponse:
+async def _template_not_found_handler(_: Request, exc: TemplateNotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=404,
         content=_envelope("TEMPLATE_NOT_FOUND", str(exc)),
@@ -290,12 +273,12 @@ async def _work_item_draft_not_found_handler(
 # ---------------------------------------------------------------------------
 
 
-async def _suggestion_expired_handler(
-    _: Request, exc: SuggestionExpiredError
-) -> JSONResponse:
+async def _suggestion_expired_handler(_: Request, exc: SuggestionExpiredError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
-        content=_envelope("SUGGESTION_EXPIRED", str(exc), {"suggestion_id": str(exc.suggestion_id)}),
+        content=_envelope(
+            "SUGGESTION_EXPIRED", str(exc), {"suggestion_id": str(exc.suggestion_id)}
+        ),
     )
 
 
@@ -339,9 +322,7 @@ async def _audit_authorization_denied(request: Request) -> None:
         logger.exception("failed to write authorization_denied audit record")
 
 
-async def _http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     # Controller-raised HTTPException already carries an envelope in `detail` — pass through.
     if exc.status_code == 403:
         await _audit_authorization_denied(request)
@@ -349,14 +330,10 @@ async def _http_exception_handler(
     if isinstance(exc.detail, dict) and "error" in exc.detail:
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     message = exc.detail if isinstance(exc.detail, str) else "http error"
-    return JSONResponse(
-        status_code=exc.status_code, content=_envelope("HTTP_ERROR", message)
-    )
+    return JSONResponse(status_code=exc.status_code, content=_envelope("HTTP_ERROR", message))
 
 
-async def _oauth_state_collision_handler(
-    _: Request, __: OAuthStateCollisionError
-) -> JSONResponse:
+async def _oauth_state_collision_handler(_: Request, __: OAuthStateCollisionError) -> JSONResponse:
     return JSONResponse(
         status_code=500,
         content=_envelope("INTERNAL_ERROR", "internal server error"),

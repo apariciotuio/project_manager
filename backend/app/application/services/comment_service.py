@@ -5,6 +5,7 @@ If a timeline_repo is injected, comment_added / comment_deleted events are
 appended. Callers that need transactional atomicity (test 3.23a) must ensure
 both operations are executed inside the same DB session.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

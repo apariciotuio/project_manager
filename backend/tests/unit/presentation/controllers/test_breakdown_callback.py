@@ -2,18 +2,17 @@
 
 Tests are pure unit tests using FakeTaskNodeRepository so no DB required.
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskNode, TaskStatus
-
+from app.domain.models.task_node import TaskNode
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -130,8 +129,7 @@ class TestBreakdownHandler:
 
         # The Child should have been created with parent_id = Parent's id
         child_call = [
-            c for c in task_service.create_node.call_args_list
-            if c.kwargs.get("title") == "Child"
+            c for c in task_service.create_node.call_args_list if c.kwargs.get("title") == "Child"
         ]
         assert len(child_call) == 1
         parent_node = created_nodes["Parent"]
@@ -179,7 +177,9 @@ class TestBreakdownHandler:
         )
 
         assert result["created_count"] == 3
-        c_call = [c for c in task_service.create_node.call_args_list if c.kwargs.get("title") == "C"]
+        c_call = [
+            c for c in task_service.create_node.call_args_list if c.kwargs.get("title") == "C"
+        ]
         assert c_call[0].kwargs["parent_id"] == created_nodes["B"].id
 
     @pytest.mark.asyncio

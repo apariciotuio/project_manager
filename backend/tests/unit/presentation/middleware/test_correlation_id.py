@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
@@ -16,7 +15,6 @@ from app.presentation.middleware.correlation_id import (
     CORRELATION_ID_HEADER,
     CorrelationIDMiddleware,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

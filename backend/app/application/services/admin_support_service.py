@@ -8,6 +8,7 @@ Endpoints:
   POST /admin/support/reassign-owner
   POST /admin/support/failed-exports/retry-all
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,9 +54,10 @@ class AdminSupportService:
         self._cache = cache
 
     async def get_orphaned_work_items(self, workspace_id: UUID) -> list[dict[str, Any]]:
-        from sqlalchemy import select, or_
+        from sqlalchemy import or_, select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkItemORM, UserORM
+
+        from app.infrastructure.persistence.models.orm import UserORM, WorkItemORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         stmt = (
@@ -90,10 +92,12 @@ class AdminSupportService:
     async def get_pending_invitations(
         self, workspace_id: UUID, *, expiring_soon: bool = False
     ) -> list[dict[str, Any]]:
+        from datetime import UTC, datetime, timedelta
+
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import InvitationORM
-        from datetime import UTC, datetime, timedelta
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         stmt = select(InvitationORM).where(
@@ -122,6 +126,7 @@ class AdminSupportService:
     async def get_failed_exports(self, workspace_id: UUID) -> list[dict[str, Any]]:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import IntegrationExportORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
@@ -146,9 +151,7 @@ class AdminSupportService:
             for r in rows
         ]
 
-    async def retry_all_failed_exports(
-        self, workspace_id: UUID, actor_id: UUID
-    ) -> dict[str, Any]:
+    async def retry_all_failed_exports(self, workspace_id: UUID, actor_id: UUID) -> dict[str, Any]:
         rate_key = _RETRY_ALL_RATE_LIMIT_KEY.format(workspace_id=workspace_id)
 
         if self._cache is not None:
@@ -184,6 +187,7 @@ class AdminSupportService:
     ) -> None:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import (
             WorkItemORM,
             WorkspaceMembershipORM,
@@ -204,7 +208,9 @@ class AdminSupportService:
         if wi is None:
             raise SupportError(f"work item {work_item_id} not found")
         if wi.state in _TERMINAL_STATES:
-            raise ReassignTerminalItemError(f"cannot reassign terminal work item in state {wi.state!r}")
+            raise ReassignTerminalItemError(
+                f"cannot reassign terminal work item in state {wi.state!r}"
+            )
 
         # Validate new owner is active in workspace
         membership = (
@@ -237,9 +243,10 @@ class AdminSupportService:
     async def get_config_blocked_work_items(
         self, workspace_id: UUID
     ) -> dict[str, list[dict[str, Any]]]:
-        from sqlalchemy import select, or_
+        from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkItemORM, UserORM
+
+        from app.infrastructure.persistence.models.orm import UserORM, WorkItemORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
 

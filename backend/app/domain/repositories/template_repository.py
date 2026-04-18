@@ -1,4 +1,5 @@
 """ITemplateRepository — domain-layer interface for template persistence."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -28,9 +29,7 @@ class ITemplateRepository(ABC):
         """Persist a new template. Raises DuplicateTemplateError on constraint violation."""
 
     @abstractmethod
-    async def update(
-        self, template_id: UUID, *, name: str | None, content: str | None
-    ) -> Template:
+    async def update(self, template_id: UUID, *, name: str | None, content: str | None) -> Template:
         """Update mutable fields. Raises TemplateNotFoundError if absent."""
 
     @abstractmethod

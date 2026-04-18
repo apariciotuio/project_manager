@@ -6,6 +6,7 @@ Routes:
   PATCH  /api/v1/admin/rules/validation/{id}
   DELETE /api/v1/admin/rules/validation/{id}
 """
+
 from __future__ import annotations
 
 import logging
@@ -108,7 +109,9 @@ async def create_validation_rule(
     except GlobalBlockerInEffectError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
-            detail={"error": {"code": "global_blocker_in_effect", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "global_blocker_in_effect", "message": str(exc), "details": {}}
+            },
         ) from exc
     except DuplicateRuleError as exc:
         raise HTTPException(
@@ -174,9 +177,7 @@ async def delete_validation_rule(
 ) -> None:
     assert current_user.workspace_id is not None
     try:
-        await service.delete_rule(
-            current_user.workspace_id, rule_id, current_user.id
-        )
+        await service.delete_rule(current_user.workspace_id, rule_id, current_user.id)
     except ValidationRuleNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,

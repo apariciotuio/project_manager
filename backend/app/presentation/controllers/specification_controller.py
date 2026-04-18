@@ -9,6 +9,7 @@ Deferred (needs Dundun agent plumbing or EP-07):
   POST /api/v1/work-items/{id}/specification/generate
   PATCH /api/v1/work-items/{id}/sections                  — bulk update
 """
+
 from __future__ import annotations
 
 import logging
@@ -67,18 +68,16 @@ async def get_specification(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}
-            },
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
-        sections = await service.list_for_work_item(
-            work_item_id, current_user.workspace_id
-        )
+        sections = await service.list_for_work_item(work_item_id, current_user.workspace_id)
     except SectionNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "work item not found", "details": {}}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "work item not found", "details": {}}
+            },
         ) from exc
     return _ok(
         {
@@ -99,9 +98,7 @@ async def update_section(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}
-            },
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     try:
         section = await service.update_section(

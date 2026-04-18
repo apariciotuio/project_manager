@@ -1,4 +1,5 @@
 """EP-07 — SQLAlchemy implementation for TimelineEvent repo."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -37,9 +38,7 @@ class TimelineEventRepositoryImpl(ITimelineEventRepository):
         from_date: datetime | None = None,
         to_date: datetime | None = None,
     ) -> list[TimelineEvent]:
-        stmt = select(TimelineEventORM).where(
-            TimelineEventORM.work_item_id == work_item_id
-        )
+        stmt = select(TimelineEventORM).where(TimelineEventORM.work_item_id == work_item_id)
 
         if before_occurred_at is not None and before_id is not None:
             # Keyset pagination: (occurred_at, id) DESC
@@ -65,13 +64,9 @@ class TimelineEventRepositoryImpl(ITimelineEventRepository):
         if to_date is not None:
             stmt = stmt.where(TimelineEventORM.occurred_at <= to_date)
 
-        stmt = (
-            stmt
-            .order_by(
-                TimelineEventORM.occurred_at.desc(),
-                TimelineEventORM.id.desc(),
-            )
-            .limit(limit)
-        )
+        stmt = stmt.order_by(
+            TimelineEventORM.occurred_at.desc(),
+            TimelineEventORM.id.desc(),
+        ).limit(limit)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [timeline_event_to_domain(r) for r in rows]

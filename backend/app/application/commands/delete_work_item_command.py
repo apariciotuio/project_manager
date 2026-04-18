@@ -1,4 +1,5 @@
 """DeleteWorkItemCommand — immutable command for soft-deleting a work item."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

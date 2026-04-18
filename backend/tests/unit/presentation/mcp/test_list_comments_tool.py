@@ -11,10 +11,10 @@ Scenarios:
 - Unknown work_item (not_found) does not query repo
 - Invalid work_item_id UUID raises ValueError
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -22,7 +22,6 @@ import pytest
 
 from app.domain.exceptions import WorkItemNotFoundError
 from app.domain.models.comment import Comment, CommentActorType
-
 from apps.mcp_server.tools.list_comments import handle_list_comments
 
 WORKSPACE_ID = uuid4()

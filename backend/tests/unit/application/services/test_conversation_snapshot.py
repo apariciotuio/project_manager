@@ -5,6 +5,7 @@ Tests:
   - Work item with 0 sections → empty dict
   - General thread (work_item_id=None) → None (skip)
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

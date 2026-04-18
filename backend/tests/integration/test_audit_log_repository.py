@@ -11,8 +11,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.domain.models.audit_event import AuditEvent
@@ -58,7 +57,9 @@ def _make_event(
 # ---------------------------------------------------------------------------
 
 
-async def test_append_returns_persisted_entity(repo: AuditRepositoryImpl, db_session: AsyncSession) -> None:
+async def test_append_returns_persisted_entity(
+    repo: AuditRepositoryImpl, db_session: AsyncSession
+) -> None:
     """append() writes a row and returns the domain entity with all fields intact."""
     event = _make_event(action="work_item.status_changed")
 
@@ -68,9 +69,7 @@ async def test_append_returns_persisted_entity(repo: AuditRepositoryImpl, db_ses
     assert result is event, "append() must return the same entity"
 
     row = (
-        await db_session.execute(
-            select(AuditEventORM).where(AuditEventORM.id == event.id)
-        )
+        await db_session.execute(select(AuditEventORM).where(AuditEventORM.id == event.id))
     ).scalar_one_or_none()
 
     assert row is not None, "row must be persisted in DB"
@@ -95,9 +94,7 @@ async def test_append_persists_actor_and_workspace(
     await db_session.commit()
 
     row = (
-        await db_session.execute(
-            select(AuditEventORM).where(AuditEventORM.id == event.id)
-        )
+        await db_session.execute(select(AuditEventORM).where(AuditEventORM.id == event.id))
     ).scalar_one_or_none()
 
     assert row is not None
@@ -106,7 +103,9 @@ async def test_append_persists_actor_and_workspace(
     assert row.actor_display is None
 
 
-async def test_append_with_minimal_fields(repo: AuditRepositoryImpl, db_session: AsyncSession) -> None:
+async def test_append_with_minimal_fields(
+    repo: AuditRepositoryImpl, db_session: AsyncSession
+) -> None:
     """append() succeeds with only required fields (no optional FK refs or metadata)."""
     event = AuditEvent(
         id=uuid4(),
@@ -121,9 +120,7 @@ async def test_append_with_minimal_fields(repo: AuditRepositoryImpl, db_session:
     assert result.id == event.id
 
     row = (
-        await db_session.execute(
-            select(AuditEventORM).where(AuditEventORM.id == event.id)
-        )
+        await db_session.execute(select(AuditEventORM).where(AuditEventORM.id == event.id))
     ).scalar_one_or_none()
 
     assert row is not None
@@ -161,9 +158,7 @@ async def test_append_rolls_back_with_outer_transaction(migrated_database) -> No
     # Open a fresh session and verify the row is gone
     async with factory() as verify_session:
         row = (
-            await verify_session.execute(
-                select(AuditEventORM).where(AuditEventORM.id == event.id)
-            )
+            await verify_session.execute(select(AuditEventORM).where(AuditEventORM.id == event.id))
         ).scalar_one_or_none()
         assert row is None, "rolled-back audit record must not be persisted"
 

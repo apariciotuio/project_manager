@@ -1,4 +1,5 @@
 """EP-10 — Subscriber: seed validation_requirements from templates on work item creation."""
+
 from __future__ import annotations
 
 import logging
@@ -30,9 +31,7 @@ def register_validation_template_subscribers(bus: EventBus) -> None:
                 template_repo = ValidationRuleTemplateRepositoryImpl(session)
 
                 work_item_type_str = (
-                    event.type.value
-                    if hasattr(event.type, "value")
-                    else str(event.type)
+                    event.type.value if hasattr(event.type, "value") else str(event.type)
                 )
 
                 templates = await template_repo.list_matching(

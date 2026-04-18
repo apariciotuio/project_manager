@@ -12,6 +12,7 @@ EP-22 extensions:
   - fe_to_upstream: attaches server-authoritative context.sections_snapshot
   - upstream_to_fe: validates signals.suggested_sections; drops invalid items
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -86,7 +87,9 @@ async def get_or_create_thread(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},  # noqa: E501
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },  # noqa: E501
         )
     thread = await service.get_or_create_thread(
         current_user.workspace_id, current_user.id, body.work_item_id
@@ -107,7 +110,9 @@ def _require_workspace(current_user: CurrentUser) -> UUID:
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},  # noqa: E501
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },  # noqa: E501
         )
     return current_user.workspace_id
 
@@ -120,9 +125,7 @@ async def get_thread(
 ) -> dict[str, Any]:
     workspace_id = _require_workspace(current_user)
     try:
-        thread = await service.get_thread_for_user(
-            thread_id, current_user.id, workspace_id
-        )
+        thread = await service.get_thread_for_user(thread_id, current_user.id, workspace_id)
     except ThreadNotFoundError as exc:
         raise _not_found() from exc
     return _ok(ThreadResponse.from_domain(thread).model_dump(mode="json"))
@@ -164,18 +167,14 @@ async def archive_thread(
 # ---------------------------------------------------------------------------
 
 
-async def _authenticate_ws(
-    token: str | None, jwt_adapter: JwtAdapter
-) -> CurrentUser | None:
+async def _authenticate_ws(token: str | None, jwt_adapter: JwtAdapter) -> CurrentUser | None:
     """Validate JWT from WS query param. Returns CurrentUser or None."""
     if not token:
         return None
 
     try:
         claims = jwt_adapter.decode(token)
-        workspace_id = (
-            UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
-        )
+        workspace_id = UUID(claims["workspace_id"]) if claims.get("workspace_id") else None
         return CurrentUser(
             id=UUID(claims["sub"]),
             email=claims["email"],
@@ -203,11 +202,7 @@ async def conversation_ws(
     # 2. Resolve thread and verify IDOR (user + workspace scope — SEC-AUTH-001)
     async for thread_repo in get_thread_repo_for_ws():
         thread = await thread_repo.get_by_id(thread_id)
-        if (
-            thread is None
-            or thread.user_id != user.id
-            or thread.workspace_id != user.workspace_id
-        ):
+        if thread is None or thread.user_id != user.id or thread.workspace_id != user.workspace_id:
             await websocket.close(code=4403)
             return
 

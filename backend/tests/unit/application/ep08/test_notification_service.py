@@ -3,17 +3,16 @@
 RED phase: tests for mark_all_read, unread_count, bulk_insert_idempotent,
 and IDOR check on list.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.models.team import Notification, NotificationState
 from app.domain.queries.page import Page
-
 
 # ---------------------------------------------------------------------------
 # Fake repository
@@ -33,9 +32,7 @@ class FakeNotificationRepository:
         self._idempotency[notification.idempotency_key] = notification.id
         return notification
 
-    async def bulk_insert_idempotent(
-        self, notifications: list[Notification]
-    ) -> list[Notification]:
+    async def bulk_insert_idempotent(self, notifications: list[Notification]) -> list[Notification]:
         """Insert all, skipping duplicates. Returns persisted list."""
         result = []
         for n in notifications:

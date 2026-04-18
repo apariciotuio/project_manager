@@ -9,6 +9,7 @@ Events emitted:
 - ReviewRequestedEvent on creation
 - ReviewDismissedEvent on cancellation
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,10 +19,8 @@ from uuid import UUID
 from app.application.events.event_bus import EventBus
 from app.application.events.review_events import ReviewDismissedEvent, ReviewRequestedEvent
 from app.domain.models.review import (
-    ReviewAlreadyClosedError,
     ReviewRequest,
     ReviewResponse,
-    ReviewStatus,
 )
 from app.domain.repositories.review_repository import (
     IReviewRequestRepository,
@@ -127,9 +126,7 @@ class ReviewRequestService:
         )
         return saved
 
-    async def list_for_work_item(
-        self, work_item_id: UUID
-    ) -> list[ReviewWithResponses]:
+    async def list_for_work_item(self, work_item_id: UUID) -> list[ReviewWithResponses]:
         requests = await self._requests.list_for_work_item(work_item_id)
         result: list[ReviewWithResponses] = []
         for req in requests:

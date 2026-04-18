@@ -45,9 +45,7 @@ class WorkspaceMembershipRepositoryImpl(IWorkspaceMembershipRepository):
         return _to_domain(row)
 
     async def get_by_user_id(self, user_id: UUID) -> list[WorkspaceMembership]:
-        stmt = select(WorkspaceMembershipORM).where(
-            WorkspaceMembershipORM.user_id == user_id
-        )
+        stmt = select(WorkspaceMembershipORM).where(WorkspaceMembershipORM.user_id == user_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_to_domain(row) for row in rows]
 
@@ -74,9 +72,7 @@ class WorkspaceMembershipRepositoryImpl(IWorkspaceMembershipRepository):
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return _to_domain(row) if row else None
 
-    async def get_capabilities_for(
-        self, user_id: UUID, workspace_id: UUID
-    ) -> list[str] | None:
+    async def get_capabilities_for(self, user_id: UUID, workspace_id: UUID) -> list[str] | None:
         """Return the capabilities array for the (user, workspace) membership.
 
         Narrow read helper used by the ``require_capabilities`` FastAPI

@@ -12,16 +12,15 @@ Covers:
 - Edge: user with no items → all tiers empty
 - get_counts: per-tier counts match full get_inbox; total correct
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.repositories.inbox_repository import IInboxRepository, InboxItem
-
 
 # ---------------------------------------------------------------------------
 # Fake InboxRepository
@@ -80,7 +79,12 @@ def _item(
         owner_id=owner_id,
         current_state="pending",
         priority_tier=tier,
-        tier_label={1: "Pending reviews", 2: "Returned items", 3: "Blocking items", 4: "Decisions needed"}[tier],
+        tier_label={
+            1: "Pending reviews",
+            2: "Returned items",
+            3: "Blocking items",
+            4: "Decisions needed",
+        }[tier],
         event_age=datetime.now(UTC),
         deeplink=f"/items/{uuid4()}",
         quick_action=None,
@@ -164,9 +168,7 @@ class TestGetInbox:
         task_item = _item(user_id, 1, item_type="task")
         repo = FakeInboxRepository([bug_item, task_item])
         svc = InboxService(inbox_repo=repo)
-        result = await svc.get_inbox(
-            user_id=user_id, workspace_id=workspace_id, item_type="bug"
-        )
+        result = await svc.get_inbox(user_id=user_id, workspace_id=workspace_id, item_type="bug")
 
         assert result["total"] == 1
         assert result["tiers"]["1"]["count"] == 1
@@ -177,7 +179,9 @@ class TestGetInbox:
 
         user_id = uuid4()
         workspace_id = uuid4()
-        repo = FakeInboxRepository([_item(user_id, 1), _item(user_id, 2), _item(user_id, 3), _item(user_id, 4)])
+        repo = FakeInboxRepository(
+            [_item(user_id, 1), _item(user_id, 2), _item(user_id, 3), _item(user_id, 4)]
+        )
         svc = InboxService(inbox_repo=repo)
         result = await svc.get_inbox(user_id=user_id, workspace_id=workspace_id)
 
@@ -194,12 +198,14 @@ class TestGetCounts:
 
         user_id = uuid4()
         workspace_id = uuid4()
-        repo = FakeInboxRepository([
-            _item(user_id, 1),
-            _item(user_id, 1),
-            _item(user_id, 2),
-            _item(user_id, 4),
-        ])
+        repo = FakeInboxRepository(
+            [
+                _item(user_id, 1),
+                _item(user_id, 1),
+                _item(user_id, 2),
+                _item(user_id, 4),
+            ]
+        )
         svc = InboxService(inbox_repo=repo)
         counts = await svc.get_counts(user_id=user_id, workspace_id=workspace_id)
 

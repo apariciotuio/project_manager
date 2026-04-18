@@ -1,4 +1,5 @@
 """SQLAlchemy implementation of IGapFindingRepository — EP-03."""
+
 from __future__ import annotations
 
 from datetime import datetime

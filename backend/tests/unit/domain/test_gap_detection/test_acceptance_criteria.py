@@ -1,4 +1,5 @@
 """Tests for acceptance_criteria gap detection rule."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -83,10 +84,7 @@ class TestApplicableTypesWithWhenThen:
     def test_multiple_when_then_pairs_no_gap(self) -> None:
         item = _work_item(
             type=WorkItemType.REQUIREMENT,
-            description=(
-                "WHEN condition A THEN result A\n"
-                "AND WHEN condition B THEN result B"
-            ),
+            description=("WHEN condition A THEN result A\nAND WHEN condition B THEN result B"),
         )
         result = check_acceptance_criteria(item)
         assert result == []

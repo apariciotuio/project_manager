@@ -6,6 +6,7 @@ VersioningService.create_version().
 workspace_id is required on all reads to prevent cross-workspace data leaks.
 Returns None (not 403) on workspace mismatch to avoid existence disclosure.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -30,7 +31,9 @@ class IWorkItemVersionRepository(ABC):
     ) -> WorkItemVersion: ...
 
     @abstractmethod
-    async def get_latest(self, work_item_id: UUID, workspace_id: UUID) -> WorkItemVersion | None: ...
+    async def get_latest(
+        self, work_item_id: UUID, workspace_id: UUID
+    ) -> WorkItemVersion | None: ...
 
     @abstractmethod
     async def get(self, version_id: UUID, workspace_id: UUID) -> WorkItemVersion | None: ...

@@ -1,8 +1,9 @@
 """EP-09 — Unit tests for PaginationCursor encode/decode."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -48,21 +49,29 @@ class TestTamperDetection:
             PaginationCursor.decode("not-a-valid-cursor!!")
 
     def test_missing_id_field_raises_value_error(self) -> None:
-        import base64, json
+        import base64
+        import json
+
         payload = base64.urlsafe_b64encode(json.dumps({"sv": "2026"}).encode()).decode()
         with pytest.raises(ValueError, match="invalid cursor"):
             PaginationCursor.decode(payload)
 
     def test_missing_sv_field_raises_value_error(self) -> None:
-        import base64, json
+        import base64
+        import json
+
         uid = str(uuid4())
         payload = base64.urlsafe_b64encode(json.dumps({"id": uid}).encode()).decode()
         with pytest.raises(ValueError, match="invalid cursor"):
             PaginationCursor.decode(payload)
 
     def test_invalid_uuid_in_id_raises_value_error(self) -> None:
-        import base64, json
-        payload = base64.urlsafe_b64encode(json.dumps({"sv": "x", "id": "not-a-uuid"}).encode()).decode()
+        import base64
+        import json
+
+        payload = base64.urlsafe_b64encode(
+            json.dumps({"sv": "x", "id": "not-a-uuid"}).encode()
+        ).decode()
         with pytest.raises(ValueError, match="invalid cursor"):
             PaginationCursor.decode(payload)
 

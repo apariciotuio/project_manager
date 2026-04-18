@@ -4,6 +4,7 @@ Not for production: state lives in the process, evicted on restart, no TTL-based
 background eviction (expiration is checked lazily on get). Bounded by
 `MAX_ENTRIES` with FIFO eviction so long-running dev servers can't OOM.
 """
+
 from __future__ import annotations
 
 import time

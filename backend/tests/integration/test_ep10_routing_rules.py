@@ -1,4 +1,5 @@
 """EP-10 — Integration tests for routing rules + validation rule templates REST API."""
+
 from __future__ import annotations
 
 import time
@@ -124,9 +125,7 @@ class TestRoutingRulesCRUD:
     @pytest.mark.asyncio
     async def test_list_empty(self, http, migrated_database) -> None:
         _, _, token = await _seed(migrated_database)
-        resp = await http.get(
-            "/api/v1/routing-rules", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/routing-rules", cookies={"access_token": token})
         assert resp.status_code == 200
         assert resp.json()["data"] == []
 
@@ -134,18 +133,14 @@ class TestRoutingRulesCRUD:
     async def test_create_and_list(self, http, migrated_database) -> None:
         _, _, token = await _seed(migrated_database)
         body = {"work_item_type": "task", "priority": 5}
-        resp = await http.post(
-            "/api/v1/routing-rules", json=body, cookies={"access_token": token}
-        )
+        resp = await http.post("/api/v1/routing-rules", json=body, cookies={"access_token": token})
         assert resp.status_code == 201, resp.text
         rule_id = resp.json()["data"]["id"]
         assert resp.json()["data"]["work_item_type"] == "task"
         assert resp.json()["data"]["priority"] == 5
         assert resp.json()["data"]["active"] is True
 
-        list_resp = await http.get(
-            "/api/v1/routing-rules", cookies={"access_token": token}
-        )
+        list_resp = await http.get("/api/v1/routing-rules", cookies={"access_token": token})
         assert len(list_resp.json()["data"]) == 1
         assert list_resp.json()["data"][0]["id"] == rule_id
 
@@ -158,18 +153,14 @@ class TestRoutingRulesCRUD:
             cookies={"access_token": token},
         )
         rule_id = create_resp.json()["data"]["id"]
-        resp = await http.get(
-            f"/api/v1/routing-rules/{rule_id}", cookies={"access_token": token}
-        )
+        resp = await http.get(f"/api/v1/routing-rules/{rule_id}", cookies={"access_token": token})
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == rule_id
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_404(self, http, migrated_database) -> None:
         _, _, token = await _seed(migrated_database)
-        resp = await http.get(
-            f"/api/v1/routing-rules/{uuid4()}", cookies={"access_token": token}
-        )
+        resp = await http.get(f"/api/v1/routing-rules/{uuid4()}", cookies={"access_token": token})
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
@@ -250,9 +241,7 @@ class TestValidationRuleTemplatesCRUD:
     @pytest.mark.asyncio
     async def test_list_empty(self, http, migrated_database) -> None:
         _, _, token = await _seed(migrated_database)
-        resp = await http.get(
-            "/api/v1/validation-rule-templates", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/validation-rule-templates", cookies={"access_token": token})
         assert resp.status_code == 200
         assert resp.json()["data"] == []
 
@@ -353,9 +342,7 @@ class TestValidationRuleTemplatesCRUD:
     @pytest.mark.asyncio
     async def test_non_admin_gets_403(self, http, migrated_database) -> None:
         _, _, token = await _seed(migrated_database, role="member")
-        resp = await http.get(
-            "/api/v1/validation-rule-templates", cookies={"access_token": token}
-        )
+        resp = await http.get("/api/v1/validation-rule-templates", cookies={"access_token": token})
         assert resp.status_code == 403
 
     @pytest.mark.asyncio

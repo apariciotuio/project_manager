@@ -9,14 +9,15 @@ Responsibilities:
 - Resend invitation
 - Audit every mutation
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from datetime import datetime
+from uuid import UUID
 
 from app.application.services.audit_service import AuditService
 from app.domain.models.invitation import Invitation
@@ -146,12 +147,12 @@ class MemberService:
         cursor: PaginationCursor | None = None,
         limit: int = 50,
     ) -> PaginationResult:
-        from sqlalchemy import select, and_, or_
+        from sqlalchemy import and_, or_, select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import (
-            WorkspaceMembershipORM,
-            UserORM,
             TeamMembershipORM,
+            UserORM,
         )
 
         session: AsyncSession = self._session  # type: ignore[assignment]
@@ -167,9 +168,11 @@ class MemberService:
 
         if teamless:
             # Members with no active team membership
-            subq = select(TeamMembershipORM.user_id).where(
-                TeamMembershipORM.workspace_id == workspace_id
-            ).distinct()
+            subq = (
+                select(TeamMembershipORM.user_id)
+                .where(TeamMembershipORM.workspace_id == workspace_id)
+                .distinct()
+            )
             stmt = stmt.where(WorkspaceMembershipORM.user_id.not_in(subq))
 
         if cursor is not None:
@@ -300,12 +303,13 @@ class MemberService:
         membership = await self._get_membership(workspace_id, membership_id)
         before: dict[str, object] = {
             "state": membership.state,
-            "capabilities": list(membership.capabilities if hasattr(membership, "capabilities") else []),
+            "capabilities": list(
+                membership.capabilities if hasattr(membership, "capabilities") else []
+            ),
         }
 
-        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy import select
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
+        from sqlalchemy.ext.asyncio import AsyncSession
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         row = (
@@ -386,7 +390,6 @@ class MemberService:
     ) -> Invitation:
         invitation = await self._invitation_repo.get_by_id(invitation_id)
         if invitation is None or invitation.workspace_id != workspace_id:
-            from app.domain.repositories.invitation_repository import IInvitationRepository
             raise MemberNotFoundError(invitation_id)
 
         if not invitation.is_resendable():
@@ -411,12 +414,9 @@ class MemberService:
     # Helpers
     # ------------------------------------------------------------------
 
-    async def _get_membership(
-        self, workspace_id: UUID, membership_id: UUID
-    ) -> WorkspaceMembership:
+    async def _get_membership(self, workspace_id: UUID, membership_id: UUID) -> WorkspaceMembership:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         row = (
@@ -444,7 +444,8 @@ class MemberService:
     ) -> WorkspaceMembership | None:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM, UserORM
+
+        from app.infrastructure.persistence.models.orm import UserORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         stmt = (
@@ -473,9 +474,8 @@ class MemberService:
     async def _guard_last_admin(
         self, workspace_id: UUID, membership_id: UUID, session: object
     ) -> None:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
         s: AsyncSession = session  # type: ignore[assignment]
         count_stmt = select(func.count()).where(

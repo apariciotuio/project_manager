@@ -1,4 +1,5 @@
 """EP-07 — Repository interface for Comment."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

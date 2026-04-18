@@ -19,7 +19,6 @@ from app.application.services.audit_service import AuditService
 from app.domain.models.audit_event import AuditCategory
 from tests.fakes.fake_repositories import FakeAuditRepository
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -153,9 +152,7 @@ async def test_log_event_multiple_calls_all_persisted() -> None:
     service, repo = _make_service()
 
     for i in range(5):
-        await service.log_event(
-            category="domain", action=f"action_{i}", context={"seq": i}
-        )
+        await service.log_event(category="domain", action=f"action_{i}", context={"seq": i})
 
     assert len(repo.events) == 5
     actions = [e.action for e in repo.events]

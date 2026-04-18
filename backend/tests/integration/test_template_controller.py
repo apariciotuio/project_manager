@@ -6,6 +6,7 @@ Tests:
   PATCH /api/v1/templates/{id}
   DELETE /api/v1/templates/{id}
 """
+
 from __future__ import annotations
 
 import time
@@ -86,8 +87,10 @@ async def _seed(migrated_database, *, role: str = "admin"):
         memberships = WorkspaceMembershipRepositoryImpl(session)
 
         user = User.from_google_claims(
-            sub=f"sub-{uuid4().hex[:8]}", email=f"u{uuid4().hex[:6]}@test.com",
-            name="U", picture=None
+            sub=f"sub-{uuid4().hex[:8]}",
+            email=f"u{uuid4().hex[:6]}@test.com",
+            name="U",
+            picture=None,
         )
         await users.upsert(user)
         ws = Workspace.create_from_email(email=user.email, created_by=user.id)
@@ -182,9 +185,7 @@ class TestPostTemplates:
         assert "id" in body["data"]
         assert body["data"]["type"] == "bug"
 
-    async def test_non_admin_gets_403(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_non_admin_gets_403(self, http: AsyncClient, migrated_database) -> None:
         user, ws, token = await _seed(migrated_database, role="member")
 
         resp = await http.post(
@@ -194,9 +195,7 @@ class TestPostTemplates:
         )
         assert resp.status_code == 403
 
-    async def test_duplicate_type_returns_409(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_duplicate_type_returns_409(self, http: AsyncClient, migrated_database) -> None:
         user, ws, token = await _seed(migrated_database)
 
         await http.post(
@@ -212,9 +211,7 @@ class TestPostTemplates:
         assert resp.status_code == 409
         assert resp.json()["error"]["code"] == "DUPLICATE_TEMPLATE"
 
-    async def test_content_too_long_returns_422(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_content_too_long_returns_422(self, http: AsyncClient, migrated_database) -> None:
         user, ws, token = await _seed(migrated_database)
 
         resp = await http.post(
@@ -251,9 +248,7 @@ class TestPatchTemplates:
         assert resp.status_code == 200
         assert resp.json()["data"]["name"] == "Enhancement Report"
 
-    async def test_non_admin_gets_403(
-        self, http: AsyncClient, migrated_database
-    ) -> None:
+    async def test_non_admin_gets_403(self, http: AsyncClient, migrated_database) -> None:
         # Create template as admin, then try to update as member
         user_admin, ws, token_admin = await _seed(migrated_database, role="admin")
         r = await http.post(
@@ -270,8 +265,10 @@ class TestPatchTemplates:
             users2 = UserRepositoryImpl(session)
             memberships2 = WorkspaceMembershipRepositoryImpl(session)
             user2 = User.from_google_claims(
-                sub=f"sub-m{uuid4().hex[:8]}", email=f"m{uuid4().hex[:6]}@test.com",
-                name="M", picture=None
+                sub=f"sub-m{uuid4().hex[:8]}",
+                email=f"m{uuid4().hex[:6]}@test.com",
+                name="M",
+                picture=None,
             )
             await users2.upsert(user2)
             await memberships2.create(

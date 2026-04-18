@@ -4,6 +4,7 @@ Routes:
   GET /api/v1/admin/audit-events  — cursor-paginated audit log (admin-only)
   GET /api/v1/admin/health        — workspace health (work_items by state)
 """
+
 from __future__ import annotations
 
 import logging

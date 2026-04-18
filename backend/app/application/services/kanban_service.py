@@ -4,6 +4,7 @@ Grouped work-item board with per-column cursor pagination.
 group_by: state | owner | tag | parent
 Redis cache TTL 30s.
 """
+
 from __future__ import annotations
 
 import hashlib

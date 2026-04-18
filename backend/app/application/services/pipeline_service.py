@@ -3,6 +3,7 @@
 Returns funnel view: counts per workflow state + up to 20 items per column.
 Redis cache TTL 30s, keyed by SHA-256 of sorted filter params.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -80,8 +81,7 @@ class PipelineQueryService:
     def _team_member_subq(self, team_id: UUID) -> object:
         """Subquery: user IDs who are active members of team_id."""
         return (
-            select(TeamMembershipORM.user_id)
-            .where(
+            select(TeamMembershipORM.user_id).where(
                 TeamMembershipORM.team_id == team_id,
                 TeamMembershipORM.removed_at.is_(None),
             )
@@ -166,7 +166,9 @@ class PipelineQueryService:
             if project_id is not None:
                 item_stmt = item_stmt.where(WorkItemORM.project_id == project_id)
             if team_id is not None:
-                item_stmt = item_stmt.where(WorkItemORM.owner_id.in_(self._team_member_subq(team_id)))
+                item_stmt = item_stmt.where(
+                    WorkItemORM.owner_id.in_(self._team_member_subq(team_id))
+                )
             if owner_id is not None:
                 item_stmt = item_stmt.where(WorkItemORM.owner_id == owner_id)
 
@@ -182,12 +184,14 @@ class PipelineQueryService:
             # Emit columns in FSM order
             for state in active_states:
                 agg = agg_map.get(state, {"state": state, "count": 0, "avg_age_days": 0.0})
-                columns.append({
-                    "state": state,
-                    "count": agg["count"],
-                    "avg_age_days": agg["avg_age_days"],
-                    "items": items_by_state.get(state, []),
-                })
+                columns.append(
+                    {
+                        "state": state,
+                        "count": agg["count"],
+                        "avg_age_days": agg["avg_age_days"],
+                        "items": items_by_state.get(state, []),
+                    }
+                )
 
         # Blocked lane
         blocked_lane: list[dict[str, Any]] = []

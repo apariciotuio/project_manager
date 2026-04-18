@@ -1,4 +1,5 @@
 """EP-05 — ITaskNodeRepository + ITaskDependencyRepository + ITaskSectionLinkRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -40,9 +41,7 @@ class ITaskDependencyRepository(ABC):
     async def get_by_target(self, target_id: UUID) -> list[TaskDependency]: ...
 
     @abstractmethod
-    async def get_edges_for_work_item(
-        self, work_item_id: UUID
-    ) -> list[TaskDependency]: ...
+    async def get_edges_for_work_item(self, work_item_id: UUID) -> list[TaskDependency]: ...
 
     @abstractmethod
     async def add(self, dep: TaskDependency) -> TaskDependency: ...

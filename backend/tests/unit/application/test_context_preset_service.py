@@ -1,8 +1,9 @@
 """Unit tests for ContextPresetService — EP-10 admin context presets."""
+
 from __future__ import annotations
 
-from uuid import UUID, uuid4
 from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -10,9 +11,8 @@ from app.application.services.context_preset_service import (
     ContextPresetNotFoundError,
     ContextPresetService,
     DuplicatePresetNameError,
-    PresetInUseError,
 )
-from app.domain.models.context_preset import ContextPreset, ContextSource
+from app.domain.models.context_preset import ContextPreset
 from app.domain.repositories.context_preset_repository import IContextPresetRepository
 
 # ---------------------------------------------------------------------------
@@ -35,7 +35,9 @@ class FakeContextPresetRepo(IContextPresetRepository):
         return None
 
     async def list_for_workspace(self, workspace_id: UUID) -> list[ContextPreset]:
-        return [p for p in self._by_id.values() if p.workspace_id == workspace_id and not p.is_deleted()]
+        return [
+            p for p in self._by_id.values() if p.workspace_id == workspace_id and not p.is_deleted()
+        ]
 
     async def save(self, preset: ContextPreset) -> ContextPreset:
         self._by_id[preset.id] = preset
@@ -43,8 +45,11 @@ class FakeContextPresetRepo(IContextPresetRepository):
 
     async def get_by_name(self, workspace_id: UUID, name: str) -> ContextPreset | None:
         return next(
-            (p for p in self._by_id.values()
-             if p.workspace_id == workspace_id and p.name == name.strip() and not p.is_deleted()),
+            (
+                p
+                for p in self._by_id.values()
+                if p.workspace_id == workspace_id and p.name == name.strip() and not p.is_deleted()
+            ),
             None,
         )
 
@@ -61,13 +66,15 @@ _WS_ID = uuid4()
 _ACTOR_ID = uuid4()
 
 
-def _make_service(repo: FakeContextPresetRepo | None = None) -> tuple[ContextPresetService, FakeAudit]:
+def _make_service(
+    repo: FakeContextPresetRepo | None = None,
+) -> tuple[ContextPresetService, FakeAudit]:
     r = repo or FakeContextPresetRepo()
     audit = FakeAudit()
     session = AsyncMock()
-    session.execute = AsyncMock(return_value=MagicMock(
-        scalar_one_or_none=MagicMock(return_value=None)
-    ))
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+    )
     svc = ContextPresetService(repo=r, audit=audit, session=session)  # type: ignore[arg-type]
     return svc, audit
 
@@ -123,11 +130,11 @@ class TestContextPresetService:
     async def test_update_name(self) -> None:
         repo = FakeContextPresetRepo()
         svc, _ = _make_service(repo)
-        preset = await svc.create_preset(_WS_ID, name="Old", description=None, sources=[], actor_id=_ACTOR_ID)
-
-        updated = await svc.update_preset(
-            _WS_ID, preset.id, name="New", actor_id=_ACTOR_ID
+        preset = await svc.create_preset(
+            _WS_ID, name="Old", description=None, sources=[], actor_id=_ACTOR_ID
         )
+
+        updated = await svc.update_preset(_WS_ID, preset.id, name="New", actor_id=_ACTOR_ID)
         assert updated.name == "New"
 
     @pytest.mark.asyncio
@@ -140,7 +147,9 @@ class TestContextPresetService:
     async def test_delete_not_in_use_succeeds(self) -> None:
         repo = FakeContextPresetRepo()
         svc, audit = _make_service(repo)
-        preset = await svc.create_preset(_WS_ID, name="ToDelete", description=None, sources=[], actor_id=_ACTOR_ID)
+        preset = await svc.create_preset(
+            _WS_ID, name="ToDelete", description=None, sources=[], actor_id=_ACTOR_ID
+        )
 
         await svc.delete_preset(_WS_ID, preset.id, _ACTOR_ID)
         assert repo._by_id[preset.id].is_deleted()
@@ -156,7 +165,9 @@ class TestContextPresetService:
     async def test_get_wrong_workspace_returns_not_found(self) -> None:
         repo = FakeContextPresetRepo()
         svc, _ = _make_service(repo)
-        preset = await svc.create_preset(_WS_ID, name="P", description=None, sources=[], actor_id=_ACTOR_ID)
+        preset = await svc.create_preset(
+            _WS_ID, name="P", description=None, sources=[], actor_id=_ACTOR_ID
+        )
 
         with pytest.raises(ContextPresetNotFoundError):
             await svc.get_preset(uuid4(), preset.id)

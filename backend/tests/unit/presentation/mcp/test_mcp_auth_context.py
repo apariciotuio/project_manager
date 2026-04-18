@@ -8,6 +8,7 @@ Tests that:
 
 RED phase — these tests will fail until server.py is fixed.
 """
+
 from __future__ import annotations
 
 import os
@@ -141,14 +142,16 @@ class TestCreateMcpServerUsesAuthContext:
 
     def test_resolve_auth_context_called_once_at_server_startup(self) -> None:
         """create_mcp_server() resolves auth context once at startup, not per call."""
-        from apps.mcp_server.server import create_mcp_server, _resolve_auth_context
+        from apps.mcp_server.server import _resolve_auth_context, create_mcp_server
 
         ws_id = uuid4()
         user_id = uuid4()
         token = _make_jwt(sub=str(user_id), email="x@example.com", workspace_id=str(ws_id))
 
         with patch.dict(os.environ, {"MCP_TOKEN": token, "AUTH_JWT_SECRET": _SECRET}):
-            with patch("apps.mcp_server.server._resolve_auth_context", wraps=_resolve_auth_context) as mock_resolve:
-                server = create_mcp_server()
+            with patch(
+                "apps.mcp_server.server._resolve_auth_context", wraps=_resolve_auth_context
+            ) as mock_resolve:
+                create_mcp_server()
                 # _resolve_auth_context was called exactly once (at startup)
                 assert mock_resolve.call_count == 1

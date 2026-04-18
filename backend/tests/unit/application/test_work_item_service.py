@@ -3,9 +3,9 @@
 All collaborators are fakes — no DB, no HTTP.
 Each test class covers one service method. At least 2-3 variations per behavior.
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, date
 from typing import Any
 from uuid import uuid4
 
@@ -52,7 +52,6 @@ from tests.fakes.fake_repositories import (
     FakeWorkItemRepository,
     FakeWorkspaceMembershipRepository,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -745,9 +744,7 @@ class TestDelete:
         )
         await wi_repo.save(item, ws_id)
 
-        cmd = DeleteWorkItemCommand(
-            item_id=item.id, workspace_id=ws_id, actor_id=owner.id
-        )
+        cmd = DeleteWorkItemCommand(item_id=item.id, workspace_id=ws_id, actor_id=owner.id)
         await svc.delete(cmd)
 
         saved = wi_repo._items.get((ws_id, item.id))
@@ -779,9 +776,7 @@ class TestDelete:
             item.state = non_draft_state
             await wi_repo.save(item, ws_id)
 
-            cmd = DeleteWorkItemCommand(
-                item_id=item.id, workspace_id=ws_id, actor_id=owner.id
-            )
+            cmd = DeleteWorkItemCommand(item_id=item.id, workspace_id=ws_id, actor_id=owner.id)
             with pytest.raises(CannotDeleteNonDraftError):
                 await svc.delete(cmd)
 
@@ -806,9 +801,7 @@ class TestDelete:
         )
         await wi_repo.save(item, ws_id)
 
-        cmd = DeleteWorkItemCommand(
-            item_id=item.id, workspace_id=ws_id, actor_id=other.id
-        )
+        cmd = DeleteWorkItemCommand(item_id=item.id, workspace_id=ws_id, actor_id=other.id)
         with pytest.raises(NotOwnerError):
             await svc.delete(cmd)
 
@@ -880,9 +873,7 @@ class TestUpdate:
         content_events = [
             e for e in recorded if isinstance(e, WorkItemContentChangedAfterReadyEvent)
         ]
-        revert_events = [
-            e for e in recorded if isinstance(e, WorkItemRevertedFromReadyEvent)
-        ]
+        revert_events = [e for e in recorded if isinstance(e, WorkItemRevertedFromReadyEvent)]
         assert len(content_events) == 1
         assert "title" in content_events[0].changed_fields
         assert len(revert_events) == 1
@@ -900,9 +891,7 @@ class TestUpdate:
         await svc.update(cmd)
 
         system_transitions = [
-            t
-            for t in wi_repo.transitions
-            if t.work_item_id == item.id and t.actor_id is None
+            t for t in wi_repo.transitions if t.work_item_id == item.id and t.actor_id is None
         ]
         assert len(system_transitions) == 1
         assert system_transitions[0].to_state == WorkItemState.IN_CLARIFICATION

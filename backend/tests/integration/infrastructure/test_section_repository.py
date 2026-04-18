@@ -1,5 +1,6 @@
 """EP-04 Phase 3 — SectionRepositoryImpl + SectionVersionRepositoryImpl +
 ValidatorRepositoryImpl + WorkItemVersionRepositoryImpl integration tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -37,9 +38,7 @@ async def user_and_work_item(db: AsyncSession):
     from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
 
     email = f"user_{uuid4().hex[:8]}@test.com"
-    user = User.from_google_claims(
-        sub=f"sub_{uuid4().hex}", email=email, name="T", picture=None
-    )
+    user = User.from_google_claims(sub=f"sub_{uuid4().hex}", email=email, name="T", picture=None)
     user = await UserRepositoryImpl(db).upsert(user)
     ws = Workspace.create_from_email(email=email, created_by=user.id)
     ws = await WorkspaceRepositoryImpl(db).create(ws)
@@ -120,9 +119,7 @@ class TestSectionRepository:
             SectionType.NOTES,
         ]
 
-    async def test_save_updates_existing_row(
-        self, db: AsyncSession, user_and_work_item
-    ) -> None:
+    async def test_save_updates_existing_row(self, db: AsyncSession, user_and_work_item) -> None:
         user, item = user_and_work_item
         repo = SectionRepositoryImpl(db)
         section = Section.create(
@@ -185,9 +182,7 @@ class TestValidatorRepository:
     ) -> None:
         user, item = user_and_work_item
         repo = ValidatorRepositoryImpl(db)
-        v = Validator.create(
-            work_item_id=item.id, role="product_owner", assigned_by=user.id
-        )
+        v = Validator.create(work_item_id=item.id, role="product_owner", assigned_by=user.id)
         await repo.assign(v)
         await db.commit()
         v.respond(ValidatorStatus.APPROVED)
@@ -205,14 +200,10 @@ class TestValidatorRepository:
 
         user, item = user_and_work_item
         repo = ValidatorRepositoryImpl(db)
-        v1 = Validator.create(
-            work_item_id=item.id, role="product_owner", assigned_by=user.id
-        )
+        v1 = Validator.create(work_item_id=item.id, role="product_owner", assigned_by=user.id)
         await repo.assign(v1)
         await db.commit()
-        v2 = Validator.create(
-            work_item_id=item.id, role="product_owner", assigned_by=user.id
-        )
+        v2 = Validator.create(work_item_id=item.id, role="product_owner", assigned_by=user.id)
         with pytest.raises(IntegrityError):
             await repo.assign(v2)
             await db.commit()

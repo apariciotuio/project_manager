@@ -24,9 +24,7 @@ def repo(db_session) -> WorkspaceMembershipRepositoryImpl:
 async def _bootstrap(db_session) -> tuple[User, Workspace]:
     users = UserRepositoryImpl(db_session)
     workspaces = WorkspaceRepositoryImpl(db_session)
-    user = User.from_google_claims(
-        sub="sub-m", email="m@acme.io", name="M", picture=None
-    )
+    user = User.from_google_claims(sub="sub-m", email="m@acme.io", name="M", picture=None)
     await users.upsert(user)
     ws = Workspace.create_from_email(email="m@acme.io", created_by=user.id)
     await workspaces.create(ws)
@@ -52,7 +50,10 @@ async def test_get_active_filters_suspended(repo, db_session) -> None:
     user, ws = await _bootstrap(db_session)
 
     active = WorkspaceMembership.create(
-        workspace_id=ws.id, user_id=user.id, role="member", is_default=True,
+        workspace_id=ws.id,
+        user_id=user.id,
+        role="member",
+        is_default=True,
     )
     await repo.create(active)
     await db_session.commit()
@@ -62,7 +63,10 @@ async def test_get_active_filters_suspended(repo, db_session) -> None:
     ws2 = Workspace.create_from_email(email="m@other.io", created_by=user.id)
     await workspaces.create(ws2)
     suspended = WorkspaceMembership.create(
-        workspace_id=ws2.id, user_id=user.id, role="member", is_default=False,
+        workspace_id=ws2.id,
+        user_id=user.id,
+        role="member",
+        is_default=False,
         state="suspended",
     )
     await repo.create(suspended)
@@ -79,7 +83,10 @@ async def test_get_active_filters_suspended(repo, db_session) -> None:
 async def test_get_default(repo, db_session) -> None:
     user, ws = await _bootstrap(db_session)
     default = WorkspaceMembership.create(
-        workspace_id=ws.id, user_id=user.id, role="member", is_default=True,
+        workspace_id=ws.id,
+        user_id=user.id,
+        role="member",
+        is_default=True,
     )
     await repo.create(default)
     await db_session.commit()
@@ -96,13 +103,19 @@ async def test_get_default_returns_none_when_absent(repo) -> None:
 async def test_duplicate_membership_rejected(repo, db_session) -> None:
     user, ws = await _bootstrap(db_session)
     first = WorkspaceMembership.create(
-        workspace_id=ws.id, user_id=user.id, role="member", is_default=True,
+        workspace_id=ws.id,
+        user_id=user.id,
+        role="member",
+        is_default=True,
     )
     await repo.create(first)
     await db_session.commit()
 
     dup = WorkspaceMembership.create(
-        workspace_id=ws.id, user_id=user.id, role="admin", is_default=False,
+        workspace_id=ws.id,
+        user_id=user.id,
+        role="admin",
+        is_default=False,
     )
     with pytest.raises(Exception, match="duplicate key|unique|uq_membership_ws_user"):
         await repo.create(dup)

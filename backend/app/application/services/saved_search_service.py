@@ -2,6 +2,7 @@
 
 Thin orchestration layer for saved search CRUD + run.
 """
+
 from __future__ import annotations
 
 from typing import Any

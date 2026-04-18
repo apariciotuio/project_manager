@@ -1,4 +1,5 @@
 """EP-10 — IValidationRuleTemplateRepository interface."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -9,17 +10,13 @@ from app.domain.models.validation_rule_template import ValidationRuleTemplate
 
 class IValidationRuleTemplateRepository(ABC):
     @abstractmethod
-    async def create(
-        self, template: ValidationRuleTemplate
-    ) -> ValidationRuleTemplate: ...
+    async def create(self, template: ValidationRuleTemplate) -> ValidationRuleTemplate: ...
 
     @abstractmethod
     async def get(self, template_id: UUID) -> ValidationRuleTemplate | None: ...
 
     @abstractmethod
-    async def list_for_workspace(
-        self, workspace_id: UUID
-    ) -> list[ValidationRuleTemplate]: ...
+    async def list_for_workspace(self, workspace_id: UUID) -> list[ValidationRuleTemplate]: ...
 
     @abstractmethod
     async def list_matching(

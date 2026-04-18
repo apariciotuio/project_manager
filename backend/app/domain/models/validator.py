@@ -3,6 +3,7 @@
 Tracks a single role validation request on a work item. UNIQUE(work_item_id, role).
 responded_at is set by the service when status transitions from PENDING.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

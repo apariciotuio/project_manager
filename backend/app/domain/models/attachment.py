@@ -1,4 +1,5 @@
 """EP-16 — Attachment domain model."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

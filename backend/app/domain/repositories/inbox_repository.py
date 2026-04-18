@@ -3,6 +3,7 @@
 SQL must NOT live in application services (backend_review.md LV-3).
 All query logic lives in the infrastructure layer.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

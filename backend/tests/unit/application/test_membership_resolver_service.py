@@ -8,7 +8,6 @@ import pytest
 
 from app.application.services.membership_resolver_service import (
     MembershipResolverService,
-    ResolverOutcome,
 )
 from app.domain.models.workspace_membership import WorkspaceMembership
 from tests.fakes.fake_repositories import FakeWorkspaceMembershipRepository
@@ -19,9 +18,7 @@ def memberships() -> FakeWorkspaceMembershipRepository:
     return FakeWorkspaceMembershipRepository()
 
 
-def _membership(
-    *, user_id, workspace_id, state="active", is_default=True
-) -> WorkspaceMembership:
+def _membership(*, user_id, workspace_id, state="active", is_default=True) -> WorkspaceMembership:
     return WorkspaceMembership.create(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -53,12 +50,8 @@ async def test_single_active_membership_returns_single(memberships) -> None:
 
 async def test_suspended_memberships_are_ignored(memberships) -> None:
     user_id = uuid4()
-    await memberships.create(
-        _membership(user_id=user_id, workspace_id=uuid4(), state="suspended")
-    )
-    await memberships.create(
-        _membership(user_id=user_id, workspace_id=uuid4(), state="invited")
-    )
+    await memberships.create(_membership(user_id=user_id, workspace_id=uuid4(), state="suspended"))
+    await memberships.create(_membership(user_id=user_id, workspace_id=uuid4(), state="invited"))
 
     service = MembershipResolverService(memberships)
     outcome = await service.resolve(user_id=user_id)

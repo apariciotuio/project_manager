@@ -43,9 +43,7 @@ _DASH_RUNS = re.compile(r"-+")
 # EP-00 bootstrap; full public-suffix logic lives in `tldextract` if we ever need it.
 # NOTE: This hand-rolled list does not cover all PSL edge cases (e.g. foo.com.br);
 # replace with `tldextract` if broad international domain coverage becomes needed.
-_COMPOUND_SLDS = frozenset(
-    {"co", "com", "net", "org", "gov", "edu", "ac", "or", "ne"}
-)
+_COMPOUND_SLDS = frozenset({"co", "com", "net", "org", "gov", "edu", "ac", "or", "ne"})
 
 
 def _now() -> datetime:

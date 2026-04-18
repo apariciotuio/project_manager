@@ -2,19 +2,18 @@
 
 Uses in-memory fakes for all I/O boundaries.
 """
+
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from dataclasses import asdict
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
+from app.domain.quality.dimension_result import DimensionResult
 from app.domain.quality.score_calculator import compute as score_compute
-
 
 # ---------------------------------------------------------------------------
 # ScoreCalculator unit tests
@@ -40,22 +39,28 @@ class TestScoreCalculator:
         assert result.level == "low"
 
     def test_all_filled_applicable_gives_100(self) -> None:
-        dims = [_dim("a", applicable=True, filled=True, weight=0.5),
-                _dim("b", applicable=True, filled=True, weight=0.5)]
+        dims = [
+            _dim("a", applicable=True, filled=True, weight=0.5),
+            _dim("b", applicable=True, filled=True, weight=0.5),
+        ]
         result = score_compute(dims)
         assert result.score == 100
         assert result.level == "ready"
 
     def test_all_unfilled_applicable_gives_0(self) -> None:
-        dims = [_dim("a", applicable=True, filled=False, weight=0.5),
-                _dim("b", applicable=True, filled=False, weight=0.5)]
+        dims = [
+            _dim("a", applicable=True, filled=False, weight=0.5),
+            _dim("b", applicable=True, filled=False, weight=0.5),
+        ]
         result = score_compute(dims)
         assert result.score == 0
         assert result.level == "low"
 
     def test_half_filled_gives_50(self) -> None:
-        dims = [_dim("a", applicable=True, filled=True, weight=0.5),
-                _dim("b", applicable=True, filled=False, weight=0.5)]
+        dims = [
+            _dim("a", applicable=True, filled=True, weight=0.5),
+            _dim("b", applicable=True, filled=False, weight=0.5),
+        ]
         result = score_compute(dims)
         assert result.score == 50
         assert result.level == "medium"
@@ -186,7 +191,9 @@ def fake_cache() -> _FakeCache:
 
 class TestCompletenessService:
     @pytest.mark.asyncio
-    async def test_cache_hit_skips_db_calls(self, fake_work_item: _FakeWorkItem, fake_cache: _FakeCache) -> None:
+    async def test_cache_hit_skips_db_calls(
+        self, fake_work_item: _FakeWorkItem, fake_cache: _FakeCache
+    ) -> None:
         from app.application.services.completeness_service import CompletenessService
 
         # Pre-warm cache with a serialised result
@@ -260,11 +267,15 @@ class TestCompletenessService:
             await svc.compute(uuid4(), uuid4())
 
     @pytest.mark.asyncio
-    async def test_invalidate_removes_cache_key(self, fake_work_item: _FakeWorkItem, fake_cache: _FakeCache) -> None:
+    async def test_invalidate_removes_cache_key(
+        self, fake_work_item: _FakeWorkItem, fake_cache: _FakeCache
+    ) -> None:
         from app.application.services.completeness_service import CompletenessService
 
         work_item_id = uuid4()
-        await fake_cache.set(f"completeness:{work_item_id}", '{"score":100,"level":"ready","dimensions":[]}')
+        await fake_cache.set(
+            f"completeness:{work_item_id}", '{"score":100,"level":"ready","dimensions":[]}'
+        )
 
         svc = CompletenessService(
             work_item_repo=_FakeWorkItemRepo(fake_work_item),  # type: ignore[arg-type]
@@ -291,8 +302,17 @@ class TestGapService:
         work_item_id = uuid4()
         # Inject a cache result with one filled + one unfilled applicable dim
         dims = [
-            DimensionResult("acceptance_criteria", weight=0.22, applicable=True, filled=False, score=0.0, message="fill ac"),
-            DimensionResult("ownership", weight=0.10, applicable=True, filled=True, score=1.0, message=None),
+            DimensionResult(
+                "acceptance_criteria",
+                weight=0.22,
+                applicable=True,
+                filled=False,
+                score=0.0,
+                message="fill ac",
+            ),
+            DimensionResult(
+                "ownership", weight=0.10, applicable=True, filled=True, score=1.0, message=None
+            ),
         ]
         payload = json.dumps({"score": 30, "level": "low", "dimensions": [asdict(d) for d in dims]})
         await fake_cache.set(f"completeness:{work_item_id}", payload)
@@ -316,8 +336,14 @@ class TestGapService:
         from app.application.services.completeness_service import CompletenessService, GapService
 
         work_item_id = uuid4()
-        dims = [DimensionResult("ownership", weight=1.0, applicable=True, filled=True, score=1.0, message=None)]
-        payload = json.dumps({"score": 100, "level": "ready", "dimensions": [asdict(d) for d in dims]})
+        dims = [
+            DimensionResult(
+                "ownership", weight=1.0, applicable=True, filled=True, score=1.0, message=None
+            )
+        ]
+        payload = json.dumps(
+            {"score": 100, "level": "ready", "dimensions": [asdict(d) for d in dims]}
+        )
         await fake_cache.set(f"completeness:{work_item_id}", payload)
 
         completeness = CompletenessService(
@@ -339,7 +365,14 @@ class TestGapService:
         work_item_id = uuid4()
         # acceptance_criteria weight >= 0.12 → blocking
         dims = [
-            DimensionResult("acceptance_criteria", weight=0.22, applicable=True, filled=False, score=0.0, message="fill ac"),
+            DimensionResult(
+                "acceptance_criteria",
+                weight=0.22,
+                applicable=True,
+                filled=False,
+                score=0.0,
+                message="fill ac",
+            ),
         ]
         payload = json.dumps({"score": 0, "level": "low", "dimensions": [asdict(d) for d in dims]})
         await fake_cache.set(f"completeness:{work_item_id}", payload)

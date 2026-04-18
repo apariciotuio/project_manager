@@ -9,6 +9,7 @@ Covers:
 - delete by non-owner raises DraftForbiddenError
 - delete_expired removes only expired rows
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -16,15 +17,13 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.exceptions import DraftForbiddenError, WorkItemDraftNotFoundError
+from app.domain.exceptions import DraftForbiddenError
 from app.domain.models.user import User
 from app.domain.models.work_item_draft import WorkItemDraft
 from app.domain.models.workspace import Workspace
 from app.domain.value_objects.draft_conflict import DraftConflict
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,13 +50,13 @@ async def db(db_session: AsyncSession) -> AsyncSession:
 
 @pytest_asyncio.fixture
 async def user_and_workspace(db: AsyncSession):
-    from app.domain.models.user import User
-    from app.domain.models.workspace import Workspace
     from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
     from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
 
     email = _make_user_email()
-    user = User.from_google_claims(sub=_make_user_sub(), email=email, name="Test User", picture=None)
+    user = User.from_google_claims(
+        sub=_make_user_sub(), email=email, name="Test User", picture=None
+    )
     user = await UserRepositoryImpl(db).upsert(user)
     ws = Workspace.create_from_email(email=email, created_by=user.id)
     ws = await WorkspaceRepositoryImpl(db).create(ws)
@@ -244,9 +243,7 @@ class TestWorkItemDraftRepositoryGet:
 
 
 class TestWorkItemDraftRepositoryDelete:
-    async def test_delete_by_owner_succeeds(
-        self, db: AsyncSession, user_and_workspace
-    ) -> None:
+    async def test_delete_by_owner_succeeds(self, db: AsyncSession, user_and_workspace) -> None:
         from app.infrastructure.persistence.work_item_draft_repository_impl import (
             WorkItemDraftRepositoryImpl,
         )
@@ -284,10 +281,10 @@ class TestWorkItemDraftRepositoryDelete:
     async def test_delete_expired_removes_expired_rows(
         self, db: AsyncSession, user_and_workspace
     ) -> None:
+        from app.infrastructure.persistence.models.orm import WorkItemDraftORM
         from app.infrastructure.persistence.work_item_draft_repository_impl import (
             WorkItemDraftRepositoryImpl,
         )
-        from app.infrastructure.persistence.models.orm import WorkItemDraftORM
 
         user, ws = user_and_workspace
         repo = WorkItemDraftRepositoryImpl(db)

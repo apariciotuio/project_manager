@@ -11,6 +11,7 @@ Retry policy (enforced by caller):
   - attempts < 3: re-queue on failure (status back to 'queued')
   - attempts >= 3: leave as 'failed' for manual retry
 """
+
 from __future__ import annotations
 
 import logging
@@ -74,9 +75,7 @@ class PuppetIngestService:
             try:
                 # Idempotency: skip if work_item already succeeded via a previous row
                 if row.work_item_id is not None:
-                    already_done = await self._repo.has_succeeded_for_work_item(
-                        row.work_item_id
-                    )
+                    already_done = await self._repo.has_succeeded_for_work_item(row.work_item_id)
                     if already_done:
                         row.mark_skipped("already succeeded via previous ingest request")
                         await self._repo.save(row)

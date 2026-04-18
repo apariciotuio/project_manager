@@ -1,4 +1,5 @@
 """EP-09 — Integration tests: GET /api/v1/workspaces/dashboard."""
+
 from __future__ import annotations
 
 import time
@@ -71,25 +72,31 @@ async def _seed(migrated_database) -> tuple[User, Workspace, str]:
         users = UserRepositoryImpl(session)
         workspaces = WorkspaceRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
-        user = User.from_google_claims(sub="ep09-dash", email="ep09dash@test.com", name="D", picture=None)
+        user = User.from_google_claims(
+            sub="ep09-dash", email="ep09dash@test.com", name="D", picture=None
+        )
         await users.upsert(user)
         ws = Workspace.create_from_email(email="ep09dash@test.com", created_by=user.id)
         ws.slug = "ep09-dash"
         await workspaces.create(ws)
         await memberships.create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
         await session.commit()
     await engine.dispose()
 
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    token = jwt.encode({
-        "sub": str(user.id),
-        "email": user.email,
-        "workspace_id": str(ws.id),
-        "is_superadmin": False,
-        "exp": int(time.time()) + 3600,
-    })
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "workspace_id": str(ws.id),
+            "is_superadmin": False,
+            "exp": int(time.time()) + 3600,
+        }
+    )
     return user, ws, token
 
 
@@ -120,8 +127,12 @@ async def test_dashboard_empty_workspace(http: AsyncClient, migrated_database) -
 async def test_dashboard_with_work_items(http: AsyncClient, migrated_database) -> None:
     _, _, token = await _seed(migrated_database)
     # Create 2 work items
-    await http.post("/api/v1/work-items", json={"title": "Task A", "type": "task"}, cookies=_auth(token))
-    await http.post("/api/v1/work-items", json={"title": "Story B", "type": "story"}, cookies=_auth(token))
+    await http.post(
+        "/api/v1/work-items", json={"title": "Task A", "type": "task"}, cookies=_auth(token)
+    )
+    await http.post(
+        "/api/v1/work-items", json={"title": "Story B", "type": "story"}, cookies=_auth(token)
+    )
 
     r = await http.get(_DASHBOARD_URL, cookies=_auth(token))
     assert r.status_code == 200

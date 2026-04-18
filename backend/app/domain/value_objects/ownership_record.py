@@ -1,4 +1,5 @@
 """OwnershipRecord — immutable record of a single ownership transfer."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

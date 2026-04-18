@@ -2,6 +2,7 @@
 
 GET /api/v1/work-items/kanban
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -38,7 +39,9 @@ async def get_kanban_board(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     if group_by not in _VALID_GROUP_BY:

@@ -7,6 +7,7 @@ directly.
 Trigger enum: content_edit | state_transition | review_outcome | breakdown_change | manual
 ActorType enum: human | ai_suggestion | system
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -8,6 +8,7 @@ Applies to FE-originated request schemas only. External webhook payloads
 schema addition upstream doesn't break our callback handler — those
 endpoints trust their HMAC auth + idempotency gates instead.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -33,9 +34,7 @@ class TestFrontendRequestSchemasForbidExtra:
         from app.presentation.schemas.suggestion_schemas import PatchSuggestionStatusRequest
 
         with pytest.raises(ValidationError):
-            PatchSuggestionStatusRequest.model_validate(
-                {"status": "accepted", "extra": "drop-me"}
-            )
+            PatchSuggestionStatusRequest.model_validate({"status": "accepted", "extra": "drop-me"})
 
     def test_puppet_search_request_rejects_extra(self) -> None:
         from app.presentation.schemas.puppet_schemas import PuppetSearchRequest

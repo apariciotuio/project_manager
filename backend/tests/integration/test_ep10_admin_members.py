@@ -1,4 +1,5 @@
 """EP-10 — Integration tests for admin members REST API."""
+
 from __future__ import annotations
 
 import time
@@ -157,7 +158,12 @@ class TestAdminMembersInvite:
         user, ws, token = await _seed(migrated_database)
         resp = await http.post(
             "/api/v1/admin/members",
-            json={"email": "newmember@example.com", "context_labels": [], "team_ids": [], "initial_capabilities": []},
+            json={
+                "email": "newmember@example.com",
+                "context_labels": [],
+                "team_ids": [],
+                "initial_capabilities": [],
+            },
             cookies=_auth_cookies(token),
             headers=_csrf_headers(),
         )
@@ -290,7 +296,11 @@ class TestAdminValidationRules:
         user, ws, token = await _seed(migrated_database)
         resp = await http.post(
             "/api/v1/admin/rules/validation",
-            json={"work_item_type": "feature", "validation_type": "acceptance_criteria", "enforcement": "required"},
+            json={
+                "work_item_type": "feature",
+                "validation_type": "acceptance_criteria",
+                "enforcement": "required",
+            },
             cookies=_auth_cookies(token),
             headers=_csrf_headers(),
         )
@@ -309,7 +319,11 @@ class TestAdminValidationRules:
         )
         resp = await http.post(
             "/api/v1/admin/rules/validation",
-            json={"work_item_type": "feature", "validation_type": "ac", "enforcement": "recommended"},
+            json={
+                "work_item_type": "feature",
+                "validation_type": "ac",
+                "enforcement": "recommended",
+            },
             cookies=_auth_cookies(token),
             headers=_csrf_headers(),
         )

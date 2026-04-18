@@ -4,6 +4,7 @@ Wraps each request in a fresh ContextVar token so the SQLAlchemy
 `before_cursor_execute` listener counts queries in isolation.
 Calls `check_query_budget` at response time (dev/staging only).
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable

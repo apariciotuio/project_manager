@@ -1,4 +1,5 @@
 """Repository interface for Invitation."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -18,9 +19,7 @@ class IInvitationRepository(ABC):
     async def get_by_token_hash(self, token_hash: str) -> Invitation | None: ...
 
     @abstractmethod
-    async def get_active_by_email(
-        self, workspace_id: UUID, email: str
-    ) -> Invitation | None:
+    async def get_active_by_email(self, workspace_id: UUID, email: str) -> Invitation | None:
         """Return the most recent non-expired, non-revoked invitation for this email."""
         ...
 

@@ -10,6 +10,7 @@ Algorithm — additive, weights sum to 100:
   DUE_DATE_POINTS     = 10  (due_date is not None)
   OWNER_POINTS        = 15  (owner_id is not None and owner_suspended_flag is False)
 """
+
 from __future__ import annotations
 
 from app.domain.models.work_item import WorkItem

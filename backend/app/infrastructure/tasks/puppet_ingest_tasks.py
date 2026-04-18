@@ -14,6 +14,7 @@ _build_ingest_deps is monkeypatch-able for tests.
 
 # TODO(pg-jobs): crash mid-run = silent failure; move to pg jobs table if reliability needed.
 """
+
 from __future__ import annotations
 
 import logging
@@ -125,9 +126,7 @@ async def process_puppet_ingest(*, batch_limit: int = 50) -> dict[str, int]:
                         "puppet_ingest.delete_failed work_item=%s err=%s", work_item_id, exc
                     )
             else:
-                logger.warning(
-                    "puppet_ingest.unknown_op op=%s row=%s", operation, row_id
-                )
+                logger.warning("puppet_ingest.unknown_op op=%s row=%s", operation, row_id)
                 await outbox_repo.mark_failed(row_id, f"unknown operation: {operation}")
 
             outbox_processed += 1
@@ -135,9 +134,7 @@ async def process_puppet_ingest(*, batch_limit: int = 50) -> dict[str, int]:
         # Step 3: dispatch queued ingest_request rows for all workspaces
         # that had items in this batch
         dispatched_workspace_ids: set[UUID] = {
-            row["workspace_id"]
-            for row in rows
-            if row["operation"] == "index"
+            row["workspace_id"] for row in rows if row["operation"] == "index"
         }
         for ws_id in dispatched_workspace_ids:
             n = await ingest_svc.dispatch_pending(ws_id, limit=batch_limit)

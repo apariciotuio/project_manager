@@ -14,6 +14,7 @@ Rules (in priority order):
   9. state=exported → None (terminal)
   10. fallback → complete_specification
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -104,7 +105,8 @@ def evaluate(
     # 5. in_clarification + required sections filled → submit for review
     if work_item.state == WorkItemState.IN_CLARIFICATION:
         required_unfilled = [
-            d for d in completeness.dimensions
+            d
+            for d in completeness.dimensions
             if getattr(d, "applicable", True) and d.filled is False
         ]
         if not required_unfilled:

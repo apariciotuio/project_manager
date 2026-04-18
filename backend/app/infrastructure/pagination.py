@@ -20,9 +20,10 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -53,14 +54,14 @@ class PaginationCursor:
         return base64.b64encode(payload.encode()).decode()
 
     @classmethod
-    def decode(cls, token: str) -> "PaginationCursor":
+    def decode(cls, token: str) -> PaginationCursor:
         try:
             raw = base64.b64decode(token.encode())
             data = json.loads(raw)
             item_id = UUID(data["id"])
             created_at = datetime.fromisoformat(data["created_at"])
             if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=timezone.utc)
+                created_at = created_at.replace(tzinfo=UTC)
         except (KeyError, ValueError, TypeError, binascii.Error, json.JSONDecodeError) as exc:
             raise InvalidCursorError(f"Invalid pagination cursor: {exc}") from exc
         return cls(id=item_id, created_at=created_at)
@@ -96,9 +97,7 @@ def paginate(
         ValueError: If page_size is outside [1, 100].
     """
     if page_size < 1 or page_size > _MAX_PAGE_SIZE:
-        raise ValueError(
-            f"page_size must be between 1 and {_MAX_PAGE_SIZE}, got {page_size}"
-        )
+        raise ValueError(f"page_size must be between 1 and {_MAX_PAGE_SIZE}, got {page_size}")
 
     # Determine the entity class from the statement's froms so we can
     # reference its columns without coupling to a specific ORM class.
@@ -141,7 +140,7 @@ def paginate(
             id=UUID(str(last.id)),
             created_at=last.created_at
             if last.created_at.tzinfo is not None
-            else last.created_at.replace(tzinfo=timezone.utc),
+            else last.created_at.replace(tzinfo=UTC),
         ).encode()
 
     return PaginationResult(rows=rows, has_next=has_next, next_cursor=next_cursor)

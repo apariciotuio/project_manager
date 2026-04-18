@@ -1,4 +1,5 @@
 """Mapper between ConversationThread domain entity and ConversationThreadORM."""
+
 from __future__ import annotations
 
 from app.domain.models.conversation_thread import ConversationThread

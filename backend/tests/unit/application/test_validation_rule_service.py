@@ -1,4 +1,5 @@
 """Unit tests for ValidationRuleService — EP-10 admin rules."""
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -82,7 +83,9 @@ _ACTOR_ID = uuid4()
 _PROJ_ID = uuid4()
 
 
-def _make_service(repo: FakeValidationRuleRepo | None = None) -> tuple[ValidationRuleService, FakeValidationRuleRepo, FakeAudit]:
+def _make_service(
+    repo: FakeValidationRuleRepo | None = None,
+) -> tuple[ValidationRuleService, FakeValidationRuleRepo, FakeAudit]:
     r = repo or FakeValidationRuleRepo()
     audit = FakeAudit()
     svc = ValidationRuleService(repo=r, audit=audit)  # type: ignore[arg-type]
@@ -131,26 +134,46 @@ class TestCreateValidationRule:
     @pytest.mark.asyncio
     async def test_create_duplicate_workspace_scope_raises_409(self) -> None:
         svc, repo, _ = _make_service()
-        await svc.create_rule(_WS_ID, project_id=None, work_item_type="feature",
-                               validation_type="ac", enforcement="required", actor_id=_ACTOR_ID)
+        await svc.create_rule(
+            _WS_ID,
+            project_id=None,
+            work_item_type="feature",
+            validation_type="ac",
+            enforcement="required",
+            actor_id=_ACTOR_ID,
+        )
 
         with pytest.raises(DuplicateRuleError):
-            await svc.create_rule(_WS_ID, project_id=None, work_item_type="feature",
-                                   validation_type="ac", enforcement="recommended", actor_id=_ACTOR_ID)
+            await svc.create_rule(
+                _WS_ID,
+                project_id=None,
+                work_item_type="feature",
+                validation_type="ac",
+                enforcement="recommended",
+                actor_id=_ACTOR_ID,
+            )
 
     @pytest.mark.asyncio
     async def test_create_project_rule_when_global_blocker_raises_409(self) -> None:
         svc, repo, _ = _make_service()
         # Create workspace-level blocked_override first
         await svc.create_rule(
-            _WS_ID, project_id=None, work_item_type="feature",
-            validation_type="ac", enforcement="blocked_override", actor_id=_ACTOR_ID
+            _WS_ID,
+            project_id=None,
+            work_item_type="feature",
+            validation_type="ac",
+            enforcement="blocked_override",
+            actor_id=_ACTOR_ID,
         )
 
         with pytest.raises(GlobalBlockerInEffectError):
             await svc.create_rule(
-                _WS_ID, project_id=_PROJ_ID, work_item_type="feature",
-                validation_type="ac", enforcement="required", actor_id=_ACTOR_ID
+                _WS_ID,
+                project_id=_PROJ_ID,
+                work_item_type="feature",
+                validation_type="ac",
+                enforcement="required",
+                actor_id=_ACTOR_ID,
             )
 
     @pytest.mark.asyncio
@@ -158,8 +181,12 @@ class TestCreateValidationRule:
         svc, _, _ = _make_service()
         with pytest.raises(ValueError):
             await svc.create_rule(
-                _WS_ID, project_id=None, work_item_type="feature",
-                validation_type="ac", enforcement="super_strict", actor_id=_ACTOR_ID
+                _WS_ID,
+                project_id=None,
+                work_item_type="feature",
+                validation_type="ac",
+                enforcement="super_strict",
+                actor_id=_ACTOR_ID,
             )
 
 
@@ -172,11 +199,18 @@ class TestUpdateValidationRule:
     @pytest.mark.asyncio
     async def test_update_enforcement(self) -> None:
         svc, repo, _ = _make_service()
-        rule = await svc.create_rule(_WS_ID, project_id=None, work_item_type="f",
-                                      validation_type="ac", enforcement="recommended", actor_id=_ACTOR_ID)
+        rule = await svc.create_rule(
+            _WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="recommended",
+            actor_id=_ACTOR_ID,
+        )
 
-        updated, superseded = await svc.update_rule(_WS_ID, rule.id,
-                                                    enforcement="required", actor_id=_ACTOR_ID)
+        updated, superseded = await svc.update_rule(
+            _WS_ID, rule.id, enforcement="required", actor_id=_ACTOR_ID
+        )
         assert updated.enforcement == "required"
         assert superseded == []
 
@@ -184,14 +218,27 @@ class TestUpdateValidationRule:
     async def test_update_to_blocked_override_flags_project_rules(self) -> None:
         svc, repo, _ = _make_service()
         # Create workspace rule
-        ws_rule = await svc.create_rule(_WS_ID, project_id=None, work_item_type="f",
-                                         validation_type="ac", enforcement="recommended", actor_id=_ACTOR_ID)
+        ws_rule = await svc.create_rule(
+            _WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="recommended",
+            actor_id=_ACTOR_ID,
+        )
         # Create project rule
-        proj_rule = await svc.create_rule(_WS_ID, project_id=_PROJ_ID, work_item_type="f",
-                                           validation_type="ac", enforcement="required", actor_id=_ACTOR_ID)
+        proj_rule = await svc.create_rule(
+            _WS_ID,
+            project_id=_PROJ_ID,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            actor_id=_ACTOR_ID,
+        )
 
-        _, superseded = await svc.update_rule(_WS_ID, ws_rule.id,
-                                              enforcement="blocked_override", actor_id=_ACTOR_ID)
+        _, superseded = await svc.update_rule(
+            _WS_ID, ws_rule.id, enforcement="blocked_override", actor_id=_ACTOR_ID
+        )
         assert proj_rule.id in superseded
 
     @pytest.mark.asyncio
@@ -210,8 +257,14 @@ class TestDeleteValidationRule:
     @pytest.mark.asyncio
     async def test_delete_no_history_succeeds(self) -> None:
         svc, repo, audit = _make_service()
-        rule = await svc.create_rule(_WS_ID, project_id=None, work_item_type="f",
-                                      validation_type="ac", enforcement="required", actor_id=_ACTOR_ID)
+        rule = await svc.create_rule(
+            _WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            actor_id=_ACTOR_ID,
+        )
 
         await svc.delete_rule(_WS_ID, rule.id, _ACTOR_ID)
         assert rule.id not in repo._by_id
@@ -220,8 +273,14 @@ class TestDeleteValidationRule:
     @pytest.mark.asyncio
     async def test_delete_with_history_raises_409(self) -> None:
         svc, repo, _ = _make_service()
-        rule = await svc.create_rule(_WS_ID, project_id=None, work_item_type="f",
-                                      validation_type="ac", enforcement="required", actor_id=_ACTOR_ID)
+        rule = await svc.create_rule(
+            _WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            actor_id=_ACTOR_ID,
+        )
         repo._history.add(rule.id)
 
         with pytest.raises(RuleHasHistoryError):
@@ -242,12 +301,20 @@ class TestDeleteValidationRule:
 class TestPrecedenceAnnotation:
     def test_project_rule_supersedes_workspace_rule(self) -> None:
         ws_rule = ValidationRule.create(
-            workspace_id=_WS_ID, project_id=None, work_item_type="f",
-            validation_type="ac", enforcement="recommended", created_by=_ACTOR_ID,
+            workspace_id=_WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="recommended",
+            created_by=_ACTOR_ID,
         )
         proj_rule = ValidationRule.create(
-            workspace_id=_WS_ID, project_id=_PROJ_ID, work_item_type="f",
-            validation_type="ac", enforcement="required", created_by=_ACTOR_ID,
+            workspace_id=_WS_ID,
+            project_id=_PROJ_ID,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            created_by=_ACTOR_ID,
         )
 
         annotated = _annotate_precedence([ws_rule, proj_rule])
@@ -260,12 +327,20 @@ class TestPrecedenceAnnotation:
 
     def test_blocked_override_always_effective(self) -> None:
         ws_rule = ValidationRule.create(
-            workspace_id=_WS_ID, project_id=None, work_item_type="f",
-            validation_type="ac", enforcement="blocked_override", created_by=_ACTOR_ID,
+            workspace_id=_WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="blocked_override",
+            created_by=_ACTOR_ID,
         )
         proj_rule = ValidationRule.create(
-            workspace_id=_WS_ID, project_id=_PROJ_ID, work_item_type="f",
-            validation_type="ac", enforcement="required", created_by=_ACTOR_ID,
+            workspace_id=_WS_ID,
+            project_id=_PROJ_ID,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            created_by=_ACTOR_ID,
         )
 
         annotated = _annotate_precedence([ws_rule, proj_rule])
@@ -277,8 +352,12 @@ class TestPrecedenceAnnotation:
 
     def test_no_project_rules_workspace_rule_effective(self) -> None:
         ws_rule = ValidationRule.create(
-            workspace_id=_WS_ID, project_id=None, work_item_type="f",
-            validation_type="ac", enforcement="required", created_by=_ACTOR_ID,
+            workspace_id=_WS_ID,
+            project_id=None,
+            work_item_type="f",
+            validation_type="ac",
+            enforcement="required",
+            created_by=_ACTOR_ID,
         )
         annotated = _annotate_precedence([ws_rule])
         assert annotated[0].effective is True

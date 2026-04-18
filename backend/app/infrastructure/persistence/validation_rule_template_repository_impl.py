@@ -1,4 +1,5 @@
 """EP-10 — ValidationRuleTemplate SQLAlchemy repository impl."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -30,9 +31,7 @@ class ValidationRuleTemplateRepositoryImpl(IValidationRuleTemplateRepository):
         row = await self._session.get(ValidationRuleTemplateORM, template_id)
         return vrt_to_domain(row) if row else None
 
-    async def list_for_workspace(
-        self, workspace_id: UUID
-    ) -> list[ValidationRuleTemplate]:
+    async def list_for_workspace(self, workspace_id: UUID) -> list[ValidationRuleTemplate]:
         stmt = (
             sa.select(ValidationRuleTemplateORM)
             .where(

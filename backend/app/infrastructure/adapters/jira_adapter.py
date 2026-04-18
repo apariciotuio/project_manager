@@ -3,6 +3,7 @@
 Scope: single-issue creation for MVP export flow (EP-11).
 Retry policy: up to 2 retries on 5xx with exponential backoff (1s, 2s).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -152,7 +153,7 @@ class JiraClient:
             except JiraUnavailable as exc:
                 last_exc = exc
                 if attempt < _MAX_RETRIES:
-                    delay = 2 ** attempt  # 1s, 2s
+                    delay = 2**attempt  # 1s, 2s
                     logger.warning(
                         "Jira 5xx on attempt %d/%d; retrying in %ds",
                         attempt + 1,

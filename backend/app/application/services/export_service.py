@@ -8,14 +8,13 @@ Scope (EP-11):
     export_reference for one release of backward compat.
   - Emit audit event under category='domain', action='jira_export'
 """
+
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from app.domain.models.audit_event import AuditCategory
-from app.domain.models.work_item import WorkItem
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.infrastructure.adapters.jira_adapter import (
     JiraAuthError,

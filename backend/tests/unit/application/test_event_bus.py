@@ -1,9 +1,10 @@
 """Unit tests for EventBus."""
+
 from __future__ import annotations
 
-import pytest
-
 from uuid import uuid4
+
+import pytest
 
 from app.application.events.event_bus import Event, EventBus
 from app.application.events.events import WorkItemCreatedEvent, WorkItemStateChangedEvent

@@ -1,4 +1,5 @@
 """StateTransition — immutable record of a single FSM state change."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

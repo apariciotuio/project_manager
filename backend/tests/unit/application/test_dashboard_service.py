@@ -2,6 +2,7 @@
 
 Uses FakeCache; no real DB needed (service queries are tested in integration).
 """
+
 from __future__ import annotations
 
 import json

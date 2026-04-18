@@ -1,4 +1,5 @@
 """EP-10 — ProjectService."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -119,9 +120,7 @@ class ProjectService:
     ) -> RoutingRule | None:
         return await self._rules.match(workspace_id, work_item_type, project_id)
 
-    async def get_routing_rule(
-        self, rule_id: UUID, *, workspace_id: UUID
-    ) -> RoutingRule:
+    async def get_routing_rule(self, rule_id: UUID, *, workspace_id: UUID) -> RoutingRule:
         rule = await self._rules.get(rule_id)
         if rule is None or rule.workspace_id != workspace_id:
             raise RoutingRuleNotFoundError(f"routing rule {rule_id} not found")
@@ -154,9 +153,7 @@ class ProjectService:
         rule.updated_at = datetime.now(UTC)
         return await self._rules.save(rule)
 
-    async def delete_routing_rule(
-        self, rule_id: UUID, *, workspace_id: UUID
-    ) -> None:
+    async def delete_routing_rule(self, rule_id: UUID, *, workspace_id: UUID) -> None:
         rule = await self._rules.get(rule_id)
         if rule is None or rule.workspace_id != workspace_id:
             raise RoutingRuleNotFoundError(f"routing rule {rule_id} not found")

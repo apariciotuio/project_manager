@@ -3,6 +3,7 @@
 Route:
   GET /api/v1/work-items/{id}/next-step — next action + suggested validators
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,9 +35,7 @@ async def get_next_step(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}
-            },
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace", "details": {}}},
         )
     workspace_id = current_user.workspace_id
     try:

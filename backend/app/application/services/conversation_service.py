@@ -7,6 +7,7 @@ Dundun v0.1.1 has no "create conversation" endpoint (reference_dundun_api.md).
 We generate a local UUID as dundun_conversation_id and adopt Dundun's ID once
 we receive one from the first chat response.
 """
+
 from __future__ import annotations
 
 import logging
@@ -110,11 +111,7 @@ class ConversationService:
         layer so every REST caller benefits automatically.
         """
         thread = await self._thread_repo.get_by_id(thread_id)
-        if (
-            thread is None
-            or thread.user_id != user_id
-            or thread.workspace_id != workspace_id
-        ):
+        if thread is None or thread.user_id != user_id or thread.workspace_id != workspace_id:
             raise ThreadNotFoundError(f"thread {thread_id} not found")
         return thread
 
@@ -170,9 +167,7 @@ class ConversationService:
             user_id, work_item_id=work_item_id, include_archived=False
         )
 
-    async def build_sections_snapshot(
-        self, work_item_id: UUID | None
-    ) -> dict[str, str] | None:
+    async def build_sections_snapshot(self, work_item_id: UUID | None) -> dict[str, str] | None:
         """Build server-authoritative { section_type: content } snapshot.
 
         Returns None for general threads (work_item_id=None).

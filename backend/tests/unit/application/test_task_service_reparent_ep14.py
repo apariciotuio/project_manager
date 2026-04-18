@@ -2,6 +2,7 @@
 
 RED tests written first. GREEN implemented in task_service.py.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -10,7 +11,6 @@ import pytest
 
 from app.application.services.task_service import (
     InvalidPositionError,
-    TaskNodeNotFoundError,
     TaskService,
 )
 from app.domain.models.task_node import TaskGenerationSource, TaskNode
@@ -110,9 +110,7 @@ class TestReparentPosition:
         b = _make_node(wi, actor, order=1, title="B")
         # node to move (in its own isolated spot)
         parent = _make_node(wi, actor, order=10, title="OldParent")
-        moving = _make_node(
-            wi, actor, parent_id=parent.id, order=0, title="Moving"
-        )
+        moving = _make_node(wi, actor, parent_id=parent.id, order=0, title="Moving")
         moving.materialized_path = f"{parent.id}.{moving.id}"
         for n in (a, b, parent, moving):
             await repo.save(n)
@@ -138,9 +136,7 @@ class TestReparentPosition:
         a = _make_node(wi, actor, order=0, title="A")
         b = _make_node(wi, actor, order=1, title="B")
         parent = _make_node(wi, actor, order=10, title="OldParent")
-        moving = _make_node(
-            wi, actor, parent_id=parent.id, order=0, title="Moving"
-        )
+        moving = _make_node(wi, actor, parent_id=parent.id, order=0, title="Moving")
         moving.materialized_path = f"{parent.id}.{moving.id}"
         for n in (a, b, parent, moving):
             await repo.save(n)
@@ -166,9 +162,7 @@ class TestReparentPosition:
         # Only 1 sibling at root
         a = _make_node(wi, actor, order=0, title="A")
         parent = _make_node(wi, actor, order=10, title="OldParent")
-        moving = _make_node(
-            wi, actor, parent_id=parent.id, order=0, title="Moving"
-        )
+        moving = _make_node(wi, actor, parent_id=parent.id, order=0, title="Moving")
         moving.materialized_path = f"{parent.id}.{moving.id}"
         for n in (a, parent, moving):
             await repo.save(n)
@@ -189,9 +183,7 @@ class TestReparentPosition:
         svc = _make_service(repo)
 
         parent = _make_node(wi, actor, order=10, title="OldParent")
-        moving = _make_node(
-            wi, actor, parent_id=parent.id, order=0, title="Moving"
-        )
+        moving = _make_node(wi, actor, parent_id=parent.id, order=0, title="Moving")
         moving.materialized_path = f"{parent.id}.{moving.id}"
         for n in (parent, moving):
             await repo.save(n)
@@ -214,17 +206,11 @@ class TestReparentPosition:
 
         # Old parent with 3 children: x(0), moving(1), y(2)
         old_parent = _make_node(wi, actor, order=0, title="OldParent")
-        x = _make_node(
-            wi, actor, parent_id=old_parent.id, order=0, title="X"
-        )
+        x = _make_node(wi, actor, parent_id=old_parent.id, order=0, title="X")
         x.materialized_path = f"{old_parent.id}.{x.id}"
-        moving = _make_node(
-            wi, actor, parent_id=old_parent.id, order=1, title="Moving"
-        )
+        moving = _make_node(wi, actor, parent_id=old_parent.id, order=1, title="Moving")
         moving.materialized_path = f"{old_parent.id}.{moving.id}"
-        y = _make_node(
-            wi, actor, parent_id=old_parent.id, order=2, title="Y"
-        )
+        y = _make_node(wi, actor, parent_id=old_parent.id, order=2, title="Y")
         y.materialized_path = f"{old_parent.id}.{y.id}"
 
         # New parent (empty)
@@ -258,17 +244,11 @@ class TestReparentPosition:
         svc = _make_service(repo)
 
         parent = _make_node(wi, actor, order=0, title="Parent")
-        a = _make_node(
-            wi, actor, parent_id=parent.id, order=0, title="A"
-        )
+        a = _make_node(wi, actor, parent_id=parent.id, order=0, title="A")
         a.materialized_path = f"{parent.id}.{a.id}"
-        b = _make_node(
-            wi, actor, parent_id=parent.id, order=1, title="B"
-        )
+        b = _make_node(wi, actor, parent_id=parent.id, order=1, title="B")
         b.materialized_path = f"{parent.id}.{b.id}"
-        c = _make_node(
-            wi, actor, parent_id=parent.id, order=2, title="C"
-        )
+        c = _make_node(wi, actor, parent_id=parent.id, order=2, title="C")
         c.materialized_path = f"{parent.id}.{c.id}"
 
         for n in (parent, a, b, c):

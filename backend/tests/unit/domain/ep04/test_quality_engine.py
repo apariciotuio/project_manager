@@ -1,4 +1,5 @@
 """EP-04 Phase 4 + 5 — dimension checkers + score calculator."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -41,17 +42,21 @@ def _section(kind: SectionType, content: str, *, required: bool = False) -> Sect
 
 
 def _validator(status: ValidatorStatus = ValidatorStatus.PENDING) -> Validator:
-    return Validator.create(
-        work_item_id=uuid4(), role="product_owner", assigned_by=uuid4()
-    )._replace_status(status) if False else Validator(
-        id=uuid4(),
-        work_item_id=uuid4(),
-        user_id=None,
-        role="r",
-        status=status,
-        assigned_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
-        assigned_by=uuid4(),
-        responded_at=None,
+    return (
+        Validator.create(
+            work_item_id=uuid4(), role="product_owner", assigned_by=uuid4()
+        )._replace_status(status)
+        if False
+        else Validator(
+            id=uuid4(),
+            work_item_id=uuid4(),
+            user_id=None,
+            role="r",
+            status=status,
+            assigned_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
+            assigned_by=uuid4(),
+            responded_at=None,
+        )
     )
 
 
@@ -94,11 +99,7 @@ class TestAcceptanceCriteria:
 
     def test_two_bullets_enough(self) -> None:
         wi = _FakeWorkItem(type=WorkItemType.BUG, owner_id=uuid4())
-        sections = [
-            _section(
-                SectionType.ACCEPTANCE_CRITERIA, "- first bullet\n- second bullet"
-            )
-        ]
+        sections = [_section(SectionType.ACCEPTANCE_CRITERIA, "- first bullet\n- second bullet")]
         assert dc.check_acceptance_criteria(wi, sections, []).filled is True
 
 
@@ -112,9 +113,7 @@ class TestDependencies:
 
 class TestOwnership:
     def test_suspended_owner_not_filled(self) -> None:
-        wi = _FakeWorkItem(
-            type=WorkItemType.BUG, owner_id=uuid4(), owner_suspended_flag=True
-        )
+        wi = _FakeWorkItem(type=WorkItemType.BUG, owner_id=uuid4(), owner_suspended_flag=True)
         assert dc.check_ownership(wi, [], []).filled is False
 
     def test_no_owner_not_filled(self) -> None:

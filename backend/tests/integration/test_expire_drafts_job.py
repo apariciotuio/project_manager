@@ -60,9 +60,7 @@ async def _seed_workspace(engine, *, created_by) -> Workspace:
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as s:
         repo = WorkspaceRepositoryImpl(s)
-        ws = Workspace.create_from_email(
-            email=f"{uuid4().hex[:8]}@tuio.com", created_by=created_by
-        )
+        ws = Workspace.create_from_email(email=f"{uuid4().hex[:8]}@tuio.com", created_by=created_by)
         saved = await repo.create(ws)
         await s.commit()
     return saved

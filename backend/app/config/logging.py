@@ -1,28 +1,29 @@
 import json
 import logging
-import traceback
 from contextvars import ContextVar
 from typing import Any
 
 correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
 
 # Keys (or substrings of keys) whose values must never appear in logs.
-_SENSITIVE_KEY_SUBSTRINGS = frozenset({
-    "authorization",
-    "token",
-    "password",
-    "secret",
-    "api_key",
-    "credentials",
-    "cookie",
-    "set-cookie",
-})
+_SENSITIVE_KEY_SUBSTRINGS = frozenset(
+    {
+        "authorization",
+        "token",
+        "password",
+        "secret",
+        "api_key",
+        "credentials",
+        "cookie",
+        "set-cookie",
+    }
+)
 _REDACTED = "***REDACTED***"
 
 # LogRecord built-in attributes — we only scrub *extra* fields added by callers.
-_LOG_RECORD_BUILTIN_ATTRS = frozenset(logging.LogRecord(
-    "", 0, "", 0, "", (), None
-).__dict__.keys()) | {"message", "asctime"}
+_LOG_RECORD_BUILTIN_ATTRS = frozenset(
+    logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys()
+) | {"message", "asctime"}
 
 
 def _is_sensitive_key(key: str) -> bool:

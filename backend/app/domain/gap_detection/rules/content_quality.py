@@ -4,6 +4,7 @@ Checks:
 - Description shorter than MIN_DESCRIPTION_LENGTH → warning
 - Description is only a vague placeholder (TBD / TODO / N/A alone) → warning
 """
+
 from __future__ import annotations
 
 import re

@@ -3,17 +3,16 @@
 Tests verify that the correct SQL conditions are appended for each filter.
 We test the SQLAlchemy statement object, not the DB — no DB required.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import String, and_, inspect, select
 
 from app.application.services.work_item_list_service import WorkItemListQueryBuilder
 from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
-from app.infrastructure.persistence.models.orm import WorkItemORM
 
 
 def _builder(workspace_id: UUID | None = None, **kw: object) -> WorkItemListQueryBuilder:
@@ -25,6 +24,7 @@ def _builder(workspace_id: UUID | None = None, **kw: object) -> WorkItemListQuer
 def _stmt_str(builder: WorkItemListQueryBuilder) -> str:
     """Compile the statement to a string for assertion."""
     from sqlalchemy.dialects import postgresql
+
     stmt = builder.build_stmt()
     return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": False}))
 
@@ -131,7 +131,7 @@ class TestDeletedFilter:
     def test_include_deleted_true_skips_condition(self) -> None:
         b = _builder(include_deleted=True)
         stmt = b.build_stmt()
-        compiled = str(stmt.compile())
+        str(stmt.compile())
         # deleted_at filter removed — no guarantee it won't appear elsewhere, but at minimum it should not appear in the where clause
         # We verify by checking that the query can be built and executes without error
         assert stmt is not None
@@ -140,6 +140,7 @@ class TestDeletedFilter:
 class TestCursorPagination:
     def test_cursor_param_is_stored(self) -> None:
         from app.domain.pagination import PaginationCursor
+
         cursor = PaginationCursor(sort_value=datetime.now(UTC).isoformat(), last_id=uuid4())
         encoded = cursor.encode()
         b = _builder(cursor=encoded)

@@ -1,4 +1,5 @@
 """Unit tests for ConversationThread entity — RED phase."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -15,6 +16,7 @@ def _make(
     deleted_at: datetime | None = None,
 ) -> ConversationThread:
     from uuid import UUID
+
     wid: UUID | None = work_item_id  # type: ignore[assignment]
     return ConversationThread(
         id=uuid4(),

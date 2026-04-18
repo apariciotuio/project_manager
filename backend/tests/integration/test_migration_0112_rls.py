@@ -9,9 +9,7 @@ set in app.current_workspace — expect 0 rows visible.
 
 from __future__ import annotations
 
-import pytest
 from sqlalchemy import text
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -52,9 +50,7 @@ async def _insert_workspace_and_user(conn, slug: str) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def test_teams_rls_workspace_isolation(
-    db_session, rls_session
-) -> None:
+async def test_teams_rls_workspace_isolation(db_session, rls_session) -> None:
     """Rows in teams are invisible to a session scoped to a different workspace."""
     # Insert two workspaces + users via superuser session
     async with db_session.begin():
@@ -95,9 +91,7 @@ async def test_teams_rls_workspace_isolation(
     assert count == 0, f"teams RLS leaks rows across workspaces: got {count}"
 
 
-async def test_teams_rls_own_workspace_visible(
-    db_session, rls_session
-) -> None:
+async def test_teams_rls_own_workspace_visible(db_session, rls_session) -> None:
     """Rows are visible when the session workspace matches."""
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-teams-own")
@@ -129,9 +123,7 @@ async def test_teams_rls_own_workspace_visible(
 # ---------------------------------------------------------------------------
 
 
-async def test_notifications_rls_workspace_isolation(
-    db_session, rls_session
-) -> None:
+async def test_notifications_rls_workspace_isolation(db_session, rls_session) -> None:
     """Notifications in workspace A are invisible to a session scoped to workspace B."""
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-notif-a")
@@ -155,9 +147,7 @@ async def test_notifications_rls_workspace_isolation(
         )
         count = (
             await rls_session.execute(
-                text(
-                    "SELECT COUNT(*) FROM notifications WHERE workspace_id = :ws"
-                ),
+                text("SELECT COUNT(*) FROM notifications WHERE workspace_id = :ws"),
                 {"ws": ws_a},
             )
         ).scalar()
@@ -165,9 +155,7 @@ async def test_notifications_rls_workspace_isolation(
     assert count == 0, f"notifications RLS leaks rows: got {count}"
 
 
-async def test_notifications_rls_own_workspace_visible(
-    db_session, rls_session
-) -> None:
+async def test_notifications_rls_own_workspace_visible(db_session, rls_session) -> None:
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-notif-own")
         await db_session.execute(
@@ -188,9 +176,7 @@ async def test_notifications_rls_own_workspace_visible(
         )
         count = (
             await rls_session.execute(
-                text(
-                    "SELECT COUNT(*) FROM notifications WHERE workspace_id = :ws"
-                ),
+                text("SELECT COUNT(*) FROM notifications WHERE workspace_id = :ws"),
                 {"ws": ws_a},
             )
         ).scalar()
@@ -203,9 +189,7 @@ async def test_notifications_rls_own_workspace_visible(
 # ---------------------------------------------------------------------------
 
 
-async def test_projects_rls_workspace_isolation(
-    db_session, rls_session
-) -> None:
+async def test_projects_rls_workspace_isolation(db_session, rls_session) -> None:
     """Projects in workspace A are invisible to a session scoped to workspace B."""
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-proj-a")
@@ -234,9 +218,7 @@ async def test_projects_rls_workspace_isolation(
     assert count == 0, f"projects RLS leaks rows: got {count}"
 
 
-async def test_projects_rls_own_workspace_visible(
-    db_session, rls_session
-) -> None:
+async def test_projects_rls_own_workspace_visible(db_session, rls_session) -> None:
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-proj-own")
         await db_session.execute(
@@ -299,9 +281,7 @@ async def test_validation_rule_templates_global_visible_to_all_workspaces(
     assert count == 1, "global VRT should be visible to all workspace sessions"
 
 
-async def test_validation_rule_templates_workspace_isolated(
-    db_session, rls_session
-) -> None:
+async def test_validation_rule_templates_workspace_isolated(db_session, rls_session) -> None:
     """Workspace-scoped VRTs are invisible from a different workspace session."""
     async with db_session.begin():
         ws_a, user_a = await _insert_workspace_and_user(db_session, "rls-vrt-a")
@@ -323,10 +303,7 @@ async def test_validation_rule_templates_workspace_isolated(
         )
         count = (
             await rls_session.execute(
-                text(
-                    "SELECT COUNT(*) FROM validation_rule_templates "
-                    "WHERE workspace_id = :ws"
-                ),
+                text("SELECT COUNT(*) FROM validation_rule_templates WHERE workspace_id = :ws"),
                 {"ws": ws_a},
             )
         ).scalar()

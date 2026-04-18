@@ -5,6 +5,7 @@ repository calls + Redis cache. No SQL here.
 
 Cache key: dashboard:{workspace_id}:{project_id|global}  TTL: 5 min
 """
+
 from __future__ import annotations
 
 import json
@@ -54,29 +55,27 @@ class AdminDashboardService:
     async def _compute_dashboard(
         self, workspace_id: UUID, project_id: UUID | None
     ) -> dict[str, Any]:
-        from sqlalchemy import func, select, and_
+        from datetime import UTC, datetime, timedelta
+
+        from sqlalchemy import func, select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import (
+            IntegrationConfigORM,
+            TeamMembershipORM,
+            TeamORM,
             WorkItemORM,
             WorkspaceMembershipORM,
-            UserORM,
-            TeamORM,
-            TeamMembershipORM,
-            IntegrationConfigORM,
         )
-        from datetime import UTC, datetime, timedelta
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         now = datetime.now(UTC)
         stale_threshold = now - timedelta(days=5)
 
         # --- workspace_health ---
-        wi_state_stmt = (
-            select(WorkItemORM.state, func.count().label("cnt"))
-            .where(
-                WorkItemORM.workspace_id == workspace_id,
-                WorkItemORM.deleted_at.is_(None),
-            )
+        wi_state_stmt = select(WorkItemORM.state, func.count().label("cnt")).where(
+            WorkItemORM.workspace_id == workspace_id,
+            WorkItemORM.deleted_at.is_(None),
         )
         if project_id:
             wi_state_stmt = wi_state_stmt.where(WorkItemORM.project_id == project_id)
@@ -108,9 +107,13 @@ class AdminDashboardService:
         }
 
         # --- org_health ---
-        active_members_stmt = select(func.count()).select_from(WorkspaceMembershipORM).where(
-            WorkspaceMembershipORM.workspace_id == workspace_id,
-            WorkspaceMembershipORM.state == "active",
+        active_members_stmt = (
+            select(func.count())
+            .select_from(WorkspaceMembershipORM)
+            .where(
+                WorkspaceMembershipORM.workspace_id == workspace_id,
+                WorkspaceMembershipORM.state == "active",
+            )
         )
         active_members = (await session.execute(active_members_stmt)).scalar_one()
 
@@ -142,17 +145,14 @@ class AdminDashboardService:
         }
 
         # --- integration_health ---
-        jira_stmt = (
-            select(
-                IntegrationConfigORM.id,
-                IntegrationConfigORM.state if hasattr(IntegrationConfigORM, "state") else None,
-                IntegrationConfigORM.integration_type,
-                IntegrationConfigORM.is_active,
-            )
-            .where(
-                IntegrationConfigORM.workspace_id == workspace_id,
-                IntegrationConfigORM.integration_type == "jira",
-            )
+        jira_stmt = select(
+            IntegrationConfigORM.id,
+            IntegrationConfigORM.state if hasattr(IntegrationConfigORM, "state") else None,
+            IntegrationConfigORM.integration_type,
+            IntegrationConfigORM.is_active,
+        ).where(
+            IntegrationConfigORM.workspace_id == workspace_id,
+            IntegrationConfigORM.integration_type == "jira",
         )
         jira_rows = (await session.execute(jira_stmt)).all()
         jira_configs_health = [

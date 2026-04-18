@@ -10,9 +10,10 @@ Cases:
   - Response shape: { data: { jobs: [...] }, message: "ok" }
   - All expected job names present in the list
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -41,7 +42,7 @@ _EXPECTED_JOBS = frozenset(
 
 def _make_token(*, is_superadmin: bool, workspace_id: str | None = None) -> str:
     adapter = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(uuid4()),
         "email": f"{uuid4().hex[:8]}@tuio.com",

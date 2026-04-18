@@ -9,6 +9,7 @@ Routes:
 
 All endpoints require admin role (workspace admin or superadmin).
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,6 @@ from app.application.services.project_service import (
     RoutingRuleNotFoundError,
 )
 from app.presentation.dependencies import (
-    get_current_user,
     get_project_service,
     require_admin,
 )
@@ -119,9 +119,7 @@ async def get_routing_rule(
 ) -> dict[str, Any]:
     assert current_user.workspace_id is not None
     try:
-        rule = await service.get_routing_rule(
-            rule_id, workspace_id=current_user.workspace_id
-        )
+        rule = await service.get_routing_rule(rule_id, workspace_id=current_user.workspace_id)
     except RoutingRuleNotFoundError as exc:
         raise _not_found() from exc
     return _ok(_rule_payload(rule))
@@ -158,8 +156,6 @@ async def delete_routing_rule(
 ) -> None:
     assert current_user.workspace_id is not None
     try:
-        await service.delete_routing_rule(
-            rule_id, workspace_id=current_user.workspace_id
-        )
+        await service.delete_routing_rule(rule_id, workspace_id=current_user.workspace_id)
     except RoutingRuleNotFoundError as exc:
         raise _not_found() from exc

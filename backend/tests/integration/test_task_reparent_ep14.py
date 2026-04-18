@@ -5,6 +5,7 @@ since the fake wires in through create_app + seeded).
 
 For the endpoint layer we use the same pattern as test_task_controller_ep05.py.
 """
+
 from __future__ import annotations
 
 import time
@@ -179,8 +180,8 @@ class TestReparentEndpoint:
         """Reparent + position=0 → target becomes first sibling at new parent."""
         _, _, wi, token = seeded
 
-        a = await _create_task(http, wi, token, "A")
-        b = await _create_task(http, wi, token, "B")
+        await _create_task(http, wi, token, "A")
+        await _create_task(http, wi, token, "B")
         # 'moving' currently under a child parent
         parent_task = await _create_task(http, wi, token, "OldParent")
         moving = await _create_task(http, wi, token, "Moving", parent_id=parent_task["id"])
@@ -197,8 +198,8 @@ class TestReparentEndpoint:
         """Reparent + position=N (end) → target appended after last sibling."""
         _, _, wi, token = seeded
 
-        a = await _create_task(http, wi, token, "A")
-        b = await _create_task(http, wi, token, "B")
+        await _create_task(http, wi, token, "A")
+        await _create_task(http, wi, token, "B")
         parent_task = await _create_task(http, wi, token, "OldParent")
         moving = await _create_task(http, wi, token, "Moving", parent_id=parent_task["id"])
 
@@ -211,9 +212,7 @@ class TestReparentEndpoint:
         assert data["display_order"] == 3
 
     @pytest.mark.asyncio
-    async def test_reparent_position_out_of_range_returns_422(
-        self, http, seeded, app
-    ) -> None:
+    async def test_reparent_position_out_of_range_returns_422(self, http, seeded, app) -> None:
         """position > sibling count → 422."""
         _, _, wi, token = seeded
 
@@ -225,16 +224,14 @@ class TestReparentEndpoint:
         assert resp.status_code == 422, resp.text
 
     @pytest.mark.asyncio
-    async def test_cross_parent_reparent_old_siblings_renumber(
-        self, http, seeded, app
-    ) -> None:
+    async def test_cross_parent_reparent_old_siblings_renumber(self, http, seeded, app) -> None:
         """After moving a child out, remaining siblings under old parent are gapless."""
         _, _, wi, token = seeded
 
         old_parent = await _create_task(http, wi, token, "OldParent")
-        x = await _create_task(http, wi, token, "X", parent_id=old_parent["id"])
+        await _create_task(http, wi, token, "X", parent_id=old_parent["id"])
         moving = await _create_task(http, wi, token, "Moving", parent_id=old_parent["id"])
-        y = await _create_task(http, wi, token, "Y", parent_id=old_parent["id"])
+        await _create_task(http, wi, token, "Y", parent_id=old_parent["id"])
 
         new_parent = await _create_task(http, wi, token, "NewParent")
 
@@ -278,14 +275,12 @@ class TestReparentEndpoint:
         _, _, wi, token = seeded
 
         parent_task = await _create_task(http, wi, token, "Parent")
-        a = await _create_task(http, wi, token, "A", parent_id=parent_task["id"])
-        b = await _create_task(http, wi, token, "B", parent_id=parent_task["id"])
+        await _create_task(http, wi, token, "A", parent_id=parent_task["id"])
+        await _create_task(http, wi, token, "B", parent_id=parent_task["id"])
         c = await _create_task(http, wi, token, "C", parent_id=parent_task["id"])
 
         # Move c to position 0 (same parent)
-        resp = await _reparent(
-            http, c["id"], token, new_parent_id=parent_task["id"], position=0
-        )
+        resp = await _reparent(http, c["id"], token, new_parent_id=parent_task["id"], position=0)
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
         assert data["display_order"] == 0
@@ -319,14 +314,12 @@ class TestReorderSiblingsEndpoint:
         assert data["ordered_ids"] == [c["id"], a["id"], b["id"]]
 
     @pytest.mark.asyncio
-    async def test_reorder_siblings_missing_id_returns_422(
-        self, http, seeded, app
-    ) -> None:
+    async def test_reorder_siblings_missing_id_returns_422(self, http, seeded, app) -> None:
         _, _, wi, token = seeded
 
         parent_task = await _create_task(http, wi, token, "Parent")
         a = await _create_task(http, wi, token, "A", parent_id=parent_task["id"])
-        b = await _create_task(http, wi, token, "B", parent_id=parent_task["id"])
+        await _create_task(http, wi, token, "B", parent_id=parent_task["id"])
 
         resp = await http.post(
             f"/api/v1/work-items/{wi}/tasks/reorder-siblings",
@@ -339,9 +332,7 @@ class TestReorderSiblingsEndpoint:
         assert resp.status_code == 422, resp.text
 
     @pytest.mark.asyncio
-    async def test_reorder_siblings_foreign_id_returns_422(
-        self, http, seeded, app
-    ) -> None:
+    async def test_reorder_siblings_foreign_id_returns_422(self, http, seeded, app) -> None:
         _, _, wi, token = seeded
 
         parent_task = await _create_task(http, wi, token, "Parent")

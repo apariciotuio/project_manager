@@ -10,6 +10,7 @@ Routes:
 workspace_id is guaranteed non-None by get_scoped_session (used by all service deps).
 Explicit _require_workspace guard below ensures consistent pattern + type narrowing.
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,7 +45,9 @@ def _require_workspace(user: CurrentUser) -> None:
     if user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
 
@@ -176,7 +179,9 @@ async def apply_suggestion_batch(
     except ValueError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "NO_ACCEPTED_SUGGESTIONS", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "NO_ACCEPTED_SUGGESTIONS", "message": str(exc), "details": {}}
+            },
         ) from exc
 
     latest = result["latest_version"]

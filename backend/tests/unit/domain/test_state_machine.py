@@ -1,8 +1,8 @@
 """Unit tests for WorkItem state machine — RED phase."""
+
 from __future__ import annotations
 
 import pytest
-
 
 VALID_TRANSITIONS_EXPECTED = [
     ("draft", "in_clarification"),
@@ -81,9 +81,7 @@ class TestExplicitRejections:
         from app.domain.state_machine import is_valid_transition
         from app.domain.value_objects.work_item_state import WorkItemState
 
-        assert (
-            is_valid_transition(WorkItemState.CHANGES_REQUESTED, WorkItemState.READY) is False
-        )
+        assert is_valid_transition(WorkItemState.CHANGES_REQUESTED, WorkItemState.READY) is False
 
     def test_exported_is_terminal_no_outbound(self) -> None:
         """Exported has zero outbound edges."""

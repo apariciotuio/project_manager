@@ -1,4 +1,5 @@
 """Mapper between AssistantSuggestion domain entity and AssistantSuggestionORM."""
+
 from __future__ import annotations
 
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus

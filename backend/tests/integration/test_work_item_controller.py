@@ -3,6 +3,7 @@
 Uses real FastAPI app + real Postgres testcontainer.
 Auth via JWT cookies minted with the test secret.
 """
+
 from __future__ import annotations
 
 import time
@@ -24,7 +25,6 @@ from app.infrastructure.persistence.workspace_membership_repository_impl import 
 )
 from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
 from app.main import create_app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -75,7 +75,9 @@ async def _seed(migrated_database) -> tuple[User, Workspace, str]:
         workspaces = WorkspaceRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
 
-        user = User.from_google_claims(sub="sub-wi-test", email="wi@test.com", name="WI", picture=None)
+        user = User.from_google_claims(
+            sub="sub-wi-test", email="wi@test.com", name="WI", picture=None
+        )
         await users.upsert(user)
         ws = Workspace.create_from_email(email="wi@test.com", created_by=user.id)
         ws.slug = "wi-test"
@@ -114,7 +116,9 @@ async def _seed_second_user(migrated_database, workspace_id: UUID) -> tuple[User
         users = UserRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
 
-        user = User.from_google_claims(sub="sub-wi-other", email="other@test.com", name="Other", picture=None)
+        user = User.from_google_claims(
+            sub="sub-wi-other", email="other@test.com", name="Other", picture=None
+        )
         await users.upsert(user)
         await memberships.create(
             WorkspaceMembership.create(
@@ -150,7 +154,9 @@ async def _seed_suspended_user(migrated_database, workspace_id: UUID) -> tuple[U
         users = UserRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
 
-        user = User.from_google_claims(sub="sub-wi-suspended", email="suspended@test.com", name="Sus", picture=None)
+        user = User.from_google_claims(
+            sub="sub-wi-suspended", email="suspended@test.com", name="Sus", picture=None
+        )
         # Directly suspend after creation
         user.status = "suspended"  # type: ignore[assignment]
         await users.upsert(user)
@@ -274,9 +280,13 @@ async def test_transition_valid_returns_200_and_persists_row(
     assert r.json()["data"]["state"] == "in_clarification"
 
     # Check DB row
-    await db_session.execute(text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)})
+    await db_session.execute(
+        text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)}
+    )
     rows = await db_session.execute(
-        text("SELECT from_state, to_state FROM state_transitions WHERE work_item_id = :id ORDER BY triggered_at DESC"),
+        text(
+            "SELECT from_state, to_state FROM state_transitions WHERE work_item_id = :id ORDER BY triggered_at DESC"
+        ),
         {"id": item["id"]},
     )
     transitions = rows.fetchall()
@@ -291,7 +301,10 @@ async def test_force_ready_valid_sets_has_override(http, migrated_database) -> N
 
     r = await http.post(
         f"/api/v1/work-items/{item['id']}/force-ready",
-        json={"justification": "This is a valid justification longer than ten chars", "confirmed": True},
+        json={
+            "justification": "This is a valid justification longer than ten chars",
+            "confirmed": True,
+        },
         cookies=_auth(token),
     )
     assert r.status_code == 200
@@ -318,7 +331,9 @@ async def test_reassign_owner_valid_returns_200(http, migrated_database, db_sess
     assert r.json()["data"]["owner_id"] == str(other_user.id)
 
     # Check ownership_history row persisted
-    await db_session.execute(text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)})
+    await db_session.execute(
+        text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)}
+    )
     rows = await db_session.execute(
         text("SELECT new_owner_id FROM ownership_history WHERE work_item_id = :id"),
         {"id": item["id"]},
@@ -377,7 +392,7 @@ async def test_list_with_state_filter_returns_matching(http, migrated_database) 
     user, ws, token = await _seed(migrated_database)
     project_id = uuid4()
 
-    item1 = await _create_item(http, token, project_id, title="Item Draft")
+    await _create_item(http, token, project_id, title="Item Draft")
     item2 = await _create_item(http, token, project_id, title="Item to Clarify")
 
     # Transition item2 to in_clarification
@@ -402,7 +417,7 @@ async def test_list_with_has_override_filter(http, migrated_database) -> None:
     user, ws, token = await _seed(migrated_database)
     project_id = uuid4()
 
-    item1 = await _create_item(http, token, project_id, title="Normal")
+    await _create_item(http, token, project_id, title="Normal")
     item2 = await _create_item(http, token, project_id, title="Override Item")
 
     await http.post(
@@ -430,7 +445,9 @@ async def test_delete_draft_returns_204(http, migrated_database, db_session) -> 
     assert r.status_code == 204
 
     # Verify soft-delete in DB
-    await db_session.execute(text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)})
+    await db_session.execute(
+        text("SELECT set_config('app.current_workspace', :wid, true)"), {"wid": str(ws.id)}
+    )
     row = await db_session.execute(
         text("SELECT deleted_at FROM work_items WHERE id = :id"),
         {"id": item["id"]},
@@ -590,7 +607,10 @@ async def test_force_ready_by_non_owner_returns_403(http, migrated_database) -> 
 
     r = await http.post(
         f"/api/v1/work-items/{item['id']}/force-ready",
-        json={"justification": "This justification is long enough to pass validation", "confirmed": True},
+        json={
+            "justification": "This justification is long enough to pass validation",
+            "confirmed": True,
+        },
         cookies=_auth(other_token),
     )
     assert r.status_code == 403

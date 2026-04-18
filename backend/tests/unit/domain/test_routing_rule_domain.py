@@ -1,9 +1,8 @@
 """Unit tests for RoutingRule domain entity — EP-10 commit 1."""
+
 from __future__ import annotations
 
 from uuid import uuid4
-
-import pytest
 
 from app.domain.models.project import RoutingRule
 

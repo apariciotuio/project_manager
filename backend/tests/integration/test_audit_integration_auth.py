@@ -10,9 +10,9 @@ Scenarios:
 
 from __future__ import annotations
 
+import time
 from urllib.parse import parse_qs, urlparse
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
@@ -33,8 +33,6 @@ from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRe
 from app.main import create_app
 from app.presentation.dependencies import get_google_oauth_adapter
 from tests.fakes.fake_google_oauth import FakeGoogleOAuthAdapter
-
-import time
 
 _JWT_SECRET = "change-me-in-prod-use-32-chars-or-more-please"
 
@@ -113,9 +111,7 @@ async def _seed_user_with_workspace(migrated_database) -> tuple[User, Workspace]
     return user, ws
 
 
-async def _get_audit_rows(
-    migrated_database, *, action: str | None = None
-) -> list[AuditEventORM]:
+async def _get_audit_rows(migrated_database, *, action: str | None = None) -> list[AuditEventORM]:
     engine = create_async_engine(migrated_database.database.url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -172,9 +168,7 @@ async def test_login_success_audit_has_ip_address(http, migrated_database) -> No
 
 async def test_login_invalid_state_writes_audit_record(http, migrated_database) -> None:
     """Invalid OAuth state in callback writes audit record with outcome='failure'."""
-    resp = await http.get(
-        "/api/v1/auth/google/callback?code=dummy-code&state=totally-bogus-state"
-    )
+    resp = await http.get("/api/v1/auth/google/callback?code=dummy-code&state=totally-bogus-state")
     # Controller redirects on invalid state — that's expected
     assert resp.status_code == 302
     assert "invalid_state" in resp.headers["location"]

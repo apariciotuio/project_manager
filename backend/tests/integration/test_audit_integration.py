@@ -13,9 +13,8 @@ from __future__ import annotations
 
 import time
 from urllib.parse import parse_qs, urlparse
-from uuid import UUID, uuid4
+from uuid import UUID
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
@@ -160,9 +159,7 @@ def _auth_headers() -> dict[str, str]:
     return {"X-CSRF-Token": _CSRF_TOKEN}
 
 
-async def _get_audit_rows(
-    migrated_database, *, action: str | None = None
-) -> list[AuditEventORM]:
+async def _get_audit_rows(migrated_database, *, action: str | None = None) -> list[AuditEventORM]:
     engine = create_async_engine(migrated_database.database.url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -253,9 +250,7 @@ async def test_token_refresh_writes_audit_record(http, migrated_database) -> Non
     # Full login to get cookies
     init = await http.get("/api/v1/auth/google")
     state = parse_qs(urlparse(init.headers["location"]).query)["state"][0]
-    callback_resp = await http.get(
-        f"/api/v1/auth/google/callback?code=dummy-code&state={state}"
-    )
+    callback_resp = await http.get(f"/api/v1/auth/google/callback?code=dummy-code&state={state}")
     assert callback_resp.status_code == 302
 
     # Hit refresh endpoint (cookies are carried by the client)
@@ -314,9 +309,7 @@ async def test_state_transition_writes_audit_record(http, migrated_database) -> 
     assert row.after_value.get("state") == "in_clarification"
 
 
-async def test_state_transition_audit_records_actor_and_workspace(
-    http, migrated_database
-) -> None:
+async def test_state_transition_audit_records_actor_and_workspace(http, migrated_database) -> None:
     """Status transition audit carries actor_id and workspace_id."""
     user, ws = await _seed_user_workspace(migrated_database)
     token = _mint_jwt(user, ws)

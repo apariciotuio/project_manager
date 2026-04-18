@@ -7,10 +7,10 @@ Two-pass diff:
 difflib only — no external libraries.
 Performance target: < 2s for 100KB combined content.
 """
+
 from __future__ import annotations
 
 import difflib
-from enum import StrEnum
 from typing import Any
 
 
@@ -25,9 +25,7 @@ class SectionChangeType(str):
 class DiffService:
     def validate_version_order(self, *, from_version: int, to_version: int) -> None:
         if from_version > to_version:
-            raise ValueError(
-                f"from_version ({from_version}) must be <= to_version ({to_version})"
-            )
+            raise ValueError(f"from_version ({from_version}) must be <= to_version ({to_version})")
 
     def compute_version_diff(
         self, snapshot_a: dict[str, Any], snapshot_b: dict[str, Any]
@@ -98,9 +96,7 @@ class DiffService:
     # Private helpers
     # -----------------------------------------------------------------------
 
-    def _compute_metadata_diff(
-        self, wi_a: dict[str, Any], wi_b: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _compute_metadata_diff(self, wi_a: dict[str, Any], wi_b: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for field in ("title", "state", "owner_id", "description"):
             val_a = wi_a.get(field)
@@ -120,9 +116,7 @@ class DiffService:
         idx_a = {s["section_type"]: s for s in sections_a}
         idx_b = {s["section_type"]: s for s in sections_b}
 
-        all_types = list(dict.fromkeys(
-            list(idx_a.keys()) + list(idx_b.keys())
-        ))
+        all_types = list(dict.fromkeys(list(idx_a.keys()) + list(idx_b.keys())))
 
         results: list[dict[str, Any]] = []
         for stype in all_types:
@@ -130,19 +124,23 @@ class DiffService:
             in_b = stype in idx_b
 
             if in_a and not in_b:
-                results.append({
-                    "section_type": stype,
-                    "change_type": SectionChangeType.REMOVED,
-                    "hunks": [],
-                })
+                results.append(
+                    {
+                        "section_type": stype,
+                        "change_type": SectionChangeType.REMOVED,
+                        "hunks": [],
+                    }
+                )
             elif in_b and not in_a:
                 content_b = idx_b[stype].get("content", "")
                 hunks = self.compute_section_diff("", content_b)
-                results.append({
-                    "section_type": stype,
-                    "change_type": SectionChangeType.ADDED,
-                    "hunks": hunks,
-                })
+                results.append(
+                    {
+                        "section_type": stype,
+                        "change_type": SectionChangeType.ADDED,
+                        "hunks": hunks,
+                    }
+                )
             else:
                 # Both present
                 sa = idx_a[stype]
@@ -153,23 +151,29 @@ class DiffService:
                 order_b = sb.get("order", 0)
 
                 if content_a == content_b and order_a != order_b:
-                    results.append({
-                        "section_type": stype,
-                        "change_type": SectionChangeType.REORDERED,
-                        "hunks": [],
-                    })
+                    results.append(
+                        {
+                            "section_type": stype,
+                            "change_type": SectionChangeType.REORDERED,
+                            "hunks": [],
+                        }
+                    )
                 elif content_a == content_b:
-                    results.append({
-                        "section_type": stype,
-                        "change_type": SectionChangeType.UNCHANGED,
-                        "hunks": [],
-                    })
+                    results.append(
+                        {
+                            "section_type": stype,
+                            "change_type": SectionChangeType.UNCHANGED,
+                            "hunks": [],
+                        }
+                    )
                 else:
                     hunks = self.compute_section_diff(content_a, content_b)
-                    results.append({
-                        "section_type": stype,
-                        "change_type": SectionChangeType.MODIFIED,
-                        "hunks": hunks,
-                    })
+                    results.append(
+                        {
+                            "section_type": stype,
+                            "change_type": SectionChangeType.MODIFIED,
+                            "hunks": hunks,
+                        }
+                    )
 
         return results

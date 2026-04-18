@@ -15,17 +15,14 @@ Covers:
 - bulk_assign: suspended user → all rejected (422 semantics)
 - bulk_assign: some fail validation → partial results with per-item success/error
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-
-from app.domain.models.work_item import WorkItem
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -141,7 +138,13 @@ def _work_item(workspace_id: UUID, owner_id: UUID) -> FakeWorkItemDomain:
     )
 
 
-def _routing_rule(workspace_id: UUID, item_type: str = "task", *, suggested_owner_id: UUID | None = None, suggested_team_id: UUID | None = None) -> FakeRoutingRule:
+def _routing_rule(
+    workspace_id: UUID,
+    item_type: str = "task",
+    *,
+    suggested_owner_id: UUID | None = None,
+    suggested_team_id: UUID | None = None,
+) -> FakeRoutingRule:
     return FakeRoutingRule(
         id=uuid4(),
         workspace_id=workspace_id,

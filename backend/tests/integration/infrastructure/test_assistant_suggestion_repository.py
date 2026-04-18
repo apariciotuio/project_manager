@@ -10,17 +10,16 @@ Covers:
 - update_status bulk-updates matching rows and returns count
 - update_status with empty list returns 0
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -162,16 +161,16 @@ class TestAssistantSuggestionRepositoryCreateBatch:
 
 
 class TestAssistantSuggestionRepositoryGet:
-    async def test_get_by_id_returns_entity(
-        self, db: AsyncSession, user_and_work_item
-    ) -> None:
+    async def test_get_by_id_returns_entity(self, db: AsyncSession, user_and_work_item) -> None:
         from app.infrastructure.persistence.assistant_suggestion_repository_impl import (
             AssistantSuggestionRepositoryImpl,
         )
 
         user, item = user_and_work_item
         repo = AssistantSuggestionRepositoryImpl(db)
-        [created] = await repo.create_batch([_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)])
+        [created] = await repo.create_batch(
+            [_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)]
+        )
 
         fetched = await repo.get_by_id(created.id)
 
@@ -202,11 +201,23 @@ class TestAssistantSuggestionRepositoryGet:
         batch_id = uuid4()
         other_batch_id = uuid4()
 
-        await repo.create_batch([
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, batch_id=batch_id),
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, batch_id=batch_id),
-        ])
-        await repo.create_batch([_make_suggestion(item.id, user.id, workspace_id=item.workspace_id, batch_id=other_batch_id)])
+        await repo.create_batch(
+            [
+                _make_suggestion(
+                    item.id, user.id, workspace_id=item.workspace_id, batch_id=batch_id
+                ),
+                _make_suggestion(
+                    item.id, user.id, workspace_id=item.workspace_id, batch_id=batch_id
+                ),
+            ]
+        )
+        await repo.create_batch(
+            [
+                _make_suggestion(
+                    item.id, user.id, workspace_id=item.workspace_id, batch_id=other_batch_id
+                )
+            ]
+        )
 
         results = await repo.get_by_batch_id(batch_id)
 
@@ -224,11 +235,19 @@ class TestAssistantSuggestionRepositoryGet:
         repo = AssistantSuggestionRepositoryImpl(db)
         request_id = f"req_{uuid4().hex}"
 
-        await repo.create_batch([
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, dundun_request_id=request_id),
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, dundun_request_id=request_id),
-        ])
-        await repo.create_batch([_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)])  # no request_id
+        await repo.create_batch(
+            [
+                _make_suggestion(
+                    item.id, user.id, workspace_id=item.workspace_id, dundun_request_id=request_id
+                ),
+                _make_suggestion(
+                    item.id, user.id, workspace_id=item.workspace_id, dundun_request_id=request_id
+                ),
+            ]
+        )
+        await repo.create_batch(
+            [_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)]
+        )  # no request_id
 
         results = await repo.get_by_dundun_request_id(request_id)
 
@@ -262,9 +281,15 @@ class TestAssistantSuggestionRepositoryListPending:
         repo = AssistantSuggestionRepositoryImpl(db)
 
         pending = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id)
-        accepted = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.ACCEPTED)
-        rejected = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.REJECTED)
-        expired = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.EXPIRED)
+        accepted = _make_suggestion(
+            item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.ACCEPTED
+        )
+        rejected = _make_suggestion(
+            item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.REJECTED
+        )
+        expired = _make_suggestion(
+            item.id, user.id, workspace_id=item.workspace_id, status=SuggestionStatus.EXPIRED
+        )
 
         [p, a, r, e] = await repo.create_batch([pending, accepted, rejected, expired])
 
@@ -286,8 +311,12 @@ class TestAssistantSuggestionRepositoryListPending:
         user, item = user_and_work_item
         repo = AssistantSuggestionRepositoryImpl(db)
 
-        still_valid = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, expires_in=timedelta(hours=1))
-        time_expired = _make_suggestion(item.id, user.id, workspace_id=item.workspace_id, expires_in=timedelta(seconds=-1))
+        still_valid = _make_suggestion(
+            item.id, user.id, workspace_id=item.workspace_id, expires_in=timedelta(hours=1)
+        )
+        time_expired = _make_suggestion(
+            item.id, user.id, workspace_id=item.workspace_id, expires_in=timedelta(seconds=-1)
+        )
 
         [v, te] = await repo.create_batch([still_valid, time_expired])
 
@@ -321,11 +350,13 @@ class TestAssistantSuggestionRepositoryUpdateStatus:
         user, item = user_and_work_item
         repo = AssistantSuggestionRepositoryImpl(db)
 
-        [s1, s2, s3] = await repo.create_batch([
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
-            _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
-        ])
+        [s1, s2, s3] = await repo.create_batch(
+            [
+                _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
+                _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
+                _make_suggestion(item.id, user.id, workspace_id=item.workspace_id),
+            ]
+        )
 
         count = await repo.update_status(
             [s1.id, s2.id], SuggestionStatus.ACCEPTED, datetime.now(UTC)
@@ -342,7 +373,9 @@ class TestAssistantSuggestionRepositoryUpdateStatus:
 
         user, item = user_and_work_item
         repo = AssistantSuggestionRepositoryImpl(db)
-        [s] = await repo.create_batch([_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)])
+        [s] = await repo.create_batch(
+            [_make_suggestion(item.id, user.id, workspace_id=item.workspace_id)]
+        )
 
         await repo.update_status([s.id], SuggestionStatus.REJECTED, datetime.now(UTC))
 

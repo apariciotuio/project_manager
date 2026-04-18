@@ -3,10 +3,11 @@
 RED phase: fail until PersonDashboardService is implemented.
 Uses fake session + fake cache — no DB required.
 """
+
 from __future__ import annotations
 
 import json
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -28,13 +29,15 @@ class FakeCache:
 class FakeSession:
     """Fake session that returns canned scalar results per query."""
 
-    def __init__(self, state_rows: list[object], review_count: int, notification_count: int) -> None:
+    def __init__(
+        self, state_rows: list[object], review_count: int, notification_count: int
+    ) -> None:
         self._state_rows = state_rows
         self._review_count = review_count
         self._notification_count = notification_count
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FakeResult":
+    async def execute(self, stmt: object) -> _FakeResult:
         self._call_count += 1
         return _FakeResult(
             state_rows=self._state_rows,
@@ -157,7 +160,12 @@ class TestPersonDashboardCache:
 
         uid = uuid4()
         ws_id = uuid4()
-        cached_data = {"owned_by_state": {"draft": 99}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
+        cached_data = {
+            "owned_by_state": {"draft": 99},
+            "overloaded": False,
+            "inbox_count": 0,
+            "pending_reviews_count": 0,
+        }
         cache = FakeCache()
         # MF-2 fix: cache key is now workspace-scoped: dashboard:person:{workspace_id}:{user_id}
         await cache.set(f"dashboard:person:{ws_id}:{uid}", json.dumps(cached_data), 120)
@@ -178,7 +186,12 @@ class TestPersonDashboardCache:
         uid = uuid4()
         ws_a = uuid4()
         ws_b = uuid4()
-        cached_data = {"owned_by_state": {"draft": 5}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
+        cached_data = {
+            "owned_by_state": {"draft": 5},
+            "overloaded": False,
+            "inbox_count": 0,
+            "pending_reviews_count": 0,
+        }
         cache = FakeCache()
         # Pre-populate workspace_A's entry
         await cache.set(f"dashboard:person:{ws_a}:{uid}", json.dumps(cached_data), 120)
@@ -197,7 +210,12 @@ class TestPersonDashboardCache:
         uid1 = uuid4()
         uid2 = uuid4()
         ws_id = uuid4()
-        cached_data = {"owned_by_state": {"draft": 5}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
+        cached_data = {
+            "owned_by_state": {"draft": 5},
+            "overloaded": False,
+            "inbox_count": 0,
+            "pending_reviews_count": 0,
+        }
         cache = FakeCache()
         await cache.set(f"dashboard:person:{ws_id}:{uid1}", json.dumps(cached_data), 120)
 

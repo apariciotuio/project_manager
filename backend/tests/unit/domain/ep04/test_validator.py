@@ -1,4 +1,5 @@
 """EP-04 Phase 2 — Validator entity."""
+
 from __future__ import annotations
 
 from uuid import uuid4

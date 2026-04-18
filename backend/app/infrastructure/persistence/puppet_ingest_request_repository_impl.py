@@ -1,4 +1,5 @@
 """EP-13 — PuppetIngestRequestRepositoryImpl."""
+
 from __future__ import annotations
 
 import logging
@@ -67,9 +68,7 @@ class PuppetIngestRequestRepositoryImpl:
             return None
         return _orm_to_domain(row)
 
-    async def claim_queued_batch(
-        self, workspace_id: UUID, limit: int
-    ) -> list[PuppetIngestRequest]:
+    async def claim_queued_batch(self, workspace_id: UUID, limit: int) -> list[PuppetIngestRequest]:
         """SELECT FOR UPDATE SKIP LOCKED pattern — safe for concurrent workers."""
         stmt = (
             select(PuppetIngestRequestORM)
@@ -93,17 +92,25 @@ class PuppetIngestRequestRepositoryImpl:
         await self._session.flush()
         # Re-fetch updated rows
         refreshed = (
-            await self._session.execute(
-                select(PuppetIngestRequestORM).where(PuppetIngestRequestORM.id.in_(ids))
+            (
+                await self._session.execute(
+                    select(PuppetIngestRequestORM).where(PuppetIngestRequestORM.id.in_(ids))
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [_orm_to_domain(r) for r in refreshed]
 
     async def has_succeeded_for_work_item(self, work_item_id: UUID) -> bool:
-        stmt = select(PuppetIngestRequestORM.id).where(
-            PuppetIngestRequestORM.work_item_id == work_item_id,
-            PuppetIngestRequestORM.status == "succeeded",
-        ).limit(1)
+        stmt = (
+            select(PuppetIngestRequestORM.id)
+            .where(
+                PuppetIngestRequestORM.work_item_id == work_item_id,
+                PuppetIngestRequestORM.status == "succeeded",
+            )
+            .limit(1)
+        )
         result = await self._session.execute(stmt)
         return result.scalar() is not None
 

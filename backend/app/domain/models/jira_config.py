@@ -1,4 +1,5 @@
 """JiraConfig domain entity — EP-10 Jira integration."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

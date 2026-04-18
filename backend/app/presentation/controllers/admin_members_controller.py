@@ -6,6 +6,7 @@ Routes:
   PATCH  /api/v1/admin/members/{id}
   POST   /api/v1/admin/members/invitations/{id}/resend
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,15 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.audit_service import AuditService
 from app.application.services.member_service import (
+    ALL_CAPABILITIES,
     CannotGrantUnpossessedCapabilityError,
     CannotSuspendLastAdminError,
     DuplicateActiveMemberError,
-    InvitePendingError,
-    InviteNotResendableError,
     InvalidCapabilityError,
+    InviteNotResendableError,
+    InvitePendingError,
     MemberNotFoundError,
     MemberService,
-    ALL_CAPABILITIES,
 )
 from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
 from app.infrastructure.persistence.invitation_repository_impl import InvitationRepositoryImpl
@@ -200,12 +201,20 @@ async def update_member(
     except CannotSuspendLastAdminError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
-            detail={"error": {"code": "cannot_suspend_last_admin", "message": str(exc), "details": {}}},
+            detail={
+                "error": {"code": "cannot_suspend_last_admin", "message": str(exc), "details": {}}
+            },
         ) from exc
     except CannotGrantUnpossessedCapabilityError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "cannot_grant_unpossessed_capability", "message": str(exc), "details": {}}},
+            detail={
+                "error": {
+                    "code": "cannot_grant_unpossessed_capability",
+                    "message": str(exc),
+                    "details": {},
+                }
+            },
         ) from exc
     except InvalidCapabilityError as exc:
         raise HTTPException(
@@ -223,9 +232,7 @@ async def resend_invitation(
 ) -> dict[str, Any]:
     assert current_user.workspace_id is not None
     try:
-        await service.resend_invitation(
-            current_user.workspace_id, invitation_id, current_user.id
-        )
+        await service.resend_invitation(current_user.workspace_id, invitation_id, current_user.id)
     except MemberNotFoundError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
@@ -243,6 +250,7 @@ async def _get_actor_capabilities(service: MemberService, current_user: CurrentU
     if current_user.is_superadmin:
         return list(ALL_CAPABILITIES)
     from sqlalchemy import select
+
     from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
     session = service._session

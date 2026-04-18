@@ -3,6 +3,7 @@
 Intentionally minimal. Domain services only need get/set/delete.
 InMemoryCacheAdapter is the sole implementation. For tests, use FakeCache from tests/fakes/.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

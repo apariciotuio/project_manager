@@ -1,4 +1,5 @@
 """EP-14 — Hierarchy types + parent-child compatibility rules."""
+
 from __future__ import annotations
 
 import pytest
@@ -34,8 +35,7 @@ def test_hierarchy_rule_enforcement(
 ) -> None:
     parent_rules = HIERARCHY_RULES.get(parent, set())
     assert (child in parent_rules) is allowed, (
-        f"expected {parent.value} -> {child.value} to be "
-        f"{'allowed' if allowed else 'forbidden'}"
+        f"expected {parent.value} -> {child.value} to be {'allowed' if allowed else 'forbidden'}"
     )
 
 

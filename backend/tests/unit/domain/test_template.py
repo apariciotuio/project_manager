@@ -1,4 +1,5 @@
 """Unit tests for Template domain entity. RED phase — EP-02 Phase 2."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

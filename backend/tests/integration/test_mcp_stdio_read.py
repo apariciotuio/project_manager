@@ -15,6 +15,7 @@ Scenarios:
 - Missing work item id returns {error: "not_found"}
 - Field types are correct (id=str UUID, state=str, sections=list, etc.)
 """
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -25,17 +26,16 @@ from app.application.events.event_bus import EventBus
 from app.application.services.audit_service import AuditService
 from app.application.services.work_item_service import WorkItemService
 from app.domain.models.section import Section
-from app.domain.models.section_type import GenerationSource, SectionType
+from app.domain.models.section_type import SectionType
 from app.domain.models.work_item import WorkItem
 from app.domain.value_objects.work_item_type import WorkItemType
+from apps.mcp_server.tools.read_work_item import handle_read_work_item
 from tests.fakes.fake_repositories import (
     FakeAuditRepository,
     FakeUserRepository,
     FakeWorkItemRepository,
     FakeWorkspaceMembershipRepository,
 )
-from apps.mcp_server.tools.read_work_item import handle_read_work_item
-
 
 # ---------------------------------------------------------------------------
 # Inline fake section repository

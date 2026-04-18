@@ -1,4 +1,5 @@
 """Unit tests for SuggestionBatch value object — RED phase."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -23,6 +24,7 @@ def _make(
     batch_id: object = None,
 ) -> AssistantSuggestion:
     from uuid import UUID
+
     bid: UUID = batch_id if batch_id is not None else uuid4()  # type: ignore[assignment]
     return AssistantSuggestion(
         id=uuid4(),

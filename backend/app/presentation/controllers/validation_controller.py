@@ -4,6 +4,7 @@ Routes:
   GET  /api/v1/work-items/{id}/validations             — checklist
   POST /api/v1/work-items/{id}/validations/{rule_id}/waive — waive recommended rule
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,7 +23,11 @@ from app.domain.models.review import (
     WaiveRequiredRuleError,
 )
 from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
-from app.presentation.dependencies import get_current_user, get_validation_service, get_work_item_repo_scoped
+from app.presentation.dependencies import (
+    get_current_user,
+    get_validation_service,
+    get_work_item_repo_scoped,
+)
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)
@@ -51,7 +56,8 @@ def _rule_status_payload(
         "passed_at": status.passed_at.isoformat() if status and status.passed_at else None,
         "passed_by_review_request_id": (
             str(status.passed_by_review_request_id)
-            if status and status.passed_by_review_request_id else None
+            if status and status.passed_by_review_request_id
+            else None
         ),
         "waived_at": status.waived_at.isoformat() if status and status.waived_at else None,
         "waived_by": str(status.waived_by) if status and status.waived_by else None,
@@ -79,10 +85,12 @@ async def get_validations(
         workspace_id=workspace_id,
         work_item_type=work_item_type,
     )
-    return _ok({
-        "required": [_rule_status_payload(r, s) for r, s in result.required],
-        "recommended": [_rule_status_payload(r, s) for r, s in result.recommended],
-    })
+    return _ok(
+        {
+            "required": [_rule_status_payload(r, s) for r, s in result.required],
+            "recommended": [_rule_status_payload(r, s) for r, s in result.recommended],
+        }
+    )
 
 
 @router.post(
@@ -113,12 +121,15 @@ async def waive_validation(
             status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(exc), "details": {}}},
         ) from exc
-    return _ok({
-        "rule_id": vs.rule_id,
-        "status": vs.status.value,
-        "waived_at": vs.waived_at.isoformat() if vs.waived_at else None,
-        "waived_by": str(vs.waived_by) if vs.waived_by else None,
-    }, "validation waived")
+    return _ok(
+        {
+            "rule_id": vs.rule_id,
+            "status": vs.status.value,
+            "waived_at": vs.waived_at.isoformat() if vs.waived_at else None,
+            "waived_by": str(vs.waived_by) if vs.waived_by else None,
+        },
+        "validation waived",
+    )
 
 
 # ---------------------------------------------------------------------------

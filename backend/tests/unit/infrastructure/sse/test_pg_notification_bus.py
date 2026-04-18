@@ -14,6 +14,7 @@ Coverage:
   - subscribe() releases dedicated connection in finally
   - subscribe() skips malformed JSON payloads
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,8 +24,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.infrastructure.sse.pg_notification_bus import PgNotificationBus, PayloadTooLarge
-
+from app.infrastructure.sse.pg_notification_bus import PayloadTooLarge, PgNotificationBus
 
 # ---------------------------------------------------------------------------
 # Fake asyncpg connection
@@ -152,9 +152,7 @@ async def test_subscribe_issues_listen() -> None:
     fake = FakeAsyncpgConnection()
     bus = _bus(fake)
 
-    task = asyncio.create_task(
-        _collect(bus, "sse:job:1", max_messages=1, fake=fake)
-    )
+    task = asyncio.create_task(_collect(bus, "sse:job:1", max_messages=1, fake=fake))
     await asyncio.sleep(0)
     fake.inject_notify("sse:job:1", json.dumps({"type": "ok", "channel": "sse:job:1"}))
     await asyncio.wait_for(task, timeout=2.0)

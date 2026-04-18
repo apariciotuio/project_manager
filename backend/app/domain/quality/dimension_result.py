@@ -1,4 +1,5 @@
 """EP-04 — DimensionResult value object."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

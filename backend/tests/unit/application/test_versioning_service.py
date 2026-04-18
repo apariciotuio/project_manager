@@ -1,4 +1,5 @@
 """EP-07 Phase 3 — VersioningService unit tests (using fakes)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -8,14 +9,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.versioning_service import VersionConflictError, VersioningService
+from app.application.services.versioning_service import VersioningService
 from app.domain.models.work_item_version import (
     VersionActorType,
     VersionTrigger,
     WorkItemVersion,
 )
 from app.domain.repositories.work_item_version_repository import IWorkItemVersionRepository
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -37,7 +37,9 @@ class FakeVersionRepo(IWorkItemVersionRepository):
         actor_id: UUID | None = None,
         commit_message: str | None = None,
     ) -> WorkItemVersion:
-        existing_max = max((v.version_number for v in self._store if v.work_item_id == work_item_id), default=0)
+        existing_max = max(
+            (v.version_number for v in self._store if v.work_item_id == work_item_id), default=0
+        )
         version = WorkItemVersion(
             id=uuid4(),
             work_item_id=work_item_id,
@@ -60,9 +62,15 @@ class FakeVersionRepo(IWorkItemVersionRepository):
     async def get(self, version_id: UUID, workspace_id: UUID) -> WorkItemVersion | None:
         return next((v for v in self._store if v.id == version_id), None)
 
-    async def get_by_number(self, work_item_id: UUID, version_number: int, workspace_id: UUID) -> WorkItemVersion | None:
+    async def get_by_number(
+        self, work_item_id: UUID, version_number: int, workspace_id: UUID
+    ) -> WorkItemVersion | None:
         return next(
-            (v for v in self._store if v.work_item_id == work_item_id and v.version_number == version_number),
+            (
+                v
+                for v in self._store
+                if v.work_item_id == work_item_id and v.version_number == version_number
+            ),
             None,
         )
 
@@ -106,7 +114,12 @@ class TestCreateVersion:
         repo = FakeVersionRepo()
         svc = _make_service(repo)
         work_item_id = uuid4()
-        snapshot = {"schema_version": 1, "work_item": {"title": "Test"}, "sections": [], "task_node_ids": []}
+        snapshot = {
+            "schema_version": 1,
+            "work_item": {"title": "Test"},
+            "sections": [],
+            "task_node_ids": [],
+        }
 
         v = await svc.create_version(
             work_item_id=work_item_id,
@@ -124,8 +137,12 @@ class TestCreateVersion:
         work_item_id = uuid4()
         snap = {"schema_version": 1, "work_item": {}, "sections": [], "task_node_ids": []}
 
-        await svc.create_version(work_item_id=work_item_id, workspace_id=uuid4(), actor_id=uuid4(), snapshot=snap)
-        v2 = await svc.create_version(work_item_id=work_item_id, workspace_id=uuid4(), actor_id=uuid4(), snapshot=snap)
+        await svc.create_version(
+            work_item_id=work_item_id, workspace_id=uuid4(), actor_id=uuid4(), snapshot=snap
+        )
+        v2 = await svc.create_version(
+            work_item_id=work_item_id, workspace_id=uuid4(), actor_id=uuid4(), snapshot=snap
+        )
 
         assert v2.version_number == 2
 
@@ -200,7 +217,9 @@ class TestListVersions:
         ws = uuid4()
 
         for _ in range(3):
-            await svc.create_version(work_item_id=wid, workspace_id=ws, actor_id=uuid4(), snapshot=snap)
+            await svc.create_version(
+                work_item_id=wid, workspace_id=ws, actor_id=uuid4(), snapshot=snap
+            )
 
         versions = await svc.list_for_work_item(wid, ws)
         numbers = [v.version_number for v in versions]

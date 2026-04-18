@@ -6,19 +6,19 @@ Scenarios:
   - Production environment: counter disabled, no listener overhead
   - Budget exceeded emits WARNING log with endpoint + count
 """
+
 from __future__ import annotations
 
 import logging
 from contextvars import copy_context
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Counter core — event listener behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestQueryCounter:
     def test_increment_on_each_execute(self) -> None:
@@ -76,6 +76,7 @@ class TestQueryCounter:
 # Budget check + WARNING log
 # ---------------------------------------------------------------------------
 
+
 class TestBudgetWarning:
     def test_warning_logged_when_budget_exceeded(self, caplog: pytest.LogCaptureFixture) -> None:
         """check_query_budget emits WARNING when count > budget."""
@@ -86,7 +87,9 @@ class TestBudgetWarning:
             with caplog.at_level(logging.WARNING, logger="app.infrastructure.db.query_counter"):
                 check_query_budget(endpoint="/api/v1/work-items", budget=20)
             assert any(
-                "N+1 WARNING" in r.message and "/api/v1/work-items" in r.message and "25" in r.message
+                "N+1 WARNING" in r.message
+                and "/api/v1/work-items" in r.message
+                and "25" in r.message
                 for r in caplog.records
             )
         finally:
@@ -124,6 +127,7 @@ class TestBudgetWarning:
 # Production guard — listener must NOT be registered in production
 # ---------------------------------------------------------------------------
 
+
 class TestProductionGuard:
     def test_register_listener_skipped_in_production(self) -> None:
         """register_query_counter does nothing when environment is 'production'."""
@@ -136,7 +140,6 @@ class TestProductionGuard:
 
         mock_engine.sync_engine.connect.assert_not_called()
         # event.listen should NOT have been called
-        from sqlalchemy import event as sa_event
         # The sync engine's event should not have received a listener
         mock_engine.sync_engine.dispatch.before_cursor_execute.assert_not_called() if hasattr(
             mock_engine.sync_engine, "dispatch"
@@ -196,10 +199,10 @@ class TestProductionGuard:
 # Middleware — request lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestQueryCounterMiddleware:
     def test_middleware_resets_counter_between_requests(self) -> None:
         """Each request starts with a fresh counter (token reset on exit)."""
-        import asyncio
         from starlette.applications import Starlette
         from starlette.requests import Request
         from starlette.responses import PlainTextResponse
@@ -229,7 +232,9 @@ class TestQueryCounterMiddleware:
         # Both requests should see counter starting at 0
         assert captured == [0, 0]
 
-    def test_middleware_skips_budget_check_in_production(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_middleware_skips_budget_check_in_production(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """No WARNING logged in production regardless of query count."""
         from starlette.applications import Starlette
         from starlette.requests import Request
@@ -237,7 +242,7 @@ class TestQueryCounterMiddleware:
         from starlette.routing import Route
         from starlette.testclient import TestClient
 
-        from app.infrastructure.db.query_counter import _query_count, before_cursor_execute_listener
+        from app.infrastructure.db.query_counter import before_cursor_execute_listener
         from app.presentation.middleware.query_counter import QueryCounterMiddleware
 
         async def endpoint(request: Request) -> PlainTextResponse:

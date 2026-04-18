@@ -1,4 +1,5 @@
 """In-memory fakes for EP-06 Review + Validation repositories."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -35,7 +36,8 @@ class FakeReviewRequestRepository(IReviewRequestRepository):
 
     async def list_pending_for_reviewer(self, user_id: UUID) -> list[ReviewRequest]:
         return [
-            r for r in self._store.values()
+            r
+            for r in self._store.values()
             if r.reviewer_id == user_id and r.status is ReviewStatus.PENDING
         ]
 
@@ -49,9 +51,7 @@ class FakeReviewResponseRepository(IReviewResponseRepository):
         return response
 
     async def get_for_request(self, request_id: UUID) -> ReviewResponse | None:
-        return next(
-            (r for r in self._store.values() if r.review_request_id == request_id), None
-        )
+        return next((r for r in self._store.values() if r.review_request_id == request_id), None)
 
     async def list_for_request(self, request_id: UUID) -> list[ReviewResponse]:
         return [r for r in self._store.values() if r.review_request_id == request_id]
@@ -102,7 +102,8 @@ class FakeValidationStatusRepository(IValidationStatusRepository):
     ) -> ValidationStatus | None:
         return next(
             (
-                s for s in self._store.values()
+                s
+                for s in self._store.values()
                 if s.work_item_id == work_item_id and s.rule_id == rule_id
             ),
             None,
@@ -117,7 +118,8 @@ class FakeValidationStatusRepository(IValidationStatusRepository):
 
     async def list_blocking(self, work_item_id: UUID) -> list[ValidationStatus]:
         return [
-            s for s in self._store.values()
+            s
+            for s in self._store.values()
             if s.work_item_id == work_item_id
             and s.status not in (ValidationState.PASSED, ValidationState.OBSOLETE)
         ]

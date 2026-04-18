@@ -8,6 +8,7 @@ acceptable to lose on restart (<100 concurrent jobs, single Uvicorn worker).
 Public API is identical to the previous implementation so callers require
 no changes.
 """
+
 from __future__ import annotations
 
 import time

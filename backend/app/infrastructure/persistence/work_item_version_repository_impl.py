@@ -6,18 +6,17 @@ work_item_versions.work_item_id AND work_items.workspace_id = :workspace_id.
 
 Returns None on workspace mismatch — never 403 — to avoid existence disclosure.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.work_item_version import (
-    VersionActorType,
-    VersionTrigger,
     WorkItemVersion,
 )
 from app.domain.repositories.work_item_version_repository import (

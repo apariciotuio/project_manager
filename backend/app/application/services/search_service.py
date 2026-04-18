@@ -10,6 +10,7 @@ The full category format from EP-13/EP-18 is
 but we use the simplified form that the existing PuppetClient.search(query, tags)
 interface accepts — the tags list is the isolation mechanism.
 """
+
 from __future__ import annotations
 
 import logging

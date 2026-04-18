@@ -18,9 +18,8 @@ from fastapi.testclient import TestClient
 
 def _make_client() -> TestClient:
     """Create a sync TestClient with CORS and body-size config."""
-    from app.config.settings import Settings, get_settings
+    from app.config.settings import get_settings
     from app.main import create_app
-    from app.config.settings import AppSettings
 
     # Patch settings for this test
     s = get_settings()
@@ -44,7 +43,6 @@ def _make_client() -> TestClient:
 def test_security_headers_present_on_response(client) -> None:
     """SecurityHeadersMiddleware adds X-Frame-Options, X-Content-Type-Options,
     Referrer-Policy, and Content-Security-Policy to every response."""
-    import asyncio
 
     async def _get():
         return await client.get("/api/v1/health")
@@ -93,9 +91,7 @@ async def test_security_headers_referrer_policy(client) -> None:
 @pytest.mark.integration
 async def test_correlation_id_echoed_in_response(client) -> None:
     """CorrelationIDMiddleware echoes the sent X-Correlation-Id back."""
-    response = await client.get(
-        "/api/v1/health", headers={"X-Correlation-Id": "abc-123-def-456"}
-    )
+    response = await client.get("/api/v1/health", headers={"X-Correlation-Id": "abc-123-def-456"})
     assert response.headers.get("x-correlation-id") == "abc-123-def-456"
 
 

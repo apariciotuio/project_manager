@@ -7,6 +7,7 @@ Redis cache TTL 120s per team.
 WorkItemORM has no direct team_id FK — items are scoped by workspace.
 Team membership is resolved via TeamMembershipORM.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,8 +56,7 @@ class TeamDashboardService:
     async def _compute(self, team_id: UUID, workspace_id: UUID) -> dict[str, Any]:
         # Subquery: user IDs who are active team members
         member_subq = (
-            select(TeamMembershipORM.user_id)
-            .where(
+            select(TeamMembershipORM.user_id).where(
                 TeamMembershipORM.team_id == team_id,
                 TeamMembershipORM.removed_at.is_(None),
             )
@@ -79,13 +79,10 @@ class TeamDashboardService:
         owned_by_state: dict[str, int] = {row.state: row.cnt for row in state_rows}
 
         # Pending review requests where team_id is the reviewer (team-type)
-        review_stmt = (
-            select(func.count(ReviewRequestORM.id))
-            .where(
-                ReviewRequestORM.team_id == team_id,
-                ReviewRequestORM.reviewer_type == "team",
-                ReviewRequestORM.status == "pending",
-            )
+        review_stmt = select(func.count(ReviewRequestORM.id)).where(
+            ReviewRequestORM.team_id == team_id,
+            ReviewRequestORM.reviewer_type == "team",
+            ReviewRequestORM.status == "pending",
         )
         pending_reviews: int = (await self._session.execute(review_stmt)).scalar() or 0
 
@@ -95,27 +92,21 @@ class TeamDashboardService:
         # TO 'ready' in the period). Items that moved past 'ready' or back are not counted.
         # Field is named 'recent_ready_items' to avoid implying it is a true velocity metric.
         cutoff = datetime.now(UTC) - timedelta(days=30)
-        velocity_stmt = (
-            select(func.count(WorkItemORM.id))
-            .where(
-                WorkItemORM.workspace_id == workspace_id,
-                WorkItemORM.owner_id.in_(member_subq),
-                WorkItemORM.state == "ready",
-                WorkItemORM.updated_at >= cutoff,
-                WorkItemORM.deleted_at.is_(None),
-            )
+        velocity_stmt = select(func.count(WorkItemORM.id)).where(
+            WorkItemORM.workspace_id == workspace_id,
+            WorkItemORM.owner_id.in_(member_subq),
+            WorkItemORM.state == "ready",
+            WorkItemORM.updated_at >= cutoff,
+            WorkItemORM.deleted_at.is_(None),
         )
         recent_ready_items: int = (await self._session.execute(velocity_stmt)).scalar() or 0
 
         # Blocked count
-        blocked_stmt = (
-            select(func.count(WorkItemORM.id))
-            .where(
-                WorkItemORM.workspace_id == workspace_id,
-                WorkItemORM.owner_id.in_(member_subq),
-                WorkItemORM.state == "blocked",
-                WorkItemORM.deleted_at.is_(None),
-            )
+        blocked_stmt = select(func.count(WorkItemORM.id)).where(
+            WorkItemORM.workspace_id == workspace_id,
+            WorkItemORM.owner_id.in_(member_subq),
+            WorkItemORM.state == "blocked",
+            WorkItemORM.deleted_at.is_(None),
         )
         blocked_count: int = (await self._session.execute(blocked_stmt)).scalar() or 0
 

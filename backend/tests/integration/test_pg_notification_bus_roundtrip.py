@@ -6,17 +6,15 @@ another (PgNotificationBus.subscribe), assert the message arrives.
 Uses the session-scoped testcontainer Postgres from conftest.py.
 No migrations needed — LISTEN/NOTIFY is built-in to Postgres.
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Any
 
-import asyncpg
 import pytest
 
-from app.infrastructure.sse.pg_notification_bus import PgNotificationBus, PayloadTooLarge
-
+from app.infrastructure.sse.pg_notification_bus import PayloadTooLarge, PgNotificationBus
 
 # ---------------------------------------------------------------------------
 # Fixture: plain asyncpg DSN from the test settings
@@ -35,7 +33,9 @@ def asyncpg_dsn(override_settings) -> str:  # type: ignore[type-arg]
 # ---------------------------------------------------------------------------
 
 
-async def _collect_one(bus: PgNotificationBus, channel: str, timeout: float = 5.0) -> dict[str, Any]:
+async def _collect_one(
+    bus: PgNotificationBus, channel: str, timeout: float = 5.0
+) -> dict[str, Any]:
     """Subscribe and return the first message, raising TimeoutError if none arrives."""
     received: list[dict[str, Any]] = []
 
@@ -119,9 +119,7 @@ async def test_payload_too_large_raises_before_hitting_db(asyncpg_dsn: str) -> N
     publisher = PgNotificationBus(dsn=asyncpg_dsn)
 
     with pytest.raises(PayloadTooLarge):
-        await publisher.publish(
-            "sse:test:big", {"type": "data", "payload": {"x": "A" * 9000}}
-        )
+        await publisher.publish("sse:test:big", {"type": "data", "payload": {"x": "A" * 9000}})
 
 
 @pytest.mark.asyncio

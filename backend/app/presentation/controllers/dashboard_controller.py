@@ -4,6 +4,7 @@ GET /api/v1/workspaces/dashboard
 GET /api/v1/dashboards/person/{user_id}
 GET /api/v1/dashboards/team/{team_id}
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,7 +31,9 @@ def _require_workspace(current_user: CurrentUser) -> UUID:
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
     return current_user.workspace_id
 
@@ -61,7 +64,13 @@ async def get_person_dashboard(
     if user_id != current_user.id and not current_user.is_superadmin:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail={"error": {"code": "FORBIDDEN", "message": "cannot view another user's dashboard", "details": {}}},
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "cannot view another user's dashboard",
+                    "details": {},
+                }
+            },
         )
     data = await service.get_metrics(user_id, workspace_id=workspace_id)
     return {"data": data, "message": "ok"}

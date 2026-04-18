@@ -33,9 +33,7 @@ from app.infrastructure.persistence.base import Base
 class UserORM(Base):
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active','suspended','deleted')", name="users_status_check"
-        ),
+        CheckConstraint("status IN ('active','suspended','deleted')", name="users_status_check"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
@@ -44,9 +42,7 @@ class UserORM(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, server_default="active")
-    is_superadmin: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -177,7 +173,9 @@ class AuditEventORM(Base):
         ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=True
     )
     entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    entity_id: Mapped[UUID | None] = mapped_column(nullable=True)  # no FK — polymorphic reference across entities (users/workspaces/memberships/sessions)
+    entity_id: Mapped[UUID | None] = mapped_column(
+        nullable=True
+    )  # no FK — polymorphic reference across entities (users/workspaces/memberships/sessions)
     before_value: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     after_value: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     context: Mapped[dict[str, object]] = mapped_column(
@@ -279,9 +277,7 @@ class WorkItemORM(Base):
         ForeignKey("work_items.id", ondelete="SET NULL"), nullable=True
     )
     materialized_path: Mapped[str] = mapped_column(Text, nullable=False, server_default="''")
-    attachment_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    attachment_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -433,9 +429,7 @@ class ConversationThreadORM(Base):
     )
     dundun_conversation_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     last_message_preview: Mapped[str | None] = mapped_column(Text, nullable=True)
-    last_message_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -482,9 +476,7 @@ class AssistantSuggestionORM(Base):
     proposed_content: Mapped[str] = mapped_column(Text, nullable=False)
     current_content: Mapped[str] = mapped_column(Text, nullable=False)
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="pending"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     version_number_target: Mapped[int] = mapped_column(Integer, nullable=False)
     batch_id: Mapped[UUID] = mapped_column(nullable=False)
     dundun_request_id: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -535,9 +527,7 @@ class GapFindingORM(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    invalidated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class StateTransitionORM(Base):
@@ -622,9 +612,7 @@ class WorkItemSectionORM(Base):
             "generation_source IN ('llm', 'manual', 'revert')",
             name="work_item_sections_generation_source_valid",
         ),
-        UniqueConstraint(
-            "work_item_id", "section_type", name="uq_work_item_section_type"
-        ),
+        UniqueConstraint("work_item_id", "section_type", name="uq_work_item_section_type"),
         Index("idx_work_item_sections_work_item_id", "work_item_id"),
         Index(
             "idx_wis_completeness",
@@ -645,9 +633,7 @@ class WorkItemSectionORM(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     display_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
-    generation_source: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="llm"
-    )
+    generation_source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="llm")
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -721,17 +707,13 @@ class WorkItemValidatorORM(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     assigned_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    responded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class WorkItemVersionORM(Base):
     __tablename__ = "work_item_versions"
     __table_args__ = (
-        UniqueConstraint(
-            "work_item_id", "version_number", name="uq_work_item_version"
-        ),
+        UniqueConstraint("work_item_id", "version_number", name="uq_work_item_version"),
         Index("idx_wiv_work_item_created", "work_item_id", sa.text("created_at DESC")),
     )
 
@@ -752,17 +734,11 @@ class WorkItemVersionORM(Base):
     snapshot_schema_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="1"
     )
-    trigger: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="content_edit"
-    )
-    actor_type: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="human"
-    )
+    trigger: Mapped[str] = mapped_column(Text, nullable=False, server_default="content_edit")
+    actor_type: Mapped[str] = mapped_column(Text, nullable=False, server_default="human")
     actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
     commit_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    archived: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
 
 # ---------------------------------------------------------------------------
@@ -792,9 +768,7 @@ class TaskNodeORM(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     display_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="draft")
-    generation_source: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="llm"
-    )
+    generation_source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="llm")
     materialized_path: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -867,9 +841,7 @@ class ValidationRequirementORM(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
-    created_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -889,13 +861,9 @@ class ReviewRequestORM(Base):
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )
-    version_id: Mapped[UUID] = mapped_column(
-        ForeignKey("work_item_versions.id"), nullable=False
-    )
+    version_id: Mapped[UUID] = mapped_column(ForeignKey("work_item_versions.id"), nullable=False)
     reviewer_type: Mapped[str] = mapped_column(String(10), nullable=False)
-    reviewer_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    reviewer_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     team_id: Mapped[UUID | None] = mapped_column(nullable=True)
     validation_rule_id: Mapped[str | None] = mapped_column(
         ForeignKey("validation_requirements.rule_id"), nullable=True
@@ -905,16 +873,12 @@ class ReviewRequestORM(Base):
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ReviewResponseORM(Base):
     __tablename__ = "review_responses"
-    __table_args__ = (
-        Index("idx_review_responses_request", "review_request_id"),
-    )
+    __table_args__ = (Index("idx_review_responses_request", "review_request_id"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     review_request_id: Mapped[UUID] = mapped_column(
@@ -959,9 +923,7 @@ class ValidationStatusORM(Base):
 
 class CommentORM(Base):
     __tablename__ = "comments"
-    __table_args__ = (
-        Index("idx_comments_work_item", "work_item_id"),
-    )
+    __table_args__ = (Index("idx_comments_work_item", "work_item_id"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     work_item_id: Mapped[UUID] = mapped_column(
@@ -1226,9 +1188,7 @@ class IntegrationConfigORM(Base):
 # EP-10 — Validation Rule Templates
 # ---------------------------------------------------------------------------
 
-_REQUIREMENT_TYPES = (
-    "'section_content','reviewer_approval','validator_approval','custom'"
-)
+_REQUIREMENT_TYPES = "'section_content','reviewer_approval','validator_approval','custom'"
 
 
 class ValidationRuleTemplateORM(Base):
@@ -1382,17 +1342,13 @@ class TagORM(Base):
 
 class WorkItemTagORM(Base):
     __tablename__ = "work_item_tags"
-    __table_args__ = (
-        UniqueConstraint("work_item_id", "tag_id", name="uq_work_item_tag"),
-    )
+    __table_args__ = (UniqueConstraint("work_item_id", "tag_id", name="uq_work_item_tag"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_items.id", ondelete="CASCADE"), nullable=False
     )
-    tag_id: Mapped[UUID] = mapped_column(
-        ForeignKey("tags.id", ondelete="CASCADE"), nullable=False
-    )
+    tag_id: Mapped[UUID] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -1437,9 +1393,7 @@ class AttachmentORM(Base):
 
 class SectionLockORM(Base):
     __tablename__ = "section_locks"
-    __table_args__ = (
-        UniqueConstraint("section_id", name="uq_section_lock_active"),
-    )
+    __table_args__ = (UniqueConstraint("section_id", name="uq_section_lock_active"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     section_id: Mapped[UUID] = mapped_column(
@@ -1652,9 +1606,7 @@ class JiraConfigORM(Base):
 class JiraProjectMappingORM(Base):
     __tablename__ = "jira_project_mappings"
     __table_args__ = (
-        UniqueConstraint(
-            "jira_config_id", "jira_project_key", name="uq_jira_mappings_config_key"
-        ),
+        UniqueConstraint("jira_config_id", "jira_project_key", name="uq_jira_mappings_config_key"),
         Index("idx_jira_mappings_config", "jira_config_id"),
     )
 

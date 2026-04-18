@@ -74,10 +74,10 @@ class TestFakeDundunClientInvokeAgent:
         )
         call = fake.invocations[0]
         assert call[0] == "wm_suggestion_agent"  # agent
-        assert call[1] == USER_ID                 # user_id
-        assert call[2] == CONV_ID                 # conversation_id
-        assert call[3] == WORK_ITEM_ID            # work_item_id
-        assert call[4] == CALLBACK_URL            # callback_url
+        assert call[1] == USER_ID  # user_id
+        assert call[2] == CONV_ID  # conversation_id
+        assert call[3] == WORK_ITEM_ID  # work_item_id
+        assert call[4] == CALLBACK_URL  # callback_url
 
     @pytest.mark.asyncio
     async def test_request_ids_are_unique(self) -> None:

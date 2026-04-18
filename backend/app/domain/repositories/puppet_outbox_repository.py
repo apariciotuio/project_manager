@@ -1,4 +1,5 @@
 """EP-13 — Puppet outbox repository interface."""
+
 from __future__ import annotations
 
 from typing import Any, Protocol

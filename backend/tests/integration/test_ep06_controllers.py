@@ -12,6 +12,7 @@ Covers:
   POST   /api/v1/work-items/{id}/validations/{rule_id}/waive — waive
   GET    /api/v1/work-items/{id}/ready-gate         — gate check
 """
+
 from __future__ import annotations
 
 import time

@@ -1,4 +1,5 @@
 """Template domain entity — pure, no infrastructure dependencies."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

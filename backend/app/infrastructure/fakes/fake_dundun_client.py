@@ -86,7 +86,6 @@ class FakeDundunClient:
         finally:
             pass
 
-
     async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
         self._check_error()
         return list(self.history_by_conversation.get(conversation_id, []))

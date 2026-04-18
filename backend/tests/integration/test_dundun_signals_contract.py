@@ -15,10 +15,10 @@ This test verifies:
 Does NOT require Dundun to be installed as a package dependency.
 Uses a direct import from the sibling repo at the known path.
 """
+
 from __future__ import annotations
 
 import importlib.util
-import sys
 from pathlib import Path
 
 import pytest

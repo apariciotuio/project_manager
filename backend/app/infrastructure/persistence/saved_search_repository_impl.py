@@ -1,4 +1,5 @@
 """EP-09 — SavedSearch repository implementation."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -28,9 +29,7 @@ class SavedSearchRepositoryImpl(ISavedSearchRepository):
         row = await self._session.get(SavedSearchORM, saved_search_id)
         return saved_search_to_domain(row) if row else None
 
-    async def list_for_user(
-        self, user_id: UUID, workspace_id: UUID
-    ) -> list[SavedSearch]:
+    async def list_for_user(self, user_id: UUID, workspace_id: UUID) -> list[SavedSearch]:
         # User's own + shared in workspace
         stmt = (
             select(SavedSearchORM)

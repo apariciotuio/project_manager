@@ -14,7 +14,7 @@ import base64
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService
@@ -164,9 +164,7 @@ class AuthService:
             raise InvalidStateError("oauth state missing, expired, or already consumed")
 
         try:
-            claims = await self._google.exchange_code(
-                code=code, verifier=consumed.verifier
-            )
+            claims = await self._google.exchange_code(code=code, verifier=consumed.verifier)
         except OAuthExchangeError:
             await self._audit.log_event(
                 category="auth",
@@ -225,7 +223,12 @@ class AuthService:
             workspace_id=outcome.workspace_id,
             entity_type="user",
             entity_id=user.id,
-            context={"outcome": "success", "ip_address": ip_address, "user_agent": user_agent, "routing": outcome.kind},
+            context={
+                "outcome": "success",
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+                "routing": outcome.kind,
+            },
         )
 
         return CallbackResult(
@@ -322,9 +325,7 @@ class AuthService:
         ip_address: str | None,
         user_agent: str | None,
     ) -> TokenPair:
-        access_token, access_exp = self._encode_access_token(
-            user=user, workspace_id=workspace_id
-        )
+        access_token, access_exp = self._encode_access_token(user=user, workspace_id=workspace_id)
         raw_refresh = _generate_refresh_token()
         session = Session.create(
             user_id=user.id,
@@ -344,7 +345,7 @@ class AuthService:
     def _encode_access_token(
         self, *, user: User, workspace_id: UUID | None
     ) -> tuple[str, datetime]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         exp = now + timedelta(seconds=self._access_ttl)
         payload = {
             "sub": str(user.id),

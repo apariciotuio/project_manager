@@ -1,4 +1,5 @@
 """SQLAlchemy impl for IValidationRuleRepository."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -64,14 +65,13 @@ class ValidationRuleRepositoryImpl(IValidationRuleRepository):
         active_only: bool = True,
         include_all_projects: bool = False,
     ) -> list[ValidationRule]:
-        stmt = select(ValidationRuleORM).where(
-            ValidationRuleORM.workspace_id == workspace_id
-        )
+        stmt = select(ValidationRuleORM).where(ValidationRuleORM.workspace_id == workspace_id)
         if include_all_projects:
             pass  # no project_id filter — return all scopes
         elif project_id is not None:
             # Include workspace-level AND project-level rules for this project
             from sqlalchemy import or_
+
             stmt = stmt.where(
                 or_(
                     ValidationRuleORM.project_id.is_(None),
@@ -116,10 +116,14 @@ class ValidationRuleRepositoryImpl(IValidationRuleRepository):
         Admin category events (rule_created, rule_updated, rule_deleted) are excluded —
         those are CRUD lifecycle events, not meaningful enforcement history.
         """
-        stmt = select(AuditEventORM.id).where(
-            AuditEventORM.entity_type == "validation_rule",
-            AuditEventORM.entity_id == rule_id,
-            AuditEventORM.category != "admin",
-        ).limit(1)
+        stmt = (
+            select(AuditEventORM.id)
+            .where(
+                AuditEventORM.entity_type == "validation_rule",
+                AuditEventORM.entity_id == rule_id,
+                AuditEventORM.category != "admin",
+            )
+            .limit(1)
+        )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return row is not None

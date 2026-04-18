@@ -12,6 +12,7 @@ Three endpoint groups:
    POST /puppet/ingest-requests/{id}/retry
    Admin observability endpoints (workspace-scoped).
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,6 @@ from app.presentation.dependencies import (
 )
 from app.presentation.schemas.puppet_schemas import (
     PuppetCallbackRequest,
-    PuppetIngestRequestResponse,
     PuppetSearchRequest,
 )
 
@@ -158,16 +158,20 @@ async def puppet_search(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     settings = get_settings()
 
     if settings.puppet.use_fake:
         from tests.fakes.fake_puppet_client import FakePuppetClient
+
         puppet_client = FakePuppetClient()
     else:
         from app.infrastructure.adapters.puppet_http_client import PuppetHTTPClient
+
         puppet_client = PuppetHTTPClient(
             base_url=settings.puppet.base_url,
             api_key=settings.puppet.api_key,
@@ -179,11 +183,12 @@ async def puppet_search(
     if body.category:
         # Additional client-supplied category allowed only within the workspace namespace
         # Ensure it still has the workspace prefix for isolation
-        safe_cat = body.category if body.category.startswith(category) else f"{category}_{body.category}"
+        safe_cat = (
+            body.category if body.category.startswith(category) else f"{category}_{body.category}"
+        )
         tags.append(safe_cat)
 
     try:
-        from app.domain.ports.puppet import PuppetClientError
         hits = await puppet_client.search(body.query, tags)
     except Exception as exc:
         logger.error("puppet_search: Puppet unavailable: %s", exc)
@@ -222,7 +227,9 @@ async def list_ingest_requests(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     from app.infrastructure.persistence.puppet_ingest_request_repository_impl import (
@@ -275,7 +282,9 @@ async def retry_ingest_request(
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
+            detail={
+                "error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}
+            },
         )
 
     from app.infrastructure.persistence.puppet_ingest_request_repository_impl import (
@@ -288,14 +297,18 @@ async def retry_ingest_request(
     if req is None:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "ingest request not found", "details": {}}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "ingest request not found", "details": {}}
+            },
         )
 
     # Workspace isolation — the RLS handles reads but we enforce explicitly for writes
     if req.workspace_id != current_user.workspace_id:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "ingest request not found", "details": {}}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "ingest request not found", "details": {}}
+            },
         )
 
     if req.status not in ("failed", "skipped"):

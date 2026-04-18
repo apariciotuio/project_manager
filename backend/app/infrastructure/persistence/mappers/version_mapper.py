@@ -1,4 +1,5 @@
 """Mapper for WorkItemVersion — EP-07."""
+
 from __future__ import annotations
 
 from app.domain.models.work_item_version import (

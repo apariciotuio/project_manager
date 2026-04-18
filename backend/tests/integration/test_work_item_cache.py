@@ -5,9 +5,9 @@ Covers:
   2. PATCH /work-items/{id} — evicts cache; following GET re-hits DB.
   3. Cache failure (broken client injected) — falls back to DB, no 5xx.
 """
+
 from __future__ import annotations
 
-import json
 import time
 from uuid import uuid4
 
@@ -233,7 +233,7 @@ async def test_get_work_item_populates_cache(seeded_app, spy_cache, ids):
         assert cache_key in spy_cache.sets, "first GET must populate cache"
 
         # Record sets so far
-        sets_after_first = len(spy_cache.sets)
+        len(spy_cache.sets)
         spy_cache.reset()  # clear counters but NOT the store
 
         # Second GET — cache hit → no new set

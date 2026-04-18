@@ -19,7 +19,6 @@ from starlette.testclient import TestClient
 
 from app.presentation.middleware.csrf import CSRF_COOKIE, CSRF_HEADER, CSRFMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -207,7 +206,9 @@ def test_403_response_body(client: TestClient) -> None:
 
 def test_exempt_path_post_without_csrf_passes() -> None:
     """POST to exempt path without CSRF header/cookie must pass through."""
-    app = _build_app(exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"})
+    app = _build_app(
+        exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"}
+    )
     client = TestClient(app, raise_server_exceptions=True)
     resp = client.post("/api/v1/auth/refresh")
     assert resp.status_code == 200
@@ -215,7 +216,9 @@ def test_exempt_path_post_without_csrf_passes() -> None:
 
 def test_exempt_path_google_callback_post_without_csrf_passes() -> None:
     """POST to /api/v1/auth/google/callback exempt path without CSRF → 200."""
-    app = _build_app(exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"})
+    app = _build_app(
+        exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"}
+    )
     client = TestClient(app, raise_server_exceptions=True)
     resp = client.post("/api/v1/auth/google/callback")
     assert resp.status_code == 200
@@ -223,7 +226,9 @@ def test_exempt_path_google_callback_post_without_csrf_passes() -> None:
 
 def test_exempt_path_csp_report_post_without_csrf_passes() -> None:
     """POST to /api/v1/csp-report exempt path without CSRF → 200."""
-    app = _build_app(exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"})
+    app = _build_app(
+        exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"}
+    )
     client = TestClient(app, raise_server_exceptions=True)
     resp = client.post("/api/v1/csp-report")
     assert resp.status_code == 200
@@ -231,7 +236,9 @@ def test_exempt_path_csp_report_post_without_csrf_passes() -> None:
 
 def test_non_exempt_path_still_requires_csrf() -> None:
     """POST to non-exempt path without CSRF must still be 403."""
-    app = _build_app(exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"})
+    app = _build_app(
+        exempt_paths={"/api/v1/auth/refresh", "/api/v1/auth/google/callback", "/api/v1/csp-report"}
+    )
     client = TestClient(app, raise_server_exceptions=True)
     resp = client.post("/resource")
     assert resp.status_code == 403

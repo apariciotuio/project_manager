@@ -3,8 +3,10 @@
 Tests the DomainError → structured JSON envelope mapping using FastAPI TestClient.
 Covers: DomainError subclasses, field/details propagation, http_status mapping.
 """
+
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -20,7 +22,7 @@ from app.domain.errors.codes import (
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 
 
-def _make_app_with_500() -> "FastAPI":
+def _make_app_with_500() -> FastAPI:
     """Extend the base app with 500-class routes."""
     app = FastAPI()
     register_domain_error_handler(app)
@@ -60,6 +62,7 @@ def _make_app() -> FastAPI:
     @app.get("/raise/team-member-exists")
     async def raise_team_member_exists() -> None:
         from uuid import uuid4
+
         raise TeamMemberAlreadyExistsError(uuid4(), uuid4())
 
     @app.get("/raise/invalid-transition")
@@ -170,6 +173,7 @@ def test_no_details_key_when_empty() -> None:
 
 def test_error_codes_http_status_mapping() -> None:
     from app.domain.errors.codes import ERROR_CODES
+
     assert ERROR_CODES["VALIDATION_ERROR"] == 400
     assert ERROR_CODES["INVALID_INPUT"] == 400
     assert ERROR_CODES["UNAUTHORIZED"] == 401
@@ -185,6 +189,7 @@ def test_error_codes_http_status_mapping() -> None:
 
 def test_tag_archived_domain_error_returns_409() -> None:
     from app.domain.errors.codes import TagArchivedDomainError
+
     app = FastAPI()
     register_domain_error_handler(app)
 
@@ -200,6 +205,7 @@ def test_tag_archived_domain_error_returns_409() -> None:
 
 def test_invalid_input_error_returns_400() -> None:
     from app.domain.errors.codes import InvalidInputError
+
     app = FastAPI()
     register_domain_error_handler(app)
 
@@ -254,7 +260,6 @@ def test_domain_error_http_status_property() -> None:
 def test_500_domain_error_logs_original_message(caplog: pytest.LogCaptureFixture) -> None:
     """Server log must contain the original (sensitive) message for debugging."""
     import logging
-    import pytest
 
     c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
     with caplog.at_level(logging.ERROR, logger="app.presentation.middleware.error_envelope"):

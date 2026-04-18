@@ -3,6 +3,7 @@
 Grouped in a single module for brevity — the 4 tables ship together and share
 the same infrastructure concerns.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -71,9 +72,7 @@ class SectionRepositoryImpl(ISectionRepository):
         if existing is None:
             row = section_to_orm(section)
             if row.workspace_id is None:  # type: ignore[attr-defined]
-                row.workspace_id = await _resolve_workspace_id(
-                    self._session, section.work_item_id
-                )
+                row.workspace_id = await _resolve_workspace_id(self._session, section.work_item_id)
             self._session.add(row)
         else:
             existing.content = section.content
@@ -91,9 +90,8 @@ class SectionRepositoryImpl(ISectionRepository):
             return []
         # Resolve workspace_id once (all sections share the same work_item_id)
         work_item_id = sections[0].work_item_id
-        workspace_id = (
-            sections[0].workspace_id
-            or await _resolve_workspace_id(self._session, work_item_id)
+        workspace_id = sections[0].workspace_id or await _resolve_workspace_id(
+            self._session, work_item_id
         )
         rows = [section_to_orm(s) for s in sections]
         for r in rows:
@@ -147,18 +145,14 @@ class ValidatorRepositoryImpl(IValidatorRepository):
         return validator_to_domain(row) if row else None
 
     async def get_by_work_item(self, work_item_id: UUID) -> list[Validator]:
-        stmt = select(WorkItemValidatorORM).where(
-            WorkItemValidatorORM.work_item_id == work_item_id
-        )
+        stmt = select(WorkItemValidatorORM).where(WorkItemValidatorORM.work_item_id == work_item_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [validator_to_domain(r) for r in rows]
 
     async def assign(self, validator: Validator) -> Validator:
         row = validator_to_orm(validator)
         if row.workspace_id is None:  # type: ignore[attr-defined]
-            row.workspace_id = await _resolve_workspace_id(
-                self._session, validator.work_item_id
-            )
+            row.workspace_id = await _resolve_workspace_id(self._session, validator.work_item_id)
         self._session.add(row)
         await self._session.flush()
         return validator
@@ -229,7 +223,9 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
         await self._session.flush()
         return work_item_version_to_domain(row)
 
-    async def get_latest(self, work_item_id: UUID, workspace_id: UUID | None = None) -> WorkItemVersion | None:  # type: ignore[override]
+    async def get_latest(
+        self, work_item_id: UUID, workspace_id: UUID | None = None
+    ) -> WorkItemVersion | None:  # type: ignore[override]
         stmt = (
             select(WorkItemVersionORM)
             .where(WorkItemVersionORM.work_item_id == work_item_id)
@@ -239,19 +235,18 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return work_item_version_to_domain(row) if row else None
 
-    async def get(self, version_id: UUID, workspace_id: UUID | None = None) -> WorkItemVersion | None:  # type: ignore[override]
+    async def get(
+        self, version_id: UUID, workspace_id: UUID | None = None
+    ) -> WorkItemVersion | None:  # type: ignore[override]
         row = await self._session.get(WorkItemVersionORM, version_id)
         return work_item_version_to_domain(row) if row else None
 
     async def get_by_number(
         self, work_item_id: UUID, version_number: int, workspace_id: UUID
     ) -> WorkItemVersion | None:
-        stmt = (
-            select(WorkItemVersionORM)
-            .where(
-                WorkItemVersionORM.work_item_id == work_item_id,
-                WorkItemVersionORM.version_number == version_number,
-            )
+        stmt = select(WorkItemVersionORM).where(
+            WorkItemVersionORM.work_item_id == work_item_id,
+            WorkItemVersionORM.version_number == version_number,
         )
         row = (await self._session.execute(stmt)).scalars().first()
         return work_item_version_to_domain(row) if row else None
@@ -265,9 +260,7 @@ class WorkItemVersionRepositoryImpl(IWorkItemVersionRepository):
         limit: int = 20,
         before_version: int | None = None,
     ) -> list[WorkItemVersion]:
-        stmt = select(WorkItemVersionORM).where(
-            WorkItemVersionORM.work_item_id == work_item_id
-        )
+        stmt = select(WorkItemVersionORM).where(WorkItemVersionORM.work_item_id == work_item_id)
         if not include_archived:
             stmt = stmt.where(WorkItemVersionORM.archived.is_(False))
         if before_version is not None:

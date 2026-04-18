@@ -1,4 +1,5 @@
 """EP-11 — IntegrationConfig, IntegrationExport repository implementations."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -36,9 +37,7 @@ class IntegrationConfigRepositoryImpl(IIntegrationConfigRepository):
         row = await self._session.get(IntegrationConfigORM, config_id)
         return integration_config_to_domain(row) if row else None
 
-    async def list_active_for_workspace(
-        self, workspace_id: UUID
-    ) -> list[IntegrationConfig]:
+    async def list_active_for_workspace(self, workspace_id: UUID) -> list[IntegrationConfig]:
         stmt = (
             select(IntegrationConfigORM)
             .where(

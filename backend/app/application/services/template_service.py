@@ -1,4 +1,5 @@
 """TemplateService — CRUD with Redis caching and admin authz enforcement — EP-02."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,6 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from app.domain.exceptions import (
-    DuplicateTemplateError,
     TemplateForbiddenError,
     TemplateNotFoundError,
 )
@@ -30,17 +30,19 @@ def _cache_key_system(type: WorkItemType) -> str:
 
 
 def _serialize(template: Template) -> str:
-    return json.dumps({
-        "id": str(template.id),
-        "workspace_id": str(template.workspace_id) if template.workspace_id else None,
-        "type": template.type.value,
-        "name": template.name,
-        "content": template.content,
-        "is_system": template.is_system,
-        "created_by": str(template.created_by) if template.created_by else None,
-        "created_at": template.created_at.isoformat(),
-        "updated_at": template.updated_at.isoformat(),
-    })
+    return json.dumps(
+        {
+            "id": str(template.id),
+            "workspace_id": str(template.workspace_id) if template.workspace_id else None,
+            "type": template.type.value,
+            "name": template.name,
+            "content": template.content,
+            "is_system": template.is_system,
+            "created_by": str(template.created_by) if template.created_by else None,
+            "created_at": template.created_at.isoformat(),
+            "updated_at": template.updated_at.isoformat(),
+        }
+    )
 
 
 def _deserialize(raw: str) -> Template:

@@ -4,11 +4,11 @@ Covers the full breakdown-to-rollup chain:
   breakdown callback → split → get tree → dependencies →
   dependency cycle detection → status transitions → rollup
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import time
 from uuid import uuid4
 
@@ -38,9 +38,7 @@ def _make_token(user_id, workspace_id) -> str:
 
 
 def _sign_callback(body: bytes) -> str:
-    return "sha256=" + hmac.new(
-        _CALLBACK_SECRET.encode(), body, hashlib.sha256
-    ).hexdigest()
+    return "sha256=" + hmac.new(_CALLBACK_SECRET.encode(), body, hashlib.sha256).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +88,6 @@ async def app(migrated_database):
         s = original_get_settings()
         s.dundun.callback_secret = _CALLBACK_SECRET
         return s
-
-    from app.presentation.controllers import dundun_callback_controller as _cb_mod
-    import app.config.settings as _settings_mod
 
     yield fastapi_app
 
@@ -379,12 +374,16 @@ class TestStatusTransitionChain:
 
         # Complete t1 first
         await http.post(f"/api/v1/tasks/{t1['id']}/start", cookies={"access_token": token})
-        t1_done = await http.post(f"/api/v1/tasks/{t1['id']}/mark-done", cookies={"access_token": token})
+        t1_done = await http.post(
+            f"/api/v1/tasks/{t1['id']}/mark-done", cookies={"access_token": token}
+        )
         assert t1_done.status_code == 200
 
         # Now t2 can be completed
         await http.post(f"/api/v1/tasks/{t2['id']}/start", cookies={"access_token": token})
-        t2_done = await http.post(f"/api/v1/tasks/{t2['id']}/mark-done", cookies={"access_token": token})
+        t2_done = await http.post(
+            f"/api/v1/tasks/{t2['id']}/mark-done", cookies={"access_token": token}
+        )
         assert t2_done.status_code == 200
 
 
@@ -398,7 +397,7 @@ class TestRollupInTree:
     async def test_tree_has_rollup_status_per_node(self, http, seeded, app) -> None:
         _, _, work_item_id, token = seeded
         parent = await _create_task(http, work_item_id, token, "Parent")
-        child = await _create_task(http, work_item_id, token, "Child", parent_id=parent["id"])
+        await _create_task(http, work_item_id, token, "Child", parent_id=parent["id"])
 
         tree = await _get_tree(http, work_item_id, token)
         assert len(tree) == 1
@@ -408,9 +407,7 @@ class TestRollupInTree:
         assert parent_node["rollup_status"] == "draft"
 
     @pytest.mark.asyncio
-    async def test_rollup_becomes_done_when_all_children_done(
-        self, http, seeded, app
-    ) -> None:
+    async def test_rollup_becomes_done_when_all_children_done(self, http, seeded, app) -> None:
         _, _, work_item_id, token = seeded
         parent = await _create_task(http, work_item_id, token, "Parent")
         child = await _create_task(http, work_item_id, token, "Child", parent_id=parent["id"])
@@ -424,9 +421,7 @@ class TestRollupInTree:
         assert parent_node["rollup_status"] == "done"
 
     @pytest.mark.asyncio
-    async def test_rollup_in_progress_when_child_in_progress(
-        self, http, seeded, app
-    ) -> None:
+    async def test_rollup_in_progress_when_child_in_progress(self, http, seeded, app) -> None:
         _, _, work_item_id, token = seeded
         parent = await _create_task(http, work_item_id, token, "Parent")
         child = await _create_task(http, work_item_id, token, "Child", parent_id=parent["id"])

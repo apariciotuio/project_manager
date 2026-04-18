@@ -2,10 +2,11 @@
 
 Tests each new filter in isolation, a combined filter scenario, and cursor traversal.
 """
+
 from __future__ import annotations
 
 import time
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -74,25 +75,31 @@ async def _seed(migrated_database) -> tuple[User, Workspace, str]:
         users = UserRepositoryImpl(session)
         workspaces = WorkspaceRepositoryImpl(session)
         memberships = WorkspaceMembershipRepositoryImpl(session)
-        user = User.from_google_claims(sub="ep09-list", email="ep09list@test.com", name="EP09", picture=None)
+        user = User.from_google_claims(
+            sub="ep09-list", email="ep09list@test.com", name="EP09", picture=None
+        )
         await users.upsert(user)
         ws = Workspace.create_from_email(email="ep09list@test.com", created_by=user.id)
         ws.slug = "ep09-list"
         await workspaces.create(ws)
         await memberships.create(
-            WorkspaceMembership.create(workspace_id=ws.id, user_id=user.id, role="admin", is_default=True)
+            WorkspaceMembership.create(
+                workspace_id=ws.id, user_id=user.id, role="admin", is_default=True
+            )
         )
         await session.commit()
     await engine.dispose()
 
     jwt = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    token = jwt.encode({
-        "sub": str(user.id),
-        "email": user.email,
-        "workspace_id": str(ws.id),
-        "is_superadmin": False,
-        "exp": int(time.time()) + 3600,
-    })
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "workspace_id": str(ws.id),
+            "is_superadmin": False,
+            "exp": int(time.time()) + 3600,
+        }
+    )
     return user, ws, token
 
 
@@ -135,7 +142,9 @@ async def test_filter_creator_id(http: AsyncClient, migrated_database) -> None:
 
 
 @pytest.mark.asyncio
-async def test_filter_creator_id_no_match_returns_empty(http: AsyncClient, migrated_database) -> None:
+async def test_filter_creator_id_no_match_returns_empty(
+    http: AsyncClient, migrated_database
+) -> None:
     user, ws, token = await _seed(migrated_database)
     await _create_item(http, token, title="Created by me")
     other_id = str(uuid4())

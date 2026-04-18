@@ -2,6 +2,7 @@
 
 Tests use FakePuppetClient — no real Puppet, no DB.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -13,7 +14,7 @@ from app.domain.ports.puppet import PuppetClientError
 from tests.fakes.fake_puppet_client import FakePuppetClient
 
 
-def _ws() -> "uuid4":
+def _ws() -> uuid4:
     return uuid4()
 
 

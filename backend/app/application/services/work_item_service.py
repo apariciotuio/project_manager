@@ -14,10 +14,11 @@ When target_state=READY and the callable is provided, it is called before the FS
 transition. If the gate is blocked, ReadyGateBlockedError is raised (422 in controller).
 force_ready() bypasses the gate by design.
 """
+
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -317,9 +318,7 @@ class WorkItemService:
             if cmd.target_state == WorkItemState.READY:
                 score = compute_completeness(item)
                 if score < COMPLETENESS_READY_THRESHOLD:
-                    raise MandatoryValidationsPendingError(
-                        item.id, pending_ids=(score,)
-                    )
+                    raise MandatoryValidationsPendingError(item.id, pending_ids=(score,))
                 # EP-06 ReadyGate: check all mandatory validations
                 if self._ready_gate is not None:
                     gate_result = await self._ready_gate.check(
@@ -407,9 +406,7 @@ class WorkItemService:
 
     async def force_ready(self, cmd: ForceReadyCommand) -> WorkItem:
         if len(cmd.justification.strip()) < _MIN_JUSTIFICATION:
-            raise ValueError(
-                f"justification must be at least {_MIN_JUSTIFICATION} characters"
-            )
+            raise ValueError(f"justification must be at least {_MIN_JUSTIFICATION} characters")
 
         item = await self._get_or_raise(cmd.item_id, cmd.workspace_id)
 
@@ -546,9 +543,7 @@ class WorkItemService:
     # get_transitions / get_ownership_history
     # ------------------------------------------------------------------
 
-    async def get_transitions(
-        self, item_id: UUID, workspace_id: UUID
-    ) -> Sequence[StateTransition]:
+    async def get_transitions(self, item_id: UUID, workspace_id: UUID) -> Sequence[StateTransition]:
         await self._get_or_raise(item_id, workspace_id)
         return await self._work_items.get_transitions(item_id, workspace_id)
 

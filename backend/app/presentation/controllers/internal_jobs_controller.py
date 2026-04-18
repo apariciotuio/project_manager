@@ -12,6 +12,7 @@ Replaces Celery Beat scheduled tasks. Host cron calls these endpoints:
 
 Auth: requires is_superadmin in JWT. 403 for anything else.
 """
+
 from __future__ import annotations
 
 import logging

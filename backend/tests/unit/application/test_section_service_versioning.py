@@ -3,6 +3,7 @@
 RED tests: verify SectionService.update_section calls VersioningService.create_version
 when content changes, and skips it when content is unchanged.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -19,7 +20,6 @@ from app.domain.models.work_item_version import (
     WorkItemVersion,
 )
 from app.domain.repositories.work_item_version_repository import IWorkItemVersionRepository
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -124,7 +124,11 @@ class FakeVersionRepo(IWorkItemVersionRepository):
         self, work_item_id: UUID, version_number: int, workspace_id: UUID
     ) -> WorkItemVersion | None:
         return next(
-            (v for v in self._store if v.work_item_id == work_item_id and v.version_number == version_number),
+            (
+                v
+                for v in self._store
+                if v.work_item_id == work_item_id and v.version_number == version_number
+            ),
             None,
         )
 

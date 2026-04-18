@@ -2,9 +2,9 @@
 
 Uses fake repos, fake cache, fake Dundun. No DB, no Redis, no HTTP.
 """
+
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -12,7 +12,6 @@ import pytest
 
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeCache, FakeWorkItemRepository
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -55,7 +54,9 @@ def _make_work_item(workspace_id, *, type_="task", description="Some description
     )
 
 
-def _make_service(work_item_repo=None, cache=None, dundun=None, callback_url="https://app/callback"):
+def _make_service(
+    work_item_repo=None, cache=None, dundun=None, callback_url="https://app/callback"
+):
     from app.application.services.clarification_service import ClarificationService
     from app.domain.gap_detection.gap_detector import GapDetector
 
@@ -160,9 +161,7 @@ class TestGetGapReport:
         await service.get_gap_report(item.id, ws_id)
 
         # Simulate work item update: change updated_at
-        updated_item = dataclasses.replace(
-            item, updated_at=item.updated_at + timedelta(seconds=1)
-        )
+        updated_item = dataclasses.replace(item, updated_at=item.updated_at + timedelta(seconds=1))
         await repo.save(updated_item, ws_id)
 
         await service.get_gap_report(item.id, ws_id)
@@ -258,8 +257,7 @@ class TestGetNextQuestions:
 
     async def test_item_with_no_blocking_returns_empty(self) -> None:
         """A fully-populated item might have no blocking findings."""
-        from app.domain.models.gap_finding import GapFinding, GapReport, GapSeverity
-        from app.domain.gap_detection.gap_detector import GapDetector
+        from app.domain.models.gap_finding import GapSeverity
 
         ws_id = uuid4()
         repo = FakeWorkItemRepository()
@@ -288,7 +286,6 @@ class TestGetNextQuestions:
         questions = await service.get_next_questions(item.id, ws_id)
 
         # None of the questions should be a raw dimension key like "description_missing"
-        raw_dimension_pattern_chars = {"_"}
         for q in questions:
             # Questions should end with "?" and not be snake_case identifiers
             assert "?" in q or len(q) > 20, f"Question looks like a raw dimension: {q!r}"

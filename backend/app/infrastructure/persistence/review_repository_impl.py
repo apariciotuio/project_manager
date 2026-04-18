@@ -1,4 +1,5 @@
 """EP-06 — SQLAlchemy implementations for Review + Validation repos."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -101,10 +102,7 @@ class ReviewResponseRepositoryImpl(IReviewResponseRepository):
         return response
 
     async def get_for_request(self, request_id: UUID) -> ReviewResponse | None:
-        stmt = (
-            select(ReviewResponseORM)
-            .where(ReviewResponseORM.review_request_id == request_id)
-        )
+        stmt = select(ReviewResponseORM).where(ReviewResponseORM.review_request_id == request_id)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return review_response_to_domain(row) if row else None
 
@@ -215,9 +213,7 @@ class ValidationStatusRepositoryImpl(IValidationStatusRepository):
         return status
 
     async def list_for_work_item(self, work_item_id: UUID) -> list[ValidationStatus]:
-        stmt = select(ValidationStatusORM).where(
-            ValidationStatusORM.work_item_id == work_item_id
-        )
+        stmt = select(ValidationStatusORM).where(ValidationStatusORM.work_item_id == work_item_id)
         rows = (await self._session.execute(stmt)).scalars().all()
         return [validation_status_to_domain(r) for r in rows]
 
@@ -239,23 +235,16 @@ class ValidationStatusRepositoryImpl(IValidationStatusRepository):
         req_stmt = select(ValidationRequirementORM.rule_id).where(
             ValidationRequirementORM.required.is_(True)
         )
-        required_rule_ids = set(
-            (await self._session.execute(req_stmt)).scalars().all()
-        )
+        required_rule_ids = set((await self._session.execute(req_stmt)).scalars().all())
         if not required_rule_ids:
             return True
 
-        passed_stmt = (
-            select(ValidationStatusORM.rule_id)
-            .where(
-                and_(
-                    ValidationStatusORM.work_item_id == work_item_id,
-                    ValidationStatusORM.rule_id.in_(required_rule_ids),
-                    ValidationStatusORM.status == ValidationState.PASSED.value,
-                )
+        passed_stmt = select(ValidationStatusORM.rule_id).where(
+            and_(
+                ValidationStatusORM.work_item_id == work_item_id,
+                ValidationStatusORM.rule_id.in_(required_rule_ids),
+                ValidationStatusORM.status == ValidationState.PASSED.value,
             )
         )
-        passed_rule_ids = set(
-            (await self._session.execute(passed_stmt)).scalars().all()
-        )
+        passed_rule_ids = set((await self._session.execute(passed_stmt)).scalars().all())
         return required_rule_ids <= passed_rule_ids

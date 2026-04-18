@@ -5,6 +5,7 @@ Each checker gets:
   - an applicable=False case
   - boundary conditions per the spec
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -172,7 +173,9 @@ class TestScope:
 class TestAcceptanceCriteria:
     def test_one_bullet_not_enough(self) -> None:
         wi = _WI(WorkItemType.BUG)
-        r = dc.check_acceptance_criteria(wi, [_s(SectionType.ACCEPTANCE_CRITERIA, "- only one")], [])
+        r = dc.check_acceptance_criteria(
+            wi, [_s(SectionType.ACCEPTANCE_CRITERIA, "- only one")], []
+        )
         assert r.filled is False
 
     def test_two_bullets_sufficient(self) -> None:
@@ -207,7 +210,9 @@ class TestAcceptanceCriteria:
 class TestDependencies:
     @pytest.mark.parametrize("content", ["none", "None", "NONE"])
     def test_none_case_insensitive(self, content: str) -> None:
-        r = dc.check_dependencies(_WI(WorkItemType.BUG), [_s(SectionType.DEPENDENCIES, content)], [])
+        r = dc.check_dependencies(
+            _WI(WorkItemType.BUG), [_s(SectionType.DEPENDENCIES, content)], []
+        )
         assert r.filled is True
 
     def test_empty_not_filled(self) -> None:

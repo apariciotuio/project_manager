@@ -4,6 +4,7 @@ Tasks: 4.6 (approved closes + calls validation), 4.7 (rejected),
        4.8 (changes_requested), 4.9 (non-assigned forbidden), 4.11 (already closed),
        4.12 (approved without content succeeds).
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -12,7 +13,10 @@ import pytest
 
 from app.application.events.event_bus import EventBus
 from app.application.events.review_events import ReviewRespondedEvent
-from app.application.services.review_request_service import ReviewForbiddenError, ReviewNotFoundError
+from app.application.services.review_request_service import (
+    ReviewForbiddenError,
+    ReviewNotFoundError,
+)
 from app.application.services.review_response_service import ReviewResponseService
 from app.domain.models.review import (
     ContentRequiredError,

@@ -1,4 +1,5 @@
 """EP-10 — ValidationRuleTemplateService."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -59,9 +60,7 @@ class ValidationRuleTemplateService:
             )
         return template
 
-    async def list_for_workspace(
-        self, workspace_id: UUID
-    ) -> list[ValidationRuleTemplate]:
+    async def list_for_workspace(self, workspace_id: UUID) -> list[ValidationRuleTemplate]:
         return await self._repo.list_for_workspace(workspace_id)
 
     async def update(
@@ -95,9 +94,7 @@ class ValidationRuleTemplateService:
         template.updated_at = datetime.now(UTC)
         return await self._repo.save(template)
 
-    async def delete(
-        self, template_id: UUID, *, workspace_id: UUID | None = None
-    ) -> None:
+    async def delete(self, template_id: UUID, *, workspace_id: UUID | None = None) -> None:
         # Verify ownership before deleting
         await self.get(template_id, workspace_id=workspace_id)
         await self._repo.delete(template_id)

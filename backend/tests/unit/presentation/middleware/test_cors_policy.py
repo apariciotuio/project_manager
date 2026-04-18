@@ -11,7 +11,6 @@ from starlette.testclient import TestClient
 
 from app.presentation.middleware.cors_policy import CORSPolicyMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -39,9 +38,7 @@ def test_allowed_origin_echoed_in_response() -> None:
     """Allowed origin is reflected back in ACAO header."""
     app = _build_app(["https://app.example.com"])
     with TestClient(app) as client:
-        resp = client.get(
-            "/api/test", headers={"Origin": "https://app.example.com"}
-        )
+        resp = client.get("/api/test", headers={"Origin": "https://app.example.com"})
     assert resp.headers.get("access-control-allow-origin") == "https://app.example.com"
 
 
@@ -49,9 +46,7 @@ def test_disallowed_origin_no_acao_header() -> None:
     """Requests from an origin not in the allowlist don't get ACAO header."""
     app = _build_app(["https://app.example.com"])
     with TestClient(app) as client:
-        resp = client.get(
-            "/api/test", headers={"Origin": "https://evil.example.com"}
-        )
+        resp = client.get("/api/test", headers={"Origin": "https://evil.example.com"})
     assert "access-control-allow-origin" not in resp.headers
 
 
@@ -59,9 +54,7 @@ def test_disallowed_origin_returns_403() -> None:
     """Cross-origin request from disallowed origin returns 403."""
     app = _build_app(["https://app.example.com"])
     with TestClient(app, raise_server_exceptions=False) as client:
-        resp = client.get(
-            "/api/test", headers={"Origin": "https://evil.example.com"}
-        )
+        resp = client.get("/api/test", headers={"Origin": "https://evil.example.com"})
     assert resp.status_code == 403
 
 
@@ -71,9 +64,8 @@ def test_wildcard_rejected_in_production() -> None:
     Starlette defers middleware instantiation to first request / TestClient startup.
     """
     app = _build_app(["*"], env="production")
-    with pytest.raises(ValueError, match="wildcard"):
-        with TestClient(app):
-            pass
+    with pytest.raises(ValueError, match="wildcard"), TestClient(app):
+        pass
 
 
 def test_wildcard_allowed_in_development() -> None:
@@ -125,7 +117,5 @@ def test_credentials_allowed() -> None:
     """Access-Control-Allow-Credentials is set to true for allowed origins."""
     app = _build_app(["https://app.example.com"])
     with TestClient(app) as client:
-        resp = client.get(
-            "/api/test", headers={"Origin": "https://app.example.com"}
-        )
+        resp = client.get("/api/test", headers={"Origin": "https://app.example.com"})
     assert resp.headers.get("access-control-allow-credentials") == "true"

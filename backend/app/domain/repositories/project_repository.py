@@ -1,4 +1,5 @@
 """EP-10 — IProjectRepository, IRoutingRuleRepository."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

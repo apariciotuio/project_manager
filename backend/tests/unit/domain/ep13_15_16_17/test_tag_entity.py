@@ -1,4 +1,5 @@
 """Unit tests for Tag and WorkItemTag domain models — EP-15."""
+
 from __future__ import annotations
 
 from uuid import uuid4

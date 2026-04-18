@@ -5,6 +5,7 @@ serialized to ISO 8601 for datetime values, or the raw value for other types.
 
 Tampered/invalid cursors raise ValueError — callers map that to HTTP 422.
 """
+
 from __future__ import annotations
 
 import base64
@@ -22,14 +23,16 @@ class PaginationCursor:
 
     def encode(self) -> str:
         payload = {
-            "sv": self.sort_value.isoformat() if isinstance(self.sort_value, datetime) else self.sort_value,
+            "sv": self.sort_value.isoformat()
+            if isinstance(self.sort_value, datetime)
+            else self.sort_value,
             "id": str(self.last_id),
         }
         raw = json.dumps(payload, separators=(",", ":"))
         return base64.urlsafe_b64encode(raw.encode()).decode()
 
     @classmethod
-    def decode(cls, token: str) -> "PaginationCursor":
+    def decode(cls, token: str) -> PaginationCursor:
         try:
             raw = base64.urlsafe_b64decode(token.encode()).decode()
             data = json.loads(raw)

@@ -12,6 +12,7 @@ Breakdown scoring bands (EP-04 + EP-05 cross-EP wiring):
   3-5 tasks → score 0.8  (good decomposition)
   6+ tasks  → score 1.0  (fully filled)
 """
+
 from __future__ import annotations
 
 import re
@@ -114,8 +115,7 @@ def check_problem_clarity(
         return _result("problem_clarity", applicable=False, filled=False)
     summary = _content(sections, SectionType.SUMMARY).strip()
     context = (
-        _content(sections, SectionType.CONTEXT)
-        or _content(sections, SectionType.ACTUAL_BEHAVIOR)
+        _content(sections, SectionType.CONTEXT) or _content(sections, SectionType.ACTUAL_BEHAVIOR)
     ).strip()
     filled = len(summary) + len(context) >= 100
     return _result(
@@ -273,8 +273,7 @@ def check_validations(
     validators: list[Validator],
 ) -> DimensionResult:
     filled = any(
-        v.status in {ValidatorStatus.APPROVED, ValidatorStatus.PENDING}
-        for v in validators
+        v.status in {ValidatorStatus.APPROVED, ValidatorStatus.PENDING} for v in validators
     )
     return _result(
         "validations",

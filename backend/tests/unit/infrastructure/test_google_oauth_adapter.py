@@ -87,9 +87,7 @@ class TestExchangeCode:
             lambda _: httpx.Response(400, json={"error": "invalid_grant"})
         )
         with pytest.raises(OAuthExchangeError, match="400"):
-            await adapter.exchange_code(
-                code="bad", verifier="v", http_transport=transport
-            )
+            await adapter.exchange_code(code="bad", verifier="v", http_transport=transport)
 
     async def test_tokeninfo_audience_mismatch_raises(self, adapter: GoogleOAuthAdapter) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
@@ -269,9 +267,7 @@ class TestExchangeCode:
                 code="c", verifier="v", http_transport=httpx.MockTransport(handler)
             )
 
-    async def test_email_verified_bool_true_accepted(
-        self, adapter: GoogleOAuthAdapter
-    ) -> None:
+    async def test_email_verified_bool_true_accepted(self, adapter: GoogleOAuthAdapter) -> None:
         """id_token payload returns bool True (not string) — must be accepted."""
 
         def handler(request: httpx.Request) -> httpx.Response:

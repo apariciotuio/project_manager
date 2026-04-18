@@ -10,28 +10,28 @@ Scenarios:
 - empty query → raises ValueError (maps to -32602)
 - blank-only query → raises ValueError
 """
+
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
+
+import pytest
 
 from app.domain.models.work_item import WorkItem
 from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
 from app.infrastructure.pagination import PaginationResult
-
 from apps.mcp_server.tools.search_work_items import (
     SearchWorkItemsInput,
-    WorkItemSearchResult,
-    handle_search_work_items,
     _build_excerpt,
+    handle_search_work_items,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_item(
     title: str,
@@ -320,7 +320,9 @@ class TestHandleSearchWorkItemsInvalidInput:
 
 class TestBuildExcerpt:
     def test_query_found_in_description_returns_snippet_around_match(self) -> None:
-        item = _make_item("Title", description="The authentication flow needs improvement for login")
+        item = _make_item(
+            "Title", description="The authentication flow needs improvement for login"
+        )
         excerpt = _build_excerpt(item, "authentication")
         assert "authentication" in excerpt
 

@@ -1,4 +1,5 @@
 """ValidationRule domain entity — EP-10 admin rules."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -5,10 +5,10 @@ Scenario:
     1. force-release with reason → audit event includes reason in context
     2. force-release without reason → audit event has reason=None
 """
+
 from __future__ import annotations
 
 import time
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -57,7 +57,6 @@ async def app(migrated_database):
 
     from app.main import create_app as _create_app
     from app.presentation.dependencies import get_cache_adapter
-
     from tests.fakes.fake_repositories import FakeCache
 
     fastapi_app = _create_app()
@@ -218,6 +217,7 @@ async def test_force_release_with_reason_persists_to_audit_event(http, seeded, m
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         from sqlalchemy import select
+
         from app.infrastructure.persistence.models.orm import AuditEventORM
 
         result = await session.execute(
@@ -239,7 +239,9 @@ async def test_force_release_with_reason_persists_to_audit_event(http, seeded, m
 
 
 @pytest.mark.asyncio
-async def test_force_release_without_reason_persists_none_to_audit_event(http, seeded, migrated_database):
+async def test_force_release_without_reason_persists_none_to_audit_event(
+    http, seeded, migrated_database
+):
     """RED: force-release without reason → audit_event.context has reason=None"""
     await _acquire_lock(http, seeded["section_id"], seeded["holder_token"])
 
@@ -256,6 +258,7 @@ async def test_force_release_without_reason_persists_none_to_audit_event(http, s
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         from sqlalchemy import select
+
         from app.infrastructure.persistence.models.orm import AuditEventORM
 
         result = await session.execute(

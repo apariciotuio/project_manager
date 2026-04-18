@@ -2,6 +2,7 @@
 
 On-demand aggregations + Redis cache (TTL 60s per workspace).
 """
+
 from __future__ import annotations
 
 import json
@@ -9,7 +10,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.ports.cache import ICache

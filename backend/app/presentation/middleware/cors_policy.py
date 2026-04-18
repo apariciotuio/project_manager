@@ -70,7 +70,9 @@ class CORSPolicyMiddleware(BaseHTTPMiddleware):
             if not origin_allowed:
                 return JSONResponse(
                     status_code=403,
-                    content={"error": {"code": "CORS_ORIGIN_DISALLOWED", "message": "origin not allowed"}},
+                    content={
+                        "error": {"code": "CORS_ORIGIN_DISALLOWED", "message": "origin not allowed"}
+                    },
                 )
             resp = Response(status_code=200)
             resp.headers["Access-Control-Allow-Origin"] = origin
@@ -84,7 +86,9 @@ class CORSPolicyMiddleware(BaseHTTPMiddleware):
         if not origin_allowed:
             return JSONResponse(
                 status_code=403,
-                content={"error": {"code": "CORS_ORIGIN_DISALLOWED", "message": "origin not allowed"}},
+                content={
+                    "error": {"code": "CORS_ORIGIN_DISALLOWED", "message": "origin not allowed"}
+                },
             )
 
         response = await call_next(request)

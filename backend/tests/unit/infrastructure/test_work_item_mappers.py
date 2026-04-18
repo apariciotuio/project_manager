@@ -5,7 +5,7 @@ Round-trip tests: domain → ORM → domain for all enum values and edge fields.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -16,12 +16,12 @@ from app.domain.value_objects.priority import Priority
 from app.domain.value_objects.state_transition import StateTransition
 from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
-from app.infrastructure.persistence.mappers import ownership_record_mapper
-from app.infrastructure.persistence.mappers import state_transition_mapper
-from app.infrastructure.persistence.mappers import work_item_mapper
+from app.infrastructure.persistence.mappers import (
+    ownership_record_mapper,
+    state_transition_mapper,
+    work_item_mapper,
+)
 from app.infrastructure.persistence.models.orm import (
-    OwnershipHistoryORM,
-    StateTransitionORM,
     WorkItemORM,
 )
 
@@ -34,7 +34,7 @@ def _make_work_item(
     parent_work_item_id: UUID | None = None,
     tags: list[str] | None = None,
 ) -> WorkItem:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return WorkItem(
         id=uuid4(),
         project_id=uuid4(),
@@ -72,6 +72,7 @@ def _make_orm_from_domain(entity: WorkItem, workspace_id: UUID) -> WorkItemORM:
 # ---------------------------------------------------------------------------
 # WorkItem mapper round-trips
 # ---------------------------------------------------------------------------
+
 
 class TestWorkItemMapperRoundTrip:
     def test_basic_round_trip(self) -> None:
@@ -174,14 +175,17 @@ class TestWorkItemMapperRoundTrip:
 # StateTransition mapper round-trips
 # ---------------------------------------------------------------------------
 
+
 class TestStateTransitionMapperRoundTrip:
-    def _make_transition(self, from_state: WorkItemState, to_state: WorkItemState) -> StateTransition:
+    def _make_transition(
+        self, from_state: WorkItemState, to_state: WorkItemState
+    ) -> StateTransition:
         return StateTransition(
             work_item_id=uuid4(),
             from_state=from_state,
             to_state=to_state,
             actor_id=uuid4(),
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             reason="test reason",
             is_override=False,
             override_justification=None,
@@ -211,7 +215,7 @@ class TestStateTransitionMapperRoundTrip:
             from_state=WorkItemState.IN_CLARIFICATION,
             to_state=WorkItemState.READY,
             actor_id=uuid4(),
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             reason=None,
             is_override=True,
             override_justification="urgent release",
@@ -234,6 +238,7 @@ class TestStateTransitionMapperRoundTrip:
 # OwnershipRecord mapper round-trips
 # ---------------------------------------------------------------------------
 
+
 class TestOwnershipRecordMapperRoundTrip:
     def _make_record(self, *, prev: UUID | None = None) -> OwnershipRecord:
         new_owner = uuid4()
@@ -242,7 +247,7 @@ class TestOwnershipRecordMapperRoundTrip:
             previous_owner_id=prev if prev is not None else uuid4(),
             new_owner_id=new_owner,
             changed_by=uuid4(),
-            changed_at=datetime.now(timezone.utc),
+            changed_at=datetime.now(UTC),
             reason="reassign",
         )
 

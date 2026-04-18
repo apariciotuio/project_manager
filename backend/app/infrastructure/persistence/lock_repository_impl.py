@@ -1,11 +1,12 @@
 """EP-17 — SectionLock repository implementation."""
+
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,9 +90,7 @@ class SectionLockRepositoryImpl:
         count = len(rows)
         if rows:
             ids = [r.id for r in rows]
-            await self._session.execute(
-                delete(SectionLockORM).where(SectionLockORM.id.in_(ids))
-            )
+            await self._session.execute(delete(SectionLockORM).where(SectionLockORM.id.in_(ids)))
             await self._session.flush()
             logger.info("lock.cleanup_expired removed=%d", count)
         return count

@@ -18,8 +18,7 @@ done in test_rate_limiting.py if needed.
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -42,7 +41,7 @@ _CSRF_COOKIES = {"csrf_token": _CSRF_TOKEN}
 
 def _make_token(*, is_superadmin: bool, workspace_id: str | None = None) -> str:
     adapter = JwtAdapter(secret=_JWT_SECRET, issuer="wmp", audience="wmp-web")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(uuid4()),
         "email": f"{uuid4().hex[:8]}@tuio.com",

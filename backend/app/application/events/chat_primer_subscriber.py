@@ -8,6 +8,7 @@ Design refs: tasks/EP-22/design.md §2, tasks/EP-22/dundun-specifications.md §5
 Fire-and-forget: the EventBus swallows handler exceptions (see event_bus.py).
 Creation never fails because of a Dundun outage.
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,8 +60,7 @@ def make_chat_primer_handler(
         work_item = await work_item_repo.get(event.work_item_id, event.workspace_id)
         if work_item is None:
             logger.warning(
-                "chat_primer_subscriber: work_item_not_found "
-                "event_id=%s work_item_id=%s",
+                "chat_primer_subscriber: work_item_not_found event_id=%s work_item_id=%s",
                 event.event_id,
                 event.work_item_id,
             )
@@ -69,8 +69,7 @@ def make_chat_primer_handler(
         original_input = work_item.original_input
         if not original_input or not original_input.strip():
             logger.debug(
-                "chat_primer_subscriber: skipping_empty_input "
-                "event_id=%s work_item_id=%s",
+                "chat_primer_subscriber: skipping_empty_input event_id=%s work_item_id=%s",
                 event.event_id,
                 event.work_item_id,
             )
@@ -94,8 +93,7 @@ def make_chat_primer_handler(
         locked_thread = await thread_repo.acquire_for_primer(thread.id)
         if locked_thread is None:
             logger.debug(
-                "chat_primer_subscriber: already_primed "
-                "event_id=%s thread_id=%s",
+                "chat_primer_subscriber: already_primed event_id=%s thread_id=%s",
                 event.event_id,
                 thread.id,
             )
@@ -109,8 +107,7 @@ def make_chat_primer_handler(
                 snapshot = _build_sections_snapshot(sections)
             except Exception:  # noqa: BLE001
                 logger.warning(
-                    "chat_primer_subscriber: sections_snapshot_failed "
-                    "work_item_id=%s",
+                    "chat_primer_subscriber: sections_snapshot_failed work_item_id=%s",
                     event.work_item_id,
                     exc_info=True,
                 )

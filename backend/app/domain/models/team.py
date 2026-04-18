@@ -1,4 +1,5 @@
 """EP-08 — Team + TeamMembership + Notification entities."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

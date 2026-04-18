@@ -13,14 +13,13 @@ session; the service/repo bodies are also faked so no real DB is touched.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.models.team import Notification, NotificationState
-
+from app.domain.models.team import Notification
 
 # ---------------------------------------------------------------------------
 # Spy session
@@ -42,7 +41,7 @@ class SpySession:
     async def rollback(self) -> None:
         self.rolled_back = True
 
-    async def __aenter__(self) -> "SpySession":
+    async def __aenter__(self) -> SpySession:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -59,9 +58,7 @@ class FakeNotificationRepo:
     def __init__(self) -> None:
         self._store: dict[str, Notification] = {}
 
-    async def bulk_insert_idempotent(
-        self, notifications: list[Notification]
-    ) -> list[Notification]:
+    async def bulk_insert_idempotent(self, notifications: list[Notification]) -> list[Notification]:
         for n in notifications:
             if n.idempotency_key not in self._store:
                 self._store[n.idempotency_key] = n
@@ -97,9 +94,7 @@ class ExplodingNotificationService:
 # ---------------------------------------------------------------------------
 
 
-def _fan_out_payload(
-    *, workspace_id: UUID, subject_id: UUID, recipient_id: UUID
-) -> dict[str, Any]:
+def _fan_out_payload(*, workspace_id: UUID, subject_id: UUID, recipient_id: UUID) -> dict[str, Any]:
     return {
         "workspace_id": str(workspace_id),
         "source_id": str(uuid4()),
@@ -131,9 +126,7 @@ class TestFanOutSessionLifecycle:
 
         monkeypatch.setattr(mod, "_build_fan_out_deps", _fake_build)
 
-    def test_fan_out_commits_session_on_success(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_fan_out_commits_session_on_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Successful fan-out → session.commit() called."""
         session = SpySession()
         repo = FakeNotificationRepo()
@@ -182,9 +175,7 @@ class TestFanOutSessionLifecycle:
 
         assert session.exited is True
 
-    def test_fan_out_rolls_back_on_body_exception(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_fan_out_rolls_back_on_body_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When bulk_enqueue raises → session.rollback() is called, not commit()."""
         session = SpySession()
         svc = ExplodingNotificationService(session)

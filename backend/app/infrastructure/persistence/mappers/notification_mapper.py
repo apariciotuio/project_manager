@@ -1,4 +1,5 @@
 """EP-08 — Notification mapper."""
+
 from __future__ import annotations
 
 from app.domain.models.team import Notification, NotificationState

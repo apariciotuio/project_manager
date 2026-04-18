@@ -1,15 +1,15 @@
 """EP-09 — Advanced work item list filters + sort model."""
+
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
-from typing import Literal
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class SortOption(str, Enum):
+class SortOption(StrEnum):
     updated_desc = "updated_desc"
     updated_asc = "updated_asc"
     created_desc = "created_desc"
@@ -17,7 +17,7 @@ class SortOption(str, Enum):
     completeness_desc = "completeness_desc"
 
 
-class MineType(str, Enum):
+class MineType(StrEnum):
     owner = "owner"
     creator = "creator"
     reviewer = "reviewer"
@@ -79,7 +79,7 @@ class WorkItemListFilters(BaseModel):
         return v  # pydantic ge/le handles it
 
     @model_validator(mode="after")
-    def _validate_completeness_range(self) -> "WorkItemListFilters":
+    def _validate_completeness_range(self) -> WorkItemListFilters:
         if (
             self.completeness_min is not None
             and self.completeness_max is not None

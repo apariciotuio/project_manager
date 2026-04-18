@@ -18,7 +18,9 @@ from app.infrastructure.persistence.models.orm import StateTransitionORM
 def to_domain(row: StateTransitionORM) -> StateTransition:
     return StateTransition(
         work_item_id=row.work_item_id,
-        from_state=WorkItemState(row.from_state) if row.from_state is not None else WorkItemState.DRAFT,
+        from_state=WorkItemState(row.from_state)
+        if row.from_state is not None
+        else WorkItemState.DRAFT,
         to_state=WorkItemState(row.to_state),
         actor_id=row.actor_id,  # nullable after migration 0010
         triggered_at=row.triggered_at,
@@ -46,9 +48,7 @@ def to_orm(
     row.work_item_id = transition.work_item_id
     row.workspace_id = workspace_id
     row.from_state = (
-        transition.from_state.value
-        if from_state_override is _UNSET
-        else from_state_override  # type: ignore[assignment]
+        transition.from_state.value if from_state_override is _UNSET else from_state_override  # type: ignore[assignment]
     )
     row.to_state = transition.to_state.value
     row.actor_id = transition.actor_id

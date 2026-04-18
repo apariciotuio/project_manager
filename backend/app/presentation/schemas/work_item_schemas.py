@@ -1,4 +1,5 @@
 """Pydantic v2 request/response schemas for Work Item endpoints (EP-01 Phase 4)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime

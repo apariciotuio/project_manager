@@ -30,6 +30,7 @@ THEN result.filled is True AND result.score == 1.0
 WHEN check_breakdown() is called for a non-applicable type (Task)
 THEN result.applicable is False regardless of task_count
 """
+
 from __future__ import annotations
 
 from uuid import uuid4

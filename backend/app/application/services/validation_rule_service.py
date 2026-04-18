@@ -1,4 +1,5 @@
 """ValidationRuleService — EP-10 admin rules CRUD + precedence."""
+
 from __future__ import annotations
 
 import logging
@@ -74,7 +75,8 @@ class ValidationRuleService:
                 active_only=True,
             )
             blockers = [
-                r for r in workspace_rules
+                r
+                for r in workspace_rules
                 if r.is_global_blocker()
                 and r.work_item_type == work_item_type
                 and r.validation_type == validation_type
@@ -93,7 +95,8 @@ class ValidationRuleService:
             active_only=True,
         )
         scope_rules = [
-            r for r in existing_rules
+            r
+            for r in existing_rules
             if r.project_id == project_id
             and r.work_item_type == work_item_type
             and r.validation_type == validation_type

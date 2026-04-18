@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 
@@ -35,9 +34,7 @@ EXPECTED_TABLES = {
 async def test_every_ep00_table_exists(engine) -> None:
     async with engine.connect() as conn:
         result = await conn.execute(
-            text(
-                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-            )
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
         )
         present = {row[0] for row in result}
     missing = EXPECTED_TABLES - present
@@ -91,9 +88,7 @@ async def test_audit_events_update_raises(engine) -> None:
 
     async with engine.connect() as conn:
         with pytest.raises(Exception, match="append-only|audit_events"):
-            await conn.execute(
-                text("UPDATE audit_events SET action = 'tampered'")
-            )
+            await conn.execute(text("UPDATE audit_events SET action = 'tampered'"))
 
 
 async def test_audit_events_delete_raises(engine) -> None:
@@ -196,9 +191,7 @@ async def test_oauth_states_has_return_to_column(engine) -> None:
             )
         )
         row = (
-            await conn.execute(
-                text("SELECT return_to FROM oauth_states WHERE state='rt-test'")
-            )
+            await conn.execute(text("SELECT return_to FROM oauth_states WHERE state='rt-test'"))
         ).one()
         assert row[0] == "/workspace/foo"
 
@@ -362,9 +355,7 @@ async def test_conversation_threads_work_item_fk_set_null(engine) -> None:
                 "WHERE u.email='ct3@tuio.com' AND wi.title='CT Item3' AND w.slug='ct-ws3'"
             )
         )
-        await conn.execute(
-            text("DELETE FROM work_items WHERE title='CT Item3'")
-        )
+        await conn.execute(text("DELETE FROM work_items WHERE title='CT Item3'"))
         row = (
             await conn.execute(
                 text(
@@ -392,9 +383,17 @@ async def test_assistant_suggestions_columns(engine) -> None:
         cols = {row[0]: row[1] for row in result}
 
     required_not_null = {
-        "id", "work_item_id", "proposed_content", "current_content",
-        "status", "version_number_target", "batch_id", "created_by",
-        "created_at", "updated_at", "expires_at",
+        "id",
+        "work_item_id",
+        "proposed_content",
+        "current_content",
+        "status",
+        "version_number_target",
+        "batch_id",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "expires_at",
     }
     for col in required_not_null:
         assert col in cols, f"column {col} missing from assistant_suggestions"
@@ -547,15 +546,10 @@ async def test_assistant_suggestions_work_item_fk_cascade(engine) -> None:
                 "WHERE u.email='as3@tuio.com' AND wi.title='AS Item3' AND w.slug='as-ws3'"
             )
         )
-        await conn.execute(
-            text("DELETE FROM work_items WHERE title='AS Item3'")
-        )
+        await conn.execute(text("DELETE FROM work_items WHERE title='AS Item3'"))
         count = (
             await conn.execute(
-                text(
-                    "SELECT COUNT(*) FROM assistant_suggestions "
-                    "WHERE proposed_content='p3'"
-                )
+                text("SELECT COUNT(*) FROM assistant_suggestions WHERE proposed_content='p3'")
             )
         ).scalar()
         assert count == 0, "cascade delete from work_items to assistant_suggestions failed"
@@ -577,7 +571,13 @@ async def test_gap_findings_columns(engine) -> None:
         cols = {row[0]: row[1] for row in result}
 
     required_not_null = {
-        "id", "work_item_id", "source", "severity", "dimension", "message", "created_at",
+        "id",
+        "work_item_id",
+        "source",
+        "severity",
+        "dimension",
+        "message",
+        "created_at",
     }
     for col in required_not_null:
         assert col in cols, f"column {col} missing from gap_findings"
@@ -709,9 +709,7 @@ async def test_gap_findings_work_item_fk_cascade(engine) -> None:
                 "WHERE wi.title='GF Item3' AND w.slug='gf-ws3'"
             )
         )
-        await conn.execute(
-            text("DELETE FROM work_items WHERE title='GF Item3'")
-        )
+        await conn.execute(text("DELETE FROM work_items WHERE title='GF Item3'"))
         count = (
             await conn.execute(
                 text(

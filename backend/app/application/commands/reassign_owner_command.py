@@ -1,4 +1,5 @@
 """ReassignOwnerCommand — immutable command for ownership reassignment."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

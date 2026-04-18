@@ -14,6 +14,7 @@ Scenarios:
 - limit parameter restricts result count
 - Empty result set when no items match
 """
+
 from __future__ import annotations
 
 from uuid import UUID, uuid4
@@ -25,14 +26,13 @@ from app.application.services.audit_service import AuditService
 from app.application.services.work_item_service import WorkItemService
 from app.domain.models.work_item import WorkItem
 from app.domain.value_objects.work_item_type import WorkItemType
+from apps.mcp_server.tools.search_work_items import handle_search_work_items
 from tests.fakes.fake_repositories import (
     FakeAuditRepository,
     FakeUserRepository,
     FakeWorkItemRepository,
     FakeWorkspaceMembershipRepository,
 )
-from apps.mcp_server.tools.search_work_items import handle_search_work_items
-
 
 # ---------------------------------------------------------------------------
 # Helpers

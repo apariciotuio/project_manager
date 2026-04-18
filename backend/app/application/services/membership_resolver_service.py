@@ -39,13 +39,9 @@ class MembershipResolverService:
         if not active:
             return ResolverOutcome(kind="no_access", workspace_id=None, choices=[])
         if len(active) == 1:
-            return ResolverOutcome(
-                kind="single", workspace_id=active[0].workspace_id, choices=[]
-            )
+            return ResolverOutcome(kind="single", workspace_id=active[0].workspace_id, choices=[])
         if last_chosen_workspace_id is not None and any(
             m.workspace_id == last_chosen_workspace_id for m in active
         ):
-            return ResolverOutcome(
-                kind="single", workspace_id=last_chosen_workspace_id, choices=[]
-            )
+            return ResolverOutcome(kind="single", workspace_id=last_chosen_workspace_id, choices=[])
         return ResolverOutcome(kind="picker", workspace_id=None, choices=list(active))
