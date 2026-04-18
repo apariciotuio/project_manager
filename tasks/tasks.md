@@ -57,7 +57,7 @@ EP-13, EP-14, EP-15, EP-16, EP-17, EP-18 ─────────────
 - [x] **CSRF bootstrap fix (web)** — `/api/v1/auth/me` emits `csrf_token` cookie when missing; unblocks existing sessions after CSRF rollout (2026-04-18).
 - [x] **CSP dev relaxation** — `middleware.ts` adds `'unsafe-inline' 'unsafe-eval'` to `script-src` and `ws:` + `localhost:*` to `connect-src` in dev (Next.js HMR); prod unchanged (2026-04-18).
 - [x] **Fakes sweep** — `current_user_id` added to `IWorkItemRepository.list_cursor` interface + `FakeWorkItemRepository`; unblocked `test_auth_service.py`, `test_draft_service.py`, `test_mcp_stdio_search.py` (37 passed, 2026-04-18).
-- [ ] **Test retrofit** — internal_jobs_controller + SSE terminal frames + notification session lifecycle (Agent SS in flight, 2026-04-18, from OO code review coverage gaps).
+- [x] **Test retrofit** — internal_jobs_controller + SSE terminal frames + notification session lifecycle (2026-04-18). 24 tests added: 5 integration for `list_jobs` GET endpoint, 7 unit for `ProgressTaskMixin` without `job_service`, 12 integration for notification stream lifecycle (`stream-token` + `GET /stream`). All green. 3 commits: 95d80f8, 0692723, 6d250cb.
 
 ## Shipped 2026-04-18 (session summary)
 
