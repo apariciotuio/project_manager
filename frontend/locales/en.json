@@ -520,7 +520,12 @@
         "health": "Health",
         "projects": "Projects",
         "integrations": "Integrations",
-        "tags": "Tags"
+        "tags": "Tags",
+        "rules": "Rules",
+        "dashboard": "Dashboard",
+        "jira": "Jira",
+        "contextPresets": "Context Presets",
+        "support": "Support"
       },
       "members": {
         "stub": "Workspace members view (stub — showing current user).",
@@ -708,6 +713,26 @@
         "title": "Recent activity",
         "empty": "No recent activity",
         "viewItem": "View item"
+      },
+      "person": {
+        "title": "My Dashboard",
+        "inbox": "Inbox",
+        "pendingReviews": "Pending reviews",
+        "overloaded": "Overloaded",
+        "ownedByState": "Items owned",
+        "noPermission": "You do not have permission to view this dashboard",
+        "error": "Failed to load dashboard",
+        "retry": "Retry"
+      },
+      "team": {
+        "title": "Team Dashboard",
+        "recentReady": "Ready items (30d)",
+        "blocked": "Blocked",
+        "pendingReviews": "Pending reviews",
+        "wip": "Work in progress",
+        "ownedByState": "Items by state",
+        "error": "Failed to load team dashboard",
+        "retry": "Retry"
       }
     },
     "quickFilters": {
@@ -976,6 +1001,125 @@
       "TEMPLATE_NOT_FOUND": "The template does not exist.",
       "PROJECT_NOT_FOUND": "The project does not exist.",
       "RATE_LIMIT_EXCEEDED": "Too many requests. Please wait a moment and try again."
+    }
+  },
+  "admin": {
+    "members": {
+      "title": "Members",
+      "empty": "No members in this workspace.",
+      "invite": "Invite member",
+      "inviteModal": {
+        "title": "Invite member",
+        "emailLabel": "Email",
+        "submit": "Send invite",
+        "cancel": "Cancel",
+        "errors": {
+          "alreadyActive": "A member with this email already exists",
+          "invitePending": "An invitation is already pending for this email"
+        }
+      },
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "state": "State",
+        "capabilities": "Capabilities",
+        "labels": "Labels",
+        "actions": "Actions"
+      },
+      "actions": {
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "delete": "Delete"
+      }
+    },
+    "rules": {
+      "title": "Validation Rules",
+      "empty": "No validation rules configured.",
+      "addRule": "Add rule",
+      "form": {
+        "workItemType": "Work item type",
+        "validationType": "Validation type",
+        "enforcement": "Enforcement",
+        "scope": "Scope",
+        "create": "Create",
+        "cancel": "Cancel",
+        "blockedOverrideWarning": "This will supersede any project-level rule of the same type"
+      },
+      "errors": {
+        "alreadyExists": "A rule for this combination already exists",
+        "hasHistory": "Cannot delete — use Deactivate instead",
+        "globalBlocker": "A workspace-level blocked_override rule is in effect"
+      },
+      "scope": {
+        "workspace": "Workspace",
+        "project": "Project"
+      }
+    },
+    "jira": {
+      "title": "Jira Integration",
+      "empty": "No Jira integrations configured.",
+      "add": "Add Jira config",
+      "form": {
+        "baseUrl": "Base URL",
+        "token": "API Token",
+        "create": "Create",
+        "cancel": "Cancel",
+        "httpsRequired": "Base URL must use HTTPS"
+      },
+      "testConnection": "Test connection",
+      "testResults": {
+        "ok": "Connection successful",
+        "authFailure": "Authentication failed — check your API token",
+        "unreachable": "Connection timed out or unreachable"
+      }
+    },
+    "support": {
+      "title": "Support Tools",
+      "orphanedItems": "Orphaned work items",
+      "pendingInvitations": "Pending invitations",
+      "failedExports": "Failed exports",
+      "configBlockedItems": "Config-blocked work items",
+      "retryAll": "Retry all",
+      "blockingReasons": {
+        "suspended_owner": "Suspended owner",
+        "deleted_team_in_rule": "Deleted team in rule",
+        "archived_project": "Archived project"
+      }
+    },
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "cards": {
+        "members": "Members",
+        "projects": "Projects",
+        "integrations": "Integrations",
+        "recentAudit": "Recent audit events"
+      },
+      "health": "Workspace health",
+      "healthValues": {
+        "healthy": "Healthy",
+        "degraded": "Degraded",
+        "error": "Error"
+      }
+    },
+    "contextPresets": {
+      "title": "Context Presets",
+      "empty": "No context presets configured.",
+      "newPreset": "New preset",
+      "form": {
+        "name": "Name",
+        "description": "Description",
+        "create": "Create",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "inUse": "Cannot delete — preset is in use by projects",
+        "duplicateName": "A preset with this name already exists"
+      }
+    },
+    "superadmin": {
+      "userManagement": "User Management",
+      "crossWorkspaceAudit": "Cross-Workspace Audit"
     }
   }
 }

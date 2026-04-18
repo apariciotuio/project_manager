@@ -520,7 +520,12 @@
         "health": "Salud",
         "projects": "Proyectos",
         "integrations": "Integraciones",
-        "tags": "Etiquetas"
+        "tags": "Etiquetas",
+        "rules": "Reglas",
+        "dashboard": "Panel",
+        "jira": "Jira",
+        "contextPresets": "Presets de Contexto",
+        "support": "Soporte"
       },
       "members": {
         "stub": "Vista de miembros del workspace (stub — mostrando usuario actual).",
@@ -708,6 +713,26 @@
         "title": "Actividad reciente",
         "empty": "Sin actividad reciente",
         "viewItem": "Ver elemento"
+      },
+      "person": {
+        "title": "Mi Dashboard",
+        "inbox": "Bandeja de entrada",
+        "pendingReviews": "Revisiones pendientes",
+        "overloaded": "Sobrecargado",
+        "ownedByState": "Ítems asignados",
+        "noPermission": "No tienes permiso para ver este dashboard",
+        "error": "Error al cargar el dashboard",
+        "retry": "Reintentar"
+      },
+      "team": {
+        "title": "Dashboard del equipo",
+        "recentReady": "Ítems listos (30d)",
+        "blocked": "Bloqueados",
+        "pendingReviews": "Revisiones pendientes",
+        "wip": "Trabajo en progreso",
+        "ownedByState": "Ítems por estado",
+        "error": "Error al cargar el dashboard del equipo",
+        "retry": "Reintentar"
       }
     },
     "quickFilters": {
@@ -976,6 +1001,125 @@
       "TEMPLATE_NOT_FOUND": "La plantilla no existe.",
       "PROJECT_NOT_FOUND": "El proyecto no existe.",
       "RATE_LIMIT_EXCEEDED": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo."
+    }
+  },
+  "admin": {
+    "members": {
+      "title": "Miembros",
+      "empty": "No hay miembros en este workspace.",
+      "invite": "Invitar miembro",
+      "inviteModal": {
+        "title": "Invitar miembro",
+        "emailLabel": "Email",
+        "submit": "Enviar invitación",
+        "cancel": "Cancelar",
+        "errors": {
+          "alreadyActive": "Ya existe un miembro con este email",
+          "invitePending": "Ya hay una invitación pendiente para este email"
+        }
+      },
+      "columns": {
+        "name": "Nombre",
+        "email": "Email",
+        "state": "Estado",
+        "capabilities": "Capacidades",
+        "labels": "Etiquetas",
+        "actions": "Acciones"
+      },
+      "actions": {
+        "suspend": "Suspender",
+        "reactivate": "Reactivar",
+        "delete": "Eliminar"
+      }
+    },
+    "rules": {
+      "title": "Reglas de Validación",
+      "empty": "No hay reglas de validación configuradas.",
+      "addRule": "Añadir regla",
+      "form": {
+        "workItemType": "Tipo de ítem",
+        "validationType": "Tipo de validación",
+        "enforcement": "Aplicación",
+        "scope": "Alcance",
+        "create": "Crear",
+        "cancel": "Cancelar",
+        "blockedOverrideWarning": "Esto anulará cualquier regla de nivel de proyecto del mismo tipo"
+      },
+      "errors": {
+        "alreadyExists": "Ya existe una regla para esta combinación",
+        "hasHistory": "No se puede eliminar — usa Desactivar en su lugar",
+        "globalBlocker": "Hay una regla blocked_override a nivel workspace en vigor"
+      },
+      "scope": {
+        "workspace": "Workspace",
+        "project": "Proyecto"
+      }
+    },
+    "jira": {
+      "title": "Integración Jira",
+      "empty": "No hay integraciones Jira configuradas.",
+      "add": "Añadir config Jira",
+      "form": {
+        "baseUrl": "URL base",
+        "token": "API Token",
+        "create": "Crear",
+        "cancel": "Cancelar",
+        "httpsRequired": "La URL base debe usar HTTPS"
+      },
+      "testConnection": "Probar conexión",
+      "testResults": {
+        "ok": "Conexión exitosa",
+        "authFailure": "Autenticación fallida — revisa tu API token",
+        "unreachable": "Conexión agotada o inalcanzable"
+      }
+    },
+    "support": {
+      "title": "Herramientas de Soporte",
+      "orphanedItems": "Ítems huérfanos",
+      "pendingInvitations": "Invitaciones pendientes",
+      "failedExports": "Exportaciones fallidas",
+      "configBlockedItems": "Ítems bloqueados por configuración",
+      "retryAll": "Reintentar todo",
+      "blockingReasons": {
+        "suspended_owner": "Propietario suspendido",
+        "deleted_team_in_rule": "Equipo eliminado en regla",
+        "archived_project": "Proyecto archivado"
+      }
+    },
+    "dashboard": {
+      "title": "Panel de Administración",
+      "cards": {
+        "members": "Miembros",
+        "projects": "Proyectos",
+        "integrations": "Integraciones",
+        "recentAudit": "Eventos de auditoría recientes"
+      },
+      "health": "Salud del workspace",
+      "healthValues": {
+        "healthy": "Saludable",
+        "degraded": "Degradado",
+        "error": "Error"
+      }
+    },
+    "contextPresets": {
+      "title": "Presets de Contexto",
+      "empty": "No hay presets de contexto configurados.",
+      "newPreset": "Nuevo preset",
+      "form": {
+        "name": "Nombre",
+        "description": "Descripción",
+        "create": "Crear",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "errors": {
+        "inUse": "No se puede eliminar — el preset está en uso por proyectos",
+        "duplicateName": "Ya existe un preset con este nombre"
+      }
+    },
+    "superadmin": {
+      "userManagement": "Gestión de Usuarios",
+      "crossWorkspaceAudit": "Auditoría entre Workspaces"
     }
   }
 }
