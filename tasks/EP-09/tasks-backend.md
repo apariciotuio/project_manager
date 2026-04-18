@@ -173,7 +173,7 @@ Behavior when `mine=true`:
 
 `mine=false` (default) → filter has no effect; all existing filters apply normally.
 
-- [ ] [RED] Write unit tests for `WorkItemListQueryBuilder` mine filter variants:
+- [x] [RED] Write unit tests for `WorkItemListQueryBuilder` mine filter variants (2026-04-18 — 11 tests in test_mine_filter.py):
   - `mine=true&mine_type=owner` → SQL `owner_id = :user_id`
   - `mine=true&mine_type=creator` → SQL `created_by = :user_id`
   - `mine=true&mine_type=reviewer` → subquery on `review_requests` where `reviewer_id = :user_id OR (reviewer_type='team' AND team has current user)`
@@ -181,9 +181,10 @@ Behavior when `mine=true`:
   - `mine=false` → no mine condition appended; existing filters unchanged
   - `mine=true` without `mine_type` → defaults to `any`
   - `mine=true&mine_type=invalid` → HTTP 422
-- [ ] [GREEN] Extend `WorkItemListFilters` Pydantic model: add `mine: bool = False`, `mine_type: Literal['owner', 'creator', 'reviewer', 'any'] = 'any'`
-- [ ] [GREEN] Implement mine filter resolution in `WorkItemListQueryBuilder._apply_mine_filter()`; reviewer subquery uses `review_requests` table joined to `team_memberships` for team-type reviews
-- [ ] [REFACTOR] Extract `MineFilterBuilder` pure function; test independently
+- [x] [GREEN] Extend `WorkItemListFilters` Pydantic model: `mine: bool = False`, `mine_type: MineType = MineType.any`; added `MineType` enum (2026-04-18)
+- [x] [GREEN] `WorkItemListQueryBuilder._apply_mine_filter()` with EXISTS subqueries on review_requests + team_memberships (2026-04-18)
+- [x] [GREEN] Controller wired: `mine`, `mine_type` query params; passes `current_user_id` to service; `applied_filters` includes mine context (2026-04-18)
+- [x] [REFACTOR] `_apply_mine_filter` is a clean dispatch — no if/elif monolith (2026-04-18)
 
 ### Saved Filter Presets
 

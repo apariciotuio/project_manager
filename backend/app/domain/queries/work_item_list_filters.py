@@ -17,6 +17,13 @@ class SortOption(str, Enum):
     completeness_desc = "completeness_desc"
 
 
+class MineType(str, Enum):
+    owner = "owner"
+    creator = "creator"
+    reviewer = "reviewer"
+    any = "any"
+
+
 class WorkItemListFilters(BaseModel):
     """All optional filters for GET /api/v1/work-items.
 
@@ -61,6 +68,10 @@ class WorkItemListFilters(BaseModel):
     # Free-text + puppet toggle
     q: str | None = None
     use_puppet: bool = False
+
+    # Mine filter (EP-09)
+    mine: bool = False
+    mine_type: MineType = MineType.any
 
     @field_validator("completeness_min", "completeness_max", mode="before")
     @classmethod

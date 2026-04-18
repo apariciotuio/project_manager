@@ -189,6 +189,7 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
         cursor: PaginationCursor | None,
         page_size: int,
         filters: WorkItemListFilters | None = None,
+        current_user_id: UUID | None = None,
     ) -> PaginationResult:
         from app.application.services.work_item_list_service import WorkItemListQueryBuilder
 
@@ -206,7 +207,11 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
         # We piggyback the domain cursor into filters.cursor (already a str).
         # The builder decodes filters.cursor internally via PaginationCursor.decode.
 
-        builder = WorkItemListQueryBuilder(workspace_id=workspace_id, filters=filters)
+        builder = WorkItemListQueryBuilder(
+            workspace_id=workspace_id,
+            filters=filters,
+            current_user_id=current_user_id,
+        )
         stmt = builder.build_stmt()
 
         rows = (await self._session.execute(stmt)).scalars().all()

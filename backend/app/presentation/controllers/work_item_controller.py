@@ -456,6 +456,9 @@ async def list_all_work_items(  # noqa: PLR0913
     # --- free text + puppet ---
     q: str | None = None,
     use_puppet: bool = False,
+    # --- mine filter (EP-09) ---
+    mine: bool = False,
+    mine_type: str = "any",
     current_user: CurrentUser = Depends(get_current_user),
     service: WorkItemService = Depends(get_work_item_service),
 ) -> dict[str, Any]:
@@ -495,6 +498,23 @@ async def list_all_work_items(  # noqa: PLR0913
 
     # Build filter struct from query params.
     # updated_after / updated_before accepted as ISO strings by WorkItemListFilters.
+    from app.domain.queries.work_item_list_filters import MineType
+
+    # Validate mine_type — 422 if unrecognised
+    try:
+        mine_type_enum = MineType(mine_type)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "INVALID_MINE_TYPE",
+                    "message": f"mine_type must be one of: {[e.value for e in MineType]}",
+                    "details": {},
+                }
+            },
+        ) from exc
+
     list_filters = WorkItemListFilters(
         state=[s.value for s in state] if state else None,
         type=[t.value for t in type] if type else None,
@@ -515,6 +535,8 @@ async def list_all_work_items(  # noqa: PLR0913
         limit=page_size,
         q=q,
         use_puppet=use_puppet,
+        mine=mine,
+        mine_type=mine_type_enum,
     )
 
     result = await service.list_cursor(
@@ -522,6 +544,7 @@ async def list_all_work_items(  # noqa: PLR0913
         cursor=None,  # cursor is encoded inside list_filters.cursor
         page_size=page_size,
         filters=list_filters,
+        current_user_id=current_user.id,
     )
 
     next_cursor = result.next_cursor
@@ -544,6 +567,8 @@ async def list_all_work_items(  # noqa: PLR0913
         applied_filters["priority"] = priority
     if q:
         applied_filters["q"] = q
+    if mine:
+        applied_filters["mine"] = {"type": mine_type, "user_id": str(current_user.id)}
 
     return {
         "data": {

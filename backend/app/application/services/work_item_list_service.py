@@ -9,17 +9,28 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, exists, func, or_, select
 
 from app.domain.pagination import PaginationCursor
-from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
-from app.infrastructure.persistence.models.orm import WorkItemORM
+from app.domain.queries.work_item_list_filters import MineType, SortOption, WorkItemListFilters
+from app.infrastructure.persistence.models.orm import (
+    ReviewRequestORM,
+    TeamMembershipORM,
+    WorkItemORM,
+)
 
 
 class WorkItemListQueryBuilder:
-    def __init__(self, *, workspace_id: UUID, filters: WorkItemListFilters) -> None:
+    def __init__(
+        self,
+        *,
+        workspace_id: UUID,
+        filters: WorkItemListFilters,
+        current_user_id: UUID | None = None,
+    ) -> None:
         self._workspace_id = workspace_id
         self._filters = filters
+        self._current_user_id = current_user_id
         self._decoded: PaginationCursor | None | _Sentinel = _UNRESOLVED
 
     @property
@@ -89,6 +100,12 @@ class WorkItemListQueryBuilder:
             stmt = stmt.where(WorkItemORM.title.ilike(f"%{f.q}%"))
 
         # ------------------------------------------------------------------
+        # Mine filter
+        # ------------------------------------------------------------------
+        if f.mine and self._current_user_id is not None:
+            stmt = self._apply_mine_filter(stmt, f.mine_type, self._current_user_id)
+
+        # ------------------------------------------------------------------
         # Cursor keyset condition
         # ------------------------------------------------------------------
         cursor = self.decoded_cursor  # raises ValueError if tampered
@@ -149,6 +166,54 @@ class WorkItemListQueryBuilder:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    def _apply_mine_filter(
+        self,
+        stmt: Select[Any],
+        mine_type: MineType,
+        user_id: UUID,
+    ) -> Select[Any]:
+        """Restrict to items the current user owns, created, or is reviewing.
+
+        Reviewer subquery: items with a pending review_request where the user
+        is a direct reviewer OR is a member of a team-type reviewer.
+        Uses EXISTS subqueries — no N+1.
+        """
+        reviewer_subq = (
+            select(ReviewRequestORM.work_item_id)
+            .where(
+                ReviewRequestORM.status == "pending",
+                or_(
+                    ReviewRequestORM.reviewer_id == user_id,
+                    exists(
+                        select(TeamMembershipORM.id).where(
+                            TeamMembershipORM.team_id == ReviewRequestORM.team_id,
+                            TeamMembershipORM.user_id == user_id,
+                            TeamMembershipORM.removed_at.is_(None),
+                        )
+                    ),
+                ),
+            )
+            .correlate_except(ReviewRequestORM)
+        )
+
+        if mine_type == MineType.owner:
+            return stmt.where(WorkItemORM.owner_id == user_id)
+
+        if mine_type == MineType.creator:
+            return stmt.where(WorkItemORM.creator_id == user_id)
+
+        if mine_type == MineType.reviewer:
+            return stmt.where(WorkItemORM.id.in_(reviewer_subq))
+
+        # MineType.any — OR of all three
+        return stmt.where(
+            or_(
+                WorkItemORM.owner_id == user_id,
+                WorkItemORM.creator_id == user_id,
+                WorkItemORM.id.in_(reviewer_subq),
+            )
+        )
 
     def _apply_cursor(
         self, stmt: Select[Any], cursor: PaginationCursor, sort: SortOption

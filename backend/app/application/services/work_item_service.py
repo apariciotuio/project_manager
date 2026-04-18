@@ -197,6 +197,7 @@ class WorkItemService:
         cursor: PaginationCursor | None,
         page_size: int,
         filters: WorkItemListFilters | None = None,
+        current_user_id: UUID | None = None,
     ) -> PaginationResult:
         """Keyset-paginated workspace work item list with full filter support."""
         return await self._work_items.list_cursor(
@@ -204,6 +205,7 @@ class WorkItemService:
             cursor=cursor,
             page_size=page_size,
             filters=filters,
+            current_user_id=current_user_id,
         )
 
     # ------------------------------------------------------------------
