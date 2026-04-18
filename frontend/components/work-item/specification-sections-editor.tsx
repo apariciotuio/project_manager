@@ -105,9 +105,12 @@ function SectionRow({ section, canEdit, onSave }: SectionRowProps) {
 
   const handleEdit = useCallback(() => {
     if (!suggestion) return;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     setValue(suggestion.proposed_content);
     clearSuggestion();
-    // The debounce-on-blur path will persist the edit
   }, [suggestion, clearSuggestion]);
 
   const label = getSectionLabel(t, section.section_type);

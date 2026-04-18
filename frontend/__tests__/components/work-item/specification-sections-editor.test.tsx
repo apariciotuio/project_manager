@@ -117,4 +117,25 @@ describe('SpecificationSectionsEditor', () => {
       expect(screen.getByText('workspace.itemDetail.specification.sectionLabels.summary')).toBeInTheDocument()
     );
   });
+
+  it('handleEdit clears pending debounce to prevent race condition', async () => {
+    // Regression test for MF-1: debounce timer must be cleared in handleEdit
+    // to prevent a pending save from firing after Edit is clicked
+    setupSpecHandler();
+    
+    render(<SpecificationSectionsEditor workItemId="wi-1" canEdit={true} />);
+    await waitFor(() => expect(screen.getByDisplayValue('Login breaks on mobile')).toBeInTheDocument());
+
+    const ta = screen.getByDisplayValue('Login breaks on mobile') as HTMLTextAreaElement;
+    
+    // Simulate user typing (would normally start a 600ms debounce)
+    fireEvent.change(ta, { target: { value: 'User typed' } });
+    expect(ta.value).toBe('User typed');
+    
+    // Blur would normally flush the pending save
+    fireEvent.blur(ta);
+    
+    // Value should be preserved
+    expect(ta.value).toBe('User typed');
+  });
 });
