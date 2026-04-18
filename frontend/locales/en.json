@@ -716,6 +716,25 @@
       "ownedByMe": "Owned by me",
       "createdByMe": "Created by me",
       "pendingMyReview": "Pending my review"
+    },
+    "pipeline": {
+      "title": "Pipeline",
+      "loading": "Loading pipeline…",
+      "error": "Failed to load pipeline",
+      "retry": "Retry",
+      "empty": "No items in the pipeline",
+      "blockedLane": "Blocked",
+      "aging": {
+        "amber": "{days}d",
+        "red": "{days}d"
+      },
+      "columns": {
+        "draft": "Draft",
+        "in_clarification": "In clarification",
+        "in_review": "In review",
+        "partially_validated": "Partially validated",
+        "ready": "Ready"
+      }
     }
   },
   "modals": {

@@ -716,6 +716,25 @@
       "ownedByMe": "Asignadas a mí",
       "createdByMe": "Creadas por mí",
       "pendingMyReview": "Pendientes revisión"
+    },
+    "pipeline": {
+      "title": "Pipeline",
+      "loading": "Cargando pipeline…",
+      "error": "Error al cargar el pipeline",
+      "retry": "Reintentar",
+      "empty": "No hay elementos en el pipeline",
+      "blockedLane": "Bloqueados",
+      "aging": {
+        "amber": "{days}d",
+        "red": "{days}d"
+      },
+      "columns": {
+        "draft": "Borrador",
+        "in_clarification": "En clarificación",
+        "in_review": "En revisión",
+        "partially_validated": "Parcialmente validado",
+        "ready": "Listo"
+      }
     }
   },
   "modals": {
