@@ -6,7 +6,7 @@
  *   GET    /api/v1/work-items/:id/sections/:section_id/comments — list by section
  */
 
-import { apiGet, apiDelete } from '../api-client';
+import { apiGet, apiDelete, apiPatch } from '../api-client';
 import type { Comment } from '../types/versions';
 
 export type { Comment } from '../types/versions';
@@ -29,6 +29,22 @@ export async function deleteComment(
   await apiDelete<unknown>(
     `/api/v1/work-items/${workItemId}/comments/${commentId}`,
   );
+}
+
+interface UpdateCommentEnvelope {
+  data: Comment;
+}
+
+export async function updateComment(
+  workItemId: string,
+  commentId: string,
+  body: string,
+): Promise<Comment> {
+  const res = await apiPatch<UpdateCommentEnvelope>(
+    `/api/v1/work-items/${workItemId}/comments/${commentId}`,
+    { body },
+  );
+  return res.data;
 }
 
 export async function listSectionComments(

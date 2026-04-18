@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { listComments, deleteComment as apiDeleteComment } from '@/lib/api/comments';
+import { listComments, deleteComment as apiDeleteComment, updateComment as apiUpdateComment } from '@/lib/api/comments';
 import { createComment } from '@/lib/api/versions';
 import type { Comment, CreateCommentRequest } from '@/lib/types/versions';
 
@@ -11,6 +11,7 @@ interface UseCommentsResult {
   error: Error | null;
   addComment: (req: CreateCommentRequest) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;
+  editComment: (commentId: string, body: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -106,5 +107,36 @@ export function useComments(workItemId: string): UseCommentsResult {
     [workItemId],
   );
 
-  return { comments, isLoading, error, addComment, deleteComment, refetch: fetch };
+  const editComment = useCallback(
+    async (commentId: string, body: string) => {
+      // Optimistic: update body immediately
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId ? { ...c, body, is_edited: true } : c,
+        ),
+      );
+      setError(null);
+
+      try {
+        const updated = await apiUpdateComment(workItemId, commentId, body);
+        setComments((prev) =>
+          prev.map((c) => (c.id === commentId ? updated : c)),
+        );
+      } catch (err) {
+        // Rollback
+        const e = err instanceof Error ? err : new Error(String(err));
+        setError(e);
+        try {
+          const data = await listComments(workItemId);
+          setComments(data);
+        } catch {
+          // fetch failed too
+        }
+        throw e;
+      }
+    },
+    [workItemId],
+  );
+
+  return { comments, isLoading, error, addComment, deleteComment, editComment, refetch: fetch };
 }

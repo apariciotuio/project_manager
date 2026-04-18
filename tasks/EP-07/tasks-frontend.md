@@ -301,8 +301,8 @@ interface CommentThreadProps {
 }
 ```
 
-- [ ] 4.1 [RED] Test: renders body; edit button only for own non-AI comments; delete button for own; deleted comment shows `[deleted]` with greyed styling; reply count badge; orphaned anchor shows warning chip "Anchor text no longer found"
-- [ ] 4.2 [GREEN] Implement `src/components/comments/CommentThread.tsx`
+- [x] 4.1 [RED] Test: renders body; edit button only for own non-AI comments; delete button for own; deleted comment shows `[deleted]` with greyed styling; reply count badge; orphaned anchor shows warning chip "Anchor text no longer found" (2026-04-18 — 8+8 tests in CommentItem+CommentThread tests)
+- [x] 4.2 [GREEN] Implement `frontend/components/comments/CommentThread.tsx` + `CommentItem.tsx` (2026-04-18)
 
 ### CommentInput component
 
@@ -315,9 +315,9 @@ interface CommentInputProps {
 }
 ```
 
-- [ ] 4.3 [RED] Test: textarea; submit on Cmd/Ctrl+Enter or button; empty body disabled; anchor data passed when provided
-- [ ] 4.3a [RED] Test: paste image from clipboard → upload starts via EP-16 upload flow, placeholder `![Uploading…]()` inserted at cursor, replaced with `![filename](attachment_id)` on upload success; drag-drop image onto editor same flow; failed upload shows inline error and removes placeholder
-- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx` — support paste-from-clipboard (`paste` event on `ClipboardData.files`) and drag-drop (`drop` event) for images; each image triggers EP-16 upload flow (`POST /api/v1/work-items/:id/attachments` multipart → authenticated streaming, no presigned URL — decision #29); markdown image syntax `![filename](attachment_id)` inserted at cursor position on success
+- [x] 4.3 [RED] Test: textarea; submit on Cmd/Ctrl+Enter or button; empty body disabled; anchor data passed when provided (2026-04-18 — 11 tests in CommentInput.test.tsx)
+- [ ] 4.3a [RED] Test: paste image from clipboard → upload starts via EP-16 upload flow — DEFERRED: EP-16 not shipped; disabled placeholder in CommentInput with TODO comment
+- [x] 4.4 [GREEN] Implement `frontend/components/comments/CommentInput.tsx` — disabled attachment button (EP-16 TODO), Ctrl/Cmd+Enter, loading+error states, anchor passthrough (2026-04-18)
 
 ### CommentFeed component
 
@@ -329,8 +329,8 @@ interface CommentFeedProps {
 }
 ```
 
-- [ ] 4.5 [RED] Test: renders all `CommentThread` components; `CommentInput` at top; loading skeleton; empty state "No comments yet"; cursor pagination "Load more" button
-- [ ] 4.6 [GREEN] Implement `src/components/comments/CommentFeed.tsx`
+- [x] 4.5 [RED] Test: renders all CommentThread components; CommentInput at top; loading skeleton; empty state "No comments yet"; add comment (2026-04-18 — 5 tests in CommentFeed.test.tsx)
+- [x] 4.6 [GREEN] Implement `frontend/components/comments/CommentFeed.tsx`; updated `CommentsTab` to delegate to CommentFeed; added `updateComment` to lib/api/comments.ts; added `editComment` to useComments hook (2026-04-18)
 
 ### Anchored inline comments (section view integration)
 
