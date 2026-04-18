@@ -192,7 +192,11 @@ export type TimelineEventType =
   | 'task_completed'
   | 'review_requested'
   | 'review_completed'
+  | 'review_submitted'
   | 'comment_added'
+  | 'comment_deleted'
+  | 'version_created'
+  | 'export_triggered'
   | 'tag_added'
   | 'tag_removed';
 

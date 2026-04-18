@@ -10,9 +10,12 @@ import {
   Eye,
   CheckCheck,
   MessageCircle,
+  MessageSquareX,
   UserCog,
   Tag,
   Bot,
+  GitCommitHorizontal,
+  Download,
 } from 'lucide-react';
 
 const EVENT_ICONS: Record<TimelineEventType, React.ComponentType<{ className?: string }>> = {
@@ -23,7 +26,11 @@ const EVENT_ICONS: Record<TimelineEventType, React.ComponentType<{ className?: s
   task_completed: CheckCircle2,
   review_requested: Eye,
   review_completed: CheckCheck,
+  review_submitted: CheckCheck,
   comment_added: MessageCircle,
+  comment_deleted: MessageSquareX,
+  version_created: GitCommitHorizontal,
+  export_triggered: Download,
   tag_added: Tag,
   tag_removed: Tag,
 };
