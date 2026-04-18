@@ -100,15 +100,21 @@ class ConversationService:
         return created
 
     async def get_thread_for_user(
-        self, thread_id: UUID, user_id: UUID
+        self, thread_id: UUID, user_id: UUID, workspace_id: UUID
     ) -> ConversationThread:
-        """Return the thread only if it exists AND belongs to user_id.
+        """Return the thread only if it belongs to user_id AND workspace_id.
 
-        Raises ThreadNotFoundError for both missing and cross-user cases —
-        controllers should never be able to distinguish.
+        Raises ThreadNotFoundError for missing, cross-user, or cross-workspace
+        cases — callers must not be able to distinguish. Enforces the same
+        authz boundary the WS proxy does (SEC-AUTH-001), but in the service
+        layer so every REST caller benefits automatically.
         """
         thread = await self._thread_repo.get_by_id(thread_id)
-        if thread is None or thread.user_id != user_id:
+        if (
+            thread is None
+            or thread.user_id != user_id
+            or thread.workspace_id != workspace_id
+        ):
             raise ThreadNotFoundError(f"thread {thread_id} not found")
         return thread
 

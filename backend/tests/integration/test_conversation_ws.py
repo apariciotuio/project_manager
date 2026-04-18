@@ -239,3 +239,95 @@ class TestConversationWSAsync:
 
         if received:
             assert received[0].get("type") == "progress"
+
+    async def test_mismatched_workspace_rejected(
+        self, app, migrated_database
+    ) -> None:
+        """SEC-AUTH-001: thread.workspace_id != user.workspace_id → 4403.
+
+        Even when the authenticated user owns the thread by user_id, if the JWT
+        carries a different workspace_id than the thread row, the proxy must
+        refuse. Prevents leaking section snapshots across workspace contexts
+        when a multi-workspace user switches scope.
+        """
+        from datetime import UTC, datetime
+
+        from app.domain.models.conversation_thread import ConversationThread
+        from app.infrastructure.persistence.conversation_thread_repository_impl import (
+            ConversationThreadRepositoryImpl,
+        )
+
+        # Seed once: user + workspace A + token_a.
+        user, ws_a, _token_a = await _seed(migrated_database)
+
+        # Insert the thread directly via repo (avoids CSRF middleware on REST).
+        # Thread row is bound to workspace_id = ws_a.id.
+        thread_id = uuid4()
+        engine = create_async_engine(migrated_database.database.url)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            repo = ConversationThreadRepositoryImpl(session)
+            await repo.create(
+                ConversationThread(
+                    id=thread_id,
+                    workspace_id=ws_a.id,
+                    user_id=user.id,
+                    work_item_id=None,
+                    dundun_conversation_id=str(uuid4()),
+                    last_message_preview=None,
+                    last_message_at=None,
+                    created_at=datetime.now(UTC),
+                    deleted_at=None,
+                )
+            )
+            await session.commit()
+        await engine.dispose()
+
+        # Forge a cross-scope token: same user.id, same email, but a different
+        # workspace_id claim. Simulates a stale token or a user who switched
+        # active workspace after the thread was created.
+        other_workspace_id = uuid4()
+        jwt = JwtAdapter(
+            secret="change-me-in-prod-use-32-chars-or-more-please",
+            issuer="wmp",
+            audience="wmp-web",
+        )
+        cross_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "email": user.email,
+                "workspace_id": str(other_workspace_id),
+                "is_superadmin": False,
+                "exp": int(time.time()) + 3600,
+            }
+        )
+
+        result: dict = {}
+
+        def _run() -> None:
+            client = TestClient(app, raise_server_exceptions=False)
+            try:
+                with client.websocket_connect(
+                    f"{_WS_BASE}/{thread_id}?token={cross_token}"
+                ) as ws:
+                    ws.receive_json()
+                result["connected"] = True
+            except Exception as exc:
+                result["error"] = str(exc)
+                # Starlette TestClient raises WebSocketDisconnect with the close
+                # code as `code` attr — capture it for the 4403 assertion.
+                result["close_code"] = getattr(exc, "code", None)
+
+        import threading
+
+        t = threading.Thread(target=_run)
+        t.start()
+        t.join(timeout=5)
+        assert not result.get("connected"), (
+            "Expected WS rejection for mismatched workspace_id"
+        )
+        # Must be 4403 — distinguishes authorization failure (right token,
+        # wrong scope) from 4401 authentication failure (bad token).
+        assert result.get("close_code") == 4403, (
+            f"Expected close code 4403 for cross-workspace WS, got {result.get('close_code')!r}"
+        )

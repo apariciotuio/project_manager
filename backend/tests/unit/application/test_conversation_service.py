@@ -267,3 +267,52 @@ class TestListForUser:
 
         assert len(threads) == 1
         assert threads[0].work_item_id == wi_id
+
+
+class TestGetThreadForUser:
+    """SEC-AUTH-001: service enforces user_id AND workspace_id scope."""
+
+    async def test_returns_thread_when_user_and_workspace_match(self) -> None:
+        repo = FakeConversationThreadRepository()
+        service = _make_service(thread_repo=repo)
+        user_id = uuid4()
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
+
+        got = await service.get_thread_for_user(thread.id, user_id, WORKSPACE_ID)
+        assert got.id == thread.id
+
+    async def test_raises_not_found_when_thread_missing(self) -> None:
+        from app.application.services.conversation_service import ThreadNotFoundError
+
+        service = _make_service()
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_thread_for_user(uuid4(), uuid4(), WORKSPACE_ID)
+
+    async def test_raises_not_found_for_cross_user_access(self) -> None:
+        from app.application.services.conversation_service import ThreadNotFoundError
+
+        repo = FakeConversationThreadRepository()
+        service = _make_service(thread_repo=repo)
+        owner_id = uuid4()
+        attacker_id = uuid4()
+        thread = await service.get_or_create_thread(WORKSPACE_ID, owner_id, uuid4())
+
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_thread_for_user(thread.id, attacker_id, WORKSPACE_ID)
+
+    async def test_raises_not_found_for_cross_workspace_access(self) -> None:
+        """Same user, different workspace_id in the caller's scope → NOT FOUND.
+
+        Prevents a multi-workspace user from accessing threads from another
+        workspace via a stale/switched JWT workspace_id.
+        """
+        from app.application.services.conversation_service import ThreadNotFoundError
+
+        repo = FakeConversationThreadRepository()
+        service = _make_service(thread_repo=repo)
+        user_id = uuid4()
+        other_workspace = uuid4()
+        thread = await service.get_or_create_thread(WORKSPACE_ID, user_id, uuid4())
+
+        with pytest.raises(ThreadNotFoundError):
+            await service.get_thread_for_user(thread.id, user_id, other_workspace)

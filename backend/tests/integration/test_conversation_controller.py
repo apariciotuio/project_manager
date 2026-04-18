@@ -249,6 +249,83 @@ class TestGetThread:
         resp = await http.get(f"/api/v1/threads/{uuid4()}", cookies={"access_token": token})
         assert resp.status_code == 404
 
+    async def test_cross_workspace_returns_404(
+        self, http: AsyncClient, migrated_database
+    ) -> None:
+        """SEC-AUTH-001 (code-review Must Fix): same user, different workspace_id
+        in the JWT → 404 (same response as missing, no existence leak).
+
+        Guards against a multi-workspace user fetching threads from another
+        workspace via a stale/switched JWT workspace_id.
+
+        Thread row inserted directly via repo to sidestep the CSRF middleware
+        on POST /threads (unrelated pre-existing issue).
+        """
+        from datetime import UTC, datetime
+
+        from app.domain.models.conversation_thread import ConversationThread
+        from app.infrastructure.persistence.conversation_thread_repository_impl import (
+            ConversationThreadRepositoryImpl,
+        )
+
+        user, ws_a, _token_a = await _seed(migrated_database)
+
+        thread_id = uuid4()
+        engine = create_async_engine(migrated_database.database.url)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            repo = ConversationThreadRepositoryImpl(session)
+            await repo.create(
+                ConversationThread(
+                    id=thread_id,
+                    workspace_id=ws_a.id,
+                    user_id=user.id,
+                    work_item_id=None,
+                    dundun_conversation_id=str(uuid4()),
+                    last_message_preview=None,
+                    last_message_at=None,
+                    created_at=datetime.now(UTC),
+                    deleted_at=None,
+                )
+            )
+            await session.commit()
+        await engine.dispose()
+
+        # Forge a token with same user.id but a different workspace_id claim.
+        jwt = JwtAdapter(
+            secret="change-me-in-prod-use-32-chars-or-more-please",
+            issuer="wmp",
+            audience="wmp-web",
+        )
+        cross_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "email": user.email,
+                "workspace_id": str(uuid4()),  # different workspace
+                "is_superadmin": False,
+                "exp": int(time.time()) + 3600,
+            }
+        )
+
+        resp = await http.get(
+            f"/api/v1/threads/{thread_id}", cookies={"access_token": cross_token}
+        )
+        assert resp.status_code == 404, (
+            f"Cross-workspace GET must return 404 (no existence leak); got {resp.status_code}"
+        )
+
+        hist = await http.get(
+            f"/api/v1/threads/{thread_id}/history",
+            cookies={"access_token": cross_token},
+        )
+        assert hist.status_code == 404
+
+        # DELETE also calls get_thread_for_user (same service method) so the
+        # authz gate is proven for the mutating path too. We don't exercise it
+        # here because the EP-12 CSRF middleware intercepts cookie-auth'd
+        # DELETE requests before the controller runs — that's an orthogonal
+        # test-infra concern, not a gap in EP-22's authz fix.
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/threads/{id}/history

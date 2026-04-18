@@ -98,14 +98,31 @@ async def get_or_create_thread(
     )
 
 
+def _require_workspace(current_user: CurrentUser) -> UUID:
+    """Return workspace_id from the JWT claims or raise 401.
+
+    Thread endpoints are workspace-scoped — the JWT must carry the active
+    workspace_id. Same pattern used by get_or_create_thread (SEC-AUTH-001).
+    """
+    if current_user.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},  # noqa: E501
+        )
+    return current_user.workspace_id
+
+
 @router.get("/threads/{thread_id}")
 async def get_thread(
     thread_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
+    workspace_id = _require_workspace(current_user)
     try:
-        thread = await service.get_thread_for_user(thread_id, current_user.id)
+        thread = await service.get_thread_for_user(
+            thread_id, current_user.id, workspace_id
+        )
     except ThreadNotFoundError as exc:
         raise _not_found() from exc
     return _ok(ThreadResponse.from_domain(thread).model_dump(mode="json"))
@@ -117,8 +134,9 @@ async def get_thread_history(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict[str, Any]:
+    workspace_id = _require_workspace(current_user)
     try:
-        await service.get_thread_for_user(thread_id, current_user.id)
+        await service.get_thread_for_user(thread_id, current_user.id, workspace_id)
     except ThreadNotFoundError as exc:
         raise _not_found() from exc
 
@@ -132,8 +150,9 @@ async def archive_thread(
     current_user: CurrentUser = Depends(get_current_user),
     service: ConversationService = Depends(get_conversation_service),
 ) -> None:
+    workspace_id = _require_workspace(current_user)
     try:
-        await service.get_thread_for_user(thread_id, current_user.id)
+        await service.get_thread_for_user(thread_id, current_user.id, workspace_id)
     except ThreadNotFoundError as exc:
         raise _not_found() from exc
 
@@ -181,10 +200,14 @@ async def conversation_ws(
         await websocket.close(code=4401)
         return
 
-    # 2. Resolve thread and verify IDOR
+    # 2. Resolve thread and verify IDOR (user + workspace scope — SEC-AUTH-001)
     async for thread_repo in get_thread_repo_for_ws():
         thread = await thread_repo.get_by_id(thread_id)
-        if thread is None or thread.user_id != user.id:
+        if (
+            thread is None
+            or thread.user_id != user.id
+            or thread.workspace_id != user.workspace_id
+        ):
             await websocket.close(code=4403)
             return
 
