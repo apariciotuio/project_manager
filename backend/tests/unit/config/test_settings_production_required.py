@@ -98,6 +98,7 @@ class TestProductionRequiredSecrets:
             APP_ENV="production",
             api_key="real-puppet-key-123",
             callback_secret="real-puppet-callback-secret-456",
+            service_key="real-puppet-service-key-789",
         )
         assert settings.api_key == "real-puppet-key-123"
         assert settings.callback_secret == "real-puppet-callback-secret-456"
@@ -113,3 +114,60 @@ class TestProductionRequiredSecrets:
         )
         assert settings.api_key == "dev-fake-key"
         assert settings.callback_secret == "dev-puppet-callback-secret"
+
+    def test_production_missing_dundun_service_key_raises(self) -> None:
+        """In prod with dundun service_key = dev-service-key → ConfigurationError.
+
+        SEC-CONF-001 (EP-22): BE→Dundun Bearer token cannot fall through to the
+        sentinel default in production. Without this check a missing env var
+        silently uses a known-public value.
+        """
+        from app.config.settings import DundunSettings
+        from app.domain.errors.codes import ConfigurationError
+
+        with pytest.raises(ConfigurationError) as exc_info:
+            DundunSettings(
+                APP_ENV="production",
+                api_key="real-dundun-api-key",
+                callback_secret="real-dundun-callback-secret",
+                service_key="dev-service-key",
+            )
+        assert "service_key" in str(exc_info.value).lower()
+
+    def test_production_missing_puppet_service_key_raises(self) -> None:
+        """In prod with puppet service_key = dev-service-key → ConfigurationError."""
+        from app.config.settings import PuppetSettings
+        from app.domain.errors.codes import ConfigurationError
+
+        with pytest.raises(ConfigurationError) as exc_info:
+            PuppetSettings(
+                APP_ENV="production",
+                api_key="real-puppet-api-key",
+                callback_secret="real-puppet-callback-secret",
+                service_key="dev-service-key",
+            )
+        assert "service_key" in str(exc_info.value).lower()
+
+    def test_production_valid_dundun_service_key_passes(self) -> None:
+        """In prod with real dundun service_key → no error."""
+        from app.config.settings import DundunSettings
+
+        settings = DundunSettings(
+            APP_ENV="production",
+            api_key="real-dundun-api-key",
+            callback_secret="real-dundun-callback-secret",
+            service_key="real-dundun-service-key-xyz",
+        )
+        assert settings.service_key == "real-dundun-service-key-xyz"
+
+    def test_dev_env_dundun_service_key_default_passes(self) -> None:
+        """In dev, dundun service_key sentinel default is acceptable."""
+        from app.config.settings import DundunSettings
+
+        settings = DundunSettings(
+            APP_ENV="development",
+            api_key="dev-fake-key",
+            callback_secret="dev-callback-secret",
+            service_key="dev-service-key",
+        )
+        assert settings.service_key == "dev-service-key"

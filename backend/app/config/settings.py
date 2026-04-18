@@ -94,6 +94,7 @@ class AuthSettings(BaseSettings):
 
 _DUNDUN_API_KEY_SENTINEL = "dev-fake-key"
 _DUNDUN_CALLBACK_SECRET_SENTINEL = "dev-callback-secret"
+_DUNDUN_SERVICE_KEY_SENTINEL = "dev-service-key"
 
 
 class DundunSettings(BaseSettings):
@@ -103,7 +104,7 @@ class DundunSettings(BaseSettings):
 
     base_url: str = "http://localhost:17006"
     api_key: str = _DUNDUN_API_KEY_SENTINEL
-    service_key: str = "dev-service-key"
+    service_key: str = _DUNDUN_SERVICE_KEY_SENTINEL
     use_fake: bool = True
     callback_url: str = "http://localhost:17004/api/v1/dundun/callback"
     callback_secret: str = _DUNDUN_CALLBACK_SECRET_SENTINEL
@@ -118,11 +119,14 @@ class DundunSettings(BaseSettings):
             raise ConfigurationError("api_key")
         if self.callback_secret == _DUNDUN_CALLBACK_SECRET_SENTINEL:
             raise ConfigurationError("callback_secret")
+        if self.service_key == _DUNDUN_SERVICE_KEY_SENTINEL:
+            raise ConfigurationError("service_key")
         return self
 
 
 _PUPPET_API_KEY_SENTINEL = "dev-fake-key"
 _PUPPET_CALLBACK_SECRET_SENTINEL = "dev-puppet-callback-secret"
+_PUPPET_SERVICE_KEY_SENTINEL = "dev-service-key"
 
 
 class PuppetSettings(BaseSettings):
@@ -132,7 +136,7 @@ class PuppetSettings(BaseSettings):
 
     base_url: str = "http://localhost:17007"
     api_key: str = _PUPPET_API_KEY_SENTINEL
-    service_key: str = "dev-service-key"
+    service_key: str = _PUPPET_SERVICE_KEY_SENTINEL
     callback_secret: str = _PUPPET_CALLBACK_SECRET_SENTINEL
     use_fake: bool = True
 
@@ -145,6 +149,8 @@ class PuppetSettings(BaseSettings):
             raise ConfigurationError("api_key")
         if self.callback_secret == _PUPPET_CALLBACK_SECRET_SENTINEL:
             raise ConfigurationError("callback_secret")
+        if self.service_key == _PUPPET_SERVICE_KEY_SENTINEL:
+            raise ConfigurationError("service_key")
         return self
 
 
