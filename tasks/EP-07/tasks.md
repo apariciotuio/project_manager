@@ -1,7 +1,17 @@
 # EP-07 — Implementation Checklist
 
-**Status: PLANNED**
-**Last updated: 2026-04-13**
+**Status: IN FLIGHT — Backend ~80% / Frontend ~63%**
+**Last updated: 2026-04-18**
+
+> The detailed checklist below is the original 2026-04-13 plan and is OUT OF DATE. Authoritative progress now lives in:
+> - `tasks/EP-07/tasks-backend.md` — backend progress + DoD
+> - `tasks/EP-07/tasks-frontend.md` — frontend Groups 1–7 progress
+>
+> 2026-04-18 session deltas (FE):
+> - Groups 1, 2, 3a, 3b shipped 2026-04-18 (cf06aec — diff viewer + comment hooks)
+> - Group 5 (Timeline filters + tab) shipped 2026-04-18 (commits 386965e + eeb2d21) — TimelineFilters component + useTimeline filter forwarding + i18n + filtered-empty state. 22 tests across 3 files green.
+> - Group 6.1 + 6.2 shipped 2026-04-18 (d242163) — explicit tab-presence assertion; TabsContent already mounted in detail page.
+> - Remaining FE: Group 4 (Comments UI — depends on hooks already shipped, blocked by EP-16 v2 for upload), Group 6.3 (comment count badge optimistic), Group 6.4+6.5 (initial diff selection in history page), Group 7 (skeletons + mobile + error state).
 
 ---
 
