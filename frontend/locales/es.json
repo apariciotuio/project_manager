@@ -735,6 +735,21 @@
         "partially_validated": "Parcialmente validado",
         "ready": "Listo"
       }
+    },
+    "kanban": {
+      "title": "Kanban",
+      "loading": "Cargando tablero…",
+      "error": "Error al cargar el tablero",
+      "retry": "Reintentar",
+      "loadMore": "Cargar más",
+      "groupBy": "Agrupar por",
+      "groupByOptions": {
+        "state": "Estado",
+        "owner": "Propietario",
+        "tag": "Etiqueta",
+        "parent": "Padre"
+      },
+      "dndStateOnly": "Arrastrar y soltar solo funciona con agrupación por estado"
     }
   },
   "modals": {

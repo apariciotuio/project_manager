@@ -735,6 +735,21 @@
         "partially_validated": "Partially validated",
         "ready": "Ready"
       }
+    },
+    "kanban": {
+      "title": "Kanban",
+      "loading": "Loading board…",
+      "error": "Failed to load board",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "groupBy": "Group by",
+      "groupByOptions": {
+        "state": "State",
+        "owner": "Owner",
+        "tag": "Tag",
+        "parent": "Parent"
+      },
+      "dndStateOnly": "Drag and drop only supported for state grouping"
     }
   },
   "modals": {
