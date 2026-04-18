@@ -151,7 +151,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
 
   if (isLoading) {
     return (
-      <PageContainer variant="narrow">
+      <PageContainer variant="wide">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-h2 font-semibold">{t('title')}</h1>
         </div>
@@ -174,7 +174,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
   if (error) {
     if (isSessionExpired(error)) return null;
     return (
-      <PageContainer variant="narrow">
+      <PageContainer variant="wide">
         <h1 className="mb-6 text-h2 font-semibold">{t('title')}</h1>
         <div
           role="alert"
@@ -198,7 +198,7 @@ export default function InboxPage({ params: { slug } }: InboxPageProps) {
   }
 
   return (
-    <PageContainer variant="narrow">
+    <PageContainer variant="wide">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-h2 font-semibold">{t('title')}</h1>
         <div className="flex items-center gap-2">

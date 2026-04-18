@@ -207,4 +207,23 @@ describe('InboxPage', () => {
       expect(screen.getByRole('alert')).toBeTruthy();
     });
   });
+
+  it('uses max-w-screen-2xl container (wide variant) to match workspace sections', async () => {
+    server.use(
+      http.get('http://localhost/api/v1/notifications', () =>
+        HttpResponse.json({ data: { items: mockV2Notifications, total: 2, page: 1, page_size: 20 } })
+      ),
+      http.get('http://localhost/api/v1/notifications/unread-count', () =>
+        HttpResponse.json({ data: { count: 1 } })
+      )
+    );
+
+    const { default: InboxPage } = await import('@/app/workspace/[slug]/inbox/page');
+    const { container } = render(<InboxPage params={{ slug: 'acme' }} />);
+
+    await screen.findByText('Alice mentioned you');
+
+    const pageContainer = container.firstChild as HTMLElement;
+    expect(pageContainer.className).toContain('max-w-screen-2xl');
+  });
 });
