@@ -56,7 +56,7 @@ EP-13, EP-14, EP-15, EP-16, EP-17, EP-18 ─────────────
 - [ ] **Audit integration** — login success/failure + 403 handler (Option B JSONB context) in flight (Agent RR). Status transitions + credential CRUD + export still deferred.
 - [x] **CSRF bootstrap fix (web)** — `/api/v1/auth/me` emits `csrf_token` cookie when missing; unblocks existing sessions after CSRF rollout (2026-04-18).
 - [x] **CSP dev relaxation** — `middleware.ts` adds `'unsafe-inline' 'unsafe-eval'` to `script-src` and `ws:` + `localhost:*` to `connect-src` in dev (Next.js HMR); prod unchanged (2026-04-18).
-- [ ] **Fakes sweep** — `list_cursor` abstract added to WorkItemRepository + others, fakes need impl to unblock `test_auth_service.py` / `test_draft_service.py` (Agent QQ in flight, 2026-04-18).
+- [x] **Fakes sweep** — `current_user_id` added to `IWorkItemRepository.list_cursor` interface + `FakeWorkItemRepository`; unblocked `test_auth_service.py`, `test_draft_service.py`, `test_mcp_stdio_search.py` (37 passed, 2026-04-18).
 - [ ] **Test retrofit** — internal_jobs_controller + SSE terminal frames + notification session lifecycle (Agent SS in flight, 2026-04-18, from OO code review coverage gaps).
 
 ## Shipped 2026-04-18 (session summary)
