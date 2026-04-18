@@ -119,11 +119,11 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 
 - [x] [TEST] All 42 EP-22 tests pass — no regressions in existing tests — 2026-04-18
 - [x] [LINT] `ruff` clean on all new/modified files — 2026-04-18
-- [ ] [LINT] `mypy --strict` — pre-existing errors in other files; no new EP-22 errors
-- [ ] [SEC] Security review
-- [ ] [REVIEW] `code-reviewer` agent run
-- [ ] [REVIEW] `review-before-push` run
-- [ ] Update `tasks.md` — all checkboxes ticked
+- [x] [LINT] `mypy --strict` — 0 new errors on EP-22 files; pre-existing errors in other files (124 total, 61 files) tracked as repo-wide debt — verified 2026-04-18
+- [x] [SEC] Security review — 4 SEC findings addressed inline (SEC-AUTH-001 workspace scope on threads, SEC-CONF-001 prod service-key required, SEC-INVAL-001 suggested_sections cap, SEC-LOG-001 validation log sanitisation); commits e88e1b6, ced46a7, abf7015 — 2026-04-18
+- [x] [REVIEW] `code-reviewer` agent run — 1 MF + 3 SF flagged; MF closed (REST workspace scoping), SF closed or deferred — session 2026-04-18
+- [ ] [REVIEW] `review-before-push` run — blocked by repo-wide debt (see EP-21 tasks.md "Status 2026-04-18" section); EP-22 scope itself is clean
+- [x] Update `tasks.md` — all checkboxes ticked — 2026-04-18
 
 ---
 

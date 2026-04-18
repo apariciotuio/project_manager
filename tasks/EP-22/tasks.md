@@ -61,7 +61,7 @@
 - [x] Backend Phase 3 (WS outbound snapshot) — `_enrich_outbound_frame` in conversation_controller (2026-04-18)
 - [x] Backend Phase 4 (WS inbound signals validation) — `_enrich_inbound_frame` + validator (2026-04-18)
 - [x] Backend Phase 5 (contract test + docs) — 42 BE tests green (2026-04-18)
-- [ ] Backend Phase 6 (finalization) — pending: security-scan, code-reviewer, review-before-push
+- [~] Backend Phase 6 (finalization) — security-scan ✅ (4 SEC items closed), code-reviewer ✅ (1 MF + 3 SF closed); RBP blocked by repo-wide debt (see EP-21 tasks.md)
 - [x] Frontend Phase 1 (SplitViewContext) — `split-view-context.tsx` with pendingSuggestions (2026-04-18)
 - [x] Frontend Phase 2 (ChatPanel inbound interception) — routeSuggestedSections (2026-04-18)
 - [x] Frontend Phase 3 (ChatPanel outbound snapshot) — sections_snapshot attached (2026-04-18)
@@ -71,7 +71,7 @@
 - [x] Frontend Phase 7 (page wiring + Clarificación removal) — detail-page tests assert tab absent (2026-04-18)
 - [x] Frontend Phase 8 (primer UX verification) — 2026-04-18
 - [x] Frontend Phase 9 (integration + polish) — 50 FE tests green (2026-04-18)
-- [ ] Frontend Phase 10 (finalization) — pending: review-before-push
+- [~] Frontend Phase 10 (finalization) — RBP blocked by repo-wide debt (see EP-21 tasks.md)
 - [ ] Dundun PR #1 (schema) — external, tracked cross-repo
 - [ ] Dundun PR #2 (prompt) — external, tracked cross-repo (depends on PR #1)
 

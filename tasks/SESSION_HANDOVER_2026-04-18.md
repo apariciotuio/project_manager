@@ -6,7 +6,8 @@ Session led by **Tilly** (Opus 4.7). Successor agent can pick up from here witho
 
 ## 1. TL;DR for the next agent
 
-- **10 commits on `main`** ahead of `origin/main`. **Nothing pushed yet** — user controls the push.
+- **11 commits on `main`** (10 listed in §2 + the handover-doc commit `a9b2b0b` itself). **Nothing pushed yet** — user controls the push.
+- **No `origin` remote is configured** in this repo (`git remote -v` is empty). A remote must be added before any `git push`.
 - Priority order executed: **EP-22 first**, then **close > open new**.
 - EP-22 is code-complete (1 Must Fix + 4 Should Fix closed). External Dundun cross-repo PRs #1 + #2 still pending (FE degrades gracefully).
 - EP-03 WU-3 (version conflict guard) shipped. EP-03 MF#1 (RLS) was ticket rot — already implemented.
@@ -16,6 +17,7 @@ Session led by **Tilly** (Opus 4.7). Successor agent can pick up from here witho
 ## 2. Commits landed (newest first)
 
 ```
+a9b2b0b docs: session handover 2026-04-18 for remote continuation
 cf06aec feat(ep-07): FE diff viewer + comment hooks slice (Groups 1/3a/3b/2)
 4becff9 feat(ep-12): enforce Pydantic extra=forbid on FE request schemas
 f73f948 feat(ep-12): capability-based authorization gate for FastAPI routes
@@ -28,7 +30,7 @@ e88e1b6 fix(ep-22): require DUNDUN/PUPPET_SERVICE_KEY in production (SEC-CONF-00
 dd27ca6 docs(ep-22): resolve chat_ws spec drift — live transport on BE→Dundun hop
 ```
 
-Diff stat across the 10: 41 files changed, ~3031 insertions, ~172 deletions (mostly code + tests; docs are the EP-22 `dundun-specifications.md` rewrite).
+Diff stat across the 10 code/doc commits: 41 files changed, ~3031 insertions, ~172 deletions (mostly code + tests; docs are the EP-22 `dundun-specifications.md` rewrite). Commit `a9b2b0b` adds only this handover document.
 
 ## 3. What's uncommitted on the branch (NOT from this session)
 
@@ -116,12 +118,13 @@ All artifacts persisted in the commits listed in §2. No agent state carries acr
 
 ## 10. Recommended next steps (strictly ordered)
 
-1. **User reviews the 10 commits** (`git log main ^origin/main --stat`). Confirm intent to push.
-2. **Push** (`git push origin main`) — once user says yes.
-3. **Open Dundun cross-repo PR #1** (schema) — coordination item, not a coding task. See `tasks/EP-22/dundun-specifications.md` §4.1 for the exact schema.
-4. **EP-07 FE Group 5** — Timeline filters + Timeline tab. Files: `frontend/components/timeline/TimelineFilters.tsx` (new), `/items/[id]/timeline/page.tsx`. Hook `useTimeline` already exists. M effort, no blockers.
-5. **EP-12 cursor pagination migration** — admin endpoints still offset-based (`puppet_controller.list_ingest_requests`). S effort per endpoint, low priority (admin, low-traffic).
-6. If time permits, **EP-07 FE Group 4** (Comments UI — depends on hooks from this session). L effort; `CommentInput` needs EP-16 upload — start without it.
+1. **Configure `origin` remote** (`git remote add origin <url>`) — currently missing; no push target exists.
+2. **User reviews the 11 commits** (`git log -n 20 --stat`). Confirm intent to push.
+3. **Push** (`git push -u origin main`) — once user says yes and remote is configured.
+4. **Open Dundun cross-repo PR #1** (schema) — coordination item, not a coding task. See `tasks/EP-22/dundun-specifications.md` §4.1 for the exact schema.
+5. **EP-07 FE Group 5** — Timeline filters + Timeline tab. Files: `frontend/components/timeline/TimelineFilters.tsx` (new), `/items/[id]/timeline/page.tsx`. Hook `useTimeline` already exists. M effort, no blockers.
+6. **EP-12 cursor pagination migration** — admin endpoints still offset-based (`puppet_controller.list_ingest_requests`). S effort per endpoint, low priority (admin, low-traffic).
+7. If time permits, **EP-07 FE Group 4** (Comments UI — depends on hooks from this session). L effort; `CommentInput` needs EP-16 upload — start without it.
 
 ## 11. Don't-do list (decisions made this session, don't re-open)
 
@@ -134,9 +137,10 @@ All artifacts persisted in the commits listed in §2. No agent state carries acr
 ## 12. Environment snapshot
 
 - Branch: `main`
-- Commits ahead of `origin/main`: **10** (this session) + ~246 from prior work = ~256 total unpushed (per `git status` at session start).
-- Last hook run: successful commit hook on all 10 commits. No `--no-verify` used.
-- Python: 3.13.9
+- Commits produced this session: **11** (10 listed in §2 + handover-doc commit `a9b2b0b`). Combined with ~246 from prior work ≈ 257 unpushed.
+- **No `origin` remote configured** — `git remote -v` is empty. A remote must be added before any `git push`.
+- Last hook run: successful commit hook on all 11 commits. No `--no-verify` used.
+- Python: 3.13.9 target (pyproject). Host environments may vary — verify with `uv sync` before running pytest.
 - Test runners: `pytest` (BE), `vitest` (FE).
 - No open background processes as of handover.
 

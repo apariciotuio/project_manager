@@ -85,4 +85,19 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 - [ ] Lint clean (`ruff check` backend; `eslint` frontend)
 - [ ] Type check clean (`mypy --strict` backend; `tsc --noEmit` frontend)
 - [ ] Security review done — no hardcoded secrets, auth/authz verified on new endpoints, inputs validated
-- [ ] Code review done (3 MF + 7 SF + 5 N all closed per above)
+- [x] Code review done (3 MF + 7 SF + 5 N all closed per above)
+
+### Status 2026-04-18 — gate blocked by repo-wide debt (not EP-21 scope)
+
+Baseline checks revealed pre-existing global issues that block the push gate. None originate from EP-21's 10 items; they span EP-07/09/10 and infra:
+
+| Check | Result | Root cause |
+|---|---|---|
+| `ruff check app/ tests/` | 1242 errors | Pre-existing import/style drift across many modules — not EP-21 files |
+| `mypy --strict app/` | 124 errors in 61 files | Legacy untyped decorators, missing generics, untyped FastAPI deps — predates EP-21 |
+| `tsc --noEmit` (frontend) | ~45 errors | Pre-existing: `diff-viewer.tsx` (stale VersionDiff fields from pre-EP-07-slice), `comments-tab.tsx` Comment drift, 8 test fixtures missing `external_jira_key` (EP-09/10), `use-sse.test.ts` possibly-undefined, `attachment-drop-zone`/`bottom-sheet`/`theme-toggle` misc. Fixed inline this session: `use-versions.ts` `WorkItemVersion` missing `id`/`work_item_id` (introduced by cf06aec retyping `VersionsPage`) |
+| `eslint` (frontend) | 7 errors + many warnings | `no-children-prop` in `task-tree*`/`tasks-tab`; `@typescript-eslint/no-explicit-any` rule-not-found config in `lib/i18n/` |
+
+**Conclusion**: EP-21's items are internally clean (code review closed, tests for F-1..F-10 pass in isolation). RBP gate cannot be globally checked until a cross-cutting cleanup epic is created to address the above. Do not consider EP-21 blocked on its own output.
+
+**Recommended follow-up**: Create EP-23 (or similar) — "Backend/Frontend quality baseline restoration" — to absorb the 124 mypy + 1242 ruff + 45 tsc + eslint errors. Triage into must-fix / should-fix / deferred groups.
