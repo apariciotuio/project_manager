@@ -129,11 +129,11 @@ THEN rate limiting is bypassed (fail-open for availability) and a WARNING is log
 AND no 5xx is returned to the client due to rate limiter failure alone
 
 ### Rate Limiting
-- [ ] [RED] Test: unauthenticated endpoint returns 429 after 10 req/min from same IP; response includes `Retry-After` header
-- [ ] [RED] Test: authenticated endpoint returns 429 after 300 req/min from same user
-- [ ] [RED] Test: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers present on all responses
-- [ ] [GREEN] Implement `RateLimitMiddleware` in `app/infrastructure/rate_limiting/redis_rate_limiter.py` (Redis sliding window: key `ratelimit:{identifier}:{window_start_minute}`, INCR + EXPIRE)
-- [ ] [GREEN] Wire into middleware chain
+- [x] [RED] Test: unauthenticated endpoint returns 429 after 10 req/min from same IP; response includes `Retry-After` header — 10 tests in `tests/unit/presentation/middleware/test_rate_limit.py` (commit f0fa6d1)
+- [x] [RED] Test: authenticated endpoint returns 429 after 300 req/min from same user — covered in same file
+- [x] [RED] Test: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers present on all responses — covered in same file
+- [x] [GREEN] Implement `RateLimitMiddleware` in `app/infrastructure/rate_limiting/redis_rate_limiter.py` (Redis sliding window: key `ratelimit:{identifier}:{window_start_minute}`, INCR + EXPIRE) — commit f0fa6d1
+- [x] [GREEN] Wire into middleware chain — commit f0fa6d1; position: after BodySizeLimit, before CORSPolicy
 - [x] **Settings reverted to spec defaults:** `access_token_ttl_seconds = 900` (15m) and `rate_limit_per_minute = 10` in `backend/app/config/settings.py:55,58`. DX overrides via `.env.development`. (Not a middleware implementation — just resets the config creep.)
 
 ### Input Validation
@@ -149,7 +149,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 
 ### Content Security Policy
 - [x] [RED] Test: all HTML responses include CSP header with required directives (default-src, script-src, etc.) — 8 tests in `tests/unit/presentation/middleware/test_security_headers.py`
-- [ ] [GREEN] Implement `/api/v1/csp-report` endpoint — logs at WARN, returns 204 — pending
+- [x] [GREEN] Implement `/api/v1/csp-report` endpoint — logs at WARN, returns 204 — `app/presentation/controllers/csp_report_controller.py` commit f0fa6d1; 7 unit tests in `tests/unit/presentation/controllers/test_csp_report_controller.py`
 - [x] [GREEN] Add `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` headers — `app/presentation/middleware/security_headers.py` commit 1e3d5c0
 - [x] [GREEN] Wire `SecurityHeadersMiddleware` into `app/main.py` — commit 6a4d1c4 (2026-04-17); `csp_overrides` reads from `settings.app.csp_overrides`
 
@@ -271,17 +271,17 @@ WHEN EP-03 or EP-08 emits SSE events
 THEN they delegate to `SseHandler.stream(channel, request)` — no independent SSE implementations exist
 
 ### Long-Operation SSE Infrastructure
-- [ ] [RED] Test: `GET /api/v1/jobs/{job_id}/progress` streams SSE events with correct format (`data: {...}` frames)
-- [ ] [RED] Test: `event: done` frame sent when Celery task finishes
-- [ ] [RED] Test: `event: error` frame sent when Celery task fails
-- [ ] [RED] Test: `: keepalive` comment sent every 30s on idle connection
-- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup
-- [ ] [GREEN] Implement `RedisPubSub` in `infrastructure/sse/redis_pubsub.py` — `publish(channel, message)`, `subscribe(channel) -> AsyncIterator[dict]`
-- [ ] [GREEN] Implement `SseHandler` in `infrastructure/sse/sse_handler.py` — `StreamingResponse` wrapper; reads from Redis channel; formats SSE frames; handles disconnect
-- [ ] [GREEN] Implement `ChannelRegistry` in `infrastructure/sse/channel_registry.py` — maps channel names to Redis key patterns
-- [ ] [GREEN] Implement `JobProgressService` — reads/writes job state in Redis
-- [ ] [GREEN] Implement SSE endpoint `GET /api/v1/jobs/{job_id}/progress`
-- [ ] [GREEN] Implement Celery task base class that updates Redis job state on progress/complete/fail
+- [x] [RED] Test: `GET /api/v1/jobs/{job_id}/progress` streams SSE events with correct format (`data: {...}` frames) — `tests/unit/presentation/controllers/test_job_progress_controller.py` commit f0fa6d1
+- [ ] [RED] Test: `event: done` frame sent when Celery task finishes — pending (integration-level SSE streaming test)
+- [ ] [RED] Test: `event: error` frame sent when Celery task fails — pending
+- [ ] [RED] Test: `: keepalive` comment sent every 30s on idle connection — pending
+- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup — pending
+- [x] [GREEN] Implement `RedisPubSub` in `infrastructure/sse/redis_pubsub.py` — `publish(channel, message)`, `subscribe(channel) -> AsyncIterator[dict]` — commit f0fa6d1; 3 unit tests
+- [ ] [GREEN] Implement `SseHandler` in `infrastructure/sse/sse_handler.py` — `StreamingResponse` wrapper; reads from Redis channel; formats SSE frames; handles disconnect — pending (inline in job_progress_controller.py for now)
+- [ ] [GREEN] Implement `ChannelRegistry` in `infrastructure/sse/channel_registry.py` — maps channel names to Redis key patterns — pending
+- [x] [GREEN] Implement `JobProgressService` — reads/writes job state in Redis — `app/infrastructure/sse/job_progress_service.py` commit f0fa6d1; 4 unit tests
+- [x] [GREEN] Implement SSE endpoint `GET /api/v1/jobs/{job_id}/progress` — `app/presentation/controllers/job_progress_controller.py` commit f0fa6d1
+- [ ] [GREEN] Implement Celery task base class that updates Redis job state on progress/complete/fail — pending
 
 **Channel naming**:
 - Conversation streaming (EP-03): `sse:thread:{thread_id}`
