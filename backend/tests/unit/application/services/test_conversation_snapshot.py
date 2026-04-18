@@ -10,8 +10,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import pytest
-
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeConversationThreadRepository, FakeSectionRepository
 

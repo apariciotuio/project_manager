@@ -17,8 +17,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 
 class TestEnrichOutboundFrame:
     async def test_message_frame_gets_snapshot_attached(self) -> None:
@@ -44,7 +42,7 @@ class TestEnrichOutboundFrame:
             _enrich_outbound_frame,
         )
 
-        async def _snapshot_provider(wid):
+        async def _snapshot_provider(_wid):
             return None
 
         frame = {"type": "message", "content": "question"}
@@ -62,7 +60,7 @@ class TestEnrichOutboundFrame:
         work_item_id = uuid4()
         server_snapshot = {"summary": "server_value"}
 
-        async def _snapshot_provider(wid):
+        async def _snapshot_provider(_wid):
             return server_snapshot
 
         # FE sends its own snapshot
@@ -83,7 +81,7 @@ class TestEnrichOutboundFrame:
             _enrich_outbound_frame,
         )
 
-        async def _snapshot_provider(wid):
+        async def _snapshot_provider(_wid):
             return {"summary": "x"}
 
         frame = {"type": "ping"}

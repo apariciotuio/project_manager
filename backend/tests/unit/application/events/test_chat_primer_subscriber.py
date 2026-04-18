@@ -11,8 +11,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import pytest
-
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import (
     FakeConversationThreadRepository,
@@ -26,7 +24,7 @@ def _fixed_clock(dt: datetime):
     return lambda: dt
 
 
-def _make_work_item(workspace_id=None, original_input="Tell me about the problem"):
+def _make_work_item(_workspace_id=None, original_input="Tell me about the problem"):
     from app.domain.models.work_item import WorkItem
     from app.domain.value_objects.work_item_type import WorkItemType
 
@@ -148,7 +146,9 @@ class TestChatPrimerSubscriber:
             dundun=dundun,
         )
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         await handler(event)
 
         assert len(dk.invocations) == 0
@@ -163,7 +163,9 @@ class TestChatPrimerSubscriber:
         dundun = FakeDundunClient()
         handler, _, tr, dk = _make_handler(work_item_repo=work_item_repo, dundun=dundun)
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         await handler(event)
 
         assert len(dk.invocations) == 0
@@ -176,14 +178,15 @@ class TestChatPrimerSubscriber:
         dundun = FakeDundunClient()
         handler, _, tr, dk = _make_handler(work_item_repo=work_item_repo, dundun=dundun)
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         await handler(event)
 
         assert len(dk.invocations) == 0
 
     async def test_already_primed_thread_skips_dundun_call(self) -> None:
         """primer_sent_at already set → no second invoke."""
-        from datetime import timedelta
 
         work_item, _, creator_id = _make_work_item(original_input="Already primed")
         work_item_repo = FakeWorkItemRepository()
@@ -199,7 +202,9 @@ class TestChatPrimerSubscriber:
         )
 
         # First call primes
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         await handler(event)
         assert len(dk.invocations) == 1
 
@@ -220,7 +225,9 @@ class TestChatPrimerSubscriber:
 
         handler, _, tr, dk = _make_handler(work_item_repo=work_item_repo, dundun=dundun)
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         # Must not raise
         await handler(event)
 
@@ -246,7 +253,9 @@ class TestChatPrimerSubscriber:
         dundun = FakeDundunClient()
         handler, _, tr, dk = _make_handler(work_item_repo=work_item_repo, dundun=dundun)
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
 
         await handler(event)
         await handler(event)
@@ -263,7 +272,9 @@ class TestChatPrimerSubscriber:
         dundun = FakeDundunClient()
         handler, _, tr, dk = _make_handler(work_item_repo=work_item_repo, dundun=dundun)
 
-        event = _make_event(work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id)
+        event = _make_event(
+            work_item_id=work_item.id, workspace_id=WORKSPACE_ID, creator_id=creator_id
+        )
         await handler(event)
 
         assert len(dk.invocations) == 1
