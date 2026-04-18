@@ -4,12 +4,14 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.domain.models.conversation_thread import ConversationThread
 
 
 class CreateThreadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     work_item_id: UUID | None = None
 
 

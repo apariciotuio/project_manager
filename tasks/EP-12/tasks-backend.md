@@ -137,11 +137,11 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 - [x] **Settings reverted to spec defaults:** `access_token_ttl_seconds = 900` (15m) and `rate_limit_per_minute = 10` in `backend/app/config/settings.py:55,58`. DX overrides via `.env.development`. (Not a middleware implementation — just resets the config creep.)
 
 ### Input Validation
-- [ ] [RED] Test: endpoint rejects unknown fields (Pydantic `extra="forbid"`)
-- [ ] [RED] Test: file upload rejected on MIME type mismatch (magic bytes check)
-- [ ] [RED] Test: file upload rejected if size exceeds `MAX_UPLOAD_BYTES`
-- [ ] [GREEN] Enforce `model_config = ConfigDict(extra="forbid")` on all Pydantic schemas (scan all existing schemas)
-- [ ] [GREEN] Implement `FileValidator` in `app/application/validators/file_validator.py`
+- [x] [RED/GREEN] Test: endpoint rejects unknown fields (Pydantic `extra="forbid"`) — `test_schemas_strict_extra.py` covers 6 FE-originated request schemas. External webhooks (Puppet/Dundun callbacks) kept lenient intentionally (HMAC+idempotency trust gates) — covered by opposite-direction tests in same file (2026-04-18)
+- [ ] [RED] Test: file upload rejected on MIME type mismatch (magic bytes check) — deferred with EP-16 v2 (file ingestion out of MVP)
+- [ ] [RED] Test: file upload rejected if size exceeds `MAX_UPLOAD_BYTES` — deferred with EP-16 v2
+- [x] [GREEN] Enforce `model_config = ConfigDict(extra="forbid")` on FE-originated Pydantic schemas — `thread_schemas.CreateThreadRequest`, `suggestion_schemas.GenerateSuggestionsRequest` + `PatchSuggestionStatusRequest`, `puppet_schemas.PuppetSearchRequest`. Work-item + template schemas already strict. Webhook schemas set to `extra="ignore"` with rationale (2026-04-18)
+- [ ] [GREEN] Implement `FileValidator` in `app/application/validators/file_validator.py` — deferred with EP-16 v2 (no file uploads in MVP; placeholder retained for v2)
 
 ### CSRF
 - [x] [RED] Test: state-changing endpoint (POST/PUT/PATCH/DELETE) returns 403 on missing/invalid CSRF token — 16 tests in `tests/unit/presentation/middleware/test_csrf.py`

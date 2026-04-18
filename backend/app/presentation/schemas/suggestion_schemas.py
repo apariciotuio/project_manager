@@ -4,12 +4,14 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
 
 
 class GenerateSuggestionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     thread_id: UUID | None = None
 
 
@@ -49,6 +51,8 @@ class SuggestionItemResponse(BaseModel):
 
 
 class PatchSuggestionStatusRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: str  # "accepted" | "rejected"
 
 

@@ -4,10 +4,17 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+# External Dundun webhook payloads — extra fields are ignored rather than
+# rejected so a future Dundun agent adding a field does not 422 our callback.
+# HMAC + request_id idempotency are the trust gates on this surface.
+_WEBHOOK_CONFIG = ConfigDict(extra="ignore")
 
 
 class SuggestionItem(BaseModel):
+    model_config = _WEBHOOK_CONFIG
+
     section_id: UUID | None = None
     proposed_content: str
     current_content: str
@@ -41,6 +48,8 @@ class BreakdownItem(BaseModel):
 
 
 class DundunCallbackRequest(BaseModel):
+    model_config = _WEBHOOK_CONFIG
+
     agent: Literal[
         "wm_suggestion_agent",
         "wm_gap_agent",
