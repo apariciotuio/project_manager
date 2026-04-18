@@ -47,6 +47,8 @@ if TYPE_CHECKING:
     from app.application.services.saved_search_service import SavedSearchService
     from app.application.services.search_service import SearchService
     from app.application.services.dashboard_service import DashboardService
+    from app.application.services.person_dashboard_service import PersonDashboardService
+    from app.application.services.team_dashboard_service import TeamDashboardService
     from app.application.services.inbox_service import InboxService
     from app.application.services.validation_rule_template_service import ValidationRuleTemplateService
     from app.domain.ports.cache import ICache
@@ -929,6 +931,22 @@ def get_dashboard_service(
 ) -> "DashboardService":
     from app.application.services.dashboard_service import DashboardService
     return DashboardService(session=session, cache=cache)
+
+
+def get_person_dashboard_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: "ICache" = Depends(get_cache_adapter),
+) -> "PersonDashboardService":
+    from app.application.services.person_dashboard_service import PersonDashboardService
+    return PersonDashboardService(session=session, cache=cache)
+
+
+def get_team_dashboard_service(
+    session: AsyncSession = Depends(get_scoped_session),
+    cache: "ICache" = Depends(get_cache_adapter),
+) -> "TeamDashboardService":
+    from app.application.services.team_dashboard_service import TeamDashboardService
+    return TeamDashboardService(session=session, cache=cache)
 
 
 def get_search_service() -> "SearchService":

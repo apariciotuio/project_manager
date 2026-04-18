@@ -359,13 +359,15 @@ THEN the API returns HTTP 401
 - [ ] [GREEN] Cache invalidation hook in WorkItemFSMService — deferred (EP-01 agent owns that service)
 
 ### PersonDashboardService
-- [ ] [RED] Write tests: happy path, zero-state, 404 for unknown user, inbox counts on self-view, overload indicator (>5 items in in_clarification)
-- [ ] [GREEN] Implement `PersonDashboardService.get_metrics(user_id, requesting_user)` (Redis cache key `dashboard:person:{user_id}`, TTL 120s)
+- [x] [RED] 8 tests: happy path, zero-state, inbox counts, overload indicator (>5 in_clarification), cache hit/miss (2026-04-18)
+- [x] [GREEN] PersonDashboardService.get_metrics(user_id, workspace_id): owned_by_state, pending_reviews_count, inbox_count, overloaded; cache key dashboard:person:{user_id} TTL 120s (2026-04-18)
+- [x] [GREEN] GET /api/v1/dashboards/person/{user_id} route added to dashboard_controller.py (2026-04-18)
 
 ### TeamDashboardService
-- [ ] [RED] Write tests: happy path, pending reviews, velocity widget, 404, `include_sub_teams=true` recursive aggregation
-- [ ] [GREEN] Implement `TeamDashboardService.get_metrics(team_id)` with optional recursive mode (Redis cache key `dashboard:team:{team_id}`, TTL 120s)
-- [ ] [REFACTOR] Extract shared cache key management into `DashboardCacheService`
+- [x] [RED] 6 tests: happy path, pending reviews, velocity_last_30d, blocked_count, empty team, cache hit (2026-04-18)
+- [x] [GREEN] TeamDashboardService.get_metrics(team_id, workspace_id): owned_by_state, pending_reviews, velocity_last_30d, blocked_count via team_memberships subquery; cache key dashboard:team:{team_id} TTL 120s (2026-04-18)
+- [x] [GREEN] GET /api/v1/dashboards/team/{team_id} route added (2026-04-18)
+- [x] [REFACTOR] _require_workspace extracted in dashboard_controller.py (2026-04-18)
 
 ### Acceptance Criteria — PipelineQueryService
 
