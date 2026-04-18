@@ -775,6 +775,12 @@
         "parent": "Parent"
       },
       "dndStateOnly": "Drag and drop only supported for state grouping"
+    },
+    "quickView": {
+      "title": "Quick view",
+      "loading": "Loading…",
+      "close": "Close",
+      "error": "Failed to load item"
     }
   },
   "modals": {

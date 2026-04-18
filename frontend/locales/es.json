@@ -775,6 +775,12 @@
         "parent": "Padre"
       },
       "dndStateOnly": "Arrastrar y soltar solo funciona con agrupación por estado"
+    },
+    "quickView": {
+      "title": "Vista rápida",
+      "loading": "Cargando…",
+      "close": "Cerrar",
+      "error": "Error al cargar el elemento"
     }
   },
   "modals": {
