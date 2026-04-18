@@ -62,7 +62,7 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ## Group 5: `UnlockRequestDialog` Component
 
-- [x] **RED+GREEN** — 10 tests in `__tests__/components/locks/unlock-request-dialog.test.tsx` — all pass (2026-04-18)
+- [x] **RED+GREEN** — 11 tests in `__tests__/components/locks/unlock-request-dialog.test.tsx` — all pass (2026-04-18)
 - [x] Implement `components/locks/unlock-request-dialog.tsx`
   - Props: `sectionId: string`, `holderDisplayName: string`, `isOpen: boolean`, `onClose: () => void`
   - Reason `<textarea>`: required, max 500 chars enforced, character counter
@@ -71,7 +71,8 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
   - On `409`: inline alert error
   - On `429`: inline alert error with retry-after minutes
   - `role="dialog"` via Dialog component, Escape closes
-- [x] **GREEN** — 10/10 tests pass (2026-04-18)
+- [x] **GREEN** — 11/11 tests pass (2026-04-18)
+- [x] SF-2 fixed: Added missing `test_shows_error_on_429_rate_limited_with_retry_after` test case (2026-04-18)
 - [x] Extended `lib/types/lock.ts` with `UnlockRequestDTO`, `UnlockRequestEnvelope`, `RespondToRequestBody` (2026-04-18)
 - [x] Extended `lib/api/lock-api.ts` with `requestSectionUnlock`, `respondToUnlockRequest` (2026-04-18)
 
@@ -79,7 +80,7 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ## Group 6: `HolderResponsePanel` Component
 
-- [x] **RED+GREEN** — 9 tests in `__tests__/components/locks/holder-response-panel.test.tsx` — all pass (2026-04-18)
+- [x] **RED+GREEN** — 10 tests in `__tests__/components/locks/holder-response-panel.test.tsx` — all pass (2026-04-18)
 - [x] Implement `components/locks/holder-response-panel.tsx`
   - Props: `sectionId: string`, `request: UnlockRequestDTO`, `requesterDisplayName: string`, `onRespond: (decision: 'release' | 'ignore') => void`
   - Countdown from `request.expires_at` via `setInterval` at 1s, formatted as mm:ss
@@ -87,7 +88,8 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
   - Ignore button (outline): calls `respondToUnlockRequest` with `action=decline`, triggers `onRespond('ignore')`
   - NOT dismissible: no Escape handler, no click-outside
   - `role="alertdialog"`, `aria-modal="false"` — inline panel
-- [x] **GREEN** — 9/9 tests pass (2026-04-18)
+- [x] **GREEN** — 10/10 tests pass (2026-04-18)
+- [x] SF-1 fixed: Countdown interval now stops when expired; added test case `test_countdown_interval_cleared_when_expired` (2026-04-18)
 - Note: `test_panel_injected_on_unlock_requested_sse_event` — SSE wiring belongs in Group 8 (detail page integration); panel itself is standalone and tested
 
 ---
@@ -105,6 +107,8 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
   - On success: close + toast "Bloqueo liberado correctamente."
   - On 503: inline alert error
 - [x] **GREEN** — 9/9 tests pass (2026-04-18)
+- [x] MF-1 fixed: Moved superadmin gate after hooks to comply with Rules of Hooks (2026-04-18)
+- [x] MF-2 fixed: Added MAX_REASON_LENGTH=1000 with clamped onChange and character counter (2026-04-18)
 - Note: BE force-release endpoint does not yet accept reason param (TODO in lock_controller.py). Reason is validated UI-side only until BE adds it.
 
 ---
@@ -190,7 +194,7 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ---
 
-**Status: PARTIAL** (2026-04-18) — Foundation + G3/G5/G6/G7 shipped. Types extended, API client extended (unlock-request/respond), LockBanner, UnlockRequestDialog, HolderResponsePanel, ForceReleaseDialog — 35 new tests, all GREEN. Remaining: Groups 8 (detail page integration), 9 (list badge), 10 (lock-loss recovery), 11 (a11y audit).
+**Status: PARTIAL** (2026-04-18) — Foundation + G3/G5/G6/G7 shipped. Code review fixes applied: MF-1 (Rules of Hooks), MF-2 (max length + counter), SF-1 (interval cleanup), SF-2 (429 test), SF-3 (header comment). All 37 lock tests pass (7+10+9+11). Remaining: Groups 8 (detail page integration), 9 (list badge), 10 (lock-loss recovery), 11 (a11y audit).
 
 ## Acceptance Criteria Checklist
 
