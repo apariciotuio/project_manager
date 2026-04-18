@@ -692,7 +692,8 @@
       "applyAria": "Aplicar búsqueda guardada {name}",
       "errorSave": "Error al guardar búsqueda",
       "errorDelete": "Error al eliminar búsqueda",
-      "errorLoad": "Error al cargar búsquedas guardadas"
+      "errorLoad": "Error al cargar búsquedas guardadas",
+      "loading": "Cargando…"
     },
     "dashboard": {
       "title": "Panel",
@@ -736,6 +737,7 @@
       }
     },
     "quickFilters": {
+      "groupLabel": "Filtros rápidos",
       "all": "Todas",
       "myItems": "Mías",
       "ownedByMe": "Asignadas a mí",

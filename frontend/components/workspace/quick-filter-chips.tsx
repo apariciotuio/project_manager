@@ -58,7 +58,7 @@ export function QuickFilterChips() {
   }
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={t('all')}>
+    <div className="flex flex-wrap gap-2" role="group" aria-label={t('groupLabel')}>
       {CHIPS.map((chip) => {
         const isActive = chip.key === activeKey;
         return (

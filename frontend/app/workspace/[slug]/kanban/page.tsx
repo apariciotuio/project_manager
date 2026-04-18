@@ -19,6 +19,7 @@ import { useKanbanBoard } from '@/hooks/use-kanban';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { transitionState } from '@/lib/api/work-items';
 import type { KanbanGroupBy } from '@/lib/api/kanban';
+import type { WorkItemState } from '@/lib/types/work-item';
 
 interface KanbanPageProps {
   params: { slug: string };
@@ -72,9 +73,10 @@ export default function KanbanPage({ params }: KanbanPageProps) {
       setLocalColumns({ ...displayData, columns: nextColumns });
 
       try {
-        await transitionState(cardId, { target_state: targetColumnKey as import('@/lib/types/work-item').WorkItemState });
-        setLocalColumns(null); // confirm — let real data take over on next fetch
-        void refetch();
+        await transitionState(cardId, { target_state: targetColumnKey as WorkItemState });
+        refetch();
+        // Clear after refetch is scheduled; localColumns stays until new data arrives in next render
+        setLocalColumns(null);
       } catch {
         // Revert optimistic update
         setLocalColumns(null);

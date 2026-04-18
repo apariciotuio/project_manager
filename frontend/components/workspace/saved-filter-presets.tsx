@@ -76,7 +76,7 @@ export function SavedFilterPresets({ currentFilters, onApply }: SavedFilterPrese
             <input
               data-testid="saved-filter-presets-name-input"
               type="text"
-              placeholder={t('savePlaceholder')}
+              placeholder={t('namePlaceholder')}
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void handleSave()}
@@ -89,7 +89,7 @@ export function SavedFilterPresets({ currentFilters, onApply }: SavedFilterPrese
               disabled={!saveName.trim() || isSaving}
               className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
             >
-              {t('save')}
+              {t('saveConfirm')}
             </button>
           </div>
 
@@ -120,7 +120,7 @@ export function SavedFilterPresets({ currentFilters, onApply }: SavedFilterPrese
                   type="button"
                   onClick={() => void handleDelete(s.id)}
                   disabled={deletingId === s.id}
-                  aria-label={t('delete')}
+                  aria-label={t('deleteAria').replace('{name}', s.name)}
                   className="ml-1 rounded p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive disabled:opacity-50"
                 >
                   <Trash2 className="h-3 w-3" aria-hidden />

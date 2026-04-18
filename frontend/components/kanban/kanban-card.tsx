@@ -50,9 +50,5 @@ export function KanbanCard({ card, isMobile, columnKey, onMobileClick, isBouncin
     </div>
   );
 
-  if (!isMobile) {
-    return content;
-  }
-  // Mobile: no drag handle rendered
-  return <div ref={undefined}>{content}</div>;
+  return content;
 }

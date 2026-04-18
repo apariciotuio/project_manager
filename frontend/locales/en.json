@@ -692,7 +692,8 @@
       "applyAria": "Apply saved search {name}",
       "errorSave": "Failed to save search",
       "errorDelete": "Failed to delete search",
-      "errorLoad": "Failed to load saved searches"
+      "errorLoad": "Failed to load saved searches",
+      "loading": "Loading…"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -736,6 +737,7 @@
       }
     },
     "quickFilters": {
+      "groupLabel": "Quick filters",
       "all": "All",
       "myItems": "My items",
       "ownedByMe": "Owned by me",

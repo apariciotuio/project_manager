@@ -51,9 +51,11 @@ export function useKanbanBoard(filters: KanbanFilters = {}): UseKanbanResult {
     if (!col?.next_cursor) return;
 
     setLoadingMoreColumns((prev) => new Set([...prev, columnKey]));
+    let cancelled = false;
     void (async () => {
       try {
         const next = await getKanbanBoard({ ...filters, [`cursor_${columnKey}`]: col.next_cursor } as KanbanFilters);
+        if (cancelled) return;
         const nextCol = next.columns.find((c) => c.key === columnKey);
         if (!nextCol) return;
         setData((prev) => {
@@ -72,6 +74,7 @@ export function useKanbanBoard(filters: KanbanFilters = {}): UseKanbanResult {
           };
         });
       } finally {
+        cancelled = true;
         setLoadingMoreColumns((prev) => {
           const next = new Set(prev);
           next.delete(columnKey);

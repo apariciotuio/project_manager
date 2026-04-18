@@ -18,7 +18,7 @@ interface UsePersonDashboardResult {
 
 export function usePersonDashboard(userId: string): UsePersonDashboardResult {
   const [data, setData] = useState<PersonDashboard | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!userId);
   const [error, setError] = useState<Error | null>(null);
   const [isForbidden, setIsForbidden] = useState(false);
   const [tick, setTick] = useState(0);
