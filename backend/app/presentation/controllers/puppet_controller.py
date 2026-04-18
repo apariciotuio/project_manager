@@ -18,13 +18,14 @@ import json
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import get_settings
 from app.infrastructure.adapters.puppet_callback_verifier import verify_puppet_signature
+from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
 from app.presentation.dependencies import (
     CurrentUser,
     get_callback_session,
@@ -213,28 +214,42 @@ async def puppet_search(
 @router.get("/puppet/ingest-requests")
 async def list_ingest_requests(
     status: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    cursor: str | None = Query(default=None),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
 ) -> JSONResponse:
-    """List ingest requests for the current workspace. Paginated."""
+    """List ingest requests for the current workspace — cursor-paginated.
+
+    Keyset order: (created_at DESC, id DESC).
+    Response shape: { data: { items: [...], pagination: { next_cursor, has_more } } }
+    """
     if current_user.workspace_id is None:
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail={"error": {"code": "NO_WORKSPACE", "message": "no workspace in token", "details": {}}},
         )
 
+    decoded_cursor: PaginationCursor | None = None
+    if cursor is not None:
+        try:
+            decoded_cursor = PaginationCursor.decode(cursor)
+        except InvalidCursorError as exc:
+            raise HTTPException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_CURSOR", "message": str(exc), "details": {}}},
+            ) from exc
+
     from app.infrastructure.persistence.puppet_ingest_request_repository_impl import (
         PuppetIngestRequestRepositoryImpl,
     )
 
     repo = PuppetIngestRequestRepositoryImpl(session)
-    rows = await repo.list_by_workspace(
+    result = await repo.list_by_workspace_cursor(
         workspace_id=current_user.workspace_id,
         status=status,
-        limit=min(limit, 200),
-        offset=offset,
+        cursor=decoded_cursor,
+        page_size=page_size,
     )
 
     items = [
@@ -251,12 +266,21 @@ async def list_ingest_requests(
             "updated_at": r.updated_at.isoformat(),
             "succeeded_at": r.succeeded_at.isoformat() if r.succeeded_at else None,
         }
-        for r in rows
+        for r in result.rows
     ]
 
     return JSONResponse(
         status_code=http_status.HTTP_200_OK,
-        content={"data": items, "message": "ok"},
+        content={
+            "data": {
+                "items": items,
+                "pagination": {
+                    "next_cursor": result.next_cursor,
+                    "has_more": result.has_next,
+                },
+            },
+            "message": "ok",
+        },
     )
 
 

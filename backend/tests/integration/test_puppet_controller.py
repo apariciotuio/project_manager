@@ -343,8 +343,36 @@ async def test_search_workspace_tag_server_enforced(http, seeded):
 
 
 # ---------------------------------------------------------------------------
-# GET /puppet/ingest-requests
+# GET /puppet/ingest-requests — cursor pagination
 # ---------------------------------------------------------------------------
+
+
+async def _insert_ingest_request(conn, *, ingest_id, ws_id, wi_id, status="queued", created_at=None):
+    """Insert a puppet_ingest_request row; created_at optional explicit value."""
+    if created_at is None:
+        await conn.execute(
+            text("""
+                INSERT INTO puppet_ingest_requests
+                    (id, workspace_id, source_kind, work_item_id, payload, status)
+                VALUES (:id, :ws_id, 'manual', :wi_id, '{}', :status)
+            """),
+            {"id": str(ingest_id), "ws_id": str(ws_id), "wi_id": str(wi_id), "status": status},
+        )
+    else:
+        await conn.execute(
+            text("""
+                INSERT INTO puppet_ingest_requests
+                    (id, workspace_id, source_kind, work_item_id, payload, status, created_at, updated_at)
+                VALUES (:id, :ws_id, 'manual', :wi_id, '{}', :status, :created_at, :created_at)
+            """),
+            {
+                "id": str(ingest_id),
+                "ws_id": str(ws_id),
+                "wi_id": str(wi_id),
+                "status": status,
+                "created_at": created_at,
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -354,27 +382,163 @@ async def test_list_ingest_requests_unauthenticated(http):
 
 
 @pytest.mark.asyncio
-async def test_list_ingest_requests_returns_workspace_rows(http, seeded, migrated_database):
+async def test_list_returns_cursor_pagination_shape(http, seeded, migrated_database):
+    """First page returns correct shape with pagination envelope."""
     _user_id, ws_id, wi_id, token = seeded
 
     engine = create_async_engine(migrated_database.database.url)
     ingest_id = uuid4()
     async with engine.begin() as conn:
-        await conn.execute(
-            text("""
-                INSERT INTO puppet_ingest_requests
-                    (id, workspace_id, source_kind, work_item_id, payload, status)
-                VALUES
-                    (:id, :ws_id, 'manual', :wi_id, '{}', 'queued')
-            """),
-            {"id": str(ingest_id), "ws_id": str(ws_id), "wi_id": str(wi_id)},
-        )
+        await _insert_ingest_request(conn, ingest_id=ingest_id, ws_id=ws_id, wi_id=wi_id)
     await engine.dispose()
 
     resp = await http.get(_LIST_URL, cookies={"access_token": token})
     assert resp.status_code == 200
-    rows = resp.json()["data"]
-    assert any(r["id"] == str(ingest_id) for r in rows)
+    body = resp.json()
+    assert "items" in body["data"]
+    assert "pagination" in body["data"]
+    pagination = body["data"]["pagination"]
+    assert "next_cursor" in pagination
+    assert "has_more" in pagination
+    items = body["data"]["items"]
+    assert any(r["id"] == str(ingest_id) for r in items)
+
+
+@pytest.mark.asyncio
+async def test_list_second_page_no_duplicates(http, seeded, migrated_database):
+    """Cursor from first page yields second page without overlap."""
+    from datetime import datetime, timedelta, timezone
+
+    _user_id, ws_id, wi_id, token = seeded
+
+    base_ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ids = [uuid4() for _ in range(5)]
+
+    engine = create_async_engine(migrated_database.database.url)
+    async with engine.begin() as conn:
+        for i, rid in enumerate(ids):
+            ts = base_ts - timedelta(minutes=i)  # newer first
+            await _insert_ingest_request(conn, ingest_id=rid, ws_id=ws_id, wi_id=wi_id, created_at=ts)
+    await engine.dispose()
+
+    # Page 1 — limit 3
+    resp1 = await http.get(f"{_LIST_URL}?page_size=3", cookies={"access_token": token})
+    assert resp1.status_code == 200
+    page1 = resp1.json()["data"]
+    assert page1["pagination"]["has_more"] is True
+    cursor = page1["pagination"]["next_cursor"]
+    assert cursor is not None
+    page1_ids = {r["id"] for r in page1["items"]}
+    assert len(page1["items"]) == 3
+
+    # Page 2 — continue from cursor
+    resp2 = await http.get(f"{_LIST_URL}?page_size=3&cursor={cursor}", cookies={"access_token": token})
+    assert resp2.status_code == 200
+    page2 = resp2.json()["data"]
+    page2_ids = {r["id"] for r in page2["items"]}
+
+    # No overlap
+    assert page1_ids.isdisjoint(page2_ids)
+    # Together they cover all 5 inserted rows
+    assert page1_ids | page2_ids == {str(rid) for rid in ids}
+
+
+@pytest.mark.asyncio
+async def test_list_empty_trailing_page_has_no_cursor(http, seeded, migrated_database):
+    """When page exactly exhausts results, has_more=false and next_cursor=null."""
+    _user_id, ws_id, wi_id, token = seeded
+
+    ingest_id = uuid4()
+    engine = create_async_engine(migrated_database.database.url)
+    async with engine.begin() as conn:
+        await _insert_ingest_request(conn, ingest_id=ingest_id, ws_id=ws_id, wi_id=wi_id)
+    await engine.dispose()
+
+    resp = await http.get(f"{_LIST_URL}?page_size=100", cookies={"access_token": token})
+    assert resp.status_code == 200
+    pagination = resp.json()["data"]["pagination"]
+    assert pagination["has_more"] is False
+    assert pagination["next_cursor"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_invalid_cursor_returns_422(http, seeded):
+    """Tampered cursor → 422."""
+    _user_id, _ws_id, _wi_id, token = seeded
+    resp = await http.get(f"{_LIST_URL}?cursor=notacursor", cookies={"access_token": token})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "INVALID_CURSOR"
+
+
+@pytest.mark.asyncio
+async def test_list_page_size_above_max_returns_422(http, seeded):
+    """page_size > 100 → 422."""
+    _user_id, _ws_id, _wi_id, token = seeded
+    resp = await http.get(f"{_LIST_URL}?page_size=101", cookies={"access_token": token})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_page_size_zero_returns_422(http, seeded):
+    """page_size=0 → 422."""
+    _user_id, _ws_id, _wi_id, token = seeded
+    resp = await http.get(f"{_LIST_URL}?page_size=0", cookies={"access_token": token})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_workspace_isolation(http, seeded, migrated_database):
+    """Rows from another workspace are NOT returned."""
+    from app.domain.models.user import User
+    from app.domain.models.workspace import Workspace
+    from app.domain.models.workspace_membership import WorkspaceMembership
+    from app.infrastructure.adapters.jwt_adapter import JwtAdapter
+    from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
+    from app.infrastructure.persistence.workspace_membership_repository_impl import (
+        WorkspaceMembershipRepositoryImpl,
+    )
+    from app.infrastructure.persistence.workspace_repository_impl import WorkspaceRepositoryImpl
+
+    import time
+
+    _user_id, ws_id, wi_id, token = seeded
+
+    # Create a second workspace + user
+    engine2 = create_async_engine(migrated_database.database.url)
+    factory2 = __import__("sqlalchemy.ext.asyncio", fromlist=["async_sessionmaker"]).async_sessionmaker(
+        engine2, expire_on_commit=False
+    )
+    async with factory2() as s2:
+        other_user = User.from_google_claims(sub="other-sub", email="other@test.com", name="Other", picture=None)
+        await UserRepositoryImpl(s2).upsert(other_user)
+        other_ws = Workspace.create_from_email(email="other@test.com", created_by=other_user.id)
+        other_ws.slug = "other-ws"
+        await WorkspaceRepositoryImpl(s2).create(other_ws)
+        await WorkspaceMembershipRepositoryImpl(s2).create(
+            WorkspaceMembership.create(workspace_id=other_ws.id, user_id=other_user.id, role="admin", is_default=True)
+        )
+        await s2.commit()
+    await engine2.dispose()
+
+    # Insert ingest request for other workspace
+    other_id = uuid4()
+    engine3 = create_async_engine(migrated_database.database.url)
+    async with engine3.begin() as conn:
+        await conn.execute(
+            text("""
+                INSERT INTO puppet_ingest_requests
+                    (id, workspace_id, source_kind, work_item_id, payload, status)
+                VALUES (:id, :ws_id, 'manual', NULL, '{}', 'queued')
+            """),
+            {"id": str(other_id), "ws_id": str(other_ws.id)},
+        )
+    await engine3.dispose()
+
+    # Fetch with original user token — other ws row must not appear
+    resp = await http.get(_LIST_URL, cookies={"access_token": token})
+    assert resp.status_code == 200
+    returned_ids = {r["id"] for r in resp.json()["data"]["items"]}
+    assert str(other_id) not in returned_ids
 
 
 # ---------------------------------------------------------------------------
