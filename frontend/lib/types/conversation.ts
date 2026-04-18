@@ -23,21 +23,71 @@ export interface ConversationMessage {
   created_at: string;
 }
 
-/** EP-22: a section suggestion carried in response signals */
-export interface SuggestedSection {
-  section_type: string;
-  proposed_content: string;
-  rationale: string;
-}
-
-/** EP-22: signals block in a response frame */
+/** EP-22 v2 — signals block in a response frame (real Dundun-Morpheo contract) */
 export interface ConversationSignals {
   conversation_ended?: boolean;
-  suggested_sections?: SuggestedSection[];
 }
 
 /** Frames forwarded verbatim from Dundun over WebSocket */
 export type WsFrame =
   | { type: 'progress'; content: string }
-  | { type: 'response'; content: string; message_id: string; signals?: ConversationSignals }
+  | { type: 'response'; response: string; signals?: ConversationSignals }
   | { type: 'error'; code: string; message: string };
+
+// ---------------------------------------------------------------------------
+// EP-22 v2 — MorpheoResponse discriminated union (real contract)
+// ---------------------------------------------------------------------------
+
+export type MorpheoQuestion = {
+  kind: 'question';
+  message: string;
+  clarifications?: Array<{ field: string; question: string }>;
+};
+
+export type MorpheoSectionSuggestion = {
+  kind: 'section_suggestion';
+  message: string;
+  suggested_sections: Array<{
+    section_type: string;
+    proposed_content: string;
+    rationale?: string;
+  }>;
+  clarifications?: Array<{ field: string; question: string }>;
+};
+
+export type MorpheoPoReview = {
+  kind: 'po_review';
+  message: string;
+  po_review: {
+    score: number;
+    verdict: 'approved' | 'needs_work' | 'rejected';
+    agents_consulted: string[];
+    per_dimension: Array<{
+      dimension: string;
+      score: number;
+      verdict: 'approved' | 'needs_work' | 'rejected';
+      findings: Array<{
+        severity: 'low' | 'medium' | 'high' | 'critical';
+        title: string;
+        description: string;
+      }>;
+      missing_info: Array<{ field: string; question: string }>;
+    }>;
+    action_items: Array<{
+      priority: 'low' | 'medium' | 'high' | 'critical';
+      title: string;
+      description: string;
+      owner: string;
+    }>;
+  };
+  comments?: string[];
+  clarifications?: Array<{ field: string; question: string }>;
+};
+
+export type MorpheoError = { kind: 'error'; message: string };
+
+export type MorpheoResponse =
+  | MorpheoQuestion
+  | MorpheoSectionSuggestion
+  | MorpheoPoReview
+  | MorpheoError;

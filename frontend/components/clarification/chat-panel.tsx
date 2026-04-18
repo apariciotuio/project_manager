@@ -7,7 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useThread } from '@/hooks/work-item/use-thread';
 import { useSections } from '@/hooks/work-item/use-sections';
 import { useSplitView } from '@/components/detail/split-view-context';
-import type { ConversationMessage, WsFrame, SuggestedSection, ConversationSignals } from '@/lib/types/conversation';
+import { ClarificationPrompt } from '@/components/clarification/clarification-prompt';
+import { PoReviewPanel } from '@/components/clarification/po-review-panel';
+import { ChatErrorBanner } from '@/components/clarification/chat-error-banner';
+import { parseMorpheoEnvelope } from '@/lib/schemas/morpheo-response';
+import type { ConversationMessage, WsFrame, MorpheoSectionSuggestion, MorpheoPoReview, MorpheoQuestion } from '@/lib/types/conversation';
 import type { PendingSuggestion, SplitViewContextValue } from '@/components/detail/split-view-context';
 import type { Section } from '@/lib/types/specification';
 import { cn } from '@/lib/utils';
@@ -25,45 +29,44 @@ function buildWsUrl(threadId: string): string {
 // Pure helpers (unit-testable in isolation)
 // ---------------------------------------------------------------------------
 
+export interface SectionsSnapshotItem {
+  section_type: string;
+  content: string;
+  is_empty: boolean;
+}
+
 export interface OutboundFrame {
   type: 'message';
   content: string;
-  context: { sections_snapshot: Record<string, string> };
+  context: { sections_snapshot: SectionsSnapshotItem[] };
 }
 
-/** Build the WS send frame from user text + current sections. */
+/** Build the WS send frame from user text + current sections (array shape per US-224). */
 export function buildOutboundFrame(text: string, sections: Section[]): OutboundFrame {
-  const sections_snapshot: Record<string, string> = {};
-  for (const s of sections) {
-    sections_snapshot[s.section_type] = s.content;
-  }
+  const sections_snapshot: SectionsSnapshotItem[] = sections.map((s) => ({
+    section_type: s.section_type,
+    content: s.content,
+    is_empty: !s.content.trim(),
+  }));
   return { type: 'message', content: text, context: { sections_snapshot } };
 }
 
-/**
- * Route incoming suggested_sections to the SplitViewContext.
- *
- * - Drops entries whose section_type is not in sectionsByType.
- * - Sets highlightedSectionId to the first resolvable section's id.
- */
-export function routeSuggestedSections(
-  signals: ConversationSignals,
+/** Route section_suggestion envelope to the SplitViewContext. */
+export function routeSectionSuggestion(
+  envelope: MorpheoSectionSuggestion,
   sectionsByType: Map<string, Section>,
   splitView: Pick<SplitViewContextValue, 'emitSuggestion' | 'setHighlightedSectionId'>,
 ): void {
-  const list = signals.suggested_sections;
-  if (!list || list.length === 0) return;
-
   let firstSectionId: string | null = null;
 
-  for (const sug of list) {
+  for (const sug of envelope.suggested_sections) {
     const section = sectionsByType.get(sug.section_type);
     if (!section) continue; // unknown section_type — drop silently
 
     const pending: PendingSuggestion = {
       section_type: sug.section_type,
       proposed_content: sug.proposed_content,
-      rationale: sug.rationale,
+      rationale: sug.rationale ?? '',
       received_at: Date.now(),
     };
     splitView.emitSuggestion(pending);
@@ -79,6 +82,23 @@ export function routeSuggestedSections(
 }
 
 // ---------------------------------------------------------------------------
+// Transcript entry types
+// ---------------------------------------------------------------------------
+
+type HistoryEntry = { type: 'history'; message: ConversationMessage };
+type QuestionEntry = { type: 'question'; envelope: MorpheoQuestion; id: string };
+type SuggestionIntroEntry = { type: 'suggestion_intro'; message: string; id: string };
+type SuggestionClarEntry = { type: 'suggestion_clar'; envelope: MorpheoQuestion; id: string };
+type PoReviewEntry = { type: 'po_review'; envelope: MorpheoPoReview; id: string };
+type ErrorEntry = { type: 'error_banner'; message: string; id: string };
+
+type TranscriptEntry =
+  | HistoryEntry
+  | QuestionEntry
+  | SuggestionIntroEntry
+  | SuggestionClarEntry
+  | PoReviewEntry
+  | ErrorEntry;
 
 interface StreamingMessage {
   id: string | null;
@@ -101,10 +121,10 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
   const { sections } = useSections(workItemId);
   const splitView = useSplitView();
 
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [streaming, setStreaming] = useState<StreamingMessage | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [errors, setErrors] = useState<ErrorBubble[]>([]);
+  const [wsErrors, setWsErrors] = useState<ErrorBubble[]>([]);
   const [input, setInput] = useState('');
 
   // Keep a ref to sections so handleSend always uses latest without re-subscribing WS
@@ -116,21 +136,26 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
+  const entryCounter = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
 
-  // Sync messages when history loads
+  // Sync history messages into transcript on load
   useEffect(() => {
-    setMessages(initialMessages);
+    const entries: TranscriptEntry[] = initialMessages.map((msg) => ({
+      type: 'history',
+      message: msg,
+    }));
+    setTranscript(entries);
   }, [initialMessages]);
 
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streaming]);
+  }, [transcript, streaming]);
 
   // WS lifecycle
   useEffect(() => {
@@ -154,30 +179,81 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
         } else if (frame.type === 'response') {
           setIsStreaming(false);
           setStreaming(null);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: frame.message_id,
-              role: 'assistant',
-              content: frame.content,
-              created_at: new Date().toISOString(),
-            },
-          ]);
 
-          // EP-22: route suggested_sections to SplitViewContext
-          if (frame.signals) {
-            const sectionsByType = new Map(
-              sectionsRef.current.map((s) => [s.section_type, s]),
-            );
-            routeSuggestedSections(frame.signals, sectionsByType, splitView);
+          // Double-parse and validate the MorpheoResponse envelope
+          const envelope = parseMorpheoEnvelope(frame.response);
+
+          if (envelope === null) {
+            setTranscript((prev) => [
+              ...prev,
+              { type: 'error_banner', message: 'malformed_response', id: `err-${++entryCounter.current}` },
+            ]);
+            return;
+          }
+
+          const sectionsByType = new Map(
+            sectionsRef.current.map((s) => [s.section_type, s]),
+          );
+
+          switch (envelope.kind) {
+            case 'question': {
+              setTranscript((prev) => [
+                ...prev,
+                { type: 'question', envelope, id: `q-${++entryCounter.current}` },
+              ]);
+              break;
+            }
+            case 'section_suggestion': {
+              // Emit suggestions to SplitViewContext
+              routeSectionSuggestion(envelope, sectionsByType, splitView);
+              // Render intro bubble if message non-empty
+              if (envelope.message) {
+                setTranscript((prev) => [
+                  ...prev,
+                  { type: 'suggestion_intro', message: envelope.message, id: `si-${++entryCounter.current}` },
+                ]);
+              }
+              // Render clarifications bubble if present
+              if (envelope.clarifications && envelope.clarifications.length > 0) {
+                const clarEnvelope: MorpheoQuestion = {
+                  kind: 'question',
+                  message: '',
+                  clarifications: envelope.clarifications,
+                };
+                setTranscript((prev) => [
+                  ...prev,
+                  { type: 'suggestion_clar', envelope: clarEnvelope, id: `sc-${++entryCounter.current}` },
+                ]);
+              }
+              break;
+            }
+            case 'po_review': {
+              setTranscript((prev) => [
+                ...prev,
+                { type: 'po_review', envelope, id: `pr-${++entryCounter.current}` },
+              ]);
+              break;
+            }
+            case 'error': {
+              setTranscript((prev) => [
+                ...prev,
+                { type: 'error_banner', message: envelope.message, id: `err-${++entryCounter.current}` },
+              ]);
+              break;
+            }
+          }
+
+          // Handle conversation_ended signal
+          if (frame.signals?.conversation_ended) {
+            // Future: drive end-of-conversation UI
           }
         } else if (frame.type === 'error') {
           setIsStreaming(false);
           setStreaming(null);
-          setErrors((prev) => [...prev, { code: frame.code, message: frame.message }]);
+          setWsErrors((prev) => [...prev, { code: frame.code, message: frame.message }]);
         }
       } catch {
-        // Malformed frame — ignore
+        // Malformed WS frame — ignore
       }
     };
 
@@ -202,11 +278,11 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
         content: text,
         created_at: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, optimistic]);
+      setTranscript((prev) => [...prev, { type: 'history', message: optimistic }]);
       setInput('');
       setIsStreaming(true);
 
-      // EP-22: include sections_snapshot in outbound frame
+      // EP-22 v2: sections_snapshot as array per US-224
       const frame = buildOutboundFrame(text, sectionsRef.current);
       wsRef.current.send(JSON.stringify(frame));
     },
@@ -223,19 +299,56 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
     );
   }
 
-  const allMessages = messages;
+  const historyEmpty = transcript.length === 0 && !streaming;
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Message list */}
+      {/* Transcript */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {allMessages.length === 0 && !streaming && (
+        {historyEmpty && (
           <p className="text-sm text-muted-foreground text-center mt-8">{t('emptyChat')}</p>
         )}
 
-        {allMessages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+        {transcript.map((entry) => {
+          if (entry.type === 'history') {
+            return <MessageBubble key={entry.message.id} message={entry.message} />;
+          }
+          if (entry.type === 'question') {
+            return (
+              <ClarificationPrompt
+                key={entry.id}
+                message={entry.envelope.message}
+                clarifications={entry.envelope.clarifications}
+              />
+            );
+          }
+          if (entry.type === 'suggestion_intro') {
+            return (
+              <div
+                key={entry.id}
+                className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted self-start"
+              >
+                {entry.message}
+              </div>
+            );
+          }
+          if (entry.type === 'suggestion_clar') {
+            return (
+              <ClarificationPrompt
+                key={entry.id}
+                message={entry.envelope.message}
+                clarifications={entry.envelope.clarifications}
+              />
+            );
+          }
+          if (entry.type === 'po_review') {
+            return <PoReviewPanel key={entry.id} envelope={entry.envelope} />;
+          }
+          if (entry.type === 'error_banner') {
+            return <ChatErrorBanner key={entry.id} message={entry.message} />;
+          }
+          return null;
+        })}
 
         {streaming && (
           <div
@@ -249,8 +362,8 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
           </div>
         )}
 
-        {/* Error bubbles */}
-        {errors.map((err, i) => (
+        {/* WS-level error bubbles (transport errors, not envelope errors) */}
+        {wsErrors.map((err, i) => (
           <div key={i} className="rounded-lg px-3 py-2 text-sm bg-destructive/10 text-destructive self-start max-w-[80%]">
             {err.message}
           </div>

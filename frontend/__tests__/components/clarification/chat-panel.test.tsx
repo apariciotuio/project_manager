@@ -150,8 +150,15 @@ describe('ChatPanel', () => {
     act(() => {
       mockWs?.onmessage?.({ data: JSON.stringify({ type: 'progress', content: 'Final answer' }) });
     });
+    // EP-22 v2: response frame uses response: JSON-string envelope
     act(() => {
-      mockWs?.onmessage?.({ data: JSON.stringify({ type: 'response', content: 'Final answer', message_id: 'msg-2' }) });
+      mockWs?.onmessage?.({
+        data: JSON.stringify({
+          type: 'response',
+          response: JSON.stringify({ kind: 'question', message: 'Final answer' }),
+          signals: { conversation_ended: false },
+        }),
+      });
     });
 
     // Textarea should be re-enabled after response

@@ -214,17 +214,61 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/post
 
 ---
 
+---
+
+## Phase 10 (v2 — Real Dundun-Morpheo contract) — Fix-forward rewrite
+
+**Status: COMPLETED (2026-04-18)**
+
+> Supersedes Phase 2 signal-based router and Phase 9 happy-path tests. The original implementation read `frame.content` and `frame.signals.suggested_sections` — neither exists in the real contract.
+
+### 10.1 Types
+- [x] [GREEN] Added 4 `Morpheo*` TS types + `MorpheoResponse` discriminated union to `lib/types/conversation.ts` (2026-04-18)
+- [x] [GREEN] Removed `SuggestedSection` and `suggested_sections` from `ConversationSignals` (2026-04-18)
+- [x] [GREEN] Updated `WsFrame` response variant: `response: string` replaces `content: string; message_id: string` (2026-04-18)
+
+### 10.2 Zod schema
+- [x] [GREEN] Created `lib/schemas/morpheo-response.ts` with `MorpheoResponseSchema` discriminated union on `kind` (2026-04-18)
+- [x] [GREEN] Bounds mirror spec: maxLengths, enums, maxItems, minItems (2026-04-18)
+- [x] [GREEN] `parseMorpheoEnvelope(raw)` helper: double-parse + safeParse, returns null on any failure (2026-04-18)
+
+### 10.3 ChatPanel rewrite
+- [x] [RED] Deleted `chat-panel-suggestions.test.tsx` and `ep22-happy-path.test.tsx` (fictional contract) (2026-04-18)
+- [x] [RED] New `chat-panel-kind-switch.test.tsx`: 11 cases for all 4 kinds + malformed (2026-04-18)
+- [x] [GREEN] Rewrote response branch in ChatPanel: double-parse → Zod validate → kind-switch (2026-04-18)
+- [x] [GREEN] `routeSectionSuggestion(envelope, sectionsByType, splitView)` replaces old `routeSuggestedSections` (2026-04-18)
+- [x] [GREEN] Outbound `sections_snapshot` updated to array shape `[{section_type, content, is_empty}]` per US-224 (2026-04-18)
+- [x] [GREEN] Transcript state upgraded from `ConversationMessage[]` to `TranscriptEntry` union (history | question | suggestion_intro | suggestion_clar | po_review | error_banner) (2026-04-18)
+- [x] [GREEN] Updated `chat-panel-send-snapshot.test.tsx` and `chat-panel.test.tsx` for new contract (2026-04-18)
+
+### 10.4 New components
+- [x] [RED] `clarification-prompt.test.tsx`: 6 cases (a11y, empty-state, field+question render) (2026-04-18)
+- [x] [GREEN] `components/clarification/clarification-prompt.tsx` (2026-04-18)
+- [x] [RED] `po-review-panel.test.tsx`: 13 cases (score, verdict colors, accordion, action_items, comments, clarifications) (2026-04-18)
+- [x] [GREEN] `components/clarification/po-review-panel.tsx` — `<details>/<summary>` accordion, verdict-colored header (2026-04-18)
+- [x] [RED] `chat-error-banner.test.tsx`: 5 cases (message, role=alert, testid, inline) (2026-04-18)
+- [x] [GREEN] `components/clarification/chat-error-banner.tsx` (2026-04-18)
+
+### 10.5 Quality gates
+- [x] [TEST] All EP-22 tests green (1531 pass, 4 pre-existing failures unrelated to EP-22) (2026-04-18)
+- [x] [TEST] Zero tsc errors on EP-22 files (2026-04-18)
+- [x] [LINT] Zero eslint errors on EP-22 source + test files (2026-04-18)
+
+---
+
 ## Definition of Done
 
 EP-22-lite scope (Phases 1, 6, 7, 8):
-- [x] SplitViewContext extended with pendingSuggestions/emitSuggestion/clearSuggestion API (map always empty until EP-22-full)
+- [x] SplitViewContext extended with pendingSuggestions/emitSuggestion/clearSuggestion API
 - [x] Chat panel collapse persists per workItemId in localStorage
 - [x] Detail page renders WorkItemDetailLayout for all work items in all states
 - [x] Clarificación tab fully gone (component deleted, tests deleted/updated, page scrubbed)
 - [x] Primer message (original_input) renders as a normal user bubble — verified by tests
 
-EP-22-full (deferred, Dundun cross-repo):
-- [ ] ChatPanel intercepts `signals.suggested_sections` and emits to SplitViewContext
-- [ ] ChatPanel outbound messages include `context.sections_snapshot`
-- [ ] PendingSuggestionCard renders inline in SpecificationSectionsEditor with Accept/Reject/Edit
-- [ ] Conflict mode (user mid-edit) shows a banner
+EP-22-full real-contract (Phase 10 — COMPLETED 2026-04-18):
+- [x] ChatPanel intercepts `frame.response` (JSON-string envelope), validates with Zod, dispatches on `kind`
+- [x] ChatPanel outbound messages include `context.sections_snapshot` as array `[{section_type, content, is_empty}]`
+- [x] PendingSuggestionCard emitted via `SplitViewContext.emitSuggestion` for `section_suggestion` kind
+- [x] `ClarificationPrompt` renders for `question` kind and `section_suggestion.clarifications`
+- [x] `PoReviewPanel` renders for `po_review` kind (read-only)
+- [x] `ChatErrorBanner` renders for `error` kind and malformed envelopes

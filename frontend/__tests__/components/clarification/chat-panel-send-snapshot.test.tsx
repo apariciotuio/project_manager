@@ -85,7 +85,7 @@ function setupHandlers(sections: Section[] = [SECTION_PROBLEM]) {
 // ---------------------------------------------------------------------------
 
 describe('buildOutboundFrame', () => {
-  it('snapshot present and keyed by section_type', () => {
+  it('snapshot is an array of { section_type, content, is_empty } per US-224', () => {
     const sections: Section[] = [
       { ...SECTION_PROBLEM },
       { ...SECTION_PROBLEM, id: 'sec-2', section_type: 'acceptance_criteria', content: 'AC text' },
@@ -94,16 +94,32 @@ describe('buildOutboundFrame', () => {
 
     expect(frame.type).toBe('message');
     expect(frame.content).toBe('hello');
-    expect(frame.context.sections_snapshot).toEqual({
-      problem_statement: 'Current problem text',
-      acceptance_criteria: 'AC text',
+    expect(frame.context.sections_snapshot).toEqual([
+      { section_type: 'problem_statement', content: 'Current problem text', is_empty: false },
+      { section_type: 'acceptance_criteria', content: 'AC text', is_empty: false },
+    ]);
+  });
+
+  it('empty sections list → snapshot is [] (array, not absent)', () => {
+    const frame = buildOutboundFrame('hello', []);
+    expect(frame.context.sections_snapshot).toEqual([]);
+    expect(frame.context).toHaveProperty('sections_snapshot');
+  });
+
+  it('empty content section → is_empty is true', () => {
+    const emptySection = { ...SECTION_PROBLEM, content: '' };
+    const frame = buildOutboundFrame('text', [emptySection]);
+    expect(frame.context.sections_snapshot[0]).toMatchObject({
+      section_type: 'problem_statement',
+      content: '',
+      is_empty: true,
     });
   });
 
-  it('empty sections list → snapshot is {} (object, not absent)', () => {
-    const frame = buildOutboundFrame('hello', []);
-    expect(frame.context.sections_snapshot).toEqual({});
-    expect(frame.context).toHaveProperty('sections_snapshot');
+  it('whitespace-only content → is_empty is true', () => {
+    const wsSection = { ...SECTION_PROBLEM, content: '   ' };
+    const frame = buildOutboundFrame('text', [wsSection]);
+    expect(frame.context.sections_snapshot[0]?.is_empty).toBe(true);
   });
 
   it('frame shape is { type, content, context: { sections_snapshot } }', () => {
@@ -111,7 +127,7 @@ describe('buildOutboundFrame', () => {
     expect(frame).toMatchObject({
       type: 'message',
       content: 'text',
-      context: { sections_snapshot: expect.any(Object) },
+      context: { sections_snapshot: expect.any(Array) },
     });
   });
 });
@@ -143,12 +159,22 @@ describe('ChatPanel outbound sections_snapshot', () => {
 
     await waitFor(() => expect(mockWs?.send).toHaveBeenCalled());
 
-    const sentRaw = mockWs!.send.mock.calls[0][0] as string;
-    const sent = JSON.parse(sentRaw);
+    const sentRaw = mockWs!.send.mock.calls[0]![0] as string;
+    const sent = JSON.parse(sentRaw) as {
+      type: string;
+      content: string;
+      context: {
+        sections_snapshot: Array<{ section_type: string; content: string; is_empty: boolean }>;
+      };
+    };
     expect(sent.type).toBe('message');
     expect(sent.content).toBe('My question');
     expect(sent.context).toBeDefined();
-    expect(sent.context.sections_snapshot).toBeDefined();
-    expect(sent.context.sections_snapshot).toHaveProperty('problem_statement');
+    expect(Array.isArray(sent.context.sections_snapshot)).toBe(true);
+    // EP-22 v2: array shape { section_type, content, is_empty }
+    const item = sent.context.sections_snapshot[0];
+    expect(item).toHaveProperty('section_type', 'problem_statement');
+    expect(item).toHaveProperty('content');
+    expect(item).toHaveProperty('is_empty');
   });
 });
