@@ -20,6 +20,8 @@ from app.presentation.controllers.conversation_controller import (
 )
 from app.presentation.controllers.csp_report_controller import router as csp_report_router
 from app.presentation.controllers.dashboard_controller import router as dashboard_router
+from app.presentation.controllers.pipeline_controller import router as pipeline_router
+from app.presentation.controllers.kanban_controller import router as kanban_router
 from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
@@ -214,6 +216,8 @@ def create_app() -> FastAPI:
     app.include_router(saved_search_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
     app.include_router(dashboard_router, prefix="/api/v1")
+    app.include_router(pipeline_router, prefix="/api/v1")
+    app.include_router(kanban_router, prefix="/api/v1")
     # EP-10 — projects + admin + routing rules + validation templates
     app.include_router(project_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")

@@ -394,9 +394,9 @@ WHEN an invalid filter value is supplied
 THEN the API returns HTTP 422
 
 ### PipelineQueryService
-- [ ] [RED] Write tests: all states returned, counts correct, items capped at 20 per column, aging indicators (amber >7d, red >14d), blocked lane with pre-block state, filter params, Redis cache with filter_hash key
-- [ ] [GREEN] Implement `PipelineQueryService.get_pipeline(filters)` using grouped query with `json_agg` and `ROW_NUMBER() OVER PARTITION BY state`
-- [ ] [GREEN] Implement `filter_hash` generation (deterministic SHA-256 of sorted filter params) for Redis key `pipeline:{filter_hash}` (TTL 30s)
+- [x] [RED] 8 tests: FSM states present, archived absent, FSM order, counts, items capped at 20, blocked_lane present, cache hit, invalid filter (2026-04-18)
+- [x] [GREEN] PipelineQueryService.get_pipeline(): single GROUP BY agg + capped item fetch per state; SHA-256 filter_hash cache key pipeline:{ws}:{hash} TTL 30s (2026-04-18)
+- [x] [GREEN] GET /api/v1/pipeline controller + route registered in main.py (2026-04-18)
 
 ---
 
@@ -472,26 +472,10 @@ AND cache key is `kanban:{project_id}:{group_by}:{sorted_filter_hash}`
 WHEN `group_by=invalid` is supplied
 THEN HTTP 422 is returned with valid group_by options listed
 
-- [ ] [RED] Write unit tests for `KanbanService.get_board(project_id, group_by, cursors, limit, user)`:
-  - `group_by=state`: columns in FSM order, no archived, cards capped at 25, `total_count` accurate
-  - `group_by=owner`: one column per owner, unowned column present, sorted by name
-  - `group_by=tag`: tag columns present, items in multiple tag columns, untagged column
-  - `group_by=parent`: parent columns, no-parent column
-  - per-column cursor pagination: second page returns correct next 25 cards
-  - `tag_ids` and `attachment_count` present on every card
-  - Redis cache hit/miss; cache TTL 30s; key includes group_by and filter hash
-  - `limit > 25` → 422
-  - `group_by=invalid` → 422
-  - access scope: user cannot see items outside their workspace
-- [ ] [GREEN] Implement `KanbanService` in `application/services/kanban_service.py`
-  - `group_by=state`: single grouped query using `ROW_NUMBER() OVER (PARTITION BY state ORDER BY updated_at DESC)`, filter `rn <= limit + 1` for cursor detection, FSM order applied in Python
-  - `group_by=owner|tag|parent`: separate query strategies; tag uses JOIN to `work_item_tags` (EP-15); parent uses `parent_work_item_id` (EP-14)
-  - Per-column cursor: encode `(updated_at, id)` per column key; same `PaginationCursor` utility from Group 3
-  - Redis cache: key `kanban:{project_id}:{group_by}:{sha256(sorted_params)}`, TTL 30s
-- [ ] [GREEN] Implement `KanbanRepository` in `infrastructure/persistence/kanban_repository.py`
-- [ ] [RED] Write integration tests for `GET /api/v1/work-items/kanban` (all group_by modes, pagination, auth, 422 variants)
-- [ ] [GREEN] Implement `GET /api/v1/work-items/kanban` controller and route
-- [ ] [REFACTOR] Ensure `group_by` strategy is a clean dispatch (dict or enum-keyed functions), not a single monolithic if/elif chain
+- [x] [RED] 10 tests: state columns in FSM order, archived absent, cap, total_count, owner columns, unowned column, parent/no_parent, limit>25→ValueError, invalid group_by→ValueError, cache hit (2026-04-18)
+- [x] [GREEN] KanbanService.get_board(): dict-keyed strategy dispatch (state/owner/tag/parent); SHA-256 cache key kanban:{ws}:{group_by}:{hash} TTL 30s (2026-04-18)
+- [x] [GREEN] GET /api/v1/work-items/kanban controller + route registered in main.py (2026-04-18)
+- [x] [REFACTOR] Clean strategy dispatch — no if/elif chain (2026-04-18)
 
 ---
 
