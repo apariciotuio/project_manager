@@ -78,19 +78,19 @@ describe('useSSE', () => {
     const onMessage = vi.fn();
     renderHook(() => useSSE('http://localhost/api/v1/test', onMessage));
     expect(MockEventSource.instances).toHaveLength(1);
-    expect(MockEventSource.instances[0].url).toBe('http://localhost/api/v1/test');
+    expect(MockEventSource.instances[0]!.url).toBe('http://localhost/api/v1/test');
   });
 
   it('calls onMessage for each incoming event', () => {
     const onMessage = vi.fn();
     renderHook(() => useSSE('http://localhost/api/v1/test', onMessage));
-    const es = MockEventSource.instances[0];
+    const es = MockEventSource.instances[0]!;
     act(() => {
       es.simulateMessage('{"type":"progress","percent":50}');
     });
     expect(onMessage).toHaveBeenCalledTimes(1);
-    expect(onMessage.mock.calls[0][0]).toBeInstanceOf(MessageEvent);
-    expect(onMessage.mock.calls[0][0].data).toBe('{"type":"progress","percent":50}');
+    expect(onMessage.mock.calls[0]![0]).toBeInstanceOf(MessageEvent);
+    expect(onMessage.mock.calls[0]![0].data).toBe('{"type":"progress","percent":50}');
   });
 
   it('returns status=open after connection', () => {
@@ -103,14 +103,14 @@ describe('useSSE', () => {
     const onMessage = vi.fn();
     const { unmount } = renderHook(() => useSSE('http://localhost/api/v1/test', onMessage));
     unmount();
-    expect(MockEventSource.instances[0].readyState).toBe(MockEventSource.CLOSED);
+    expect(MockEventSource.instances[0]!.readyState).toBe(MockEventSource.CLOSED);
   });
 
   it('does not call onMessage after unmount', () => {
     const onMessage = vi.fn();
     const { unmount } = renderHook(() => useSSE('http://localhost/api/v1/test', onMessage));
     unmount();
-    const es = MockEventSource.instances[0];
+    const es = MockEventSource.instances[0]!;
     act(() => {
       es.simulateMessage('late message');
     });
@@ -120,7 +120,7 @@ describe('useSSE', () => {
   it('reconnects with exponential backoff on error (1s, 2s, 4s)', async () => {
     const onMessage = vi.fn();
     renderHook(() => useSSE('http://localhost/api/v1/test', onMessage));
-    const es1 = MockEventSource.instances[0];
+    const es1 = MockEventSource.instances[0]!;
 
     // First error — should reconnect after 1s
     act(() => { es1.simulateError(); });
@@ -130,7 +130,7 @@ describe('useSSE', () => {
     expect(MockEventSource.instances).toHaveLength(2);
 
     // Second error — should reconnect after 2s
-    const es2 = MockEventSource.instances[1];
+    const es2 = MockEventSource.instances[1]!;
     act(() => { es2.simulateError(); });
     await act(async () => { vi.advanceTimersByTime(2000); });
     expect(MockEventSource.instances).toHaveLength(3);
@@ -142,13 +142,13 @@ describe('useSSE', () => {
       useSSE('http://localhost/api/v1/test', onMessage, { maxRetries: 2, baseDelay: 100 }),
     );
 
-    act(() => { MockEventSource.instances[0].simulateError(); });
+    act(() => { MockEventSource.instances[0]!.simulateError(); });
     await act(async () => { vi.advanceTimersByTime(100); });
 
-    act(() => { MockEventSource.instances[1].simulateError(); });
+    act(() => { MockEventSource.instances[1]!.simulateError(); });
     await act(async () => { vi.advanceTimersByTime(200); });
 
-    act(() => { MockEventSource.instances[2].simulateError(); });
+    act(() => { MockEventSource.instances[2]!.simulateError(); });
     // No more retries
     await act(async () => { vi.advanceTimersByTime(1000); });
 
@@ -167,7 +167,7 @@ describe('useSSE', () => {
       }),
     );
 
-    act(() => { MockEventSource.instances[0].simulateError(); });
+    act(() => { MockEventSource.instances[0]!.simulateError(); });
     await act(async () => { vi.advanceTimersByTime(100); });
 
     expect(onBeforeReconnect).toHaveBeenCalledTimes(1);

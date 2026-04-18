@@ -65,13 +65,13 @@ afterEach(() => {
 describe('useJobProgress', () => {
   it('connects to /api/v1/jobs/{jobId}/progress', () => {
     renderHook(() => useJobProgress('job-123'));
-    expect(MockEventSource.instances[0].url).toContain('/api/v1/jobs/job-123/progress');
+    expect(MockEventSource.instances[0]!.url).toContain('/api/v1/jobs/job-123/progress');
   });
 
   it('returns running status with progress events', () => {
     const { result } = renderHook(() => useJobProgress('job-123'));
     act(() => {
-      MockEventSource.instances[0].simulateMessage(
+      MockEventSource.instances[0]!.simulateMessage(
         JSON.stringify({ status: 'running', percent: 50, message: 'Processing...' }),
       );
     });
@@ -83,7 +83,7 @@ describe('useJobProgress', () => {
   it('returns complete status on event: done', () => {
     const { result } = renderHook(() => useJobProgress('job-123'));
     act(() => {
-      MockEventSource.instances[0].simulateMessage(
+      MockEventSource.instances[0]!.simulateMessage(
         JSON.stringify({ result: { id: 'abc' } }),
         'done',
       );
@@ -95,18 +95,18 @@ describe('useJobProgress', () => {
   it('closes EventSource on event: done', () => {
     renderHook(() => useJobProgress('job-123'));
     act(() => {
-      MockEventSource.instances[0].simulateMessage(
+      MockEventSource.instances[0]!.simulateMessage(
         JSON.stringify({ result: {} }),
         'done',
       );
     });
-    expect(MockEventSource.instances[0].readyState).toBe(MockEventSource.CLOSED);
+    expect(MockEventSource.instances[0]!.readyState).toBe(MockEventSource.CLOSED);
   });
 
   it('returns error status on error event', () => {
     const { result } = renderHook(() => useJobProgress('job-123'));
     act(() => {
-      MockEventSource.instances[0].simulateMessage(
+      MockEventSource.instances[0]!.simulateMessage(
         JSON.stringify({ message: 'Job failed' }),
         'error',
       );
@@ -118,12 +118,12 @@ describe('useJobProgress', () => {
   it('closes EventSource on component unmount', () => {
     const { unmount } = renderHook(() => useJobProgress('job-123'));
     unmount();
-    expect(MockEventSource.instances[0].readyState).toBe(MockEventSource.CLOSED);
+    expect(MockEventSource.instances[0]!.readyState).toBe(MockEventSource.CLOSED);
   });
 
   it('auto-reconnects on connection drop (delegates to useSSE)', async () => {
     renderHook(() => useJobProgress('job-123'));
-    act(() => { MockEventSource.instances[0].simulateError(); });
+    act(() => { MockEventSource.instances[0]!.simulateError(); });
     await act(async () => { vi.advanceTimersByTime(1000); });
     // useSSE handles reconnect; a new EventSource should be created
     expect(MockEventSource.instances.length).toBeGreaterThan(1);

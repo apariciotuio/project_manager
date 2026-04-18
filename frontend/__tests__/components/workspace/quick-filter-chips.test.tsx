@@ -52,7 +52,7 @@ describe('QuickFilterChips', () => {
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'myItems' }));
     expect(mockReplace).toHaveBeenCalledOnce();
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('mine=true');
     expect(url).toContain('mine_type=any');
   });
@@ -60,7 +60,7 @@ describe('QuickFilterChips', () => {
   it('clicking "Owned by me" sets ?mine=true&mine_type=owner in URL', async () => {
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'ownedByMe' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('mine=true');
     expect(url).toContain('mine_type=owner');
   });
@@ -68,7 +68,7 @@ describe('QuickFilterChips', () => {
   it('clicking "Created by me" sets ?mine=true&mine_type=creator in URL', async () => {
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'createdByMe' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('mine=true');
     expect(url).toContain('mine_type=creator');
   });
@@ -76,7 +76,7 @@ describe('QuickFilterChips', () => {
   it('clicking "Pending my review" sets ?mine=true&mine_type=reviewer in URL', async () => {
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'pendingMyReview' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('mine=true');
     expect(url).toContain('mine_type=reviewer');
   });
@@ -92,7 +92,7 @@ describe('QuickFilterChips', () => {
     mockSearchParams = { mine: 'true', mine_type: 'owner' };
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'ownedByMe' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).not.toContain('mine=true');
     expect(url).not.toContain('mine_type=');
   });
@@ -110,7 +110,7 @@ describe('QuickFilterChips', () => {
     mockSearchParams = { mine: 'true', mine_type: 'reviewer' };
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'all' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).not.toContain('mine=');
   });
 
@@ -118,7 +118,7 @@ describe('QuickFilterChips', () => {
     mockSearchParams = { state: 'draft' };
     render(<QuickFilterChips />);
     await userEvent.click(screen.getByRole('button', { name: 'myItems' }));
-    const url: string = mockReplace.mock.calls[0][0] as string;
+    const url: string = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('state=draft');
     expect(url).toContain('mine=true');
   });

@@ -57,7 +57,7 @@ describe('SortControl', () => {
     const select = screen.getByRole('combobox', { name: /sort/i });
     await user.selectOptions(select, 'title_asc');
     expect(mockReplace).toHaveBeenCalledOnce();
-    const url = mockReplace.mock.calls[0][0] as string;
+    const url = mockReplace.mock.calls[0]![0] as string;
     expect(url).toContain('sort=title_asc');
   });
 
@@ -68,7 +68,7 @@ describe('SortControl', () => {
     const select = screen.getByRole('combobox', { name: /sort/i });
     await user.selectOptions(select, '');
     expect(mockReplace).toHaveBeenCalledOnce();
-    const url = mockReplace.mock.calls[0][0] as string;
+    const url = mockReplace.mock.calls[0]![0] as string;
     expect(url).not.toContain('sort=');
   });
 });

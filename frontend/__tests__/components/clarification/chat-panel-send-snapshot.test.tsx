@@ -143,7 +143,7 @@ describe('ChatPanel outbound sections_snapshot', () => {
 
     await waitFor(() => expect(mockWs?.send).toHaveBeenCalled());
 
-    const sentRaw = mockWs!.send.mock.calls[0][0] as string;
+    const sentRaw = mockWs!.send.mock.calls[0]![0] as string;
     const sent = JSON.parse(sentRaw);
     expect(sent.type).toBe('message');
     expect(sent.content).toBe('My question');

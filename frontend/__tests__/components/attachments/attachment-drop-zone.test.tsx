@@ -53,7 +53,7 @@ describe('AttachmentDropZone', () => {
     });
 
     await waitFor(() => expect(mockToast).toHaveBeenCalledOnce());
-    const call = mockToast.mock.calls[0][0];
+    const call = mockToast.mock.calls[0]![0];
     expect(call.title ?? call.description).toMatch(/not yet available|pending/i);
   });
 
@@ -94,7 +94,7 @@ describe('AttachmentDropZone', () => {
     await user.upload(input, file);
 
     await waitFor(() => expect(mockToast).toHaveBeenCalledOnce());
-    const call = mockToast.mock.calls[0][0];
+    const call = mockToast.mock.calls[0]![0];
     expect(call.title ?? call.description).toMatch(/not yet available|pending/i);
   });
 
