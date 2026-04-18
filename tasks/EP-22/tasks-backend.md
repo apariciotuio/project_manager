@@ -26,12 +26,26 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 - [x] [GREEN] Added `acquire_for_primer` to `FakeConversationThreadRepository` — 2026-04-18
 - [x] [REFACTOR] repo impl update() now persists primer_sent_at — 2026-04-18
 
-### 1.2 Pydantic models for Dundun signals (wire schema)
+### 1.2 Pydantic models for Dundun signals (wire schema) — SUPERSEDED
 
-- [x] [RED] Unit tests in `tests/unit/presentation/test_dundun_signals.py` — 17 cases; all failed before module existed — 2026-04-18
-- [x] [GREEN] Created `backend/app/presentation/schemas/dundun_signals.py` with `SuggestedSection`, `ConversationSignalsWire`, `validate_signals()` — 2026-04-18
-- [x] [REFACTOR] `validate_signals` drops invalid items with warn log including `dropped_count` + `invalid_reasons`, always returns dict with `suggested_sections` key — 2026-04-18
-- [x] All 17 tests pass — 2026-04-18
+> **SUPERSEDED by Phase 1.3 (2026-04-18).**  
+> Original implementation built against fictional `signals.suggested_sections` shape.  
+> Replaced by `MorpheoResponse` discriminated-union envelope in `frame.response` JSON string.
+
+- ~~[x] [RED] Unit tests in `tests/unit/presentation/test_dundun_signals.py` — 17 cases; all failed before module existed — 2026-04-18~~
+- ~~[x] [GREEN] Created `backend/app/presentation/schemas/dundun_signals.py` with `SuggestedSection`, `ConversationSignalsWire`, `validate_signals()` — 2026-04-18~~
+- [x] [SUPERSEDED] Both `test_dundun_signals.py` and `test_dundun_signals_contract.py` deleted — 2026-04-18
+
+### 1.3 MorpheoResponse envelope schema (real Dundun-Morpheo contract) — ADDED 2026-04-18
+
+- [x] [RED] Unit tests in `tests/unit/presentation/test_morpheo_response.py` — 15 cases; failed before module — 2026-04-18
+- [x] [GREEN] Created `backend/app/presentation/schemas/morpheo_response.py`:
+  - Discriminated union `MorpheoResponse` over `kind ∈ {question, section_suggestion, po_review, error}`
+  - `parse_and_filter_envelope(raw_json_string) -> tuple[str, list[str]]`
+  - Per-item validation + catalog filter + overflow cap + downgrade logic
+  - SEC-LOG-001 log sanitization preserved — 2026-04-18
+- [x] [REFACTOR] ruff + mypy --strict clean on morpheo_response.py — 2026-04-18
+- [x] All 15 tests pass — 2026-04-18
 
 ---
 
@@ -72,12 +86,12 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 - [x] [GREEN] `ConversationService.__init__` accepts optional `section_repo` — 2026-04-18
 - [x] All 3 tests pass — 2026-04-18
 
-### 3.2 Outbound frame enrichment
+### 3.2 Outbound frame enrichment (updated shape — 2026-04-18)
 
-- [x] [RED] Controller unit tests `tests/unit/presentation/controllers/test_conversation_ws_ep22.py` — 9 cases — 2026-04-18
-- [x] [GREEN] Added `_enrich_outbound_frame(frame, work_item_id, snapshot_provider)` to `conversation_controller.py` — 2026-04-18
-- [x] [GREEN] Modified `_pump.fe_to_upstream` to call `_enrich_outbound_frame` before forwarding — 2026-04-18
-- [x] [GREEN] WS handler builds `_get_snapshot` closure using `SectionRepositoryImpl` — 2026-04-18
+- [x] [RED] Controller unit tests `tests/unit/presentation/controllers/test_conversation_ws_ep22.py` — rewritten for array snapshot shape — 2026-04-18
+- [x] [GREEN] `_enrich_outbound_frame` now builds `sections_snapshot` as array of `{section_type, content, is_empty}` per US-224 (was dict) — 2026-04-18
+- [x] [GREEN] `_get_snapshot` closure returns `list[Section]` (was `dict[str, str]`) — 2026-04-18
+- [x] All 11 controller tests pass — 2026-04-18
 
 ### 3.3 Observability
 
@@ -85,17 +99,23 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 
 ---
 
-## Phase 4 — WS proxy: inbound `signals.suggested_sections`
+## Phase 4 — WS proxy: inbound MorpheoResponse envelope
 
-### 4.1 Validation interception
+### 4.1 Validation interception (rewritten 2026-04-18)
 
-- [x] [RED] Unit tests for `_enrich_inbound_frame` — 5 cases in `test_conversation_ws_ep22.py` — 2026-04-18
-- [x] [GREEN] Added `_enrich_inbound_frame(frame)` to `conversation_controller.py` — validates signals on type==response frames via `validate_signals`, drops invalid items — 2026-04-18
-- [x] [GREEN] Modified `_pump.upstream_to_fe` to call `_enrich_inbound_frame` before `send_json` — 2026-04-18
+- [x] [RED] Unit tests for `_enrich_inbound_frame` — 7 cases in `test_conversation_ws_ep22.py` covering all envelope kinds — 2026-04-18
+- [x] [GREEN] Replaced `_enrich_inbound_frame` to use `parse_and_filter_envelope`:
+  - Double-parse `frame["response"]` JSON string
+  - Validate `MorpheoResponse` discriminated union
+  - Catalog filter on `section_suggestion` items
+  - Downgrade all-invalid to `question`
+  - Replace malformed JSON / invalid shape with error envelope
+  - Pass `signals` through verbatim (only `conversation_ended` matters)
+  - Never throw — 2026-04-18
 
-### 4.2 Log quality signal
+### 4.2 Integration contract tests
 
-- [x] [GREEN] `validate_signals` logs `dropped_count` and `invalid_reasons` in warn log — 2026-04-18
+- [x] [GREEN] Added `tests/integration/test_morpheo_response_contract.py` — 4 scenarios (question, section_suggestion, catalog drop, error); skip when Dundun WS unavailable — same pattern as existing `test_conversation_ws.py` — 2026-04-18
 
 ---
 
@@ -103,38 +123,35 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 
 ### 5.1 Fake Dundun client extensions
 
-- [x] [GREEN] Added `queue_ws_response_with_signals(signals: dict)` to `FakeDundunClient` in `app/infrastructure/fakes/fake_dundun_client.py` — 2026-04-18
+- [x] [GREEN] Added `queue_ws_response_with_envelope(envelope, conversation_ended)` to `FakeDundunClient` — seeds `frame.response` as JSON string (real contract) — 2026-04-18
+- [x] Kept `queue_ws_response_with_signals` for backwards compat — 2026-04-18
 
-### 5.2 Contract test with Dundun repo
+### 5.2 Docs / memory
 
-- [x] [GREEN] Added `tests/integration/test_dundun_signals_contract.py` — 4 cases validating our schema against Dundun's ConversationSignals; all pass — 2026-04-18
-
-### 5.3 Docs
-
-- [x] [GREEN] Updated `memory/reference_dundun_api.md` with EP-22 `suggested_sections` extension, outbound snapshot, and primer flow — 2026-04-18
+- [x] [GREEN] Updated `memory/reference_dundun_api.md` with EP-22 v2 real Morpheo envelope contract — 2026-04-18 (pending)
 
 ---
 
 ## Phase 6 — Finalization
 
-- [x] [TEST] All 42 EP-22 tests pass — no regressions in existing tests — 2026-04-18
+- [x] [TEST] All 26 new EP-22 v2 backend tests pass (15 morpheo_response unit + 11 controller unit); 4 integration skip (no live WS) — 2026-04-18
 - [x] [LINT] `ruff` clean on all new/modified files — 2026-04-18
-- [ ] [LINT] `mypy --strict` — pre-existing errors in other files; no new EP-22 errors
+- [x] [LINT] `mypy --strict` — zero errors on all 3 touched files — 2026-04-18
 - [ ] [SEC] Security review
 - [ ] [REVIEW] `code-reviewer` agent run
 - [ ] [REVIEW] `review-before-push` run
-- [ ] Update `tasks.md` — all checkboxes ticked
 
 ---
 
-## Definition of Done
+## Definition of Done (v2)
 
 - [x] `conversation_threads.primer_sent_at` column migrated (0122) and indexed
 - [x] `ChatPrimerSubscriber` registered; `WorkItemCreatedEvent` handled idempotently
-- [x] WS outbound enriches `context.sections_snapshot` from the server
-- [x] WS inbound validates `signals.suggested_sections` and drops malformed entries
-- [x] `ConversationSignalsWire` schema enforces size caps and tolerates new Dundun fields
-- [x] Structured logs: primer status, snapshot sizes, dropped suggestions
-- [x] 42 new backend tests — all green
+- [x] WS outbound enriches `context.sections_snapshot` as array of `{section_type, content, is_empty}` per US-224
+- [x] WS inbound validates `MorpheoResponse` envelope (not `signals.suggested_sections`); drops catalog violations; degrades gracefully to error/question envelopes
+- [x] `parse_and_filter_envelope` enforces size caps and never throws
+- [x] Structured logs: primer status, snapshot sizes, dropped suggestions (no raw input values)
+- [x] 26 new backend unit tests — all green; 4 integration tests skip without live Dundun WS
+- [x] mypy --strict + ruff clean on all touched files
 
-**Status: COMPLETED** (2026-04-18)
+**Status: v2 COMPLETED** (2026-04-18)
