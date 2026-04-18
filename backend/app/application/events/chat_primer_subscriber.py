@@ -19,6 +19,7 @@ from app.application.events.event_bus import Event
 from app.application.events.events import WorkItemCreatedEvent
 from app.application.services.conversation_service import ConversationService
 from app.domain.ports.dundun import DundunClient
+from app.domain.repositories.conversation_thread_repository import IConversationThreadRepository
 from app.domain.repositories.section_repository import ISectionRepository
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 
@@ -37,6 +38,7 @@ def _build_sections_snapshot(sections: list[Any]) -> dict[str, str]:
 def make_chat_primer_handler(
     *,
     work_item_repo: IWorkItemRepository,
+    thread_repo: IConversationThreadRepository,
     conversation_svc: ConversationService,
     dundun_client: DundunClient,
     callback_url: str,
@@ -89,7 +91,6 @@ def make_chat_primer_handler(
 
         # 3. Check idempotency guard via row-lock acquire
         #    acquire_for_primer returns None if already primed or not found
-        thread_repo = conversation_svc._thread_repo  # noqa: SLF001
         locked_thread = await thread_repo.acquire_for_primer(thread.id)
         if locked_thread is None:
             logger.debug(
@@ -162,6 +163,7 @@ def make_chat_primer_handler(
 def register_chat_primer_subscribers(
     bus: Any,
     work_item_repo: IWorkItemRepository,
+    thread_repo: IConversationThreadRepository,
     conversation_svc: ConversationService,
     dundun_client: DundunClient,
     callback_url: str,
@@ -171,6 +173,7 @@ def register_chat_primer_subscribers(
     """Register the chat primer handler on the given EventBus."""
     handler = make_chat_primer_handler(
         work_item_repo=work_item_repo,
+        thread_repo=thread_repo,
         conversation_svc=conversation_svc,
         dundun_client=dundun_client,
         callback_url=callback_url,

@@ -137,10 +137,13 @@ def register_event_subscribers(bus: EventBus) -> None:
                         t_repo = ConversationThreadRepositoryImpl(session)
                         dundun = get_dundun_client()
                         svc = ConversationService(
-                            thread_repo=t_repo, dundun_client=dundun
+                            thread_repo=t_repo,
+                            dundun_client=dundun,
+                            section_repo=s_repo,
                         )
                         handler = make_chat_primer_handler(
                             work_item_repo=w_repo,
+                            thread_repo=t_repo,
                             conversation_svc=svc,
                             dundun_client=dundun,
                             callback_url=_callback_url,

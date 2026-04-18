@@ -43,6 +43,7 @@ from app.presentation.dependencies import (
     get_thread_repo_for_ws,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
+from app.presentation.schemas.dundun_signals import validate_signals
 from app.presentation.schemas.thread_schemas import CreateThreadRequest, ThreadResponse
 
 logger = logging.getLogger(__name__)
@@ -193,15 +194,24 @@ async def conversation_ws(
         # 4. Open upstream to Dundun and pump frames bidirectionally
         dundun = get_dundun_client()
         try:
-            # Build snapshot provider for this thread — closes over session factory
-            from app.infrastructure.persistence.database import get_session_factory
-            from app.infrastructure.persistence.section_repository_impl import SectionRepositoryImpl
+            # Build snapshot provider once per WS connection (not per message).
+            # Deferred imports per MEMORY.md lru_cache trap.
+            from app.infrastructure.persistence.database import (  # noqa: PLC0415
+                get_session_factory,
+            )
+            from app.infrastructure.persistence.section_repository_impl import (  # noqa: PLC0415
+                SectionRepositoryImpl,
+            )
 
-            async def _get_snapshot(wid: UUID | None) -> dict[str, str] | None:
+            _conn_session_factory = get_session_factory()
+
+            async def _get_snapshot(
+                wid: UUID | None,
+                _factory: object = _conn_session_factory,
+            ) -> dict[str, str] | None:
                 if wid is None:
                     return None
-                factory = get_session_factory()
-                async with factory() as _s:
+                async with _factory() as _s:  # type: ignore[operator]
                     repo = SectionRepositoryImpl(_s)
                     sections = await repo.get_by_work_item(wid)
                     return {sec.section_type.value: sec.content for sec in sections}
@@ -331,8 +341,6 @@ def _enrich_inbound_frame(frame: dict[str, Any]) -> dict[str, Any]:
     suggested_sections are dropped with a warn log. All-invalid → empty list
     (field always present). Uses validate_signals from dundun_signals.
     """
-    from app.presentation.schemas.dundun_signals import validate_signals
-
     if frame.get("type") != "response":
         return frame
 

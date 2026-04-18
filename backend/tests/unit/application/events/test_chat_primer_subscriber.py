@@ -84,6 +84,7 @@ def _make_handler(
     return (
         make_chat_primer_handler(
             work_item_repo=work_item_repo,
+            thread_repo=thread_repo,
             conversation_svc=conversation_svc,
             dundun_client=dundun,
             callback_url=callback_url,
