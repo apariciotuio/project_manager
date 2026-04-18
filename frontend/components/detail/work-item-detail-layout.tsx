@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChatPanel } from '@/components/clarification/chat-panel';
 import { SplitViewContext } from './split-view-context';
+import type { PendingSuggestion } from './split-view-context';
 
-const LS_KEY = 'split-view:chat-width';
+const LS_WIDTH_KEY = 'split-view:chat-width';
 const DEFAULT_WIDTH = 40; // percent
 const MIN_WIDTH = 20; // percent
 const MAX_WIDTH = 70; // percent
@@ -17,7 +18,7 @@ function clamp(val: number, min: number, max: number): number {
 
 function readPersistedWidth(): number {
   try {
-    const stored = localStorage.getItem(LS_KEY);
+    const stored = localStorage.getItem(LS_WIDTH_KEY);
     if (stored !== null) {
       const parsed = parseFloat(stored);
       if (!isNaN(parsed)) return clamp(parsed, MIN_WIDTH, MAX_WIDTH);
@@ -26,6 +27,41 @@ function readPersistedWidth(): number {
     // SSR or storage unavailable
   }
   return DEFAULT_WIDTH;
+}
+
+function collapseKey(workItemId: string): string {
+  return `split-view:chat-collapsed:${workItemId}`;
+}
+
+function useCollapsedPersistence(workItemId: string) {
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+
+  // Read on mount (and when workItemId changes)
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(collapseKey(workItemId)) === '1');
+    } catch {
+      setCollapsed(false);
+    }
+  }, [workItemId]);
+
+  const toggle = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        if (next) {
+          localStorage.setItem(collapseKey(workItemId), '1');
+        } else {
+          localStorage.removeItem(collapseKey(workItemId));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [workItemId]);
+
+  return { collapsed, toggle };
 }
 
 export interface WorkItemDetailLayoutProps {
@@ -45,6 +81,21 @@ export function WorkItemDetailLayout({
   const [mobileTab, setMobileTab] = useState<'chat' | 'content'>('chat');
   const [chatWidthPct, setChatWidthPct] = useState<number>(DEFAULT_WIDTH);
   const [highlightedSectionId, setHighlightedSectionId] = useState<string | null>(null);
+  const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, PendingSuggestion>>({});
+
+  const { collapsed, toggle: toggleCollapsed } = useCollapsedPersistence(workItemId);
+
+  const emitSuggestion = useCallback((sug: PendingSuggestion) => {
+    setPendingSuggestions((prev) => ({ ...prev, [sug.section_type]: sug }));
+  }, []);
+
+  const clearSuggestion = useCallback((section_type: string) => {
+    setPendingSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[section_type];
+      return next;
+    });
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +116,7 @@ export function WorkItemDetailLayout({
 
   const persistWidth = useCallback((pct: number) => {
     try {
-      localStorage.setItem(LS_KEY, String(pct));
+      localStorage.setItem(LS_WIDTH_KEY, String(pct));
     } catch {
       // ignore
     }
@@ -120,7 +171,13 @@ export function WorkItemDetailLayout({
     [chatWidthPct, persistWidth],
   );
 
-  const contextValue = { highlightedSectionId, setHighlightedSectionId };
+  const contextValue = {
+    highlightedSectionId,
+    setHighlightedSectionId,
+    pendingSuggestions,
+    emitSuggestion,
+    clearSuggestion,
+  };
 
   if (isMobile) {
     return (
@@ -178,20 +235,37 @@ export function WorkItemDetailLayout({
   return (
     <SplitViewContext.Provider value={contextValue}>
       <div ref={containerRef} className="flex h-full min-h-0" style={{ minHeight: '400px' }}>
-        {/* Left: Chat panel */}
+        {/* Left: Chat panel — hidden when collapsed */}
         <div
           className="flex flex-col min-h-0 overflow-hidden"
-          style={{ width: `${chatWidthPct}%`, minWidth: '280px' }}
+          data-collapsed={collapsed ? 'true' : 'false'}
+          style={{
+            width: collapsed ? 0 : `${chatWidthPct}%`,
+            minWidth: collapsed ? 0 : '280px',
+            display: collapsed ? 'none' : undefined,
+          }}
         >
           <ChatPanel workItemId={workItemId} />
         </div>
 
-        {/* Resizable divider */}
-        <ResizableDivider
-          onMouseDown={handleDividerMouseDown}
-          onKeyDown={handleDividerKeyDown}
-          label={t('resizeAria')}
-        />
+        {/* Collapse/expand toggle button */}
+        <button
+          data-testid="collapse-chat-btn"
+          aria-label={collapsed ? t('expandChatAria') : t('collapseChatAria')}
+          onClick={toggleCollapsed}
+          className="shrink-0 flex items-center justify-center w-5 bg-muted hover:bg-muted/80 border-x border-border text-muted-foreground focus:outline-none focus-visible:ring-2"
+        >
+          {collapsed ? '›' : '‹'}
+        </button>
+
+        {/* Resizable divider — only when expanded */}
+        {!collapsed && (
+          <ResizableDivider
+            onMouseDown={handleDividerMouseDown}
+            onKeyDown={handleDividerKeyDown}
+            label={t('resizeAria')}
+          />
+        )}
 
         {/* Right: Content panel */}
         <div className="flex-1 min-h-0 overflow-auto">

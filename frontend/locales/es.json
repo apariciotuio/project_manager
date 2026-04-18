@@ -228,7 +228,9 @@
       "splitView": {
         "chatTab": "Chat",
         "contentTab": "Contenido",
-        "resizeAria": "Redimensionar paneles"
+        "resizeAria": "Redimensionar paneles",
+        "collapseChatAria": "Contraer chat",
+        "expandChatAria": "Expandir chat"
       },
       "versions": {
         "tab": "Versiones",
