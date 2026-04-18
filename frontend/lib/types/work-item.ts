@@ -162,6 +162,9 @@ export interface WorkItemFilters {
   project_id?: string;
   parent_work_item_id?: string;
   ancestor_id?: string;  // EP-14: filter to descendants of this work item
+  // EP-09 mine filter
+  mine?: boolean;
+  mine_type?: 'any' | 'owner' | 'creator' | 'reviewer';
   q?: string;
   sort?: string;
   cursor?: string;

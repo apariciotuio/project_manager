@@ -56,6 +56,9 @@ function buildQuery(filters: WorkItemFilters): string {
   if (filters.cursor !== undefined) params.set('cursor', filters.cursor);
   if (filters.limit !== undefined) params.set('limit', String(filters.limit));
   if (filters.use_puppet !== undefined) params.set('use_puppet', String(filters.use_puppet));
+  // EP-09 mine filter
+  if (filters.mine !== undefined) params.set('mine', String(filters.mine));
+  if (filters.mine_type !== undefined) params.set('mine_type', filters.mine_type);
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }

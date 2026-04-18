@@ -709,6 +709,13 @@
         "empty": "No recent activity",
         "viewItem": "View item"
       }
+    },
+    "quickFilters": {
+      "all": "All",
+      "myItems": "My items",
+      "ownedByMe": "Owned by me",
+      "createdByMe": "Created by me",
+      "pendingMyReview": "Pending my review"
     }
   },
   "modals": {

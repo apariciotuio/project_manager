@@ -12,6 +12,7 @@ import { WorkItemList } from '@/components/work-item/work-item-list';
 import { SortControl } from '@/components/work-item/sort-control';
 import { SearchBar } from '@/components/search/search-bar';
 import { SavedSearchesMenu } from '@/components/search/saved-searches-menu';
+import { QuickFilterChips } from '@/components/workspace/quick-filter-chips';
 import { ParentPicker } from '@/components/hierarchy/ParentPicker';
 import { useTranslations } from 'next-intl';
 import { PageContainer } from '@/components/layout/page-container';
@@ -164,6 +165,10 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
 
   const projectId = user?.workspace_id ?? null;
 
+  // EP-09 mine filter — managed by QuickFilterChips via URL params
+  const mineParam = searchParams.get('mine');
+  const mineTypeParam = searchParams.get('mine_type') as 'any' | 'owner' | 'creator' | 'reviewer' | null;
+
   const { items, total, isLoading, error, refetch, hasNext, isLoadingMore, loadMore } = useWorkItems(
     projectId,
     {
@@ -175,6 +180,8 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
       ...(updatedBefore ? { updated_before: updatedBefore } : {}),
       ...(ancestorId ? { ancestor_id: ancestorId } : {}),
       ...(sortOption ? { sort: sortOption } : {}),
+      ...(mineParam === 'true' ? { mine: true } : {}),
+      ...(mineParam === 'true' && mineTypeParam ? { mine_type: mineTypeParam } : {}),
       page,
       page_size: PAGE_SIZE,
     },
@@ -227,6 +234,9 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
           </button>
         </div>
       )}
+
+      {/* Quick filter chips — EP-09 mine filter */}
+      <QuickFilterChips />
 
       {/* Filter bar — hidden when search is active */}
       <div className={`flex flex-wrap items-end gap-3 ${isSearchActive ? 'opacity-50 pointer-events-none' : ''}`}>

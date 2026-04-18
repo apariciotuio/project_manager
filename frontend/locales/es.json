@@ -709,6 +709,13 @@
         "empty": "Sin actividad reciente",
         "viewItem": "Ver elemento"
       }
+    },
+    "quickFilters": {
+      "all": "Todas",
+      "myItems": "Mías",
+      "ownedByMe": "Asignadas a mí",
+      "createdByMe": "Creadas por mí",
+      "pendingMyReview": "Pendientes revisión"
     }
   },
   "modals": {
