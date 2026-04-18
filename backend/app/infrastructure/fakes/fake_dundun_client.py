@@ -94,14 +94,37 @@ class FakeDundunClient:
     def queue_ws_response_with_signals(self, signals: dict[str, Any]) -> None:
         """Seed a response frame with the given signals into chat_frames.
 
-        Integration tests use this to simulate Dundun emitting structured signals
-        (e.g. suggested_sections) so the inbound proxy validation path can be exercised.
+        Legacy helper kept for any callers still on the old contract.
+        Prefer queue_ws_response_with_envelope for the EP-22 v2 real contract.
         """
         self.chat_frames.append(
             {
                 "type": "response",
-                "response": "Assistant reply with signals.",
+                "response": "Assistant reply.",
                 "signals": signals,
+            }
+        )
+
+    def queue_ws_response_with_envelope(
+        self, envelope: dict[str, Any], conversation_ended: bool = False
+    ) -> None:
+        """Seed a response frame with a MorpheoResponse envelope as a JSON string.
+
+        This is the real Dundun-Morpheo contract (EP-22 v2): frame.response is a
+        JSON-encoded MorpheoResponse discriminated-union envelope.
+
+        Args:
+            envelope: The MorpheoResponse dict (kind ∈ question, section_suggestion,
+                      po_review, error). Will be JSON-serialized into frame.response.
+            conversation_ended: Value for signals.conversation_ended.
+        """
+        import json as _json  # noqa: PLC0415
+
+        self.chat_frames.append(
+            {
+                "type": "response",
+                "response": _json.dumps(envelope),
+                "signals": {"conversation_ended": conversation_ended},
             }
         )
 

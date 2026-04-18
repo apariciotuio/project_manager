@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +203,7 @@ class MorpheoError(BaseModel):
 # ---------------------------------------------------------------------------
 
 MorpheoResponse = Annotated[
-    Union[MorpheoQuestion, MorpheoSectionSuggestion, MorpheoPoReview, MorpheoError],
+    MorpheoQuestion | MorpheoSectionSuggestion | MorpheoPoReview | MorpheoError,
     Field(discriminator="kind"),
 ]
 
@@ -339,7 +339,7 @@ def _filter_section_suggestion(
     filtered = MorpheoSectionSuggestion(
         kind="section_suggestion",
         message=envelope.message,
-        suggested_sections=valid_sections,  # type: ignore[arg-type]
+        suggested_sections=valid_sections,
         clarifications=envelope.clarifications,
     )
     return filtered.model_dump_json(), warnings

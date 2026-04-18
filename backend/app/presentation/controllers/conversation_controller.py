@@ -8,9 +8,11 @@ Routes:
   DELETE /api/v1/threads/{thread_id}           — archive (soft-delete)
   WS     /ws/conversations/{thread_id}         — bidirectional proxy to Dundun
 
-EP-22 extensions:
+EP-22 v2 extensions:
   - fe_to_upstream: attaches server-authoritative context.sections_snapshot
-  - upstream_to_fe: validates signals.suggested_sections; drops invalid items
+    as an array of {section_type, content, is_empty} (US-224)
+  - upstream_to_fe: double-parses frame.response JSON string, validates and
+    filters MorpheoResponse discriminated-union envelope (US-223)
 """
 from __future__ import annotations
 
@@ -43,7 +45,7 @@ from app.presentation.dependencies import (
     get_thread_repo_for_ws,
 )
 from app.presentation.middleware.auth_middleware import CurrentUser
-from app.presentation.schemas.dundun_signals import validate_signals
+from app.presentation.schemas.morpheo_response import parse_and_filter_envelope
 from app.presentation.schemas.thread_schemas import CreateThreadRequest, ThreadResponse
 
 logger = logging.getLogger(__name__)
@@ -231,13 +233,12 @@ async def conversation_ws(
             async def _get_snapshot(
                 wid: UUID | None,
                 _factory: object = _conn_session_factory,
-            ) -> dict[str, str] | None:
+            ) -> list[Any] | None:
                 if wid is None:
                     return None
                 async with _factory() as _s:  # type: ignore[operator]
                     repo = SectionRepositoryImpl(_s)
-                    sections = await repo.get_by_work_item(wid)
-                    return {sec.section_type.value: sec.content for sec in sections}
+                    return await repo.get_by_work_item(wid)
 
             async with _UpstreamWS(
                 dundun, thread.dundun_conversation_id, user.id, thread.work_item_id
@@ -298,7 +299,8 @@ class _UpstreamWS:
         """Get next frame from upstream; returns None when Dundun closes."""
         if self._bridge is None:
             return None
-        return await self._bridge.recv()
+        result: dict[str, Any] | None = await self._bridge.recv()
+        return result
 
     async def send(self, frame: dict[str, Any]) -> None:
         """Forward a client frame upstream."""
@@ -310,7 +312,8 @@ class _UpstreamWS:
             logger.debug("ws_proxy: upstream send error", exc_info=True)
 
 
-_SnapshotProvider = Callable[[UUID | None], Awaitable[dict[str, str] | None]]
+_SectionList = list[Any]
+_SnapshotProvider = Callable[[UUID | None], Awaitable[_SectionList | None]]
 
 _SNAPSHOT_WARN_THRESHOLD = 50 * 1024  # 50 KB
 
@@ -325,15 +328,28 @@ async def _enrich_outbound_frame(
 
     Only type==message frames are enriched. General threads (work_item_id=None)
     are forwarded verbatim. BE overrides any FE-supplied snapshot value.
+
+    sections_snapshot shape (US-224): array of {section_type, content, is_empty}
+    where is_empty = not content.strip().
     """
     if frame.get("type") != "message":
         return frame
     if work_item_id is None:
         return frame
 
-    snapshot = await snapshot_provider(work_item_id)
-    if snapshot is None:
+    sections = await snapshot_provider(work_item_id)
+    if sections is None:
         return frame
+
+    # Build array of {section_type, content, is_empty} (US-224)
+    snapshot = [
+        {
+            "section_type": sec.section_type.value,
+            "content": sec.content,
+            "is_empty": not sec.content.strip(),
+        }
+        for sec in sections
+    ]
 
     # Log size observability (EP-22 §3.4)
     size = len(json.dumps(snapshot).encode())
@@ -358,20 +374,38 @@ async def _enrich_outbound_frame(
 
 
 def _enrich_inbound_frame(frame: dict[str, Any]) -> dict[str, Any]:
-    """Validate signals.suggested_sections on inbound response frames.
+    """Validate and filter MorpheoResponse envelope on inbound response frames.
 
-    Non-response frames are forwarded verbatim. Invalid items in
-    suggested_sections are dropped with a warn log. All-invalid → empty list
-    (field always present). Uses validate_signals from dundun_signals.
+    Spec §Inbound:
+    1. Non-response frames forwarded verbatim.
+    2. Missing/non-string response field → forwarded verbatim with warn log.
+    3. Malformed JSON → replace response with error envelope JSON-string.
+    4. Invalid shape → replace response with error envelope JSON-string.
+    5. section_suggestion → catalog filter, overflow cap; if all dropped → downgrade to question.
+    6. signals passed through verbatim.
     """
     if frame.get("type") != "response":
         return frame
 
-    raw_signals = frame.get("signals") or {}
-    validated = validate_signals(raw_signals)
+    raw_response = frame.get("response")
+    if not isinstance(raw_response, str):
+        logger.warning(
+            "inbound_frame_missing_response type=%s; forwarding verbatim",
+            type(raw_response).__name__,
+        )
+        return frame
+
+    filtered_response, warnings = parse_and_filter_envelope(raw_response)
+
+    if warnings:
+        logger.warning(
+            "morpheo_envelope_filtered warnings_count=%d summaries=%s",
+            len(warnings),
+            ";".join(warnings),
+        )
 
     enriched = dict(frame)
-    enriched["signals"] = validated
+    enriched["response"] = filtered_response
     return enriched
 
 
