@@ -95,9 +95,11 @@ Baseline checks revealed pre-existing global issues that block the push gate. No
 |---|---|---|
 | `ruff check app/ tests/` | 1242 errors | Pre-existing import/style drift across many modules — not EP-21 files |
 | `mypy --strict app/` | 124 errors in 61 files | Legacy untyped decorators, missing generics, untyped FastAPI deps — predates EP-21 |
-| `tsc --noEmit` (frontend) | ~45 errors | Pre-existing: `diff-viewer.tsx` (stale VersionDiff fields from pre-EP-07-slice), `comments-tab.tsx` Comment drift, 8 test fixtures missing `external_jira_key` (EP-09/10), `use-sse.test.ts` possibly-undefined, `attachment-drop-zone`/`bottom-sheet`/`theme-toggle` misc. Fixed inline this session: `use-versions.ts` `WorkItemVersion` missing `id`/`work_item_id` (introduced by cf06aec retyping `VersionsPage`) |
+| `tsc --noEmit` (frontend) | **0 errors** (cleared 2026-04-18 in commits 7fbbb40 → 78de699: added `external_jira_key` to 22 fixtures, `!` on mock.calls/instances access, fixed `id`/`work_item_id` on WorkItemVersion, repaired `items-load-more` + `work-item-detail-layout` fixtures, `aria-disabled` boolean, bottom-sheet focus-trap, `api-client` regex, dead `theme-toggle` chain deleted, legacy VersionDiff cast in DiffContent) |
 | `eslint` (frontend) | 7 errors + many warnings | `no-children-prop` in `task-tree*`/`tasks-tab`; `@typescript-eslint/no-explicit-any` rule-not-found config in `lib/i18n/` |
 
-**Conclusion**: EP-21's items are internally clean (code review closed, tests for F-1..F-10 pass in isolation). RBP gate cannot be globally checked until a cross-cutting cleanup epic is created to address the above. Do not consider EP-21 blocked on its own output.
+**Conclusion**: EP-21's items are internally clean (code review closed, tests for F-1..F-10 pass in isolation). tsc blocker has been cleared. The remaining three blockers (ruff, mypy, eslint) sit on other epics/infra and are not scoped to EP-21.
 
-**Recommended follow-up**: Create EP-23 (or similar) — "Backend/Frontend quality baseline restoration" — to absorb the 124 mypy + 1242 ruff + 45 tsc + eslint errors. Triage into must-fix / should-fix / deferred groups.
+**Status**: Archived 2026-04-18 with RBP gate formally deferred to repo-wide debt cleanup (the tracked follow-up epic). Epic's own deliverables are all green; the push cannot be performed until ruff + mypy + eslint are also driven down globally.
+
+**Recommended follow-up**: Create EP-23 (or similar) — "Backend quality baseline restoration" — to absorb the 124 mypy + 1242 ruff errors. FE tsc is already at 0; eslint is a small residual.

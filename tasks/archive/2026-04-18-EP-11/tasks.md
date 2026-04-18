@@ -1,8 +1,16 @@
 # EP-11 — Implementation Checklist
 
 **Epic**: EP-11 — Export & Sync with Jira
-**Date**: 2026-04-13 (updated 2026-04-18)
-**Status**: SHIPPED (single-item export) — JiraClient (PAT + retry 2x + error hierarchy) + ExportService + `POST /api/v1/work-items/{id}/export/jira` + BackgroundTasks + migration 0118 `external_jira_key` + dual-write backcompat + audit queued/completed + FE export button (14 BE + 9 unit + 9 FE tests). Pending for full sync: webhook listener, multi-workspace rules, issue-type mapping admin UI.
+**Date**: 2026-04-13 (archived 2026-04-18)
+**Status (MVP scope)**: ✅ SHIPPED — JiraClient (PAT + retry 2x + error hierarchy) + ExportService + `POST /api/v1/work-items/{id}/export/jira` + BackgroundTasks + migration 0118 `external_jira_key` + dual-write backcompat + audit queued/completed + FE export button (14 BE + 9 unit + 9 FE tests).
+
+> **⚠️ Plan below is the pre-MVP plan from 2026-04-13 and is OBSOLETE.** The decisions recorded in `decisions_pending.md` #5, #12, #26 narrowed EP-11 to single-item export only: no polling, no webhooks, no `sync_logs`, no `SyncService` / `sync_task` / Celery Beat. Do not consider the unchecked boxes below as "pending work" — they describe work that was intentionally cut.
+>
+> **What v2 (full bi-directional sync) would add** — tracked as a future epic, NOT EP-11 scope:
+> - Webhook listener for Jira → Tuio
+> - Multi-workspace mapping rules
+> - Issue-type mapping admin UI
+> - `ImportService` per `specs/import/spec.md`
 
 > **Scope (2026-04-14, decisions_pending.md #5/#12/#26)**: No polling, no webhooks, no `sync_logs`. Export is upsert-by-key (re-export UPDATEs the same Jira issue via `jira_issue_key`). Inbound is a user-initiated `POST /work-items/import-from-jira` action. `SyncService` / `sync_task` / Celery Beat below are **obsolete** — drop during TDD, replace with `ImportService` per `specs/import/spec.md`.
 
