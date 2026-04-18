@@ -210,6 +210,14 @@ describe('EP-22 Phase 7 — WorkItemDetailPage layout', () => {
     expect(clarTab).toBeUndefined();
   });
 
+  it('exposes History (timeline), Comments and Versions tabs (EP-07 Group 6.1)', async () => {
+    await renderAndWait();
+    const tabs = screen.queryAllByRole('tab').map((t) => t.textContent?.toLowerCase() ?? '');
+    expect(tabs.some((label) => label.includes('historial'))).toBe(true);
+    expect(tabs.some((label) => label.includes('comentarios'))).toBe(true);
+    expect(tabs.some((label) => label.includes('versiones'))).toBe(true);
+  });
+
   it('renders correctly for READY state', async () => {
     await renderAndWait('ready');
     expect(screen.getByTestId('chat-panel')).toBeInTheDocument();

@@ -421,8 +421,8 @@ interface TimelineFeedProps {
 
 Blocked by: Groups 3–5 complete
 
-- [ ] 6.1 [RED] Test: work item detail page has "History", "Comments", and "Timeline" tabs
-- [ ] 6.2 [GREEN] Add tabs to existing work item detail page layout
+- [x] 6.1 [RED] Test: work-item detail page exposes `historial`, `comentarios` and `versiones` tabs (added in `__tests__/app/workspace/items/detail-page.test.tsx` "exposes History/Comments/Versions tabs (EP-07 Group 6.1)") — 2026-04-18
+- [x] 6.2 [GREEN] Already wired — `frontend/app/workspace/[slug]/items/[id]/page.tsx` mounts `TimelineTab`, `CommentsTab`, `VersionHistoryPanel` under `TabsContent`. Tabs marketed as `historial` / `comentarios` / `versiones` per i18n — 2026-04-18
 - [ ] 6.3 [RED] Test: comments tab comment count badge updates on new comment without page reload (optimistic update from `useComments`)
 - [ ] 6.4 [RED] Test: version history tab shows diff between consecutive versions on initial load (latest vs previous)
 - [ ] 6.5 [GREEN] Wire initial diff selection in history page
