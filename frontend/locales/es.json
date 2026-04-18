@@ -957,7 +957,28 @@
       "empty": "Sin actividad todavía.",
       "loadMore": "Cargar más",
       "loading": "Cargando…",
-      "errorBanner": "No se pudo cargar la actividad"
+      "errorBanner": "No se pudo cargar la actividad",
+      "filters": {
+        "eventTypeLabel": "Tipo de evento",
+        "actorTypeLabel": "Autor",
+        "dateRangeLabel": "Rango de fechas",
+        "fromLabel": "Desde",
+        "toLabel": "Hasta",
+        "resetLabel": "Limpiar filtros",
+        "eventType": {
+          "state_transition": "Cambio de estado",
+          "comment_added": "Comentario añadido",
+          "comment_deleted": "Comentario eliminado",
+          "version_created": "Nueva versión",
+          "review_submitted": "Revisión enviada",
+          "export_triggered": "Exportado"
+        },
+        "actorType": {
+          "human": "Humano",
+          "ai_suggestion": "IA",
+          "system": "Sistema"
+        }
+      }
     },
     "children": {
       "subItemsTitle": "Sub-items",

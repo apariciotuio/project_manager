@@ -957,7 +957,28 @@
       "empty": "No activity yet.",
       "loadMore": "Load more",
       "loading": "Loading…",
-      "errorBanner": "Could not load activity"
+      "errorBanner": "Could not load activity",
+      "filters": {
+        "eventTypeLabel": "Event type",
+        "actorTypeLabel": "Actor",
+        "dateRangeLabel": "Date range",
+        "fromLabel": "From",
+        "toLabel": "To",
+        "resetLabel": "Reset filters",
+        "eventType": {
+          "state_transition": "State change",
+          "comment_added": "Comment added",
+          "comment_deleted": "Comment deleted",
+          "version_created": "New version",
+          "review_submitted": "Review submitted",
+          "export_triggered": "Exported"
+        },
+        "actorType": {
+          "human": "Human",
+          "ai_suggestion": "AI",
+          "system": "System"
+        }
+      }
     },
     "children": {
       "subItemsTitle": "Sub-items",
