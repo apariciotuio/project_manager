@@ -243,7 +243,9 @@
         "diffTitle": "Cambios en v{version}",
         "diffTitleGeneric": "Diferencias",
         "diffError": "No se pudo cargar las diferencias",
-        "diffEmpty": "Sin cambios entre estas versiones"
+        "diffEmpty": "Sin cambios entre estas versiones",
+        "initialDiffPreview": "Cambios de la última versión",
+        "latestVsPrevious": "última vs anterior"
       },
       "audit": {
         "tab": "Auditoría",

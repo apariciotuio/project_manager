@@ -117,6 +117,53 @@ describe('VersionHistoryPanel', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
   });
 
+  it('shows inline diff preview for latest version on initial load (EP-07 Group 6.4)', async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/work-items/wi-1/versions`, () =>
+        HttpResponse.json({
+          data: mockVersions,
+          meta: { has_more: false, next_cursor: null },
+        }),
+      ),
+      http.get(`${BASE}/api/v1/work-items/wi-1/versions/2/diff`, () =>
+        HttpResponse.json({ data: mockDiff }),
+      ),
+    );
+
+    const { VersionHistoryPanel } = await import(
+      '@/components/work-item/version-history-panel'
+    );
+    render(<VersionHistoryPanel workItemId="wi-1" />);
+
+    // Inline diff preview region is rendered before any click
+    const preview = await screen.findByRole('region', { name: /initialDiffPreview|diffTitle/i });
+    expect(preview).toBeInTheDocument();
+
+    // And the diff body (content from /versions/2/diff) is visible without opening the dialog
+    await waitFor(() => {
+      expect(preview).toHaveTextContent(/New summary/);
+    });
+  });
+
+  it('does not render inline diff preview when only one version exists (nothing to diff against)', async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/work-items/wi-single/versions`, () =>
+        HttpResponse.json({
+          data: [mockVersions[1]!],
+          meta: { has_more: false, next_cursor: null },
+        }),
+      ),
+    );
+
+    const { VersionHistoryPanel } = await import(
+      '@/components/work-item/version-history-panel'
+    );
+    render(<VersionHistoryPanel workItemId="wi-single" />);
+
+    await waitFor(() => expect(screen.getByText('Initial spec')).toBeInTheDocument());
+    expect(screen.queryByRole('region', { name: /initialDiffPreview|diffTitle/i })).not.toBeInTheDocument();
+  });
+
   it('opens diff dialog when View diff clicked', async () => {
     server.use(
       http.get(`${BASE}/api/v1/work-items/wi-1/versions`, () =>

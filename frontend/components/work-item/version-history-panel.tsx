@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useVersions } from '@/hooks/work-item/use-versions';
-import { DiffViewer } from './diff-viewer';
+import { DiffContent, DiffViewer } from './diff-viewer';
 import type { WorkItemVersionSummary } from '@/lib/api/versions';
 
 interface VersionHistoryPanelProps {
@@ -58,8 +58,32 @@ export function VersionHistoryPanel({ workItemId }: VersionHistoryPanelProps) {
     return <p className="text-sm text-muted-foreground py-4">{t('empty')}</p>;
   }
 
+  const latestVersion = versions[0];
+  const hasPrevious = versions.length >= 2;
+
   return (
     <div className="flex flex-col gap-4">
+      {latestVersion && hasPrevious && (
+        <section
+          aria-label={t('initialDiffPreview')}
+          className="rounded border border-border bg-background p-4"
+        >
+          <header className="flex items-center justify-between gap-4 pb-2">
+            <h3 className="text-sm font-semibold">
+              {t('diffTitle', { version: latestVersion.version_number })}
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {t('latestVsPrevious')}
+            </span>
+          </header>
+          <DiffContent
+            workItemId={workItemId}
+            versionNumber={latestVersion.version_number}
+            active
+          />
+        </section>
+      )}
+
       <ul className="flex flex-col divide-y" aria-label={t('list')}>
         {versions.map((v: WorkItemVersionSummary) => (
           <li key={v.id} className="py-3 flex items-start justify-between gap-4">

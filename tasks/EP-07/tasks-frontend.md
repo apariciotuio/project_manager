@@ -421,8 +421,8 @@ Blocked by: Groups 3–5 complete
 - [x] 6.1 [RED] Test: work-item detail page exposes `historial`, `comentarios` and `versiones` tabs (added in `__tests__/app/workspace/items/detail-page.test.tsx` "exposes History/Comments/Versions tabs (EP-07 Group 6.1)") — 2026-04-18
 - [x] 6.2 [GREEN] Already wired — `frontend/app/workspace/[slug]/items/[id]/page.tsx` mounts `TimelineTab`, `CommentsTab`, `VersionHistoryPanel` under `TabsContent`. Tabs marketed as `historial` / `comentarios` / `versiones` per i18n — 2026-04-18
 - [ ] 6.3 [RED] Test: comments tab comment count badge updates on new comment without page reload (optimistic update from `useComments`)
-- [ ] 6.4 [RED] Test: version history tab shows diff between consecutive versions on initial load (latest vs previous)
-- [ ] 6.5 [GREEN] Wire initial diff selection in history page
+- [x] 6.4 [RED] Test: version history tab shows diff between consecutive versions on initial load (latest vs previous) — added in `__tests__/components/work-item/version-history-panel.test.tsx`: "shows inline diff preview for latest version on initial load (EP-07 Group 6.4)" + triangulation "does not render inline diff preview when only one version exists" — 2026-04-18
+- [x] 6.5 [GREEN] Wire initial diff selection in history page — extracted `DiffContent` from `diff-viewer.tsx` (Dialog body) and rendered inline at top of `VersionHistoryPanel` as a `<section aria-label="initialDiffPreview">` when `versions.length >= 2`, pre-selecting the latest version. Dialog still works for clicking historical versions. i18n keys `initialDiffPreview` + `latestVsPrevious` added to `en.json` / `es.json` — 2026-04-18
 
 ---
 
