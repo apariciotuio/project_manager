@@ -14,7 +14,6 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../msw/server';
 import { WorkItemDetailLayout } from '@/components/detail/work-item-detail-layout';
 import { SpecificationSectionsEditor } from '@/components/work-item/specification-sections-editor';
-import { ChatPanel } from '@/components/clarification/chat-panel';
 
 vi.mock('next-intl', () => ({
   useTranslations: (ns: string) => (key: string) => `${ns}.${key}`,
