@@ -80,9 +80,11 @@ class IWorkItemRepository(ABC):
         cursor: PaginationCursor | None,
         page_size: int,
         filters: WorkItemListFilters | None = None,
+        current_user_id: UUID | None = None,
     ) -> PaginationResult:
         """Keyset-paginated list of work items for a workspace.
 
         Supports full filter/sort surface via WorkItemListFilters.
         Returns domain WorkItem objects in PaginationResult.rows.
+        current_user_id is forwarded to the query builder for visibility rules.
         """

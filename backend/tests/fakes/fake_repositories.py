@@ -276,13 +276,14 @@ class FakeWorkItemRepository(IWorkItemRepository):
             reverse=True,
         )
 
-    async def list_cursor(
+    async def list_cursor(  # type: ignore[override]
         self,
         workspace_id: UUID,
         *,
         cursor: PaginationCursor | None,
         page_size: int,
         filters: WorkItemListFilters | None = None,
+        current_user_id: UUID | None = None,
     ) -> PaginationResult:
         rows = [
             item
