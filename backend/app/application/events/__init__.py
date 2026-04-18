@@ -7,6 +7,7 @@ domain event handlers (timeline, notifications, etc.) to the shared EventBus.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from app.application.events.event_bus import EventBus
 
@@ -47,7 +48,7 @@ def register_event_subscribers(bus: EventBus) -> None:
         class _NotificationProxy:
             """Duck-typed NotificationService proxy with per-call session management."""
 
-            async def enqueue(self, **kwargs: object) -> object:
+            async def enqueue(self, **kwargs: Any) -> Any:
                 from app.application.services.team_service import NotificationService
                 from app.infrastructure.persistence.database import get_session_factory
                 from app.infrastructure.persistence.team_repository_impl import (
@@ -100,7 +101,7 @@ def register_event_subscribers(bus: EventBus) -> None:
         # Build a shared stateless proxy that creates fresh DB sessions per event.
         # Following the same pattern as _NotificationProxy above.
         class _ChatPrimerProxy:
-            async def handle(self, event: object) -> None:
+            async def handle(self, event: Any) -> None:
                 from app.application.events.chat_primer_subscriber import (
                     make_chat_primer_handler,
                 )

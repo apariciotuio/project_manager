@@ -12,10 +12,15 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService
+
+
+class _CacheLike(Protocol):
+    async def get(self, key: str) -> str | None: ...
+    async def set(self, key: str, value: str, ttl: int) -> None: ...
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +52,7 @@ class AdminSupportService:
         self,
         session: object,
         audit: AuditService,
-        cache: object | None = None,
+        cache: _CacheLike | None = None,
     ) -> None:
         self._session = session
         self._audit = audit

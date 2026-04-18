@@ -57,7 +57,7 @@ def routing_rule_to_orm(entity: RoutingRule) -> RoutingRuleORM:
     row.work_item_type = entity.work_item_type
     row.suggested_team_id = entity.suggested_team_id
     row.suggested_owner_id = entity.suggested_owner_id
-    row.suggested_validators = entity.suggested_validators
+    row.suggested_validators = entity.suggested_validators  # type: ignore[assignment]  # JSON col; ORM annotates as dict but stores list
     row.priority = entity.priority
     row.active = entity.active
     row.created_at = entity.created_at

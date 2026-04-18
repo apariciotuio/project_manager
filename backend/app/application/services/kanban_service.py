@@ -69,7 +69,8 @@ class KanbanService:
 
         cached = await self._cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            result: dict[str, Any] = json.loads(cached)
+            return result
 
         strategy = {
             "state": self._group_by_state,

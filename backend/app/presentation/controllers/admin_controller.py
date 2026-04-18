@@ -41,6 +41,7 @@ async def list_audit_events(
 ) -> dict[str, Any]:
     # workspace_id presence guaranteed by require_admin
     workspace_id = current_user.workspace_id
+    assert workspace_id is not None
 
     decoded_cursor: PaginationCursor | None = None
     if cursor is not None:
@@ -109,7 +110,7 @@ async def workspace_health(
         .group_by(WorkItemORM.state)
     )
     rows = (await session.execute(stmt)).all()
-    by_state = {row.state: row.count for row in rows}
+    by_state: dict[str, int] = {str(row[0]): int(row[1]) for row in rows}
 
     return _ok(
         {

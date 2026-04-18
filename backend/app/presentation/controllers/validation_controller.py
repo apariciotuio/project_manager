@@ -78,6 +78,7 @@ async def get_validations(
 ) -> dict[str, Any]:
     _require_workspace(current_user)
     workspace_id = current_user.workspace_id  # narrowed: _require_workspace guarantees non-None
+    assert workspace_id is not None  # type narrowing for mypy
     work_item = await work_item_repo.get(work_item_id, workspace_id)
     work_item_type = work_item.type.value if work_item is not None else ""
     result = await service.get_checklist(

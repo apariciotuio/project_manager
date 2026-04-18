@@ -123,4 +123,4 @@ class WorkItemDraftRepositoryImpl(IWorkItemDraftRepository):
         stmt = delete(WorkItemDraftORM).where(WorkItemDraftORM.expires_at < now)
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.rowcount
+        return int(getattr(result, "rowcount", 0) or 0)

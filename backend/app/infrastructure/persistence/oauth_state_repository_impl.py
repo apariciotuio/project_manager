@@ -76,4 +76,4 @@ class OAuthStateRepositoryImpl(IOAuthStateRepository):
         stmt = delete(OAuthStateORM).where(OAuthStateORM.expires_at < func.now())
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.rowcount or 0
+        return int(getattr(result, "rowcount", 0) or 0)

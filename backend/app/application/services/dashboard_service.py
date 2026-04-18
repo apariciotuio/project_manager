@@ -34,7 +34,8 @@ class DashboardService:
         cache_key = f"dashboard:workspace:{workspace_id}"
         cached = await self._cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            result: dict[str, Any] = json.loads(cached)
+            return result
 
         data = await self._compute_workspace_dashboard(workspace_id)
         await self._cache.set(cache_key, json.dumps(data, default=str), _CACHE_TTL)

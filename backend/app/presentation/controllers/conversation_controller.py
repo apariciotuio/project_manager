@@ -293,7 +293,8 @@ class _UpstreamWS:
         """Get next frame from upstream; returns None when Dundun closes."""
         if self._bridge is None:
             return None
-        return await self._bridge.recv()
+        frame: dict[str, Any] | None = await self._bridge.recv()
+        return frame
 
     async def send(self, frame: dict[str, Any]) -> None:
         """Forward a client frame upstream."""

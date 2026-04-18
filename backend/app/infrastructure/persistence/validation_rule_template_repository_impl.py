@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -53,7 +54,7 @@ class ValidationRuleTemplateRepositoryImpl(IValidationRuleTemplateRepository):
         work_item_type: str | None,
     ) -> list[ValidationRuleTemplate]:
         """Active templates matching workspace + type (including globals + type-agnostic)."""
-        conditions: list[sa.ColumnElement] = [
+        conditions: list[sa.ColumnElement[Any]] = [
             ValidationRuleTemplateORM.active.is_(True),
             sa.or_(
                 ValidationRuleTemplateORM.workspace_id == workspace_id,

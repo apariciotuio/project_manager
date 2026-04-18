@@ -37,11 +37,12 @@ class JwtAdapter:
 
     def encode(self, payload: dict[str, Any]) -> str:
         stamped = {**payload, "iss": self._issuer, "aud": self._audience}
-        return jwt.encode(stamped, self._secret, algorithm=self._algorithm)
+        token: str = jwt.encode(stamped, self._secret, algorithm=self._algorithm)
+        return token
 
     def decode(self, token: str) -> dict[str, Any]:
         try:
-            return jwt.decode(
+            decoded: dict[str, Any] = jwt.decode(
                 token,
                 self._secret,
                 algorithms=[self._algorithm],
@@ -49,6 +50,7 @@ class JwtAdapter:
                 audience=self._audience,
                 issuer=self._issuer,
             )
+            return decoded
         except ExpiredSignatureError as exc:
             raise TokenExpiredError(str(exc)) from exc
         except JWTError as exc:

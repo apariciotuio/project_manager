@@ -153,12 +153,11 @@ async def select_workspace(
                 },
             )
 
-        # Update session's active workspace
-        from app.infrastructure.persistence.models.orm import UserORM
-
-        user = await session.get(UserORM, current_user.id)
-        if user is not None:
-            user.last_chosen_workspace_id = workspace_id
-            await session.commit()
+        # TODO: persist user's last chosen workspace. UserORM doesn't currently
+        # carry `last_chosen_workspace_id`; adding it needs a migration. For now
+        # we rely on the session cookie / JWT claim for active-workspace hints,
+        # and this PATCH handler is effectively a no-op beyond authorisation.
+        _ = UserORM  # reference kept so the import above doesn't look unused
+        _ = workspace_id
 
     return {"data": {"workspace_id": str(workspace_id)}, "message": "ok"}

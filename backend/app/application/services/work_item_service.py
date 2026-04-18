@@ -20,7 +20,10 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.application.services.ready_gate_service import ReadyGateService
 from uuid import UUID
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
@@ -83,7 +86,7 @@ class WorkItemService:
         events: EventBus,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
-        ready_gate: object | None = None,
+        ready_gate: ReadyGateService | None = None,
     ) -> None:
         self._work_items = work_items
         self._users = users

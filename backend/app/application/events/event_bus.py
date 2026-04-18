@@ -10,6 +10,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class Event:
     """Marker base class for all domain events."""
 
 
-EventHandler = Callable[[Event], Awaitable[None]]
+EventHandler = Callable[[Any], Awaitable[None]]
 
 
 class EventBus:

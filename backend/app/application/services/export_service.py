@@ -15,6 +15,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
+from app.application.services.audit_service import AuditService
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.infrastructure.adapters.jira_adapter import (
     JiraAuthError,
@@ -62,7 +63,7 @@ class ExportService:
         *,
         work_item_repo: IWorkItemRepository,
         jira_client: JiraClient,
-        audit_service: object | None = None,  # AuditService — optional so tests stay simple
+        audit_service: AuditService | None = None,  # optional so tests stay simple
     ) -> None:
         self._work_item_repo = work_item_repo
         self._jira_client = jira_client

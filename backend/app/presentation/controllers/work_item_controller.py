@@ -430,9 +430,10 @@ async def list_work_items(
         lock_summary = None
         if item.id in lock_info:
             info = lock_info[item.id]
+            count_raw = info["count"]
             lock_summary = LockSummary(
                 has_locks=True,
-                count=info["count"],
+                count=int(count_raw) if isinstance(count_raw, int) else 0,
                 held_by_me=(info["held_by"] == current_user.id),
             )
         else:

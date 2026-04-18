@@ -29,6 +29,7 @@ from app.application.services.team_service import (
     NotificationService,
     StaleActionError,
 )
+from app.infrastructure.adapters.jwt_adapter import JwtAdapter
 from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
 from app.infrastructure.sse.pg_notification_bus import PgNotificationBus
 from app.infrastructure.sse.sse_handler import SseHandler
@@ -223,7 +224,7 @@ async def execute_action(
 @router.post("/notifications/stream-token")
 async def get_stream_token(
     current_user: CurrentUser = Depends(get_current_user),
-    jwt_adapter=Depends(get_jwt_adapter),
+    jwt_adapter: JwtAdapter = Depends(get_jwt_adapter),
 ) -> dict[str, Any]:
     """Issue a short-lived (5-minute) JWT for authenticating the SSE stream.
 
@@ -245,7 +246,7 @@ async def get_stream_token(
 @router.get("/notifications/stream")
 async def stream_notifications(
     token: str = Query(..., description="Short-lived stream token from /stream-token"),
-    jwt_adapter=Depends(get_jwt_adapter),
+    jwt_adapter: JwtAdapter = Depends(get_jwt_adapter),
 ) -> StreamingResponse:
     """SSE stream for real-time inbox updates.
 

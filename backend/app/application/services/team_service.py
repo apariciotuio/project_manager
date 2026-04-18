@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.domain.models.team import Notification, NotificationState, Team, TeamMembership, TeamRole
@@ -48,13 +48,23 @@ class TeamHasOpenReviewsError(ValueError):
     """Raised when a team with open pending reviews is deleted."""
 
 
+class _ReviewRepoLike(Protocol):
+    async def has_open_reviews_for_team(self, team_id: UUID) -> bool: ...
+
+
+class _QuickActionDispatcherLike(Protocol):
+    async def dispatch(
+        self, *, action_type: str, subject_id: UUID, actor_id: UUID
+    ) -> dict[str, Any]: ...
+
+
 class TeamService:
     def __init__(
         self,
         *,
         team_repo: ITeamRepository,
         membership_repo: ITeamMembershipRepository,
-        review_repo: object | None = None,
+        review_repo: _ReviewRepoLike | None = None,
         is_user_suspended: Callable[[UUID], bool] | None = None,
     ) -> None:
         self._teams = team_repo
@@ -195,7 +205,7 @@ class NotificationService:
         self,
         *,
         notification_repo: INotificationRepository,
-        quick_action_dispatcher: object | None = None,
+        quick_action_dispatcher: _QuickActionDispatcherLike | None = None,
     ) -> None:
         self._notifications = notification_repo
         self._dispatcher = quick_action_dispatcher

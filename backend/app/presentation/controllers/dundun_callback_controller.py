@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.application.services.task_service import TaskService
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -474,7 +477,7 @@ async def _handle_breakdown(
     workspace_id: UUID,
     breakdown: list[dict[str, Any]],
     request_id: str,
-    task_service: object,
+    task_service: TaskService,
     actor_id: UUID,
 ) -> dict[str, Any]:
     """Pure breakdown logic — extracted for unit testing.

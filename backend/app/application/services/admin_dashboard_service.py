@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -18,11 +18,16 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL_SECONDS = 300
 
 
+class _CacheLike(Protocol):
+    async def get(self, key: str) -> str | None: ...
+    async def set(self, key: str, value: str, ttl: int) -> None: ...
+
+
 class AdminDashboardService:
     def __init__(
         self,
         session: object,
-        cache: object | None = None,
+        cache: _CacheLike | None = None,
     ) -> None:
         self._session = session
         self._cache = cache
@@ -38,7 +43,8 @@ class AdminDashboardService:
             try:
                 cached = await self._cache.get(cache_key)
                 if cached:
-                    return json.loads(cached)
+                    result: dict[str, Any] = json.loads(cached)
+                    return result
             except Exception:
                 logger.warning("dashboard cache read failed")
 
@@ -145,12 +151,14 @@ class AdminDashboardService:
         }
 
         # --- integration_health ---
-        jira_stmt = select(
+        jira_cols: list[Any] = [
             IntegrationConfigORM.id,
-            IntegrationConfigORM.state if hasattr(IntegrationConfigORM, "state") else None,
             IntegrationConfigORM.integration_type,
             IntegrationConfigORM.is_active,
-        ).where(
+        ]
+        if hasattr(IntegrationConfigORM, "state"):
+            jira_cols.insert(1, IntegrationConfigORM.state)
+        jira_stmt = select(*jira_cols).where(
             IntegrationConfigORM.workspace_id == workspace_id,
             IntegrationConfigORM.integration_type == "jira",
         )

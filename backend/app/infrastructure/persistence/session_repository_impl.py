@@ -67,4 +67,4 @@ class SessionRepositoryImpl(ISessionRepository):
         stmt = delete(SessionORM).where(SessionORM.expires_at < datetime.now(UTC))
         result = await self._session.execute(stmt)
         await self._session.flush()
-        return result.rowcount or 0
+        return int(getattr(result, "rowcount", 0) or 0)

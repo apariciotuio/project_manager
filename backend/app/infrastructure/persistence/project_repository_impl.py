@@ -126,7 +126,7 @@ class RoutingRuleRepositoryImpl(IRoutingRuleRepository):
         else:
             existing.suggested_team_id = rule.suggested_team_id
             existing.suggested_owner_id = rule.suggested_owner_id
-            existing.suggested_validators = rule.suggested_validators
+            existing.suggested_validators = rule.suggested_validators  # type: ignore[assignment]  # JSON col; ORM annotates as dict but stores list
             existing.priority = rule.priority
             existing.active = rule.active
             existing.updated_at = rule.updated_at

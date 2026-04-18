@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncIterator
 from typing import Any, Protocol
 
 from fastapi.responses import StreamingResponse
@@ -40,7 +40,7 @@ class _PubSubProto(Protocol):
         channel: str,
         max_messages: int | None = None,
         poll_interval: float = 0.05,
-    ) -> AsyncGenerator[dict[str, Any]]: ...
+    ) -> AsyncIterator[dict[str, Any]]: ...
 
 
 class SseHandler:

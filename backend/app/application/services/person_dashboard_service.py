@@ -37,7 +37,8 @@ class PersonDashboardService:
         cache_key = f"dashboard:person:{workspace_id}:{user_id}"
         cached = await self._cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            result: dict[str, Any] = json.loads(cached)
+            return result
 
         data = await self._compute(user_id, workspace_id)
         await self._cache.set(cache_key, json.dumps(data, default=str), _CACHE_TTL)

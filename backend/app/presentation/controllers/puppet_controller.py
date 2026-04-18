@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -27,11 +28,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.settings import get_settings
 from app.infrastructure.adapters.puppet_callback_verifier import verify_puppet_signature
 from app.presentation.dependencies import (
-    CurrentUser,
     get_callback_session,
     get_current_user,
     get_scoped_session,
 )
+from app.presentation.middleware.auth_middleware import CurrentUser
 from app.presentation.schemas.puppet_schemas import (
     PuppetCallbackRequest,
     PuppetSearchRequest,
@@ -165,6 +166,7 @@ async def puppet_search(
 
     settings = get_settings()
 
+    puppet_client: Any
     if settings.puppet.use_fake:
         from tests.fakes.fake_puppet_client import FakePuppetClient
 

@@ -209,7 +209,8 @@ async def _run_sweep() -> dict[str, int]:
         result.get("archived_read", 0),
         result.get("archived_actioned", 0),
     )
-    return result
+    typed_result: dict[str, int] = {k: int(v) for k, v in result.items()}
+    return typed_result
 
 
 async def sweep_expired_notifications() -> dict[str, int]:

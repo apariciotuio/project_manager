@@ -96,7 +96,8 @@ def decode_cursor(token: str | None) -> dict[str, object] | None:
     try:
         padded = body + "=" * (-len(body) % 4)
         raw = base64.urlsafe_b64decode(padded)
-        return json.loads(raw)
+        decoded: dict[str, object] = json.loads(raw)
+        return decoded
     except Exception:
         logger.debug("cursor body decode failed")
         return None

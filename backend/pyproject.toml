@@ -58,6 +58,11 @@ strict = true
 python_version = "3.13"
 exclude = ["migrations/"]
 
+# Third-party libraries without py.typed markers or stubs.
+[[tool.mypy.overrides]]
+module = ["jose", "jose.*", "asyncpg", "asyncpg.*"]
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 110
 target-version = "py313"

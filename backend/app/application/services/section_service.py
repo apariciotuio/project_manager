@@ -26,6 +26,7 @@ from app.domain.repositories.work_item_repository import IWorkItemRepository
 
 if TYPE_CHECKING:
     from app.application.services.versioning_service import VersioningService
+    from app.domain.value_objects.work_item_type import WorkItemType
 
 _COMPLETENESS_CACHE_PREFIX = "completeness:"
 
@@ -68,7 +69,7 @@ class SectionService:
         self,
         *,
         work_item_id: UUID,
-        work_item_type,  # noqa: ANN001  — WorkItemType; type-checker sees StrEnum
+        work_item_type: WorkItemType,
         actor_id: UUID,
     ) -> list[Section]:
         """Insert default Section rows per the catalog.

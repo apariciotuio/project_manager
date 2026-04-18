@@ -73,4 +73,4 @@ def register_domain_error_handler(app: FastAPI) -> None:
     Call this AFTER ``register_error_handlers`` so the DomainError handler
     is evaluated before the generic Exception catch-all.
     """
-    app.add_exception_handler(DomainError, _domain_error_handler)
+    app.add_exception_handler(DomainError, _domain_error_handler)  # type: ignore[arg-type]  # Starlette's signature uses Exception; DomainError is a subclass

@@ -76,6 +76,15 @@ class DundunClient(Protocol):
         """
         ...
 
+    async def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
+        """GET /api/v1/conversations/{id}/history — fetch prior frames.
+
+        Returns a list of frame dicts (shape owned by Dundun, loosely typed).
+        Used by `conversation_service.get_history_preview` to show a preview
+        of the last known frame in list views.
+        """
+        ...
+
     def chat_ws(
         self,
         *,

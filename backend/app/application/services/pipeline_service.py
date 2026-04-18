@@ -14,6 +14,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import ScalarSelect
 
 from app.domain.ports.cache import ICache
 from app.infrastructure.persistence.models.orm import TeamMembershipORM, WorkItemORM
@@ -62,7 +63,8 @@ class PipelineQueryService:
 
         cached = await self._cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            result: dict[str, Any] = json.loads(cached)
+            return result
 
         data = await self._compute(
             workspace_id=workspace_id,
@@ -78,7 +80,7 @@ class PipelineQueryService:
     # Internals
     # ------------------------------------------------------------------
 
-    def _team_member_subq(self, team_id: UUID) -> object:
+    def _team_member_subq(self, team_id: UUID) -> ScalarSelect[Any]:
         """Subquery: user IDs who are active members of team_id."""
         return (
             select(TeamMembershipORM.user_id).where(

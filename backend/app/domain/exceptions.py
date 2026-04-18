@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from uuid import UUID
 
 
@@ -35,10 +36,10 @@ class MandatoryValidationsPendingError(Exception):
 class ReadyGateBlockedError(Exception):
     """Raised by WorkItemService when the ReadyGate blocks a transition to READY."""
 
-    def __init__(self, item_id: UUID, blockers: list[object]) -> None:
+    def __init__(self, item_id: UUID, blockers: Sequence[object]) -> None:
         super().__init__(f"Ready gate blocked for item {item_id}: {blockers}")
         self.item_id = item_id
-        self.blockers = blockers
+        self.blockers = list(blockers)
 
 
 class OwnerSuspendedError(Exception):

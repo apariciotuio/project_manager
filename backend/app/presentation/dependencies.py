@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -989,6 +989,7 @@ def get_search_service() -> SearchService:
     from app.application.services.search_service import SearchService
 
     settings = get_settings()
+    puppet_client: Any
     if settings.puppet.use_fake:
         from tests.fakes.fake_puppet_client import FakePuppetClient
 

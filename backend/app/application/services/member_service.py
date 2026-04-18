@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.application.services.audit_service import AuditService
 from app.domain.models.invitation import Invitation
 from app.domain.models.workspace_membership import WorkspaceMembership
@@ -127,7 +129,7 @@ class MemberService:
         invitation_repo: IInvitationRepository,
         audit: AuditService,
         # session injected for raw queries (admin list with user join)
-        session: object,
+        session: AsyncSession,
     ) -> None:
         self._membership_repo = membership_repo
         self._invitation_repo = invitation_repo
@@ -148,14 +150,14 @@ class MemberService:
         limit: int = 50,
     ) -> PaginationResult:
         from sqlalchemy import and_, or_, select
-        from sqlalchemy.ext.asyncio import AsyncSession
 
         from app.infrastructure.persistence.models.orm import (
             TeamMembershipORM,
+            TeamORM,
             UserORM,
         )
 
-        session: AsyncSession = self._session  # type: ignore[assignment]
+        session: AsyncSession = self._session
 
         stmt = (
             select(WorkspaceMembershipORM, UserORM)
@@ -167,10 +169,13 @@ class MemberService:
             stmt = stmt.where(WorkspaceMembershipORM.state == state)
 
         if teamless:
-            # Members with no active team membership
+            # Members with no active team membership in this workspace.
+            # TeamMembership doesn't carry workspace_id directly — the workspace
+            # is on Team, so join through TeamORM to filter.
             subq = (
                 select(TeamMembershipORM.user_id)
-                .where(TeamMembershipORM.workspace_id == workspace_id)
+                .join(TeamORM, TeamORM.id == TeamMembershipORM.team_id)
+                .where(TeamORM.workspace_id == workspace_id)
                 .distinct()
             )
             stmt = stmt.where(WorkspaceMembershipORM.user_id.not_in(subq))
@@ -309,9 +314,8 @@ class MemberService:
         }
 
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import AsyncSession
 
-        session: AsyncSession = self._session  # type: ignore[assignment]
+        session: AsyncSession = self._session
         row = (
             await session.execute(
                 select(WorkspaceMembershipORM).where(
@@ -416,9 +420,8 @@ class MemberService:
 
     async def _get_membership(self, workspace_id: UUID, membership_id: UUID) -> WorkspaceMembership:
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import AsyncSession
 
-        session: AsyncSession = self._session  # type: ignore[assignment]
+        session: AsyncSession = self._session
         row = (
             await session.execute(
                 select(WorkspaceMembershipORM).where(
@@ -443,11 +446,10 @@ class MemberService:
         self, workspace_id: UUID, email: str
     ) -> WorkspaceMembership | None:
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import AsyncSession
 
         from app.infrastructure.persistence.models.orm import UserORM
 
-        session: AsyncSession = self._session  # type: ignore[assignment]
+        session: AsyncSession = self._session
         stmt = (
             select(WorkspaceMembershipORM)
             .join(UserORM, WorkspaceMembershipORM.user_id == UserORM.id)
@@ -472,12 +474,11 @@ class MemberService:
         )
 
     async def _guard_last_admin(
-        self, workspace_id: UUID, membership_id: UUID, session: object
+        self, workspace_id: UUID, membership_id: UUID, session: AsyncSession
     ) -> None:
         from sqlalchemy import func, select
-        from sqlalchemy.ext.asyncio import AsyncSession
 
-        s: AsyncSession = session  # type: ignore[assignment]
+        s: AsyncSession = session
         count_stmt = select(func.count()).where(
             WorkspaceMembershipORM.workspace_id == workspace_id,
             WorkspaceMembershipORM.role.in_(["admin", "workspace_admin"]),

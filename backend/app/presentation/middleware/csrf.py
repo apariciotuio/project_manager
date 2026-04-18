@@ -17,6 +17,7 @@ from __future__ import annotations
 import hmac
 import logging
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -40,7 +41,7 @@ def _csrf_error() -> JSONResponse:
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, exempt_paths: set[str] | None = None) -> None:
+    def __init__(self, app: Any, exempt_paths: set[str] | None = None) -> None:
         super().__init__(app)
         self.exempt_paths = exempt_paths or set()
 
