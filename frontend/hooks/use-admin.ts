@@ -21,6 +21,30 @@ import type {
   TagsResponse,
   TagResponse,
   TagCreateRequest,
+  AdminMember,
+  AdminMembersResponse,
+  PatchMemberRequest,
+  InviteMemberRequest,
+  ValidationRule,
+  ValidationRulesResponse,
+  CreateValidationRuleRequest,
+  PatchValidationRuleRequest,
+  JiraConfig,
+  JiraConfigsResponse,
+  JiraConfigResponse,
+  CreateJiraConfigRequest,
+  JiraTestResult,
+  ContextPreset,
+  ContextPresetsResponse,
+  ContextPresetResponse,
+  CreateContextPresetRequest,
+  PatchContextPresetRequest,
+  AdminDashboard,
+  AdminDashboardResponse,
+  OrphanedWorkItem,
+  PendingInvitation,
+  FailedExport,
+  ConfigBlockedWorkItem,
 } from '@/lib/types/api';
 
 // ─── Members ───────────────────────────────────────────────────────────────────
@@ -291,4 +315,358 @@ export function useTags(): UseTagsResult {
   }, []);
 
   return { tags, isLoading, error, createTag, archiveTag, replaceTag };
+}
+
+// ─── Admin Members (full, with capabilities) ─────────────────────────────────
+
+interface UseAdminMembersResult {
+  members: AdminMember[];
+  pagination: { cursor: string | null; has_next: boolean } | null;
+  isLoading: boolean;
+  error: Error | null;
+  inviteMember: (req: InviteMemberRequest) => Promise<{ invitation_id: string }>;
+  updateMember: (id: string, req: PatchMemberRequest) => Promise<{ id: string; state: string }>;
+  refetch: () => void;
+}
+
+export function useAdminMembers(params?: {
+  state?: string;
+  teamless?: boolean;
+  cursor?: string;
+}): UseAdminMembersResult {
+  const [members, setMembers] = useState<AdminMember[]>([]);
+  const [pagination, setPagination] = useState<{ cursor: string | null; has_next: boolean } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const { state, teamless, cursor } = params ?? {};
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (state) qs.set('state', state);
+        if (teamless) qs.set('teamless', 'true');
+        if (cursor) qs.set('cursor', cursor);
+        const query = qs.toString();
+        const res = await apiGet<AdminMembersResponse>(
+          `/api/v1/admin/members${query ? `?${query}` : ''}`
+        );
+        if (!cancelled) {
+          setMembers(res.data.items);
+          setPagination(res.data.pagination);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state, teamless, cursor, tick]);
+
+  const inviteMember = useCallback(async (req: InviteMemberRequest) => {
+    const res = await apiPost<{ data: { invitation_id: string }; message: string }>(
+      '/api/v1/admin/members',
+      req
+    );
+    setTick((t) => t + 1);
+    return res.data;
+  }, []);
+
+  const updateMember = useCallback(async (id: string, req: PatchMemberRequest) => {
+    const res = await apiPatch<{ data: { id: string; state: string }; message: string }>(
+      `/api/v1/admin/members/${id}`,
+      req
+    );
+    setMembers((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, ...req, state: req.state ?? m.state } : m))
+    );
+    return res.data;
+  }, []);
+
+  const refetch = useCallback(() => setTick((t) => t + 1), []);
+
+  return { members, pagination, isLoading, error, inviteMember, updateMember, refetch };
+}
+
+// ─── Validation Rules ─────────────────────────────────────────────────────────
+
+interface UseValidationRulesResult {
+  rules: ValidationRule[];
+  isLoading: boolean;
+  error: Error | null;
+  createRule: (req: CreateValidationRuleRequest) => Promise<ValidationRule>;
+  updateRule: (id: string, req: PatchValidationRuleRequest) => Promise<ValidationRule>;
+  deleteRule: (id: string) => Promise<void>;
+}
+
+export function useValidationRules(params?: {
+  project_id?: string;
+  work_item_type?: string;
+}): UseValidationRulesResult {
+  const [rules, setRules] = useState<ValidationRule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { project_id, work_item_type } = params ?? {};
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (project_id) qs.set('project_id', project_id);
+        if (work_item_type) qs.set('work_item_type', work_item_type);
+        const query = qs.toString();
+        const res = await apiGet<ValidationRulesResponse>(
+          `/api/v1/admin/rules/validation${query ? `?${query}` : ''}`
+        );
+        if (!cancelled) setRules(res.data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [project_id, work_item_type]);
+
+  const createRule = useCallback(async (req: CreateValidationRuleRequest): Promise<ValidationRule> => {
+    const res = await apiPost<{ data: ValidationRule; message: string }>(
+      '/api/v1/admin/rules/validation',
+      req
+    );
+    setRules((prev) => [...prev, res.data]);
+    return res.data;
+  }, []);
+
+  const updateRule = useCallback(async (id: string, req: PatchValidationRuleRequest): Promise<ValidationRule> => {
+    const res = await apiPatch<{ data: ValidationRule; message: string }>(
+      `/api/v1/admin/rules/validation/${id}`,
+      req
+    );
+    setRules((prev) => prev.map((r) => (r.id === id ? res.data : r)));
+    return res.data;
+  }, []);
+
+  const deleteRule = useCallback(async (id: string): Promise<void> => {
+    await apiDelete(`/api/v1/admin/rules/validation/${id}`);
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  return { rules, isLoading, error, createRule, updateRule, deleteRule };
+}
+
+// ─── Jira Configs ─────────────────────────────────────────────────────────────
+
+interface UseJiraConfigsResult {
+  configs: JiraConfig[];
+  isLoading: boolean;
+  error: Error | null;
+  createConfig: (req: CreateJiraConfigRequest) => Promise<Pick<JiraConfig, 'id' | 'state'>>;
+  updateConfig: (id: string, body: { credentials?: Record<string, string>; state?: string }) => Promise<JiraConfig>;
+  testConnection: (id: string) => Promise<JiraTestResult>;
+}
+
+export function useJiraConfigs(): UseJiraConfigsResult {
+  const [configs, setConfigs] = useState<JiraConfig[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet<JiraConfigsResponse>('/api/v1/admin/integrations/jira');
+        if (!cancelled) setConfigs(res.data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const createConfig = useCallback(async (req: CreateJiraConfigRequest) => {
+    const res = await apiPost<{ data: Pick<JiraConfig, 'id' | 'state'>; message: string }>(
+      '/api/v1/admin/integrations/jira',
+      req
+    );
+    return res.data;
+  }, []);
+
+  const updateConfig = useCallback(async (id: string, body: { credentials?: Record<string, string>; state?: string }) => {
+    const res = await apiPatch<JiraConfigResponse>(`/api/v1/admin/integrations/jira/${id}`, body);
+    setConfigs((prev) => prev.map((c) => (c.id === id ? res.data : c)));
+    return res.data;
+  }, []);
+
+  const testConnection = useCallback(async (id: string): Promise<JiraTestResult> => {
+    const res = await apiPost<{ data: JiraTestResult; message: string }>(
+      `/api/v1/admin/integrations/jira/${id}/test`,
+      {}
+    );
+    return res.data;
+  }, []);
+
+  return { configs, isLoading, error, createConfig, updateConfig, testConnection };
+}
+
+// ─── Context Presets ──────────────────────────────────────────────────────────
+
+interface UseContextPresetsResult {
+  presets: ContextPreset[];
+  isLoading: boolean;
+  error: Error | null;
+  createPreset: (req: CreateContextPresetRequest) => Promise<ContextPreset>;
+  updatePreset: (id: string, req: PatchContextPresetRequest) => Promise<ContextPreset>;
+  deletePreset: (id: string) => Promise<void>;
+}
+
+export function useContextPresets(): UseContextPresetsResult {
+  const [presets, setPresets] = useState<ContextPreset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet<ContextPresetsResponse>('/api/v1/admin/context-presets');
+        if (!cancelled) setPresets(res.data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const createPreset = useCallback(async (req: CreateContextPresetRequest): Promise<ContextPreset> => {
+    const res = await apiPost<ContextPresetResponse>('/api/v1/admin/context-presets', req);
+    setPresets((prev) => [...prev, res.data]);
+    return res.data;
+  }, []);
+
+  const updatePreset = useCallback(async (id: string, req: PatchContextPresetRequest): Promise<ContextPreset> => {
+    const res = await apiPatch<ContextPresetResponse>(`/api/v1/admin/context-presets/${id}`, req);
+    setPresets((prev) => prev.map((p) => (p.id === id ? res.data : p)));
+    return res.data;
+  }, []);
+
+  const deletePreset = useCallback(async (id: string): Promise<void> => {
+    await apiDelete(`/api/v1/admin/context-presets/${id}`);
+    setPresets((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  return { presets, isLoading, error, createPreset, updatePreset, deletePreset };
+}
+
+// ─── Admin Dashboard ──────────────────────────────────────────────────────────
+
+interface UseAdminDashboardResult {
+  dashboard: AdminDashboard | null;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export function useAdminDashboard(projectId?: string): UseAdminDashboardResult {
+  const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const qs = projectId ? `?project_id=${projectId}` : '';
+        const res = await apiGet<AdminDashboardResponse>(`/api/v1/admin/dashboard${qs}`);
+        if (!cancelled) setDashboard(res.data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  return { dashboard, isLoading, error };
+}
+
+// ─── Support Tools ────────────────────────────────────────────────────────────
+
+interface UseSupportToolsResult {
+  orphanedItems: OrphanedWorkItem[];
+  pendingInvitations: PendingInvitation[];
+  failedExports: FailedExport[];
+  configBlockedItems: ConfigBlockedWorkItem[];
+  isLoading: boolean;
+  error: Error | null;
+  reassignOwner: (workItemId: string, newOwnerId: string) => Promise<void>;
+  retryAllExports: () => Promise<void>;
+}
+
+export function useSupportTools(): UseSupportToolsResult {
+  const [orphanedItems, setOrphanedItems] = useState<OrphanedWorkItem[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [failedExports, setFailedExports] = useState<FailedExport[]>([]);
+  const [configBlockedItems, setConfigBlockedItems] = useState<ConfigBlockedWorkItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const [orphaned, pending, failed, blocked] = await Promise.all([
+          apiGet<{ data: OrphanedWorkItem[] }>('/api/v1/admin/support/orphaned-work-items'),
+          apiGet<{ data: PendingInvitation[] }>('/api/v1/admin/support/pending-invitations'),
+          apiGet<{ data: FailedExport[] }>('/api/v1/admin/support/failed-exports'),
+          apiGet<{ data: ConfigBlockedWorkItem[] }>('/api/v1/admin/support/config-blocked-work-items'),
+        ]);
+        if (!cancelled) {
+          setOrphanedItems(orphaned.data);
+          setPendingInvitations(pending.data);
+          setFailedExports(failed.data);
+          setConfigBlockedItems(blocked.data);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const reassignOwner = useCallback(async (workItemId: string, newOwnerId: string): Promise<void> => {
+    await apiPost('/api/v1/admin/support/reassign-owner', {
+      work_item_id: workItemId,
+      new_owner_id: newOwnerId,
+    });
+    setOrphanedItems((prev) => prev.filter((i) => i.id !== workItemId));
+  }, []);
+
+  const retryAllExports = useCallback(async (): Promise<void> => {
+    await apiPost('/api/v1/admin/support/failed-exports/retry-all', {});
+  }, []);
+
+  return {
+    orphanedItems, pendingInvitations, failedExports, configBlockedItems,
+    isLoading, error, reassignOwner, retryAllExports,
+  };
 }

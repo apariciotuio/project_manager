@@ -273,3 +273,221 @@ export interface IntegrationConfigCreateRequest {
   project_id?: string;
   mapping?: Record<string, unknown>;
 }
+
+// ─── EP-10: Admin Members (enhanced) ─────────────────────────────────────────
+
+export type MemberState = 'active' | 'invited' | 'suspended' | 'deleted';
+
+export interface AdminMember {
+  id: string;
+  user_id: string;
+  email: string;
+  display_name: string;
+  state: MemberState;
+  role: string;
+  capabilities: string[];
+  context_labels: string[];
+  joined_at: string;
+}
+
+export interface AdminMembersResponse {
+  data: {
+    items: AdminMember[];
+    pagination: { cursor: string | null; has_next: boolean };
+  };
+  message: string;
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  context_labels?: string[];
+  team_ids?: string[];
+  initial_capabilities?: string[];
+}
+
+export interface PatchMemberRequest {
+  state?: MemberState;
+  capabilities?: string[];
+  context_labels?: string[];
+}
+
+// ─── EP-10: Validation Rules ──────────────────────────────────────────────────
+
+export type RuleEnforcement = 'recommended' | 'required' | 'blocked_override';
+
+export interface ValidationRule {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  work_item_type: string;
+  validation_type: string;
+  enforcement: RuleEnforcement;
+  active: boolean;
+  effective: boolean;
+  superseded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ValidationRulesResponse {
+  data: ValidationRule[];
+  message: string;
+}
+
+export interface CreateValidationRuleRequest {
+  project_id?: string;
+  work_item_type: string;
+  validation_type: string;
+  enforcement?: RuleEnforcement;
+}
+
+export interface PatchValidationRuleRequest {
+  enforcement?: RuleEnforcement;
+  active?: boolean;
+}
+
+// ─── EP-10: Jira Config ───────────────────────────────────────────────────────
+
+export type JiraConfigState = 'active' | 'disabled' | 'error';
+
+export interface JiraConfig {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  base_url: string;
+  auth_type: string;
+  state: JiraConfigState;
+  last_health_check_status: string | null;
+  last_health_check_at: string | null;
+  created_at: string;
+}
+
+export interface JiraConfigsResponse {
+  data: JiraConfig[];
+  message: string;
+}
+
+export interface JiraConfigResponse {
+  data: JiraConfig;
+  message: string;
+}
+
+export interface CreateJiraConfigRequest {
+  base_url: string;
+  auth_type?: string;
+  credentials: Record<string, string>;
+  project_id?: string;
+}
+
+export interface JiraProjectMapping {
+  id: string;
+  jira_config_id: string;
+  jira_project_key: string;
+  local_project_id: string | null;
+  type_mappings: Record<string, string> | null;
+}
+
+export interface JiraMappingsResponse {
+  data: JiraProjectMapping[];
+  message: string;
+}
+
+export type JiraTestResult = { status: 'ok' | 'auth_failure' | 'unreachable'; message?: string };
+
+// ─── EP-10: Context Presets ───────────────────────────────────────────────────
+
+export interface PresetSource {
+  type: string;
+  label: string;
+  url?: string;
+  description?: string;
+}
+
+export interface ContextPreset {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  sources: PresetSource[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContextPresetsResponse {
+  data: ContextPreset[];
+  message: string;
+}
+
+export interface ContextPresetResponse {
+  data: ContextPreset;
+  message: string;
+}
+
+export interface CreateContextPresetRequest {
+  name: string;
+  description?: string;
+  sources?: PresetSource[];
+}
+
+export interface PatchContextPresetRequest {
+  name?: string;
+  description?: string;
+  sources?: PresetSource[];
+}
+
+// ─── EP-10: Admin Dashboard ───────────────────────────────────────────────────
+
+export interface AdminDashboard {
+  member_count: number;
+  project_count: number;
+  integration_count: number;
+  recent_audit_count: number;
+  health: 'healthy' | 'degraded' | 'error';
+  work_items_by_state: Record<string, number>;
+  total_active: number;
+}
+
+export interface AdminDashboardResponse {
+  data: AdminDashboard;
+  message: string;
+}
+
+// ─── EP-10: Support Tools ─────────────────────────────────────────────────────
+
+export interface OrphanedWorkItem {
+  id: string;
+  title: string;
+  owner_id: string;
+  owner_display: string;
+  owner_state: MemberState;
+  created_at: string;
+}
+
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  expires_at: string;
+  expiring_soon: boolean;
+}
+
+export interface FailedExport {
+  id: string;
+  work_item_id: string;
+  work_item_title: string;
+  error_code: string;
+  attempt_count: number;
+  created_at: string;
+}
+
+export type ConfigBlockedReason = 'suspended_owner' | 'deleted_team_in_rule' | 'archived_project';
+
+export interface ConfigBlockedWorkItem {
+  id: string;
+  title: string;
+  blocking_reason: ConfigBlockedReason;
+}
+
+export interface SupportDataResponse {
+  data: unknown[];
+  message: string;
+}

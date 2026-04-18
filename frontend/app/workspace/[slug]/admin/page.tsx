@@ -39,6 +39,12 @@ import { Plus, Archive, Pencil, Trash2 } from 'lucide-react';
 import { PuppetConfigForm } from '@/components/admin/puppet-config-form';
 import { DocSourcesTable } from '@/components/admin/doc-sources-table';
 import { AddDocSourceModal } from '@/components/admin/add-doc-source-modal';
+import { MembersTabEnhanced } from '@/components/admin/members-tab-enhanced';
+import { ValidationRulesTab } from '@/components/admin/validation-rules-tab';
+import { AdminDashboardTab } from '@/components/admin/admin-dashboard-tab';
+import { JiraConfigTab } from '@/components/admin/jira-config-tab';
+import { ContextPresetsTab } from '@/components/admin/context-presets-tab';
+import { SupportTab } from '@/components/admin/support-tab';
 import { usePuppetConfig } from '@/hooks/use-puppet-config';
 import { useDocSources } from '@/hooks/use-doc-sources';
 import type { PuppetConfig } from '@/lib/types/puppet';
@@ -1009,17 +1015,22 @@ export default function AdminPage({ params: { slug: _slug } }: AdminPageProps) {
 
       <Tabs defaultValue="members">
         <TabsList className="mb-6 flex-wrap">
-          <TabsTrigger value="members">Miembros</TabsTrigger>
-          <TabsTrigger value="audit">Auditoría</TabsTrigger>
-          <TabsTrigger value="health">Salud</TabsTrigger>
-          <TabsTrigger value="projects">Proyectos</TabsTrigger>
-          <TabsTrigger value="integrations">Integraciones</TabsTrigger>
-          <TabsTrigger value="tags">Etiquetas</TabsTrigger>
+          <TabsTrigger value="members">Members</TabsTrigger>
+          <TabsTrigger value="audit">Audit</TabsTrigger>
+          <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="jira">Jira</TabsTrigger>
+          <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="puppet">Puppet</TabsTrigger>
+          <TabsTrigger value="rules">Rules</TabsTrigger>
+          <TabsTrigger value="contextPresets">Context Presets</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="members">
-          <MembersTab />
+          <MembersTabEnhanced />
         </TabsContent>
         <TabsContent value="audit">
           <AuditTab />
@@ -1027,17 +1038,32 @@ export default function AdminPage({ params: { slug: _slug } }: AdminPageProps) {
         <TabsContent value="health">
           <HealthTab />
         </TabsContent>
+        <TabsContent value="dashboard">
+          <AdminDashboardTab />
+        </TabsContent>
         <TabsContent value="projects">
           <ProjectsTab />
         </TabsContent>
         <TabsContent value="integrations">
           <IntegrationsTab />
         </TabsContent>
+        <TabsContent value="jira">
+          <JiraConfigTab />
+        </TabsContent>
         <TabsContent value="tags">
           <TagsTab />
         </TabsContent>
         <TabsContent value="puppet">
           <PuppetTab slug={_slug} />
+        </TabsContent>
+        <TabsContent value="rules">
+          <ValidationRulesTab />
+        </TabsContent>
+        <TabsContent value="contextPresets">
+          <ContextPresetsTab />
+        </TabsContent>
+        <TabsContent value="support">
+          <SupportTab />
         </TabsContent>
       </Tabs>
     </PageContainer>

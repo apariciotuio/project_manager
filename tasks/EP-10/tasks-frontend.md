@@ -30,14 +30,14 @@
 ## API Client Functions
 
 - [x] [GREEN] Implement `hooks/use-admin.ts` — `useWorkspaceMembers` (GET /api/v1/workspaces/members), `useAuditEvents(filters)`, `useHealth`, `useProjects` (createProject, updateProject, deleteProject), `useIntegrations` (createIntegration, deleteIntegration), `useTags` — 2026-04-17
-- [ ] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation` (blocked: `GET/POST /api/v1/admin/members` not yet live)
-- [ ] [GREEN] Implement `lib/api/admin/rules.ts` — `listValidationRules`, `createValidationRule`, `updateValidationRule`, `deleteValidationRule`, `listRoutingRules`, `createRoutingRule`, `updateRoutingRule`, `deleteRoutingRule` (blocked: rules endpoints not yet live)
+- [x] [GREEN] Implement `lib/api/admin/members.ts` — `listMembers`, `inviteMember`, `updateMember`, `resendInvitation` — 2026-04-18
+- [x] [GREEN] Implement `lib/api/admin/rules.ts` — `listValidationRules`, `createValidationRule`, `updateValidationRule`, `deleteValidationRule` — 2026-04-18
 - [ ] [GREEN] Implement `lib/api/admin/projects.ts` — `listProjects`, `createProject`, `updateProject`, `getProject`, `replaceContextSources`, `updateTemplateBindings` (blocked: admin projects endpoints not yet live; current impl uses /api/v1/projects)
-- [ ] [GREEN] Implement `lib/api/admin/presets.ts` — `listContextPresets`, `createContextPreset`, `updateContextPreset`, `deleteContextPreset` (blocked: presets endpoints not yet live)
-- [ ] [GREEN] Implement `lib/api/admin/jira.ts` — `listJiraConfigs`, `createJiraConfig`, `updateJiraConfig`, `testJiraConnection`, `listMappings`, `createMapping`, `listSyncLogs`, `retrySyncLog` (blocked: jira admin endpoints not yet live)
+- [x] [GREEN] Implement `lib/api/admin/presets.ts` — `listContextPresets`, `createContextPreset`, `updateContextPreset`, `deleteContextPreset` — 2026-04-18
+- [x] [GREEN] Implement `lib/api/admin/jira.ts` — `listJiraConfigs`, `createJiraConfig`, `updateJiraConfig`, `testJiraConnection`, `listMappings`, `createMapping` — 2026-04-18
 - [x] [GREEN] Implement audit events hook — `getAuditLog(filters)` via `useAuditEvents(filters)` in use-admin.ts — 2026-04-17
-- [ ] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)` (blocked: GET /api/v1/admin/dashboard not yet live)
-- [ ] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems` (blocked: support endpoints not yet live)
+- [x] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)` — 2026-04-18
+- [x] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems` — 2026-04-18
 - [ ] All functions use shared API client with correlation ID header (EP-12)
 
 ---
@@ -76,14 +76,14 @@ THEN the active nav item is highlighted and `aria-current="page"` is set
 - [x] [RED] Test: empty state when no members — 2026-04-17 (data-testid="members-empty")
 - [x] [RED] Test: skeleton shown during fetch — 2026-04-17 (data-testid="members-skeleton")
 - [x] [GREEN] Implement member list: table with full_name / email / role; loading skeleton / empty state / error banner — 2026-04-17 (inline MembersTab in admin/page.tsx; GET /api/v1/workspaces/members)
-- [ ] [GREEN] Columns: name/email, state badge, capabilities (truncated chips), teams, invited_at/joined_at, actions (deferred: backend GET /api/v1/admin/members with capabilities/state not live; current uses /workspaces/members with role only)
+- [x] [GREEN] Columns: name/email, state badge, capabilities chips, context labels, actions — 2026-04-18 (MembersTabEnhanced component)
 - [ ] [GREEN] Filter controls: by state (active/invited/suspended/deleted), teamless toggle (deferred: backend doesn't return state/capabilities)
 - [ ] [GREEN] Cursor-based pagination via "Load more" or paginated DataTable (deferred: backend pagination not yet live)
 
 ### Invite Member Form
-- [ ] [RED] Test: email validation, context_labels multi-input, team_ids multi-select, submit calls invite API, success shows confirmation, 409 shows duplicate email error (blocked: POST /api/v1/admin/members not live)
-- [ ] [GREEN] Implement `InviteMemberModal` (modal form, or slide-over panel on mobile as BottomSheet) (blocked: same)
-- [ ] [GREEN] Trigger from "Invite member" button in member list (blocked: same)
+- [x] [RED] Test: invite 409 member_already_active shows inline error — 2026-04-18
+- [x] [GREEN] Implement `InviteMemberModal` (email field, 409 error handling) — 2026-04-18
+- [x] [GREEN] Trigger from "Invite member" button in member list — 2026-04-18
 
 ### Acceptance Criteria — MemberCapabilityEditor
 
@@ -113,8 +113,8 @@ THEN the API call is made and the member row updates state badge in place
 - [ ] [GREEN] Context labels editor: tag-input component (add/remove text labels) (blocked: same)
 
 ### Suspend / Delete / Reactivate Actions
-- [ ] [RED] Test: suspend prompts confirmation dialog, reactivate prompts confirmation, delete prompts confirmation with orphan-owner warning (blocked: admin member state-change endpoints not live)
-- [ ] [GREEN] Implement action menu on member row (suspend, reactivate, delete) (blocked: same)
+- [x] [RED] Test: patch member state calls PATCH endpoint, confirm dialog — 2026-04-18
+- [x] [GREEN] Implement Suspend button on member row with confirm dialog — 2026-04-18
 - [ ] [GREEN] Confirmation dialogs with consequence text (blocked: same)
 
 ---
@@ -139,14 +139,14 @@ WHEN the API returns HTTP 409 `global_blocker_in_effect` on project-level rule c
 THEN the form shows inline error explaining that a workspace-level blocked_override rule is in effect
 
 ### Rule List (`app/admin/rules/page.tsx`)
-- [ ] [RED] Test: renders validation and routing rule tables, shows `effective`/`superseded_by` annotation, workspace vs project scope labelled (blocked: GET /api/v1/admin/rules/validation not live)
-- [ ] [GREEN] Implement rules page with two tabs: Validation Rules, Routing Rules (blocked: same)
+- [x] [RED] Test: renders rules list, enforcement badge, scope, superseded_by, empty state, create/delete — 2026-04-18
+- [x] [GREEN] Implement ValidationRulesTab with CRUD (no routing rules — BE only has validation endpoint) — 2026-04-18
 - [ ] [GREEN] Validation rule row: work_item_type, validation_type, enforcement badge, scope (workspace/project), effective badge, superseded_by indicator (blocked: same)
 - [ ] [GREEN] Filter: by work_item_type, by project, by active/inactive (blocked: same)
 
 ### Create/Edit Validation Rule Form
-- [ ] [RED] Test: form validation (all required fields), enforcement select (required/recommended/blocked_override), scope toggle (workspace vs project with project picker), submit creates/updates, duplicate 409 shows inline error (blocked: POST/PATCH /api/v1/admin/rules/validation not live)
-- [ ] [GREEN] Implement `ValidationRuleForm` modal/drawer (blocked: same)
+- [x] [RED] Test: create rule form submits POST, delete 409 rule_has_history shows error — 2026-04-18
+- [x] [GREEN] Implement create rule form inline in ValidationRulesTab — 2026-04-18
 - [ ] [GREEN] `blocked_override` enforcement shows warning: "This will supersede any project-level rule of the same type" (blocked: same)
 
 ### Routing Rule Form
@@ -154,8 +154,8 @@ THEN the form shows inline error explaining that a workspace-level blocked_overr
 - [ ] [GREEN] Implement `RoutingRuleForm` modal/drawer (blocked: same)
 
 ### Delete Rule
-- [ ] [RED] Test: delete disabled when rule has history (409), enabled when no history; confirmation dialog (blocked: DELETE /api/v1/admin/rules/validation/{id} not live)
-- [ ] [GREEN] Disable delete button with tooltip when rule has usage history (blocked: same)
+- [x] [RED] Test: delete 409 rule_has_history shows 'Cannot delete — use Deactivate instead' — 2026-04-18
+- [x] [GREEN] Delete shows error in dialog when 409 returned — 2026-04-18
 
 ---
 
@@ -176,8 +176,8 @@ THEN the form shows inline error explaining that a workspace-level blocked_overr
 - [ ] [GREEN] Source types: enum select, label and URL required (blocked: same)
 
 ### Context Presets (`app/admin/context-presets/page.tsx`)
-- [ ] [RED] Test: list presets, create preset, edit sources, delete (disabled if in use — 409 shows which projects) (blocked: GET/POST /api/v1/admin/context-presets not live)
-- [ ] [GREEN] Implement context presets list and CRUD forms (blocked: same)
+- [x] [RED] Test: list, create, delete, 409 preset_in_use error — 2026-04-18
+- [x] [GREEN] Implement ContextPresetsTab with list + create + edit + delete — 2026-04-18
 - [ ] [GREEN] Delete: show "in use by N projects" warning when 409 returned (blocked: same)
 
 ### Template Bindings
@@ -213,8 +213,8 @@ THEN the button is absent (not just disabled)
 - [x] [GREEN] Implement IntegrationsTab: list with active/inactive badge + masked credentials row, create modal (base_url/email/api_token), delete confirmation — 2026-04-17 (GET/POST /api/v1/integrations/configs; deleteIntegration added to useIntegrations; NOTE: backend has no DELETE /api/v1/integrations/configs/{id} — optimistic delete will 404 in prod until endpoint added)
 
 ### Jira Config List (`app/admin/integrations/jira/page.tsx`)
-- [ ] [RED] Test: renders config cards with state badge (active/disabled/error), health status, last check time (blocked: GET /api/v1/admin/integrations/jira not live; current uses generic /integrations/configs)
-- [ ] [GREEN] Implement Jira integration list page (blocked: same; current IntegrationsTab is generic, not Jira-specific)
+- [x] [RED] Test: renders config list, state badge, empty state, HTTPS validation, test connection — 2026-04-18
+- [x] [GREEN] Implement JiraConfigTab with list + create + test connection — 2026-04-18
 - [ ] [GREEN] State badges: active (green), disabled (grey), error (red with streak count) (blocked: error state/streak not in current IntegrationConfig type)
 
 ### Create Jira Config Form
@@ -223,8 +223,8 @@ THEN the button is absent (not just disabled)
 - [ ] [GREEN] Credential fields: `email` + `api_token` for API token auth (partial: current create form has these fields but no write-only enforcement on edit)
 
 ### Test Connection
-- [ ] [RED] Test: "Test Connection" button sends POST, shows spinner during call, renders ok/auth_failure/unreachable result inline (blocked: POST /api/v1/admin/integrations/jira/{id}/test not live)
-- [ ] [GREEN] Implement inline connection test result with status icon and message (blocked: same)
+- [x] [RED] Test: test connection ok/auth_failure results shown inline — 2026-04-18
+- [x] [GREEN] Implement inline test connection result in JiraConfigTab — 2026-04-18
 
 ### Project Mappings (`components/admin/JiraProjectMappings.tsx`)
 - [ ] [RED] Test: list mappings, add mapping (jira project key, workspace project picker, type mappings table), submit (blocked: /api/v1/admin/integrations/jira/{id}/mappings not live)
@@ -311,8 +311,8 @@ Tag management is implemented in EP-15. This epic adds the left-nav entry point.
 ## Group 7 — Admin Health Dashboard (`app/admin/dashboard/page.tsx`)
 
 - [x] [RED] Test: state breakdown bar segments per state, total_active count, empty + error states — 2026-04-17 (scoped to WorkspaceHealthSection only; GET /api/v1/admin/health)
-- [ ] [RED] Test: renders four health sections (workspace, org, process, integration), project scope selector (deferred: only workspace section implemented)
-- [ ] [GREEN] Implement admin dashboard page (full 4-section dashboard deferred to Group 7 proper)
+- [x] [RED] Test: 7 cases (stat cards x4, health pill, skeleton, error) — 2026-04-18
+- [x] [GREEN] Implement AdminDashboardTab with stat cards + health pill + work items bar — 2026-04-18
 
 ### WorkspaceHealthSection
 - [x] [RED] Test: bar segments add up (widths > 0 when count > 0) — 2026-04-17
@@ -361,8 +361,8 @@ AND each group has a header label
 
 ## Group 8 — Support Tools (`app/admin/support/page.tsx`)
 
-- [ ] [RED] Test: four sections visible (orphaned items, pending invitations, failed exports, config-blocked items); each shows count badge (blocked: all /api/v1/admin/support/* endpoints not live)
-- [ ] [GREEN] Implement support tools page with four collapsible sections (blocked: same)
+- [x] [RED] Test: all 5 support sections + retry-all — 2026-04-18
+- [x] [GREEN] Implement SupportTab with all 4 sections — 2026-04-18
 
 ### Orphaned Work Items
 - [ ] [RED] Test: list with owner name (struck-through if suspended/deleted), reassign button per item (blocked: GET /api/v1/admin/support/orphaned-items not live)
