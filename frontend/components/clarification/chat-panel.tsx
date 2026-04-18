@@ -5,7 +5,11 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useThread } from '@/hooks/work-item/use-thread';
-import type { ConversationMessage, WsFrame } from '@/lib/types/conversation';
+import { useSections } from '@/hooks/work-item/use-sections';
+import { useSplitView } from '@/components/detail/split-view-context';
+import type { ConversationMessage, WsFrame, SuggestedSection, ConversationSignals } from '@/lib/types/conversation';
+import type { PendingSuggestion, SplitViewContextValue } from '@/components/detail/split-view-context';
+import type { Section } from '@/lib/types/specification';
 import { cn } from '@/lib/utils';
 import { Send, Loader2 } from 'lucide-react';
 
@@ -16,6 +20,65 @@ function buildWsUrl(threadId: string): string {
   const host = window.location.host;
   return `${proto}//${host}/ws/conversations/${threadId}`;
 }
+
+// ---------------------------------------------------------------------------
+// Pure helpers (unit-testable in isolation)
+// ---------------------------------------------------------------------------
+
+export interface OutboundFrame {
+  type: 'message';
+  content: string;
+  context: { sections_snapshot: Record<string, string> };
+}
+
+/** Build the WS send frame from user text + current sections. */
+export function buildOutboundFrame(text: string, sections: Section[]): OutboundFrame {
+  const sections_snapshot: Record<string, string> = {};
+  for (const s of sections) {
+    sections_snapshot[s.section_type] = s.content;
+  }
+  return { type: 'message', content: text, context: { sections_snapshot } };
+}
+
+/**
+ * Route incoming suggested_sections to the SplitViewContext.
+ *
+ * - Drops entries whose section_type is not in sectionsByType.
+ * - Sets highlightedSectionId to the first resolvable section's id.
+ */
+export function routeSuggestedSections(
+  signals: ConversationSignals,
+  sectionsByType: Map<string, Section>,
+  splitView: Pick<SplitViewContextValue, 'emitSuggestion' | 'setHighlightedSectionId'>,
+): void {
+  const list = signals.suggested_sections;
+  if (!list || list.length === 0) return;
+
+  let firstSectionId: string | null = null;
+
+  for (const sug of list) {
+    const section = sectionsByType.get(sug.section_type);
+    if (!section) continue; // unknown section_type — drop silently
+
+    const pending: PendingSuggestion = {
+      section_type: sug.section_type,
+      proposed_content: sug.proposed_content,
+      rationale: sug.rationale,
+      received_at: Date.now(),
+    };
+    splitView.emitSuggestion(pending);
+
+    if (firstSectionId === null) {
+      firstSectionId = section.id;
+    }
+  }
+
+  if (firstSectionId !== null) {
+    splitView.setHighlightedSectionId(firstSectionId);
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 interface StreamingMessage {
   id: string | null;
@@ -35,12 +98,20 @@ interface ChatPanelProps {
 export function ChatPanel({ workItemId }: ChatPanelProps) {
   const t = useTranslations('workspace.itemDetail.clarification');
   const { thread, messages: initialMessages, isLoading } = useThread(workItemId);
+  const { sections } = useSections(workItemId);
+  const splitView = useSplitView();
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [streaming, setStreaming] = useState<StreamingMessage | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [errors, setErrors] = useState<ErrorBubble[]>([]);
   const [input, setInput] = useState('');
+
+  // Keep a ref to sections so handleSend always uses latest without re-subscribing WS
+  const sectionsRef = useRef<Section[]>(sections);
+  useEffect(() => {
+    sectionsRef.current = sections;
+  }, [sections]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -92,6 +163,14 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
               created_at: new Date().toISOString(),
             },
           ]);
+
+          // EP-22: route suggested_sections to SplitViewContext
+          if (frame.signals) {
+            const sectionsByType = new Map(
+              sectionsRef.current.map((s) => [s.section_type, s]),
+            );
+            routeSuggestedSections(frame.signals, sectionsByType, splitView);
+          }
         } else if (frame.type === 'error') {
           setIsStreaming(false);
           setStreaming(null);
@@ -106,6 +185,8 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
       ws.close();
       wsRef.current = null;
     };
+    // splitView intentionally excluded — we don't want WS to reconnect on every context change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread]);
 
   const handleSend = useCallback(
@@ -125,7 +206,9 @@ export function ChatPanel({ workItemId }: ChatPanelProps) {
       setInput('');
       setIsStreaming(true);
 
-      wsRef.current.send(JSON.stringify({ type: 'message', content: text }));
+      // EP-22: include sections_snapshot in outbound frame
+      const frame = buildOutboundFrame(text, sectionsRef.current);
+      wsRef.current.send(JSON.stringify(frame));
     },
     [input, isStreaming],
   );

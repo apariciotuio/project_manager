@@ -336,6 +336,14 @@
           "test_strategy": "Test Strategy",
           "rollback_plan": "Rollback Plan"
         },
+        "suggestion": {
+          "accept": "Accept",
+          "reject": "Reject",
+          "edit": "Edit",
+          "rationaleLabel": "Rationale",
+          "conflictBanner": "Dundun proposed a change while you were typing",
+          "revealProposal": "view proposal"
+        },
         "saving": "Saving…",
         "saved": "Saved",
         "saveFailed": "Save failed",

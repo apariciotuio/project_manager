@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSections } from '@/hooks/work-item/use-sections';
+import { usePendingSuggestion } from '@/hooks/use-pending-suggestion';
+import { PendingSuggestionCard } from './pending-suggestion-card';
 import type { Section, GenerationSource } from '@/lib/types/specification';
 
 interface SpecificationSectionsEditorProps {
@@ -47,6 +49,14 @@ function SectionRow({ section, canEdit, onSave }: SectionRowProps) {
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // EP-22: conflict mode detection — track focus + dirty buffer
+  const [isFocused, setIsFocused] = useState(false);
+  const isDirty = value !== section.content;
+  const isConflict = isFocused || isDirty;
+
+  // EP-22: pending suggestion subscription
+  const { suggestion, clear: clearSuggestion } = usePendingSuggestion(section.section_type);
+
   const triggerSave = useCallback(
     async (content: string) => {
       if (content === section.content) return;
@@ -70,12 +80,35 @@ function SectionRow({ section, canEdit, onSave }: SectionRowProps) {
   }
 
   function handleBlur() {
+    setIsFocused(false);
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
     void triggerSave(value);
   }
+
+  function handleFocus() {
+    setIsFocused(true);
+  }
+
+  // EP-22 suggestion handlers
+  const handleAccept = useCallback(async () => {
+    if (!suggestion) return;
+    await onSave(section.id, suggestion.proposed_content);
+    clearSuggestion();
+  }, [suggestion, onSave, section.id, clearSuggestion]);
+
+  const handleReject = useCallback(() => {
+    clearSuggestion();
+  }, [clearSuggestion]);
+
+  const handleEdit = useCallback(() => {
+    if (!suggestion) return;
+    setValue(suggestion.proposed_content);
+    clearSuggestion();
+    // The debounce-on-blur path will persist the edit
+  }, [suggestion, clearSuggestion]);
 
   const label = getSectionLabel(t, section.section_type);
 
@@ -98,11 +131,26 @@ function SectionRow({ section, canEdit, onSave }: SectionRowProps) {
           <span className="text-xs text-muted-foreground">v{section.version}</span>
         </div>
       </div>
+
+      {/* EP-22: pending suggestion card — only shown when canEdit */}
+      {canEdit && suggestion && (
+        <PendingSuggestionCard
+          currentContent={value}
+          proposedContent={suggestion.proposed_content}
+          rationale={suggestion.rationale}
+          onAccept={handleAccept}
+          onReject={handleReject}
+          onEdit={handleEdit}
+          conflictMode={isConflict}
+        />
+      )}
+
       <Textarea
         id={`section-${section.id}`}
         value={value}
         onChange={handleChange}
         onBlur={handleBlur}
+        onFocus={handleFocus}
         disabled={!canEdit || saving}
         placeholder={t('placeholder')}
         rows={4}

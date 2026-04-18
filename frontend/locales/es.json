@@ -336,6 +336,14 @@
           "test_strategy": "Estrategia de prueba",
           "rollback_plan": "Plan de rollback"
         },
+        "suggestion": {
+          "accept": "Aceptar",
+          "reject": "Rechazar",
+          "edit": "Editar",
+          "rationaleLabel": "Justificación",
+          "conflictBanner": "Dundun propuso un cambio mientras escribías",
+          "revealProposal": "ver propuesta"
+        },
         "saving": "Guardando…",
         "saved": "Guardado",
         "saveFailed": "Error al guardar",
