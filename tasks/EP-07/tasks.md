@@ -1,17 +1,22 @@
 # EP-07 — Implementation Checklist
 
-**Status: IN FLIGHT — Backend ~80% / Frontend ~63%**
+**Status: IN FLIGHT — Backend ~80% / Frontend ~80%**
 **Last updated: 2026-04-18**
 
 > The detailed checklist below is the original 2026-04-13 plan and is OUT OF DATE. Authoritative progress now lives in:
 > - `tasks/EP-07/tasks-backend.md` — backend progress + DoD
 > - `tasks/EP-07/tasks-frontend.md` — frontend Groups 1–7 progress
 >
-> 2026-04-18 session deltas (FE):
-> - Groups 1, 2, 3a, 3b shipped 2026-04-18 (cf06aec — diff viewer + comment hooks)
-> - Group 5 (Timeline filters + tab) shipped 2026-04-18 (commits 386965e + eeb2d21) — TimelineFilters component + useTimeline filter forwarding + i18n + filtered-empty state. 22 tests across 3 files green.
-> - Group 6.1 + 6.2 shipped 2026-04-18 (d242163) — explicit tab-presence assertion; TabsContent already mounted in detail page.
-> - Remaining FE: Group 4 (Comments UI — depends on hooks already shipped, blocked by EP-16 v2 for upload), Group 6.3 (comment count badge optimistic), Group 6.4+6.5 (initial diff selection in history page), Group 7 (skeletons + mobile + error state).
+> 2026-04-18 session deltas (FE) — 12 commits in one pass:
+> - Groups 1, 2, 3a, 3b shipped (cf06aec — diff viewer + comment hooks)
+> - Group 5 (Timeline filters + tab) shipped (386965e + eeb2d21) — TimelineFilters component + useTimeline filter forwarding + i18n + filtered-empty state.
+> - Group 6.1 + 6.2 shipped (d242163) — explicit tab-presence assertion.
+> - Group 4 partially covered (5691218 + 605da0b) — CommentsTab schema-aligned with new Comment shape (actor_type/actor_id, anchor_status, replies); 4.1/4.2/4.3/4.4/4.5/4.6 marked [~] as functionally covered by inline CommentItem/CommentForm/CommentsTab; 4.3a DEFERRED (blocked on EP-16 v2).
+> - Group 6.4 + 6.5 shipped (ecf66a2) — inline DiffContent preview at top of VersionHistoryPanel showing latest-vs-previous diff on initial load.
+> - Group 7.1/7.2/7.3/7.4/7.6/7.7 shipped (4cc87aa) — VersionDiffViewerSkeleton + CommentFeedSkeleton extracted into `skeletons.tsx`; useDiffVsPrevious exposes `refetch`; DiffContent error state now has retry button. 7.5 (mobile) DEFERRED.
+> - Group 6.3 shipped (8923681) — CommentsProvider + CommentCountBadge with shared useComments instance; optimistic update flows from form submission to trigger badge without page reload.
+>
+> Remaining FE: 4.7/4.8/4.9/4.10 — AnchoredCommentMarker + AnchoredCommentPopover + integration into SpecificationSectionsEditor (EP-04 component). That's a scope-heavy new feature slice, not a closure; should be re-planned.
 
 ---
 
