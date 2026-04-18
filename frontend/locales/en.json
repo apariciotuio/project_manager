@@ -244,6 +244,7 @@
         "diffTitleGeneric": "Diff",
         "diffError": "Could not load diff",
         "diffEmpty": "No changes between these versions",
+        "diffRetry": "Retry",
         "initialDiffPreview": "Latest version changes",
         "latestVsPrevious": "latest vs previous"
       },

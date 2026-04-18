@@ -64,6 +64,7 @@ interface UseDiffResult {
   diff: VersionDiff | null;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 export function useDiffVsPrevious(
@@ -73,6 +74,7 @@ export function useDiffVsPrevious(
   const [diff, setDiff] = useState<VersionDiff | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (versionNumber === null) return;
@@ -82,9 +84,13 @@ export function useDiffVsPrevious(
       .then((d) => setDiff(d))
       .catch((err) => setError(err instanceof Error ? err : new Error('Failed to load diff')))
       .finally(() => setIsLoading(false));
-  }, [workItemId, versionNumber]);
+  }, [workItemId, versionNumber, retryNonce]);
 
-  return { diff, isLoading, error };
+  const refetch = useCallback(() => {
+    setRetryNonce((n) => n + 1);
+  }, []);
+
+  return { diff, isLoading, error, refetch };
 }
 
 export function useVersionDiff(

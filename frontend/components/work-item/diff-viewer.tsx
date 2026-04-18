@@ -7,9 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { useDiffVsPrevious } from '@/hooks/work-item/use-versions';
 import { cn } from '@/lib/utils';
+import { VersionDiffViewerSkeleton } from './skeletons';
 
 interface DiffViewerProps {
   workItemId: string;
@@ -52,7 +53,7 @@ export interface DiffContentProps {
 
 export function DiffContent({ workItemId, versionNumber, active }: DiffContentProps) {
   const t = useTranslations('workspace.itemDetail.versions');
-  const { diff, isLoading, error } = useDiffVsPrevious(
+  const { diff, isLoading, error, refetch } = useDiffVsPrevious(
     workItemId,
     active ? versionNumber : null,
   );
@@ -66,20 +67,22 @@ export function DiffContent({ workItemId, versionNumber, active }: DiffContentPr
       diff.task_nodes_changed);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-3 py-4">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-      </div>
-    );
+    return <VersionDiffViewerSkeleton />;
   }
 
   if (error) {
     return (
-      <p role="alert" className="text-sm text-destructive py-4">
-        {t('diffError')}
-      </p>
+      <div role="alert" className="flex flex-col items-start gap-2 py-4">
+        <p className="text-sm text-destructive">{t('diffError')}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => refetch()}
+          aria-label={t('diffRetry')}
+        >
+          {t('diffRetry')}
+        </Button>
+      </div>
     );
   }
 

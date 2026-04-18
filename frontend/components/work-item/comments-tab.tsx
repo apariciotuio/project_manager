@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CommentFeedSkeleton } from './skeletons';
 import { OwnerAvatar } from '@/components/domain/owner-avatar';
 import { RelativeTime } from '@/components/domain/relative-time';
 import { useComments } from '@/hooks/work-item/use-comments';
@@ -147,15 +147,7 @@ export function CommentsTab({ workItemId }: CommentsTabProps) {
   return (
     <div className="flex flex-col gap-6">
       {isLoading ? (
-        Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex gap-3">
-            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-            <div className="flex-1 flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          </div>
-        ))
+        <CommentFeedSkeleton />
       ) : (
         <>
           <div className="flex flex-col gap-5">

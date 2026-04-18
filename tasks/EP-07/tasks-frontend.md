@@ -428,10 +428,10 @@ Blocked by: Groups 3–5 complete
 
 ## Group 7 — States & Responsive
 
-- [ ] 7.1 [RED] Test: diff viewer loading skeleton renders section placeholders
-- [ ] 7.2 [GREEN] Implement `VersionDiffViewerSkeleton`
-- [ ] 7.3 [RED] Test: comment feed loading skeleton renders 3 comment placeholders
-- [ ] 7.4 [GREEN] Implement `CommentFeedSkeleton`
-- [ ] 7.5 Mobile: version history full-screen — version list collapses to dropdown; diff viewer scrollable; anchored comment popover renders as bottom sheet
-- [ ] 7.6 [RED] Test: error state on diff fetch shows retry button with error message
-- [ ] 7.7 [GREEN] Implement error state in `VersionDiffViewer`
+- [x] 7.1 [RED] Test: diff viewer loading skeleton renders section placeholders — added in `__tests__/components/work-item/skeletons.test.tsx` (asserts `.animate-pulse` placeholder count >= 3) — 2026-04-18
+- [x] 7.2 [GREEN] Implement `VersionDiffViewerSkeleton` — new file `frontend/components/work-item/skeletons.tsx`; `DiffContent` now renders `<VersionDiffViewerSkeleton />` during loading (previously raw Skeleton rows) — 2026-04-18
+- [x] 7.3 [RED] Test: comment feed loading skeleton renders 3 comment placeholders — added in same test file; asserts `[data-testid="comment-skeleton-item"]` count === 3 — 2026-04-18
+- [x] 7.4 [GREEN] Implement `CommentFeedSkeleton` — in `skeletons.tsx`; `CommentsTab` now uses it in the loading branch (replaces inline 3-row skeleton) — 2026-04-18
+- [ ] 7.5 Mobile: version history full-screen — version list collapses to dropdown; diff viewer scrollable; anchored comment popover renders as bottom sheet — DEFERRED: requires browser-level testing + responsive CSS work; not scoped for this slice
+- [x] 7.6 [RED] Test: error state on diff fetch shows retry button with error message — added in `skeletons.test.tsx` "EP-07 Group 7.6 — DiffContent error retry"; MSW-backed handler returns 500 on first call, 200 on retry; asserts click on retry triggers refetch — 2026-04-18
+- [x] 7.7 [GREEN] Implement error state in `VersionDiffViewer` — extended `useDiffVsPrevious` with `refetch` (retryNonce in dep array); `DiffContent` error branch now renders alert + retry `<Button>` wired to `refetch`. i18n key `diffRetry` added to `en.json` / `es.json` — 2026-04-18
