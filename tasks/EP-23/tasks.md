@@ -20,10 +20,10 @@ Batch epic. Items appended as manual QA surfaces more feedback. Check proposal.m
 
 ### F-1 — Auth/session gate
 
-- [ ] Audit: list every route that currently renders without auth (workspace selector first)
-- [ ] Middleware redirect for unauthenticated `/workspace/*` requests
-- [ ] Layout guard: no workspace UI renders before `GET /auth/me` resolves
-- [ ] Tests: middleware redirect + layout hydration
+- [x] Audit: list every route that currently renders without auth — `/workspace/select` and all `/workspace/[slug]/*` were gated by cookie presence but not JWT expiry (2026-04-18)
+- [x] Middleware: add `jwtExp()` decode; redirect expired tokens with `reauth=true`; redirect opaque/non-JWT tokens as unauthenticated — `frontend/middleware.ts` (2026-04-18)
+- [x] Layout guard: `WorkspaceLayout` returns `null` while `isLoading` or `!isAuthenticated` — prevents workspace UI flash on client-side navigation — `frontend/app/workspace/[slug]/layout.tsx` (2026-04-18)
+- [x] Tests: 10 middleware tests (unauthenticated, valid JWT pass-through, expired JWT reauth redirect, opaque token, workspace picker gate, returnTo encoding) + 2 layout guard tests (loading suppresses render, unauthenticated suppresses render) — all green (2026-04-18)
 - [ ] Manual QA: hit `/workspace/<slug>` while logged out — must land on `/login` with zero flash
 
 ### F-2 — Dashboard lean

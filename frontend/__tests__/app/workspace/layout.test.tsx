@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WorkspaceLayout from '@/app/workspace/[slug]/layout';
@@ -16,21 +16,11 @@ vi.mock('next-intl', () => ({
 
 const mockLogout = vi.fn();
 
+// Mutable auth state — tests override per describe block via beforeEach.
+const mockUseAuth = vi.fn();
+
 vi.mock('@/app/providers/auth-provider', () => ({
-  useAuth: () => ({
-    user: {
-      id: '1',
-      email: 'a@b.com',
-      full_name: 'Ada Lovelace',
-      avatar_url: null,
-      workspace_id: 'ws-1',
-      workspace_slug: 'acme',
-      is_superadmin: false,
-    },
-    isLoading: false,
-    isAuthenticated: true,
-    logout: mockLogout,
-  }),
+  useAuth: () => mockUseAuth(),
 }));
 
 // Stub notification hook so layout.test doesn't need MSW
@@ -38,7 +28,60 @@ vi.mock('@/hooks/use-notifications', () => ({
   useNotifications: () => ({ unreadCount: 0, isLoading: false }),
 }));
 
+const AUTHENTICATED_STATE = {
+  user: {
+    id: '1',
+    email: 'a@b.com',
+    full_name: 'Ada Lovelace',
+    avatar_url: null,
+    workspace_id: 'ws-1',
+    workspace_slug: 'acme',
+    is_superadmin: false,
+  },
+  isLoading: false,
+  isAuthenticated: true,
+  logout: mockLogout,
+};
+
+// F-1: Auth guard — layout must not render workspace UI when auth is loading or unauthenticated.
+describe('WorkspaceLayout — auth guard (F-1)', () => {
+  it('renders nothing while auth is loading (no workspace UI flash)', () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+      logout: vi.fn(),
+    });
+    const { container } = render(
+      <WorkspaceLayout params={{ slug: 'acme' }}>
+        <div data-testid="workspace-content">workspace</div>
+      </WorkspaceLayout>,
+    );
+    expect(screen.queryByTestId('workspace-content')).not.toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('does not render workspace UI for unauthenticated user', () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+      logout: vi.fn(),
+    });
+    render(
+      <WorkspaceLayout params={{ slug: 'acme' }}>
+        <div data-testid="workspace-content">workspace</div>
+      </WorkspaceLayout>,
+    );
+    expect(screen.queryByTestId('workspace-content')).not.toBeInTheDocument();
+  });
+});
+
 describe('WorkspaceLayout', () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue(AUTHENTICATED_STATE);
+  });
+
   it('renders nav items for Items, Inbox, Teams, Admin', () => {
     render(
       <WorkspaceLayout params={{ slug: 'acme' }}>

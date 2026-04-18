@@ -7,6 +7,31 @@ const PUBLIC_PREFIXES = ['/_next/'];
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
+/**
+ * Decode a JWT payload without verifying the signature.
+ * Returns the `exp` field (seconds since epoch) or null if the token is not
+ * a well-formed JWT or has no `exp` claim.
+ *
+ * We only need `exp` — signature verification is the backend's job.
+ * Middleware runs at the edge (Node.js-compatible runtime), so we use
+ * `atob` (available in the Next.js edge runtime and in jsdom for tests).
+ */
+function jwtExp(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const payloadPart = parts[1];
+  if (!payloadPart) return null;
+  try {
+    const padded = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(padded);
+    const payload = JSON.parse(decoded) as Record<string, unknown>;
+    if (typeof payload['exp'] === 'number') return payload['exp'];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // connect-src covers fetch, EventSource (SSE), and WebSocket.
 // In prod, 'self' covers same-origin SSE to /api/v1/jobs/{id}/progress and other streaming endpoints.
 // In dev, ws: allows HMR WebSocket.
@@ -47,11 +72,37 @@ export function middleware(request: NextRequest): NextResponse {
     return applySecurityHeaders(NextResponse.next());
   }
 
-  const hasToken = request.cookies.has('access_token');
-  if (!hasToken) {
+  const tokenValue = request.cookies.get('access_token')?.value;
+
+  if (!tokenValue) {
     const returnTo = encodeURIComponent(`${pathname}${search}`);
     const redirect = NextResponse.redirect(
       new URL(`/login?returnTo=${returnTo}`, request.url),
+    );
+    return applySecurityHeaders(redirect);
+  }
+
+  // Check JWT expiry. Three cases:
+  //   1. Decodable JWT with exp in the future → pass through.
+  //   2. Decodable JWT with exp in the past → redirect with reauth=true (user had a session, it expired).
+  //   3. Not a valid JWT (opaque token, malformed) → redirect as unauthenticated (no reauth flag).
+  //      The backend will issue a proper JWT on the next OAuth round-trip.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const exp = jwtExp(tokenValue);
+
+  if (exp === null) {
+    // Not a JWT we can inspect — treat as unauthenticated.
+    const returnTo = encodeURIComponent(`${pathname}${search}`);
+    const redirect = NextResponse.redirect(
+      new URL(`/login?returnTo=${returnTo}`, request.url),
+    );
+    return applySecurityHeaders(redirect);
+  }
+
+  if (exp < nowSec) {
+    const returnTo = encodeURIComponent(`${pathname}${search}`);
+    const redirect = NextResponse.redirect(
+      new URL(`/login?reauth=true&returnTo=${returnTo}`, request.url),
     );
     return applySecurityHeaders(redirect);
   }
