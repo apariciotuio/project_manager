@@ -78,3 +78,11 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 - `frontend/components/workspace/workspace-sidebar.tsx:91-98` — theme toolbar crammed above user footer (F-7)
 - `frontend/app/workspace/[slug]/admin/page.tsx:538-544` — tag color is a plain hex text input (F-9)
 - `backend/app/presentation/controllers/tag_controller.py:136` — `PATCH /tags/{id}` exists; frontend only uses it for archive (F-10)
+
+## Review Before Push
+
+- [ ] All tests pass (`pytest` backend + `vitest` frontend)
+- [ ] Lint clean (`ruff check` backend; `eslint` frontend)
+- [ ] Type check clean (`mypy --strict` backend; `tsc --noEmit` frontend)
+- [ ] Security review done — no hardcoded secrets, auth/authz verified on new endpoints, inputs validated
+- [ ] Code review done (3 MF + 7 SF + 5 N all closed per above)

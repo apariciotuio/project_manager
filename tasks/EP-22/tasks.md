@@ -56,24 +56,48 @@
 
 ## Progress — Implementation
 
-- [ ] Backend Phase 1 (migration + signals schema)
-- [ ] Backend Phase 2 (primer subscriber)
-- [ ] Backend Phase 3 (WS outbound snapshot)
-- [ ] Backend Phase 4 (WS inbound signals validation)
-- [ ] Backend Phase 5 (contract test + docs)
-- [ ] Backend Phase 6 (finalization)
-- [ ] Frontend Phase 1 (SplitViewContext)
-- [ ] Frontend Phase 2 (ChatPanel inbound interception)
-- [ ] Frontend Phase 3 (ChatPanel outbound snapshot)
-- [ ] Frontend Phase 4 (PendingSuggestionCard)
-- [ ] Frontend Phase 5 (Section editor consumption)
-- [ ] Frontend Phase 6 (collapse persistence)
-- [ ] Frontend Phase 7 (page wiring + Clarificación removal)
-- [ ] Frontend Phase 8 (primer UX verification)
-- [ ] Frontend Phase 9 (integration + polish)
-- [ ] Frontend Phase 10 (finalization)
-- [ ] Dundun PR #1 (schema)
-- [ ] Dundun PR #2 (prompt)
+- [x] Backend Phase 1 (migration + signals schema) — mig 0122 + `dundun_signals.py` (2026-04-18)
+- [x] Backend Phase 2 (primer subscriber) — `chat_primer_subscriber.py` + registered (2026-04-18)
+- [x] Backend Phase 3 (WS outbound snapshot) — `_enrich_outbound_frame` in conversation_controller (2026-04-18)
+- [x] Backend Phase 4 (WS inbound signals validation) — `_enrich_inbound_frame` + validator (2026-04-18)
+- [x] Backend Phase 5 (contract test + docs) — 42 BE tests green (2026-04-18)
+- [ ] Backend Phase 6 (finalization) — pending: security-scan, code-reviewer, review-before-push
+- [x] Frontend Phase 1 (SplitViewContext) — `split-view-context.tsx` with pendingSuggestions (2026-04-18)
+- [x] Frontend Phase 2 (ChatPanel inbound interception) — routeSuggestedSections (2026-04-18)
+- [x] Frontend Phase 3 (ChatPanel outbound snapshot) — sections_snapshot attached (2026-04-18)
+- [x] Frontend Phase 4 (PendingSuggestionCard) — Accept/Reject/Edit (2026-04-18)
+- [x] Frontend Phase 5 (Section editor consumption) — conflict mode + revelation (2026-04-18)
+- [x] Frontend Phase 6 (collapse persistence) — localStorage per work-item (2026-04-18)
+- [x] Frontend Phase 7 (page wiring + Clarificación removal) — detail-page tests assert tab absent (2026-04-18)
+- [x] Frontend Phase 8 (primer UX verification) — 2026-04-18
+- [x] Frontend Phase 9 (integration + polish) — 50 FE tests green (2026-04-18)
+- [ ] Frontend Phase 10 (finalization) — pending: review-before-push
+- [ ] Dundun PR #1 (schema) — external, tracked cross-repo
+- [ ] Dundun PR #2 (prompt) — external, tracked cross-repo (depends on PR #1)
+
+**Status — Backend Phases 1–5: COMPLETED** (2026-04-18)
+**Status — Frontend Phases 1–9: COMPLETED** (2026-04-18)
+**Pending gates**: BE security-scan + code-reviewer + review-before-push; FE review-before-push.
+**Pending cross-repo**: Dundun PR #1 (schema) and PR #2 (prompt). FE degrades gracefully to no-op while pending.
+
+## Spec Drift Resolved (2026-04-18)
+
+- `dundun-specifications.md` §2.2 + §9 updated: `chat_ws` is live transport for BE→Dundun hop (no longer "speculative / out of scope").
+- `backend/app/domain/ports/dundun.py` docstring for `chat_ws`: removed `SHOULD raise NotImplementedError` note.
+
+## Security Fixes Applied (2026-04-18)
+
+Security-scan + code-reviewer gates produced 1 Must Fix + 4 Should Fix. All closed:
+
+- [x] SEC-CONF-001 — `DUNDUN_SERVICE_KEY` / `PUPPET_SERVICE_KEY` required in prod (startup validator). +4 tests in `test_settings_production_required.py`.
+- [x] SEC-AUTH-001 (WS) — WS proxy verifies `thread.workspace_id == user.workspace_id` alongside user_id check. +1 integration test in `test_conversation_ws.py` asserts close code 4403.
+- [x] SEC-AUTH-001 (REST, Must Fix) — `ConversationService.get_thread_for_user` extended with `workspace_id` param; REST endpoints pass `current_user.workspace_id` via new `_require_workspace` guard (401 if missing). Authz moved from controller to service layer. +4 unit tests in `test_conversation_service.py`, +1 integration test in `test_conversation_controller.py` (GET + history cross-workspace → 404; DELETE skipped due to pre-existing CSRF/rate-limit test-infra issue — covered at service unit level).
+- [x] SEC-INVAL-001 — `suggested_sections` list capped at 25 items; overflow dropped with warn log. +3 tests.
+- [x] SEC-LOG-001 — `_safe_error_summary` replaces raw `str(exc)` in `validate_signals` logs — only field path + error type, never raw input. +2 tests (leak canary + format).
+
+## Known Pre-existing Test-Infra Debt (not introduced by EP-22)
+
+- `tests/integration/test_conversation_controller.py`: 12 tests fail on `main` due to PgRateLimiter (10 req/min/IP, EP-12) exhausting budget across tests that POST `/api/v1/threads`. All tests pass in isolation. Out of EP-22 scope — tracked as separate test-infra cleanup.
 
 ## Dependencies
 
