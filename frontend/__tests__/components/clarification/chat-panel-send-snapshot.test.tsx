@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../msw/server';
-import { ChatPanel } from '@/components/clarification/chat-panel';
-import { buildOutboundFrame } from '@/components/clarification/chat-panel';
+import { ChatPanel, buildOutboundFrame } from '@/components/clarification/chat-panel';
 import type { Section } from '@/lib/types/specification';
 
 vi.mock('next-intl', () => ({
