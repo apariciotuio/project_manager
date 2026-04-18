@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`RollupBadge > snapshot: 0% neutral 1`] = `
+<span
+  aria-label="0% complete"
+  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium rollup-neutral bg-muted text-muted-foreground"
+  role="img"
+>
+  0
+  %
+</span>
+`;
+
+exports[`RollupBadge > snapshot: 50% in-progress 1`] = `
+<span
+  aria-label="50% complete"
+  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium rollup-in-progress bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+  role="img"
+>
+  50
+  %
+</span>
+`;
+
+exports[`RollupBadge > snapshot: 100% complete 1`] = `
+<span
+  aria-label="100% complete"
+  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium rollup-complete bg-state-ready text-state-ready-foreground"
+  role="img"
+>
+  100
+  %
+</span>
+`;
