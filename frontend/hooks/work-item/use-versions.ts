@@ -86,3 +86,30 @@ export function useDiffVsPrevious(
 
   return { diff, isLoading, error };
 }
+
+export function useVersionDiff(
+  workItemId: string,
+  fromVersion: number,
+  toVersion: number,
+): UseDiffResult {
+  const [diff, setDiff] = useState<VersionDiff | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (fromVersion >= toVersion) {
+      setDiff(null);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    import('@/lib/api/versions')
+      .then(({ getArbitraryDiff }) => getArbitraryDiff(workItemId, fromVersion, toVersion))
+      .then((d) => setDiff(d))
+      .catch((err) => setError(err instanceof Error ? err : new Error('Failed to load diff')))
+      .finally(() => setIsLoading(false));
+  }, [workItemId, fromVersion, toVersion]);
+
+  return { diff, isLoading, error };
+}

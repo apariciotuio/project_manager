@@ -120,10 +120,10 @@ THEN it is sent as `?after=<cursor>` query param; `has_more` and `next_cursor` p
 Blocked by: EP-07 backend Phase 4 complete
 
 - [x] 1.1 [RED] Test `listVersions`: cursor pagination, `has_more` field (2026-04-17 — in use-versions.test.ts)
-- [ ] 1.2 [RED] Test `getVersionDiff` and `getArbitraryDiff`: map to `VersionDiff` type; `from > to` → 400 error
-- [ ] 1.3 [RED] Test `createComment`: general and anchored; `anchor_start_offset > anchor_end_offset` → 422 error
-- [ ] 1.4 [RED] Test `listTimeline`: filter params serialized correctly; cursor pagination
-- [x] 1.5 [GREEN] Implement `frontend/lib/api/versions.ts` — listVersions, getVersion, diffVsPrevious, diffVersions (2026-04-17)
+- [x] 1.2 [RED] Test `getVersionDiff` and `getArbitraryDiff`: map to `VersionDiff` type; `from > to` → 400 error (2026-04-18 — 5 tests in __tests__/lib/api/versions.test.ts)
+- [x] 1.3 [RED] Test `createComment`: general and anchored; `anchor_start_offset > anchor_end_offset` → 422 error (2026-04-18 — 4 tests in __tests__/lib/api/versions.test.ts)
+- [x] 1.4 [RED] Test `listTimeline`: filter params serialized correctly; cursor pagination (2026-04-18 — 4 tests in __tests__/lib/api/versions.test.ts)
+- [x] 1.5 [GREEN] Implement `frontend/lib/api/versions.ts` — listVersions, getVersion, diffVsPrevious, diffVersions (2026-04-17); extended with getVersionDiff, getArbitraryDiff, createComment, listTimeline (2026-04-18)
 
 ---
 
@@ -149,10 +149,10 @@ Blocked by: Group 1 complete
 - [x] 2.2 [GREEN] Implement `frontend/hooks/work-item/use-versions.ts` — useVersions + useDiffVsPrevious (2026-04-17)
 - [x] 2.3 [RED] Test `useDiffVsPrevious(workItemId, versionNumber)`: diff loaded, null when versionNumber null (2026-04-17 — covered in version-history-panel.test.tsx)
 - [x] 2.4 [GREEN] Implement `useDiffVsPrevious` (exported from use-versions.ts) (2026-04-17)
-- [ ] 2.5 [RED] Test `useComments(workItemId)`: fetches list; `addComment` mutation appends optimistically; `deleteComment` removes optimistically
-- [ ] 2.6 [GREEN] Implement `src/hooks/useComments.ts`
-- [ ] 2.7 [RED] Test `useSectionComments(workItemId, sectionId)`: fetches anchored comments for section
-- [ ] 2.8 [GREEN] Implement `src/hooks/useSectionComments.ts`
+- [x] 2.5 [RED] Test `useComments(workItemId)`: fetches list; `addComment` mutation appends optimistically; `deleteComment` removes optimistically (2026-04-18 — 5 tests in __tests__/hooks/work-item/use-comments.test.ts)
+- [x] 2.6 [GREEN] Implement `frontend/hooks/work-item/use-comments.ts` — optimistic add+delete with rollback on error; uses lib/api/comments.ts (2026-04-18)
+- [x] 2.7 [RED] Test `useSectionComments(workItemId, sectionId)`: fetches anchored comments for section (2026-04-18 — 4 tests in __tests__/hooks/work-item/use-section-comments.test.ts)
+- [x] 2.8 [GREEN] Implement `frontend/hooks/work-item/use-section-comments.ts` — passes section_id in URL path; error+empty-list handling (2026-04-18)
 - [x] 2.9 [RED] Test `useTimeline`: 4 tests — first page, loadMore appends + advances cursor, error state, has_more=false (2026-04-17 — __tests__/hooks/work-item/use-timeline.test.ts updated)
 - [x] 2.10 [GREEN] useTimeline aligned to BE contract: consumes has_more, actor_display_name, payload; updated TimelineEventType union; TimelineResponse adds has_more (2026-04-17 — refactor commit 467f74d)
 
@@ -221,8 +221,8 @@ interface VersionDiffViewerProps {
 
 - [x] 3.3 [RED] Test: diff dialog opens on button click; renders changed sections (via MSW); error/empty states (2026-04-17 — in version-history-panel.test.tsx)
 - [x] 3.4 [GREEN] Implement `frontend/components/work-item/diff-viewer.tsx` — renders sections_changed/added/removed with colored lines (2026-04-17)
-- [ ] 3.5 [RED] Test: `change_type=reordered` renders "Reordered" badge without diff hunks
-- [ ] 3.6 [GREEN] Handle `reordered` and `removed` section display in `VersionDiffViewer`
+- [x] 3.5 [RED] Test: `change_type=reordered` renders "Reordered" badge without diff hunks (2026-04-18 — 5 tests in __tests__/components/versions/VersionDiffViewer.test.tsx)
+- [x] 3.6 [GREEN] Handle `reordered`, `removed`, `added`, `unchanged` in new `VersionDiffViewer` component (2026-04-18 — frontend/components/work-item/VersionDiffViewer.tsx)
 
 ### VersionCompareSelector
 
@@ -237,8 +237,8 @@ interface VersionCompareSelectorProps {
 }
 ```
 
-- [ ] 3.7 [RED] Test: two dropdowns for from/to; `from` cannot be > `to`; swap button swaps values
-- [ ] 3.8 [GREEN] Implement `src/components/versions/VersionCompareSelector.tsx`
+- [x] 3.7 [RED] Test: two dropdowns for from/to; `from` cannot be > `to`; swap button swaps values (2026-04-18 — 7 tests in __tests__/components/versions/VersionCompareSelector.test.tsx)
+- [x] 3.8 [GREEN] Implement `frontend/components/versions/VersionCompareSelector.tsx` (2026-04-18)
 
 ### VersionHistoryPage
 
