@@ -396,8 +396,8 @@ interface TimelineFiltersProps {
 }
 ```
 
-- [ ] 5.3 [RED] Test: event type multi-select checkboxes; actor type filter; date range pickers; "Reset filters" clears all
-- [ ] 5.4 [GREEN] Implement `src/components/timeline/TimelineFilters.tsx`
+- [x] 5.3 [RED] Test: event type multi-select, actor type multi-select, native from/to date inputs, Reset clears all (8 tests in `__tests__/components/timeline/TimelineFilters.test.tsx`) — 2026-04-18
+- [x] 5.4 [GREEN] Implement `frontend/components/timeline/TimelineFilters.tsx` — controlled component, native HTML inputs (no DatePicker dep added), single onChange-shape contract; +i18n keys under `workspace.itemDetail.timeline.filters` in en/es; wired into TimelineTab via extended `useTimeline(workItemId, filters?)` (2 new tests for query-param construction + filter-change refetch); existing 8 timeline-tab tests still green — 2026-04-18
 
 ### TimelineFeed component
 
@@ -413,7 +413,7 @@ interface TimelineFeedProps {
 
 ### Timeline page / tab
 
-- [ ] 5.7 [GREEN] Add Timeline tab to work item detail page at `src/app/(workspace)/items/[id]/timeline/page.tsx`
+- [x] 5.7 [GREEN] Timeline rendered on the detail page as the `historial` tab (`frontend/app/workspace/[slug]/items/[id]/page.tsx:188`). Spec's separate `/timeline/page.tsx` route is not needed — this project ships work-item history through the existing tabbed layout, not a dedicated route — closed 2026-04-18
 
 ---
 

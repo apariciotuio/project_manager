@@ -955,6 +955,7 @@
     "timeline": {
       "listAria": "Historial de actividad",
       "empty": "Sin actividad todavía.",
+      "emptyFiltered": "Ningún evento coincide con estos filtros.",
       "loadMore": "Cargar más",
       "loading": "Cargando…",
       "errorBanner": "No se pudo cargar la actividad",

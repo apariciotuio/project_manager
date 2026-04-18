@@ -121,4 +121,76 @@ describe('useTimeline', () => {
 
     expect(result.current.hasMore).toBe(false);
   });
+
+  it('forwards eventTypes, actorTypes and dateRange as query params', async () => {
+    let lastUrl: URL | null = null;
+    server.use(
+      http.get('http://localhost/api/v1/work-items/wi-1/timeline', ({ request }) => {
+        lastUrl = new URL(request.url);
+        return HttpResponse.json(PAGE_1);
+      })
+    );
+
+    const filters = {
+      eventTypes: ['state_transition' as const, 'comment_added' as const],
+      actorTypes: ['ai_suggestion' as const],
+      dateRange: { from: '2026-04-01', to: '2026-04-15' },
+    };
+
+    const { result } = renderHook(() => useTimeline('wi-1', filters));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(lastUrl).not.toBeNull();
+    const url = lastUrl as unknown as URL;
+    expect(url.searchParams.getAll('event_types')).toEqual([
+      'state_transition',
+      'comment_added',
+    ]);
+    expect(url.searchParams.getAll('actor_types')).toEqual(['ai_suggestion']);
+    expect(url.searchParams.get('from_date')).toBe('2026-04-01');
+    expect(url.searchParams.get('to_date')).toBe('2026-04-15');
+  });
+
+  it('changing filters resets events and refetches from cursor=null', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('http://localhost/api/v1/work-items/wi-1/timeline', ({ request }) => {
+        requestCount += 1;
+        const url = new URL(request.url);
+        const evtTypes = url.searchParams.getAll('event_types');
+        return HttpResponse.json({
+          data: {
+            events:
+              evtTypes.length === 0
+                ? [EVT_1, EVT_2]
+                : [{ ...EVT_1, id: 'evt-filtered' }],
+            has_more: false,
+            next_cursor: null,
+          },
+        });
+      })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ filters }: { filters?: Parameters<typeof useTimeline>[1] }) =>
+        useTimeline('wi-1', filters),
+      { initialProps: { filters: undefined as Parameters<typeof useTimeline>[1] | undefined } },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.events).toHaveLength(2);
+
+    rerender({
+      filters: {
+        eventTypes: ['state_transition'],
+        actorTypes: [],
+        dateRange: { from: null, to: null },
+      },
+    });
+
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    expect(result.current.events[0]?.id).toBe('evt-filtered');
+    expect(requestCount).toBe(2);
+  });
 });

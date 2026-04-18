@@ -955,6 +955,7 @@
     "timeline": {
       "listAria": "Activity history",
       "empty": "No activity yet.",
+      "emptyFiltered": "No events match these filters.",
       "loadMore": "Load more",
       "loading": "Loading…",
       "errorBanner": "Could not load activity",
