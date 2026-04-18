@@ -642,3 +642,66 @@ Nothing else in Groups 0-14 was touched today: no member management, no invitati
 ## MF-4 / SF-7 fixes (2026-04-17, session-2026-04-17-mega-review)
 - [x] MF-4: `get_validations` now injects `WorkItemRepositoryImpl` via `get_work_item_repo_scoped` and passes `work_item.type.value` to `get_checklist` — type-specific rules correctly filtered (commit dce93fb)
 - [x] SF-7: `require_admin` confirmed to check `workspace_id is None` → 401 (no gap). Removed all `# type: ignore[arg-type]` from routing_rule_controller (5 sites) and validation_rule_template_controller (5 sites); replaced with `assert current_user.workspace_id is not None` for type narrowing (commit 1cd11bb)
+
+---
+
+## Reconciliation notes (2026-04-18) — Kili-BE-10 session: Groups 0, 4, 5, 7, 9, 10
+
+**Shipped (not yet committed):**
+
+### Migrations
+- [x] Migration `0120_ep10_admin_members_schema.py`: `capabilities TEXT[]` + `context_labels TEXT[]` + GIN index on `workspace_memberships`; creates `invitations` table; creates `context_presets` table; RLS on both new tables
+- [x] Migration `0121_ep10_admin_rules_jira_support.py`: creates `validation_rules` table (partial UNIQUE indexes for workspace/project scope), `jira_configs` table, `jira_project_mappings` table; RLS on all
+
+### Domain models
+- [x] `domain/models/invitation.py` — `Invitation` entity: `create()`, `is_expired()`, `is_resendable()`, `accept()`, `revoke()`, `refresh_token()`
+- [x] `domain/models/context_preset.py` — `ContextSource` + `ContextPreset`: `create()`, `update()`, `soft_delete()`, `is_deleted()`
+- [x] `domain/models/validation_rule.py` — `ValidationRule` entity, `Enforcement` Literal, `create()`, `update()`, `deactivate()`, `is_workspace_scope()`, `is_global_blocker()`; `effective` + `superseded_by` annotation fields
+- [x] `domain/models/jira_config.py` — `JiraConfig` entity: `create()`, `record_health_check()` (3 failures → error state), `disable()`, `enable()`, `update_credentials()`; `JiraProjectMapping`
+
+### Repository interfaces
+- [x] `domain/repositories/invitation_repository.py`
+- [x] `domain/repositories/context_preset_repository.py`
+- [x] `domain/repositories/validation_rule_repository.py` — `list_for_workspace` has `include_all_projects: bool = False`
+- [x] `domain/repositories/jira_config_repository.py`
+
+### Infrastructure implementations
+- [x] `infrastructure/persistence/invitation_repository_impl.py`
+- [x] `infrastructure/persistence/context_preset_repository_impl.py`
+- [x] `infrastructure/persistence/validation_rule_repository_impl.py` — `list_for_workspace` with `include_all_projects`; `has_history` filters out `category='admin'` events (creation/update events don't block delete)
+- [x] `infrastructure/persistence/jira_config_repository_impl.py`
+- [x] `infrastructure/persistence/models/orm.py` — added `InvitationORM`, `ContextPresetORM`, `ValidationRuleORM`, `JiraConfigORM`, `JiraProjectMappingORM`; added `capabilities`/`context_labels` to `WorkspaceMembershipORM`
+
+### Application services
+- [x] `application/services/member_service.py` — `ALL_CAPABILITIES` frozenset (14), `list_members()` (cursor pagination), `invite_member()`, `update_member()` (last-admin guard), `resend_invitation()`
+- [x] `application/services/context_preset_service.py` — CRUD; `_preset_in_use()` via savepoint (prevents aborted transaction on missing column)
+- [x] `application/services/validation_rule_service.py` — `create_rule()` (blocker + duplicate checks), `update_rule()` (returns superseded_ids, uses `include_all_projects=True`), `delete_rule()` (history guard), `_annotate_precedence()`
+- [x] `application/services/jira_config_service.py` — CRUD, `test_connection()`, `record_health_check()`, `create_mapping()`, `list_mappings()`
+- [x] `application/services/admin_dashboard_service.py` — Redis cache (TTL 300s), SQL aggregations; fixed `TeamMembershipORM.workspace_id` (N/A — joined through `TeamORM`)
+- [x] `application/services/admin_support_service.py` — orphaned items, pending invitations, failed exports, retry-all (Redis rate limit 600s), reassign owner, config-blocked items
+
+### Presentation layer
+- [x] `presentation/controllers/admin_members_controller.py` — prefix `/admin/members`: GET list, POST invite, PATCH update, POST resend
+- [x] `presentation/controllers/admin_context_presets_controller.py` — full CRUD
+- [x] `presentation/controllers/admin_rules_controller.py` — GET/POST/PATCH/DELETE `/admin/rules/validation`
+- [x] `presentation/controllers/admin_jira_controller.py` — full CRUD + test + mappings; credentials NEVER in response
+- [x] `presentation/controllers/admin_support_controller.py` — all support endpoints
+- [x] `presentation/controllers/admin_dashboard_controller.py` — single GET endpoint
+- [x] `main.py` — all 7 new routers registered
+- [x] `presentation/middleware/error_middleware.py` — `RequestValidationError` handler: serializes `ctx` dict values to `str` to fix Pydantic v2 `ValueError` in ctx not being JSON-serializable
+
+### Tests
+- [x] `tests/unit/application/test_member_service.py` — 12 tests, all green
+- [x] `tests/unit/application/test_context_preset_service.py` — 8 tests, all green
+- [x] `tests/unit/application/test_validation_rule_service.py` — 18 tests, all green
+- [x] `tests/unit/application/test_jira_config_service.py` — 9 tests, all green
+- [x] `tests/integration/test_ep10_admin_members.py` — 27 integration tests covering members/presets/rules/jira/dashboard/support, all green
+  - Auth: cookie-based (`access_token` cookie + `csrf_token` cookie + `X-CSRF-Token` header for mutating methods)
+  - Rate limiter: `rate_limit_buckets` truncated in fixture setup
+
+**Still pending:**
+- Groups 1-3 (domain models for workspace_member entity update, repo interfaces for member/audit/dashboard repos, infra layer fleshing out) — partially done above but not complete
+- Group 6: projects + context sources full implementation
+- Groups 8, 11, 12, 13, 14: audit log endpoint, superadmin ops, tag admin, puppet config, integration/hardening
+- Celery tasks: invitation email dispatch, Jira health check periodic task
+- Routing rules admin endpoints (routing_rule_controller.py already exists for work-item routing; admin wrapper needed)

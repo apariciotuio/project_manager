@@ -22,7 +22,10 @@ class IValidationRuleRepository(ABC):
         project_id: UUID | None = None,
         work_item_type: str | None = None,
         active_only: bool = True,
-    ) -> list[ValidationRule]: ...
+        include_all_projects: bool = False,
+    ) -> list[ValidationRule]:
+        """When include_all_projects=True, returns rules for all project scopes."""
+        ...
 
     @abstractmethod
     async def save(self, rule: ValidationRule) -> ValidationRule: ...

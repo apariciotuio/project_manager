@@ -43,9 +43,12 @@ class FakeValidationRuleRepo(IValidationRuleRepository):
         project_id: UUID | None = None,
         work_item_type: str | None = None,
         active_only: bool = True,
+        include_all_projects: bool = False,
     ) -> list[ValidationRule]:
         result = [r for r in self._by_id.values() if r.workspace_id == workspace_id]
-        if project_id is not None:
+        if include_all_projects:
+            pass  # no project filter
+        elif project_id is not None:
             result = [r for r in result if r.project_id is None or r.project_id == project_id]
         else:
             result = [r for r in result if r.project_id is None]

@@ -108,7 +108,12 @@ async def _validation_error_handler(
             )
         # Surface the first offending field name for single-field errors
         field = str(loc[-1]) if loc else None
-        details: dict[str, Any] = {"errors": errors}
+        # Pydantic v2 errors may contain non-serializable objects (e.g. ValueError in ctx)
+        serializable_errors = [
+            {k: (str(v) if k == "ctx" else v) for k, v in e.items()}
+            for e in errors
+        ]
+        details: dict[str, Any] = {"errors": serializable_errors}
         if field:
             details["field"] = field
         return JSONResponse(

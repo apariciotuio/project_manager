@@ -62,11 +62,14 @@ class ValidationRuleRepositoryImpl(IValidationRuleRepository):
         project_id: UUID | None = None,
         work_item_type: str | None = None,
         active_only: bool = True,
+        include_all_projects: bool = False,
     ) -> list[ValidationRule]:
         stmt = select(ValidationRuleORM).where(
             ValidationRuleORM.workspace_id == workspace_id
         )
-        if project_id is not None:
+        if include_all_projects:
+            pass  # no project_id filter — return all scopes
+        elif project_id is not None:
             # Include workspace-level AND project-level rules for this project
             from sqlalchemy import or_
             stmt = stmt.where(
@@ -108,9 +111,15 @@ class ValidationRuleRepositoryImpl(IValidationRuleRepository):
             await self._session.flush()
 
     async def has_history(self, rule_id: UUID) -> bool:
+        """Return True if the rule has been used in evaluations (non-admin audit events).
+
+        Admin category events (rule_created, rule_updated, rule_deleted) are excluded —
+        those are CRUD lifecycle events, not meaningful enforcement history.
+        """
         stmt = select(AuditEventORM.id).where(
             AuditEventORM.entity_type == "validation_rule",
             AuditEventORM.entity_id == rule_id,
+            AuditEventORM.category != "admin",
         ).limit(1)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return row is not None

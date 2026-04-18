@@ -144,27 +144,22 @@ class ContextPresetService:
         )
 
     async def _preset_in_use(self, preset_id: UUID) -> bool:
-        from sqlalchemy import select
+        from sqlalchemy import text
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import ProjectORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
-        # ProjectORM doesn't have context_preset_id yet — plan says it should
-        # Check if the column exists at runtime; if not, not in use
-        from sqlalchemy import inspect, text
+        # Check if context_preset_id column exists on projects; if not, return False.
+        # Using a savepoint so a missing-column error doesn't abort the outer transaction.
         try:
-            stmt = select(ProjectORM.id).where(
-                ProjectORM.deleted_at.is_(None),
-            ).limit(1)
-            # Try accessing context_preset_id — may not exist yet
-            # For now we do a raw query that's safe against missing column
-            result = await session.execute(
-                text(
-                    "SELECT id FROM projects WHERE context_preset_id = :pid "
-                    "AND deleted_at IS NULL LIMIT 1"
-                ),
-                {"pid": preset_id},
-            )
-            return result.scalar_one_or_none() is not None
+            async with session.begin_nested():
+                result = await session.execute(
+                    text(
+                        "SELECT id FROM projects WHERE context_preset_id = :pid "
+                        "AND deleted_at IS NULL LIMIT 1"
+                    ),
+                    {"pid": str(preset_id)},
+                )
+                return result.scalar_one_or_none() is not None
         except Exception:
+            # Column likely doesn't exist yet — preset not in use
             return False

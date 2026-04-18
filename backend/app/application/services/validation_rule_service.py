@@ -153,6 +153,7 @@ class ValidationRuleService:
                 workspace_id,
                 work_item_type=rule.work_item_type,
                 active_only=True,
+                include_all_projects=True,
             )
             for pr in project_rules:
                 if (

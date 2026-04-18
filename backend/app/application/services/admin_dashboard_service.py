@@ -114,18 +114,22 @@ class AdminDashboardService:
         )
         active_members = (await session.execute(active_members_stmt)).scalar_one()
 
+        # TeamMembershipORM has no workspace_id — join through TeamORM
+        team_users_subq = (
+            select(TeamMembershipORM.user_id)
+            .join(TeamORM, TeamMembershipORM.team_id == TeamORM.id)
+            .where(
+                TeamORM.workspace_id == workspace_id,
+                TeamMembershipORM.removed_at.is_(None),
+            )
+        )
         teamless_stmt = (
             select(func.count())
             .select_from(WorkspaceMembershipORM)
-            .join(UserORM, WorkspaceMembershipORM.user_id == UserORM.id)
             .where(
                 WorkspaceMembershipORM.workspace_id == workspace_id,
                 WorkspaceMembershipORM.state == "active",
-                WorkspaceMembershipORM.user_id.not_in(
-                    select(TeamMembershipORM.user_id).where(
-                        TeamMembershipORM.workspace_id == workspace_id
-                    )
-                ),
+                WorkspaceMembershipORM.user_id.not_in(team_users_subq),
             )
         )
         teamless_members = (await session.execute(teamless_stmt)).scalar_one()
