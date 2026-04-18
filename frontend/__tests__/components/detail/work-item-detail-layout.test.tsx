@@ -43,7 +43,6 @@ function renderLayout(props?: Partial<React.ComponentProps<typeof WorkItemDetail
   return render(
     <WorkItemDetailLayout
       workItemId="wi-1"
-      threadId="thread-1"
       {...props}
     >
       <div data-testid="content-panel">Content Panel</div>

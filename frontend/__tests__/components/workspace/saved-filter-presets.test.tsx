@@ -119,7 +119,7 @@ describe('SavedFilterPresets', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId(/delete-preset-/)).toHaveLength(2);
     });
-    await userEvent.click(screen.getAllByTestId(/delete-preset-/)[0]);
+    await userEvent.click(screen.getAllByTestId(/delete-preset-/)[0]!);
     // Optimistic removal — item disappears
     await waitFor(() => {
       expect(screen.queryByText('Draft bugs')).not.toBeInTheDocument();

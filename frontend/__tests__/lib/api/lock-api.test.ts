@@ -156,8 +156,8 @@ describe('listWorkItemLocks', () => {
     );
     const result = await listWorkItemLocks('wi-1');
     expect(result).toHaveLength(2);
-    expect(result[0].section_id).toBe('sec-1');
-    expect(result[1].locked_by_name).toBeNull();
+    expect(result[0]!.section_id).toBe('sec-1');
+    expect(result[1]!.locked_by_name).toBeNull();
   });
 
   it('returns empty array when no active locks', async () => {

@@ -42,7 +42,7 @@ describe('DataTable', () => {
     render(
       <DataTable
         columns={COLUMNS}
-        rows={[]}
+        rows={[] as Row[]}
         getRowKey={(r) => r.id}
         emptyState={<div data-testid="empty">No rows</div>}
       />,
@@ -51,7 +51,7 @@ describe('DataTable', () => {
   });
 
   it('renders loading skeleton when loading=true', () => {
-    render(<DataTable columns={COLUMNS} rows={[]} getRowKey={(r) => r.id} loading />);
+    render(<DataTable columns={COLUMNS} rows={[] as Row[]} getRowKey={(r) => r.id} loading />);
     expect(screen.getByTestId('data-table-loading')).toBeInTheDocument();
   });
 

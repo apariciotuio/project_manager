@@ -34,7 +34,7 @@ export function BottomSheet({ open, onClose, title, children, footer, className 
     const focusable = dialog.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
-    if (focusable.length > 0) focusable[0].focus();
+    if (focusable.length > 0) focusable[0]!.focus();
 
     const handleTabTrap = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Tab') return;
@@ -49,12 +49,12 @@ export function BottomSheet({ open, onClose, title, children, footer, className 
       if (e.shiftKey) {
         if (document.activeElement === first) {
           e.preventDefault();
-          last.focus();
+          last!.focus();
         }
       } else {
         if (document.activeElement === last) {
           e.preventDefault();
-          first.focus();
+          first!.focus();
         }
       }
     };

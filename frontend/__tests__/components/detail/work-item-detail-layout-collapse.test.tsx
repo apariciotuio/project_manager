@@ -20,7 +20,7 @@ function collapseKey(id: string) {
 
 function renderLayout(workItemId = 'wi-1') {
   return render(
-    <WorkItemDetailLayout workItemId={workItemId} threadId="thread-1">
+    <WorkItemDetailLayout workItemId={workItemId}>
       <div data-testid="content-panel">Content</div>
     </WorkItemDetailLayout>,
   );
