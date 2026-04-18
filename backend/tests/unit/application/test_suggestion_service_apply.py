@@ -31,6 +31,7 @@ def _make_suggestion(
     status: str = "pending",
     section_id: UUID | None = None,
     expires_at: datetime | None = None,
+    version_number_target: int = 1,
 ):
     from app.domain.models.assistant_suggestion import AssistantSuggestion, SuggestionStatus
 
@@ -47,7 +48,7 @@ def _make_suggestion(
         current_content="Current old content",
         rationale="Some rationale from AI",
         status=SuggestionStatus(status),
-        version_number_target=1,
+        version_number_target=version_number_target,
         batch_id=batch_id,
         dundun_request_id=None,
         created_by=uuid4(),
@@ -308,3 +309,177 @@ class TestApplyAcceptedBatch:
         result = await svc.apply_accepted_batch(batch_id=batch_id, actor_id=uuid4())
 
         assert result["latest_version"] is not None
+
+
+# ---------------------------------------------------------------------------
+# WU-3 — version_number_target optimistic-concurrency check
+# ---------------------------------------------------------------------------
+
+
+class TestApplyVersionConflictGuard:
+    """EP-03 WU-3: before applying, verify the work item's current version
+    number matches the suggestion's version_number_target. If the work item
+    was updated after the suggestions were generated (another editor, a
+    separate apply, a manual section edit), the suggestions are stale and
+    applying them would silently overwrite newer content.
+    """
+
+    @pytest.mark.asyncio
+    async def test_nominal_apply_at_matching_target_passes(self) -> None:
+        """version_number_target=1 + no prior versions → apply succeeds."""
+        workspace_id = uuid4()
+        work_item_id = uuid4()
+        batch_id = uuid4()
+
+        repo = FakeAssistantSuggestionRepository()
+        s = _make_suggestion(
+            batch_id,
+            work_item_id,
+            status="accepted",
+            section_id=uuid4(),
+            version_number_target=1,
+        )
+        await repo.create_batch([s])
+
+        svc, _, _, versioning = _make_service(
+            suggestion_repo=repo, workspace_id=workspace_id
+        )
+        result = await svc.apply_accepted_batch(batch_id=batch_id, actor_id=uuid4())
+        assert result["applied_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_raises_when_work_item_has_newer_version(self) -> None:
+        """Suggestion batch targets version 1, but work item is at version 2 →
+        VersionConflictError. Prevents silent clobbering of newer content.
+        """
+        from app.application.services.suggestion_service import VersionConflictError
+        from app.domain.models.work_item_version import (
+            VersionActorType,
+            VersionTrigger,
+            WorkItemVersion,
+        )
+
+        workspace_id = uuid4()
+        work_item_id = uuid4()
+        batch_id = uuid4()
+
+        repo = FakeAssistantSuggestionRepository()
+        s = _make_suggestion(
+            batch_id,
+            work_item_id,
+            status="accepted",
+            section_id=uuid4(),
+            version_number_target=1,  # generated against v1
+        )
+        await repo.create_batch([s])
+
+        versioning = _FakeVersioningService()
+        # Simulate that the work item has progressed to v2 between suggestion
+        # generation and apply — a concurrent editor landed a change.
+        versioning.versions_created.append(
+            WorkItemVersion(
+                id=uuid4(),
+                work_item_id=work_item_id,
+                version_number=2,
+                snapshot={},
+                created_by=uuid4(),
+                created_at=datetime.now(UTC),
+                trigger=VersionTrigger.MANUAL,
+                actor_type=VersionActorType.HUMAN,
+            )
+        )
+
+        svc, _, _, _ = _make_service(
+            suggestion_repo=repo,
+            versioning_service=versioning,
+            workspace_id=workspace_id,
+        )
+
+        with pytest.raises(VersionConflictError) as exc_info:
+            await svc.apply_accepted_batch(batch_id=batch_id, actor_id=uuid4())
+        # Error must name the conflict in a way callers can surface to users.
+        msg = str(exc_info.value).lower()
+        assert "version" in msg and ("conflict" in msg or "stale" in msg or "target" in msg)
+
+    @pytest.mark.asyncio
+    async def test_no_versions_yet_accepts_target_1(self) -> None:
+        """Fresh work item (no versions created yet) + target=1 must not be
+        treated as a conflict. The first accepted batch is the one that
+        creates version 1.
+        """
+        workspace_id = uuid4()
+        work_item_id = uuid4()
+        batch_id = uuid4()
+
+        repo = FakeAssistantSuggestionRepository()
+        s = _make_suggestion(
+            batch_id,
+            work_item_id,
+            status="accepted",
+            section_id=uuid4(),
+            version_number_target=1,
+        )
+        await repo.create_batch([s])
+
+        versioning = _FakeVersioningService()  # empty — no versions yet
+
+        svc, _, _, _ = _make_service(
+            suggestion_repo=repo,
+            versioning_service=versioning,
+            workspace_id=workspace_id,
+        )
+        # Must not raise.
+        result = await svc.apply_accepted_batch(batch_id=batch_id, actor_id=uuid4())
+        assert result["applied_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_concurrent_second_apply_detects_conflict(self) -> None:
+        """Race: two batches generated against v1, first apply wins and
+        advances to v2. The second apply's target is still 1 but current is
+        now 2 — second call must raise, not silently overwrite the first
+        batch's changes.
+        """
+        from app.application.services.suggestion_service import VersionConflictError
+
+        workspace_id = uuid4()
+        work_item_id = uuid4()
+        batch_a = uuid4()
+        batch_b = uuid4()
+
+        repo = FakeAssistantSuggestionRepository()
+        a = _make_suggestion(
+            batch_a,
+            work_item_id,
+            status="accepted",
+            section_id=uuid4(),
+            version_number_target=1,
+        )
+        b = _make_suggestion(
+            batch_b,
+            work_item_id,
+            status="accepted",
+            section_id=uuid4(),
+            version_number_target=1,
+        )
+        await repo.create_batch([a, b])
+
+        svc, _, _, versioning = _make_service(
+            suggestion_repo=repo, workspace_id=workspace_id
+        )
+
+        # First apply wins — creates v1.
+        first = await svc.apply_accepted_batch(batch_id=batch_a, actor_id=uuid4())
+        assert first["applied_count"] == 1
+        # Fake versioning now reports version_number=1 as latest. Second batch
+        # still targets version_number_target=1, so apply is NOT a conflict
+        # until the fake reports v2 or above. Replace the last version with
+        # v2 (domain is frozen — use dataclasses.replace).
+        import dataclasses as _dc
+
+        versioning.versions_created[-1] = _dc.replace(
+            versioning.versions_created[-1], version_number=2
+        )
+
+        # Second apply must now detect the conflict.
+        with pytest.raises(VersionConflictError):
+            await svc.apply_accepted_batch(batch_id=batch_b, actor_id=uuid4())

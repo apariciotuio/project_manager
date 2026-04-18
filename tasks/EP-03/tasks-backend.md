@@ -210,10 +210,11 @@ AND NO call is made to Dundun (history preserved externally)
   - `update_single_status`: accept/reject with expired and invalid-state guard
 - [x] [GREEN] Implement `application/services/suggestion_service.py` — generate, list_pending, update_single_status
   — **COMPLETED** (2026-04-16): 16 tests, all green.
-- [ ] [DEFERRED] `apply_partial(batch_id, accepted_suggestion_ids)`:
-  - Requires `work_item_sections` table (EP-04) and `VersioningService.create_version` (EP-07)
-  - TC-1 SELECT FOR UPDATE concurrency guard also deferred
-  - Module docstring contains TODO: EP-04+EP-07 marker
+- [x] [GREEN] `apply_accepted_batch` + `VersionConflictError` (EP-03 WU-3, 2026-04-18):
+  - `SuggestionService.apply_accepted_batch` wired to `SectionService.update_section` and `VersioningService.create_version` (already landed prior).
+  - WU-3: optimistic-concurrency check — compares `suggestion.version_number_target` against `VersioningService.get_latest(work_item_id).version_number`; raises `VersionConflictError` when the work item has advanced past the target (fresh work item with no versions and target=1 is accepted as the v1-creating apply).
+  - 4 new triangulation tests in `test_suggestion_service_apply.py::TestApplyVersionConflictGuard` (nominal, newer-version conflict, no-versions-yet, concurrent second apply). 12/12 green.
+  - Transaction atomicity: section + suggestion status + version write all share the same SQLAlchemy session — caller commits. Explicit SAVEPOINT nested tx deferred unless a multi-phase failure scenario emerges.
 
 ### Acceptance Criteria — SuggestionService
 

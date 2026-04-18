@@ -25,6 +25,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class VersionConflictError(Exception):
+    """Raised when applying a suggestion batch against a stale version target.
+
+    The batch carries ``version_number_target`` — the WorkItemVersion the
+    suggestions were generated against. If the work item has advanced past
+    that version (another editor landed a change, a concurrent apply won, a
+    manual edit committed), applying the batch would silently overwrite the
+    newer content. Caller must either regenerate suggestions against the
+    current version or merge manually.
+    """
+
+
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -157,6 +169,25 @@ class SuggestionService:
 
         workspace_id = self._workspace_id or suggestions[0].workspace_id
         work_item_id = suggestions[0].work_item_id
+
+        # WU-3: optimistic-concurrency guard. Suggestions are generated against
+        # a specific WorkItemVersion snapshot (``version_number_target``). If
+        # the work item has advanced since, applying would silently overwrite
+        # newer content — refuse instead. No prior version → target must be 1
+        # (the first batch is what creates v1).
+        if to_apply and self._versioning_service is not None:
+            target = suggestions[0].version_number_target
+            latest = await self._versioning_service.get_latest(
+                work_item_id, workspace_id
+            )
+            current = latest.version_number if latest is not None else 0
+            expected = target - 1 if latest is None else target
+            if current != expected:
+                raise VersionConflictError(
+                    f"suggestion batch {batch_id} targets version {target} "
+                    f"but work item {work_item_id} is at version {current} "
+                    "— suggestions are stale; regenerate or merge manually"
+                )
 
         applied_ids: list[UUID] = []
         for s in to_apply:
