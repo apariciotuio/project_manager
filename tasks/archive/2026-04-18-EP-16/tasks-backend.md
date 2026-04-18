@@ -1,6 +1,20 @@
 # EP-16 Backend Tasks
 
-> **Scope (2026-04-14, decisions_pending.md #29)**: VPN-internal deployment. **Dropped**: ClamAV, `attachment_scan_status` state machine, Celery scan queue, signed URLs (presigned PUT/GET), SSE scan-status push, IAM session-tag revocation, 5s scan-status polling. **Kept**: PDF thumbnail generation (pdf2image + Pillow, Celery), authenticated streaming download endpoint, content-type validation, file size limits per user/workspace, upload rate limits, audit of uploads/downloads, inline images in comments (paste/drag). Below is rewritten — obsolete groups removed, not flagged.
+**Epic**: EP-16 — Attachments + Media
+**Date**: 2026-04-14 (archived 2026-04-18)
+**Status (MVP scope)**: ✅ SHIPPED — Metadata CRUD (POST/GET/DELETE on registered attachments) + strict Pydantic validation + workspace-scoped RLS.
+
+> **⚠️ Plan below is the pre-MVP plan from 2026-04-14 and is OBSOLETE.** Decision #29 (recorded 2026-04-18) cut file ingestion entirely from MVP: no multipart POST handler, no S3 upload, no presigned URLs, no Celery thumbnail tasks, no rate limiting, no storage-quota enforcement. All 52 checklist items below describe the file-ingestion pipeline that was explicitly deferred.
+>
+> **What v2 (full file ingestion) would add** — tracked as a future epic, NOT EP-16 MVP scope:
+> - Multipart `POST /api/v1/work-items/{id}/attachments` backend handler
+> - S3 upload via `FakeStorageAdapter` (dev) + `S3Adapter` (prod)
+> - PDF thumbnail generation (Celery + pdf2image)
+> - Upload rate limiting + per-user/workspace quotas + cleanup runs
+> - Audit trail for upload / download events
+> - Inline image paste/drag in comments
+
+> **Scope (2026-04-14, decisions_pending.md #29)**: VPN-internal deployment. **Dropped**: ClamAV, `attachment_scan_status` state machine, Celery scan queue, signed URLs (presigned PUT/GET), SSE scan-status push, IAM session-tag revocation, 5s scan-status polling. **Kept (v2)**: PDF thumbnail generation (pdf2image + Pillow, Celery), authenticated streaming download endpoint, content-type validation, file size limits per user/workspace, upload rate limits, audit of uploads/downloads, inline images in comments (paste/drag). Below is rewritten — obsolete groups removed, not flagged.
 
 ---
 

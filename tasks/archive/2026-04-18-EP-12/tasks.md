@@ -1,8 +1,21 @@
 # EP-12 — Implementation Checklist
 
+**Epic**: EP-12 — Responsive, Security, Performance (+ correlation-id logging)
+**Date**: 2026-04-14 (archived 2026-04-18)
+**Status (MVP scope)**: ✅ SHIPPED — Middleware stack (CorrelationID, RequestLogging, CSRF double-submit, RateLimit, SecurityHeaders), 3 prod secret validators (Auth/Dundun/Puppet), N+1 QueryCounter, PaginationCursor + keyset migrations, DB index audit, PgRateLimiter + PgNotificationBus (LISTEN/NOTIFY), AuditRepository RLS enforcement, FE layout primitives (AppShell, BottomSheet, DataTable, EmptyState, SkeletonLoader, ErrorBoundary), useJobProgress SSE hook.
+
+> **⚠️ Plan below is the pre-MVP plan and is partially OBSOLETE.** Decision #27 (2026-04-14) dropped observability entirely from EP-12: no Sentry (BE or FE), no Prometheus, no Grafana, no Loki, no OpenTelemetry, no trace sampling, no `product_events` table, no LLM-token metrics, no health dashboards, no ops page. The only retained observability is stdlib `logging` + `CorrelationIDMiddleware`. Unchecked items relating to any of the above are intentionally cut, not pending.
+>
+> **Known deferred items inside MVP scope** (documented for follow-up slice, not blocking archive):
+> - Credential CRUD audit integration-test (the audit writes themselves ship; the 6 `test_audit_credential_crud.py` tests are green — the deferred item is an additional integration-level test verifying the audit row shape).
+> - Client-disconnect SSE test (needs an async streaming harness with mid-stream disconnect; CancelledError path covered at unit level; core SSE shipped with 3/4 event tests).
+> - ErrorBoundary copy-to-clipboard (FE Group 8) — deferred per observability scope cut.
+>
+> These three items are test-harness / observability debt; the implementation they're testing is already shipped.
+
 > **Scope (2026-04-14, decisions_pending.md #27)**: Observability is **deferred**. Keep: Python stdlib `logging` to stdout + `CorrelationIDMiddleware`. Drop: Sentry, Prometheus, Grafana, Loki, OpenTelemetry, trace sampling, `product_events` table, LLM-token metrics, health dashboards, integration-health endpoints, ops monitoring page. EP-12 narrows to Responsive + Security + Performance (+ correlation-id logging).
 
-**Status: IN PROGRESS** (2026-04-18) — ~75/85 items shipped across 10 sub-tracks. Redis+Celery both ripped out; PG-native stack (PgRateLimiter, PgNotificationBus LISTEN/NOTIFY, InMemoryJobProgress). Remaining: credential CRUD audit + export audit + client-disconnect SSE test. See `tasks-backend.md` / `tasks-frontend.md`.
+**Status (original, pre-archive)**: IN PROGRESS (2026-04-18) — ~75/85 items shipped across 10 sub-tracks. Redis+Celery both ripped out; PG-native stack (PgRateLimiter, PgNotificationBus LISTEN/NOTIFY, InMemoryJobProgress). Remaining: credential CRUD audit + export audit + client-disconnect SSE test. See `tasks-backend.md` / `tasks-frontend.md`.
 
 TDD markers: [RED] = write failing test first | [GREEN] = implement to pass | [REFACTOR] = clean up
 

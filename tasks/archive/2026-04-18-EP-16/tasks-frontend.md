@@ -1,5 +1,11 @@
 # EP-16 Frontend Tasks
 
+**Status (MVP scope, archived 2026-04-18)**: ✅ SHIPPED — AttachmentList, AttachmentDropZone (visual + MIME/size validation + "upload blocked" toast), AttachmentDeleteButton + confirmation dialog, TypedConfirmDialog integration, 15 tests green.
+
+> **⚠️ Plan below is the pre-MVP plan from 2026-04-14 and is OBSOLETE for MVP.** Decision #29 cut file ingestion from MVP — the backend multipart handler, S3 upload, presigned URLs and Celery thumbnail task were all deferred to v2. Frontend work that depends on that pipeline (upload progress, gallery, lightbox, PDF viewer, inline comment images, admin quota dashboard) is therefore also out of MVP scope and remains unchecked here pending v2.
+>
+> **Shipped in MVP**: F0 (types + API client) · F1 (drop-zone + validation) · F7 (delete UX + tests) — list + delete surfaces on top of the metadata-only backend.
+
 > **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `TypedConfirmDialog` (delete confirmation), `HumanError` (upload failures, type/size rejection), `EmptyStateWithCTA` (gallery empty state), `CopyButton` (copy markdown reference). Upload drop-zone, progress UI, lightbox, and PDF viewer stay feature-specific. Semantic tokens and i18n `i18n/es/attachment.ts`. See `tasks/extensions.md#EP-19`.
 
 > **Scope (2026-04-14, decisions_pending.md #29)**: VPN-internal deployment. **Dropped**: scan-status polling (`useScanStatusPoller`), scan-status UI states (`pending`/`quarantined`), presigned URL handling, signed URL refresh on 403, two-phase `request-upload`+`confirm` flow. **Kept**: drag/drop + paste upload, progress UI, image gallery, PDF viewer (inline + download), inline comment images, admin quota dashboard, delete with confirmation. Below is rewritten — obsolete groups removed, not flagged.

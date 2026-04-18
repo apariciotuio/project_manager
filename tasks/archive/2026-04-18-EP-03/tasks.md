@@ -1,6 +1,36 @@
 # EP-03 — Clarification, Conversation & Assisted Actions (Dundun proxy)
 
-**Status:** backend **IN FLIGHT** (~82%); frontend **SUBSTANTIALLY COMPLETE** (45/61 ✅)
+**Status (MVP scope, archived 2026-04-18)**: ✅ COMPLETE — MVP thin-proxy to Dundun shipped (Phases 1–4 + 6 + 7 + FE 1–8). Deferrals below are all explicitly scoped out or re-homed to other epics — not blocking MVP.
+
+### MVP Scope Shipped
+- Thin Dundun proxy: `invoke_agent` (async Celery + callback) and `chat_ws` (WebSocket proxy).
+- Backend controllers: conversation, suggestion generation, gap detection, dundun callback (HMAC-verified), quick actions router.
+- Backend services + repos: `ConversationService`, `SuggestionService`, `GapService`, migrations 0031/0032/0033 (incl. RLS on EP-03 tables — MF#1 was ticket-rot, migration already in tree).
+- Backend: 67/82 items ticked (Phases 1–4 + 6 + 7 done).
+- Frontend: 45/61 items ticked (Phases 1–8 done 2026-04-18 — QuickActionMenu, SuggestionBatchCard, SplitView layout, ChatPanel WS transport).
+
+### Known Deferrals (intentional, not blockers)
+
+1. **Phase 5 `apply_partial` + `QuickActionService`** → re-homed to EP-04 (quality engine owns quick-action dispatch and gap ai-review).
+2. **Must Fix #2 — WS bidirectional proxy** (client→upstream frames are dropped because `DundunClient.chat_ws` is an async generator instead of a duplex context manager) → deferred pending Dundun E2E stub availability; one skipped test flags it. Current behaviour: upstream→client frames work (the important direction for showing Dundun replies).
+3. **Should Fix #6–#8** (request-id binding hardening, JWT-in-query-param logging, JwtAdapter per-connection perf) → deferred to follow-up or EP-12.
+4. **Should Fix #9** — service private-attribute leak — partially resolved 2026-04-18: `ConversationService.get_thread_for_user()` added per EP-22 WU-3 scope.
+5. **FE ChatPanel suggestion-frame peeker** (`onSuggestionEmitted` prop) → deferred to EP-12 (SSE observability); core WS chat shipped.
+6. **FE section-pulse animation** (pulse a section when ChatPanel streams tokens for it) → deferred to EP-12.
+7. **FE detail-page wiring of SplitViewContext** → deferred; EP-22 landed its own wiring for the suggestion-bridge flow.
+8. **RBP gate** → same repo-wide debt story as EP-21/EP-22; tracked elsewhere.
+
+### Cross-Epic Pointers
+
+| Item | Owner |
+|---|---|
+| QuickActionService + execute_action endpoint | **EP-04** |
+| `/api/v1/work-items/{id}/gaps/ai-review` endpoint | **EP-04** |
+| WS bidir proxy refactor (Must Fix #2) | Follow-up — needs Dundun E2E stub |
+| Section-pulse + detail-page chat wiring | **EP-12** |
+| Repo-wide RBP debt (ruff / mypy / eslint) | **EP-21** (archived with deferred gate) |
+
+---
 
 Sub-trackers (authoritative):
 - Backend: `tasks-backend.md` — ~67/82 🟡 (Phases 1–4 + 6 + 7 done; Phase 5 partial — apply_partial + QuickActionService deferred to EP-04; Phase 8 partial — 4 Must/Should Fix items deferred. Session 2026-04-18 added: WU-3 version conflict guard on suggestion apply, SEC-AUTH-001 REST workspace scope, MF#1 RLS confirmed as ticket-rot, SF#9 covered by EP-22 workspace scoping)

@@ -1,5 +1,24 @@
 # EP-14 — Backend Subtasks
 
+**Status (2026-04-18)**: 🟡 PARTIAL — parent-FK plumbing shipped; hierarchy algorithms deferred.
+
+### What shipped
+- Migration 0031: `work_items_type_valid` CHECK updated to include `milestone` + `story` (zero-downtime via `ADD CONSTRAINT NOT VALID` + `VALIDATE CONSTRAINT`).
+- Migration 0030: `parent_work_item_id UUID REFERENCES work_items(id) ON DELETE RESTRICT` + index.
+- Domain enum: `WorkItemType.MILESTONE` and `.STORY` added; `WorkItem` dataclass carries `parent_work_item_id`.
+- POST /work-items accepts `parent_work_item_id`; GET list filters direct children.
+
+### What's deferred (real BE work, NOT ticket rot)
+- `materialized_path` column and population backfill.
+- `HierarchyValidator` (parent-type rules enforced server-side — currently only enforced client-side).
+- `MaterializedPathService` (on-insert / on-reparent rewrite).
+- Cycle-detection guard on reparent.
+- `CompletionRollupService` (parent completeness = aggregate of children).
+- `TreeQueryService` (bulk descendant / ancestor queries).
+- Reparent + delete hierarchy operations (`BE-14-08`, `BE-14-09`).
+
+The master `tasks.md` row previously claimed "✅ Done (types + catalog + rules)". That's accurate for **types + catalog**; **rules** are NOT shipped (client-side only). Update the row to reflect the partial state or bundle the remaining BE work into a v2 slice before archiving.
+
 All work is workspace-scoped. Every service method and repository query must filter by `workspace_id`. No cross-workspace data access is permitted.
 
 TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean up.
