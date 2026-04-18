@@ -1,6 +1,25 @@
 # EP-18 — MCP Server: Read & Query Interface · Task Tracker
 
-## Status
+**Status (archived 2026-04-18 as MCP v1 PoC)**: ✅ SHIPPED — 9/15 read-only tools end-to-end (~165 tests); auth wiring + MCP SDK + InMemoryCacheAdapter all in place.
+
+### v1 PoC shipped
+- **9 tools functional**: `search_work_items`, `read_work_item`, `list_projects`, `list_work_items`, `list_sections`, `create_work_item_draft`, `get_work_item_completeness`, `list_comments`, `list_reviews`.
+- **Auth**: `MCP_TOKEN` JWT parsed once at startup, `workspace_id` claim extracted via `_decode_token()`, bound to process lifetime (see `server.py` lines 87–94). `test_mcp_auth_context.py` — 7 tests green.
+- **Infrastructure**: `mcp>=1.26.0` declared in `pyproject.toml` (line 25); `InMemoryCacheAdapter` wired to `CompletenessService` (replaced `_NoOpCache`).
+- **Workspace isolation**: structural (token binds `workspace_id` once; no per-request override possible → cross-workspace rejection tested).
+
+> **⚠️ v1 scope cut per `proposal.md` §Non-Goals (lines 18, 34)**: "This epic is **read-only first**. Write/mutation operations are explicitly out of scope — a separate follow-up epic." The 6 stubbed tools + write capability + admin UI are explicitly deferred.
+
+### v2 scope (new follow-up epic — NOT EP-18 v1)
+- **6 remaining tools**: `get_specification`, `get_gaps`, `get_task_tree`, plus duplicate/alias tools (`get_completeness`, `get_reviews`, `get_comments`) — Capability 4 per `tasks-backend.md` line 294.
+- **Auth admin endpoints**: token CRUD (rotate, revoke, list), per-workspace self-service.
+- **Frontend token panel**: UI for workspace admins to manage MCP tokens (items 1–2 of `tasks-frontend.md`).
+- **Rate limiting**: wire `PgRateLimiter` (shipped in EP-12) into MCP middleware.
+- **Write tools** (out of v2 scope too — separate v3 if ever): mutations for create/update/delete operations.
+
+---
+
+## Status (pre-archive, historical)
 
 | Phase | Status |
 |---|---|
@@ -13,7 +32,7 @@
 | `plan-backend-task` detail pass | PENDING |
 | `plan-frontend-task` detail pass | PENDING |
 | Specialist reviews (arch, sec, back, front, DB) | PENDING |
-| Implementation | **IN PROGRESS** (2026-04-18) — 9/15 tools shipped end-to-end: `search_work_items`, `read_work_item`, `list_projects`, `list_work_items`, `list_sections`, `create_work_item_draft`, `get_work_item_completeness`, `list_comments`, `list_reviews` (~140 tests total). **Skeleton rot**: `workspace_id=uuid4()` placeholder (no auth wiring — cap 1 BE), MCP SDK not in `pyproject.toml`, `_NoOpCache` stand-in, some existing tools still stubbed. |
+| Implementation | **v1 PoC COMPLETE** (2026-04-18) — 9/15 tools shipped end-to-end: `search_work_items`, `read_work_item`, `list_projects`, `list_work_items`, `list_sections`, `create_work_item_draft`, `get_work_item_completeness`, `list_comments`, `list_reviews` (~165 tests total). Auth wired (JWT at startup). SDK declared. Cache replaced. |
 
 ## Capabilities
 

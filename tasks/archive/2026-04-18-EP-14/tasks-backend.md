@@ -1,27 +1,33 @@
 # EP-14 — Backend Subtasks
 
-**Status (2026-04-18)**: 🟡 PARTIAL — parent-FK plumbing shipped; hierarchy algorithms deferred.
+**Status (archived 2026-04-18 as v1)**: ✅ SHIPPED — Parent-FK plumbing (migrations 0030/0031, WorkItemType enum incl. MILESTONE + STORY, domain field `parent_work_item_id`, create endpoint accepts + threads it through service, GET `/work-items?parent_work_item_id=<uuid>` returns direct children). Frontend hierarchy UI (tree view, breadcrumb, parent picker, rollup badge, ancestor/children hooks, DnD reparent on task_nodes) 100% shipped with 48 tests green.
 
-### What shipped
-- Migration 0031: `work_items_type_valid` CHECK updated to include `milestone` + `story` (zero-downtime via `ADD CONSTRAINT NOT VALID` + `VALIDATE CONSTRAINT`).
-- Migration 0030: `parent_work_item_id UUID REFERENCES work_items(id) ON DELETE RESTRICT` + index.
-- Domain enum: `WorkItemType.MILESTONE` and `.STORY` added; `WorkItem` dataclass carries `parent_work_item_id`.
-- POST /work-items accepts `parent_work_item_id`; GET list filters direct children.
+> **⚠️ EP-14 v1 scope (archived)**: FK plumbing + FE UI. Internally coherent because the REST surface has no reparent endpoint — an external client cannot mutate hierarchy via the public API.
+>
+> **⚠️ Known data-corruption hole (v1 only, requires v2 before prod rollout of any reparent feature)**: create-path does NOT validate hierarchy rules (parent-type compatibility, cycle prevention) or populate `materialized_path`. A compromised backend instance or raw-SQL-capable client can insert cycles (A→B→A) or invalid parent-type links (e.g. Story under Bug). TreeQueryService would then malfunction (infinite loop on ancestor fetch, wrong rollup aggregation). v2 **MUST** implement HierarchyValidator + cycle detection BEFORE merging the PATCH reparent endpoint.
 
-### What's deferred (real BE work, NOT ticket rot)
-- `materialized_path` column and population backfill.
-- `HierarchyValidator` (parent-type rules enforced server-side — currently only enforced client-side).
-- `MaterializedPathService` (on-insert / on-reparent rewrite).
-- Cycle-detection guard on reparent.
-- `CompletionRollupService` (parent completeness = aggregate of children).
-- `TreeQueryService` (bulk descendant / ancestor queries).
-- Reparent + delete hierarchy operations (`BE-14-08`, `BE-14-09`).
-
-The master `tasks.md` row previously claimed "✅ Done (types + catalog + rules)". That's accurate for **types + catalog**; **rules** are NOT shipped (client-side only). Update the row to reflect the partial state or bundle the remaining BE work into a v2 slice before archiving.
+### v2 scope (new follow-up epic, tracked separately — NOT EP-14 v1)
+- BE-14-03: `HierarchyValidator` — parent-type rules for all 11 types per `HIERARCHY_RULES` (`backend/app/domain/value_objects/work_item_type.py:28-46`).
+- BE-14-04: `MaterializedPathService` — compute + bulk-update on insert/reparent via SQL CTE.
+- BE-14-05: Repo method `bulk_update_materialized_paths` — single SQL statement, no N+1.
+- BE-14-06: Cycle detection — O(1) check against materialized_path string.
+- BE-14-07: Amend create to call HierarchyValidator, compute path, do cross-scope checks.
+- BE-14-08: `PATCH /work-items/{id}` reparent endpoint + MaterializedPathService integration.
+- BE-14-09: Delete guard — block deletion with children; emit event for path cleanup.
+- BE-14-10: `CompletionRollupService` — parent completeness as weighted aggregate of children.
+- BE-14-11: `TreeQueryService` — `get_ancestors`, `get_children`, `get_descendants_by_ancestor` (zero N+1).
+- BE-14-12: Hierarchy controller — `GET /projects/{id}/hierarchy`, `/work-items/{id}/children`, `/ancestors`, `/rollup`.
+- BE-14-13: Amend create/update endpoints — add parent validation errors (422).
+- BE-14-14: List endpoint ancestor filter — `?ancestor_id=<uuid>` via materialized_path LIKE.
+- BE-14-15: Rollup cache invalidation Celery task — handles state_changed, parent_changed, created, deleted events.
 
 All work is workspace-scoped. Every service method and repository query must filter by `workspace_id`. No cross-workspace data access is permitted.
 
 TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean up.
+
+---
+
+**Unchecked items below are the v2 scope.** They remained on the original 2026-04-13 plan because v1 was scoped-down to parent FK + FE UI only; the algorithms are deferred to the follow-up epic listed above.
 
 ---
 
