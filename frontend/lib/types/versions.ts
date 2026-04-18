@@ -22,6 +22,8 @@ export type DiffChangeType =
   | 'reordered';
 
 export interface WorkItemVersion {
+  id: string;
+  work_item_id: string;
   version_number: number;
   trigger: VersionTrigger;
   actor_type: ActorType;
