@@ -222,6 +222,7 @@ class TestKanbanCache:
     @pytest.mark.asyncio
     async def test_warm_cache_skips_db(self) -> None:
         import hashlib
+        import json as _json
 
         from app.application.services.kanban_service import KanbanService
 
@@ -231,7 +232,12 @@ class TestKanbanCache:
             "group_by": "state",
         }
         cache = FakeCache()
-        filter_hash = hashlib.sha256(b"state").hexdigest()
+        # Cache key now includes project_id and limit in the hash (MF-1 fix)
+        raw = _json.dumps(
+            {"group_by": "state", "project_id": None, "limit": 25},
+            sort_keys=True,
+        ).encode()
+        filter_hash = hashlib.sha256(raw).hexdigest()
         cache_key = f"kanban:{ws_id}:state:{filter_hash}"
         await cache.set(cache_key, json.dumps(cached_data), 30)
 

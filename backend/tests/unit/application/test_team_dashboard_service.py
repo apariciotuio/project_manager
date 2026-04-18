@@ -115,7 +115,8 @@ class TestTeamDashboardColdCache:
         assert result["blocked_count"] == 4
 
     @pytest.mark.asyncio
-    async def test_returns_velocity_last_30d(self) -> None:
+    async def test_returns_recent_ready_items(self) -> None:
+        """SF-4: field renamed from velocity_last_30d to recent_ready_items — approximate metric."""
         from app.application.services.team_dashboard_service import TeamDashboardService
 
         team_id = uuid4()
@@ -125,7 +126,8 @@ class TestTeamDashboardColdCache:
         svc = TeamDashboardService(session=session, cache=cache)  # type: ignore[arg-type]
         result = await svc.get_metrics(team_id, workspace_id=ws_id)
 
-        assert result["velocity_last_30d"] == 15
+        assert result["recent_ready_items"] == 15
+        assert "velocity_last_30d" not in result, "old field name must be gone"
 
     @pytest.mark.asyncio
     async def test_empty_team_returns_zeros(self) -> None:
@@ -140,7 +142,7 @@ class TestTeamDashboardColdCache:
 
         assert result["owned_by_state"] == {}
         assert result["blocked_count"] == 0
-        assert result["velocity_last_30d"] == 0
+        assert result["recent_ready_items"] == 0
 
 
 class TestTeamDashboardCache:

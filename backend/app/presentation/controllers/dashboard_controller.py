@@ -52,12 +52,17 @@ async def get_person_dashboard(
     current_user: CurrentUser = Depends(get_current_user),
     service: PersonDashboardService = Depends(get_person_dashboard_service),
 ) -> dict[str, Any]:
-    """Per-user aggregations. Caller can view their own or any workspace member's metrics.
+    """Per-user aggregations. Caller must be the owner or a superadmin.
 
     404 is not returned for unknown user_id — RLS scopes to workspace so
     zero-item users return empty aggregations (200 with empty owned_by_state).
     """
     workspace_id = _require_workspace(current_user)
+    if user_id != current_user.id and not current_user.is_superadmin:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "cannot view another user's dashboard", "details": {}}},
+        )
     data = await service.get_metrics(user_id, workspace_id=workspace_id)
     return {"data": data, "message": "ok"}
 

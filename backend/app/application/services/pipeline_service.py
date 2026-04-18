@@ -11,11 +11,11 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.ports.cache import ICache
-from app.infrastructure.persistence.models.orm import WorkItemORM
+from app.infrastructure.persistence.models.orm import TeamMembershipORM, WorkItemORM
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,16 @@ class PipelineQueryService:
     # Internals
     # ------------------------------------------------------------------
 
+    def _team_member_subq(self, team_id: UUID) -> object:
+        """Subquery: user IDs who are active members of team_id."""
+        return (
+            select(TeamMembershipORM.user_id)
+            .where(
+                TeamMembershipORM.team_id == team_id,
+                TeamMembershipORM.removed_at.is_(None),
+            )
+        ).scalar_subquery()
+
     async def _compute(
         self,
         *,
@@ -110,6 +120,9 @@ class PipelineQueryService:
         )
         if project_id is not None:
             agg_stmt = agg_stmt.where(WorkItemORM.project_id == project_id)
+        if team_id is not None:
+            # MF-4: team_id must be applied as a WHERE filter, not just hashed for cache key.
+            agg_stmt = agg_stmt.where(WorkItemORM.owner_id.in_(self._team_member_subq(team_id)))
         if owner_id is not None:
             agg_stmt = agg_stmt.where(WorkItemORM.owner_id == owner_id)
         if state_filter:
@@ -134,7 +147,6 @@ class PipelineQueryService:
                 agg_map[row.state] = entry
 
         # Step 2: Fetch up to MAX_ITEMS_PER_COLUMN items per non-blocked column
-        # Single query using ROW_NUMBER OVER PARTITION BY state
         active_states = list(FSM_ORDER)
         if state_filter:
             active_states = [s for s in active_states if s in state_filter]
@@ -153,6 +165,8 @@ class PipelineQueryService:
             )
             if project_id is not None:
                 item_stmt = item_stmt.where(WorkItemORM.project_id == project_id)
+            if team_id is not None:
+                item_stmt = item_stmt.where(WorkItemORM.owner_id.in_(self._team_member_subq(team_id)))
             if owner_id is not None:
                 item_stmt = item_stmt.where(WorkItemORM.owner_id == owner_id)
 

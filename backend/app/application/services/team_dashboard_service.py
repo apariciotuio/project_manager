@@ -89,8 +89,11 @@ class TeamDashboardService:
         )
         pending_reviews: int = (await self._session.execute(review_stmt)).scalar() or 0
 
-        # Velocity: items reaching 'ready' state in the last 30 days
-        # Approximated by items in 'ready' state updated within 30d and owned by team
+        # recent_ready_items: items currently in 'ready' state that were updated in the last 30 days,
+        # owned by team members. This is an APPROXIMATION — it counts items whose state is
+        # currently 'ready' AND were updated recently, not true throughput (items that transitioned
+        # TO 'ready' in the period). Items that moved past 'ready' or back are not counted.
+        # Field is named 'recent_ready_items' to avoid implying it is a true velocity metric.
         cutoff = datetime.now(UTC) - timedelta(days=30)
         velocity_stmt = (
             select(func.count(WorkItemORM.id))
@@ -102,7 +105,7 @@ class TeamDashboardService:
                 WorkItemORM.deleted_at.is_(None),
             )
         )
-        velocity_last_30d: int = (await self._session.execute(velocity_stmt)).scalar() or 0
+        recent_ready_items: int = (await self._session.execute(velocity_stmt)).scalar() or 0
 
         # Blocked count
         blocked_stmt = (
@@ -119,6 +122,6 @@ class TeamDashboardService:
         return {
             "owned_by_state": owned_by_state,
             "pending_reviews": int(pending_reviews),
-            "velocity_last_30d": int(velocity_last_30d),
+            "recent_ready_items": int(recent_ready_items),
             "blocked_count": int(blocked_count),
         }

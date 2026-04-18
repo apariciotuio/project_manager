@@ -159,7 +159,8 @@ class TestPersonDashboardCache:
         ws_id = uuid4()
         cached_data = {"owned_by_state": {"draft": 99}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
         cache = FakeCache()
-        await cache.set(f"dashboard:person:{uid}", json.dumps(cached_data), 120)
+        # MF-2 fix: cache key is now workspace-scoped: dashboard:person:{workspace_id}:{user_id}
+        await cache.set(f"dashboard:person:{ws_id}:{uid}", json.dumps(cached_data), 120)
 
         session = FakeSession(state_rows=[], review_count=0, notification_count=0)
         svc = PersonDashboardService(session=session, cache=cache)  # type: ignore[arg-type]
@@ -170,6 +171,26 @@ class TestPersonDashboardCache:
         assert session._call_count == 0
 
     @pytest.mark.asyncio
+    async def test_cache_key_is_workspace_and_user_scoped(self) -> None:
+        """MF-2 regression: same user in two workspaces must not share cache."""
+        from app.application.services.person_dashboard_service import PersonDashboardService
+
+        uid = uuid4()
+        ws_a = uuid4()
+        ws_b = uuid4()
+        cached_data = {"owned_by_state": {"draft": 5}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
+        cache = FakeCache()
+        # Pre-populate workspace_A's entry
+        await cache.set(f"dashboard:person:{ws_a}:{uid}", json.dumps(cached_data), 120)
+
+        # workspace_B call must NOT hit workspace_A's cache
+        session = FakeSession(state_rows=[], review_count=0, notification_count=0)
+        svc = PersonDashboardService(session=session, cache=cache)  # type: ignore[arg-type]
+        result = await svc.get_metrics(uid, workspace_id=ws_b)
+
+        assert result["owned_by_state"] == {}
+
+    @pytest.mark.asyncio
     async def test_cache_key_is_user_scoped(self) -> None:
         from app.application.services.person_dashboard_service import PersonDashboardService
 
@@ -178,7 +199,7 @@ class TestPersonDashboardCache:
         ws_id = uuid4()
         cached_data = {"owned_by_state": {"draft": 5}, "overloaded": False, "inbox_count": 0, "pending_reviews_count": 0}
         cache = FakeCache()
-        await cache.set(f"dashboard:person:{uid1}", json.dumps(cached_data), 120)
+        await cache.set(f"dashboard:person:{ws_id}:{uid1}", json.dumps(cached_data), 120)
 
         # uid2 should not get uid1's data
         session = FakeSession(state_rows=[], review_count=0, notification_count=0)
