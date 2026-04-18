@@ -78,6 +78,7 @@ Rules (from repo standards):
 
 ### 2.1 Project scaffolding
 
+- [x] Add `mcp>=1.26.0` to `backend/pyproject.toml` — was installed but undeclared (2026-04-18)
 - [ ] Create `apps/mcp-server/` with `pyproject.toml`, pinned MCP Python SDK version, shared deps on `packages/services/`, `packages/schemas/`, `packages/domain/`
 - [ ] Dockerfile (multi-stage, final image < 250 MB compressed)
 - [ ] Helm values entry + k8s manifests (Deployment, Service, ServiceAccount, ConfigMap)
@@ -85,6 +86,9 @@ Rules (from repo standards):
 
 ### 2.2 Core server (TDD)
 
+- [x] RED+GREEN: `test_mcp_auth_context` — 7 tests covering load_auth_context_from_env, _resolve_auth_context, expired/invalid/missing token, missing workspace_id claim (2026-04-18)
+- [x] GREEN: replace `workspace_id=uuid4()` placeholder in `create_mcp_server()` with `_resolve_auth_context()` — workspace_id now bound from MCP_TOKEN JWT at every tool call (2026-04-18)
+- [x] GREEN: delete `_NoOpCache` shim, wire `InMemoryCacheAdapter` for `get_work_item_completeness` tool (2026-04-18)
 - [ ] RED: `test_initialize_returns_server_info_and_capabilities`
 - [ ] RED: `test_initialize_rejected_without_token`
 - [ ] RED: `test_stdio_closes_after_30s_without_initialize`
