@@ -130,6 +130,12 @@ class WorkspaceMembershipORM(Base):
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    capabilities: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=sa.text("'{}'")
+    )
+    context_labels: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=sa.text("'{}'")
+    )
 
 
 class AuditEventORM(Base):
@@ -1488,3 +1494,186 @@ class LockUnlockRequestORM(Base):
         # CHECK enforced in migration DDL
     )
     response_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# EP-10 — Admin: Invitations, ContextPresets, ValidationRules, JiraConfigs
+# ---------------------------------------------------------------------------
+
+
+class InvitationORM(Base):
+    __tablename__ = "invitations"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('invited', 'accepted', 'expired', 'revoked')",
+            name="invitations_state_check",
+        ),
+        Index("idx_invitations_workspace_email", "workspace_id", "email"),
+        Index(
+            "idx_invitations_expires_at",
+            "expires_at",
+            postgresql_where=sa.text("state = 'invited'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    email: Mapped[str] = mapped_column(Text, nullable=False)
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, server_default="invited")
+    context_labels: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=sa.text("'{}'")
+    )
+    team_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(sa.UUID), nullable=False, server_default=sa.text("'{}'")
+    )
+    initial_capabilities: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=sa.text("'{}'")
+    )
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ContextPresetORM(Base):
+    __tablename__ = "context_presets"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "name", name="uq_context_presets_ws_name"),
+        Index(
+            "idx_context_presets_workspace",
+            "workspace_id",
+            postgresql_where=sa.text("deleted_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ValidationRuleORM(Base):
+    __tablename__ = "validation_rules"
+    __table_args__ = (
+        CheckConstraint(
+            "enforcement IN ('required', 'recommended', 'blocked_override')",
+            name="validation_rules_enforcement_check",
+        ),
+        Index(
+            "idx_validation_rules_lookup",
+            "workspace_id",
+            "work_item_type",
+            "validation_type",
+            postgresql_where=sa.text("active = true"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    work_item_type: Mapped[str] = mapped_column(Text, nullable=False)
+    validation_type: Mapped[str] = mapped_column(Text, nullable=False)
+    enforcement: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="recommended"
+    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class JiraConfigORM(Base):
+    __tablename__ = "jira_configs"
+    __table_args__ = (
+        CheckConstraint(
+            "auth_type IN ('basic', 'oauth2')",
+            name="jira_configs_auth_type_check",
+        ),
+        CheckConstraint(
+            "state IN ('active', 'disabled', 'error')",
+            name="jira_configs_state_check",
+        ),
+        UniqueConstraint("workspace_id", "project_id", name="uq_jira_configs_ws_project"),
+        Index("idx_jira_configs_workspace", "workspace_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
+    )
+    base_url: Mapped[str] = mapped_column(Text, nullable=False)
+    auth_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="basic")
+    credentials_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    last_health_check_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    last_health_check_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class JiraProjectMappingORM(Base):
+    __tablename__ = "jira_project_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "jira_config_id", "jira_project_key", name="uq_jira_mappings_config_key"
+        ),
+        Index("idx_jira_mappings_config", "jira_config_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    jira_config_id: Mapped[UUID] = mapped_column(
+        ForeignKey("jira_configs.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    jira_project_key: Mapped[str] = mapped_column(Text, nullable=False)
+    local_project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
+    )
+    type_mappings: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

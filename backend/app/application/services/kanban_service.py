@@ -54,7 +54,15 @@ class KanbanService:
             raise ValueError(f"group_by must be one of: {sorted(VALID_GROUP_BY)}")
 
         # Cache key: kanban:{workspace_id}:{group_by}:{sha256(sorted params)}
-        raw = group_by.encode()
+        # project_id and limit MUST be in the hash — omitting them causes cross-project cache leaks.
+        raw = json.dumps(
+            {
+                "group_by": group_by,
+                "project_id": str(project_id) if project_id else None,
+                "limit": limit,
+            },
+            sort_keys=True,
+        ).encode()
         filter_hash = hashlib.sha256(raw).hexdigest()
         cache_key = f"kanban:{workspace_id}:{group_by}:{filter_hash}"
 

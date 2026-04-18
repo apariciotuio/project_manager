@@ -84,4 +84,28 @@ describe('WorkItemDetailLayout — collapse persistence', () => {
       chatPanel?.hidden === true;
     expect(isCollapsed).toBe(false);
   });
+
+  it('aria-expanded toggles with collapsed state', () => {
+    renderLayout('wi-1');
+    const btn = screen.getByTestId('collapse-chat-btn');
+    // Initially expanded (collapsed=false → aria-expanded=true)
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(btn);
+    // After click, collapsed=true → aria-expanded=false
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('expand after collapse removes localStorage key (round-trip toggle)', () => {
+    renderLayout('wi-1');
+    const btn = screen.getByTestId('collapse-chat-btn');
+    const key = collapseKey('wi-1');
+
+    // Collapse: should set key to '1'
+    fireEvent.click(btn);
+    expect(localStorage.getItem(key)).toBe('1');
+
+    // Expand (click again): should remove key
+    fireEvent.click(btn);
+    expect(localStorage.getItem(key)).toBeNull();
+  });
 });

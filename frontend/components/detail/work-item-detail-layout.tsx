@@ -66,7 +66,6 @@ function useCollapsedPersistence(workItemId: string) {
 
 export interface WorkItemDetailLayoutProps {
   workItemId: string;
-  threadId: string;
   children: React.ReactNode;
 }
 
@@ -250,8 +249,10 @@ export function WorkItemDetailLayout({
 
         {/* Collapse/expand toggle button */}
         <button
+          type="button"
           data-testid="collapse-chat-btn"
           aria-label={collapsed ? t('expandChatAria') : t('collapseChatAria')}
+          aria-expanded={!collapsed}
           onClick={toggleCollapsed}
           className="shrink-0 flex items-center justify-center w-5 bg-muted hover:bg-muted/80 border-x border-border text-muted-foreground focus:outline-none focus-visible:ring-2"
         >

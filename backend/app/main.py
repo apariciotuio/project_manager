@@ -227,6 +227,12 @@ def create_app() -> FastAPI:
     # EP-10 — projects + admin + routing rules + validation templates
     app.include_router(project_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(admin_members_router, prefix="/api/v1")
+    app.include_router(admin_context_presets_router, prefix="/api/v1")
+    app.include_router(admin_rules_router, prefix="/api/v1")
+    app.include_router(admin_jira_router, prefix="/api/v1")
+    app.include_router(admin_support_router, prefix="/api/v1")
+    app.include_router(admin_dashboard_router, prefix="/api/v1")
     app.include_router(routing_rule_router, prefix="/api/v1")
     app.include_router(vrt_router, prefix="/api/v1")
     # EP-11 — integrations

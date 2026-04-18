@@ -26,7 +26,6 @@ import { DocPreviewPanel } from '@/components/docs/doc-preview-panel';
 import { WorkItemDetailLayout } from '@/components/detail/work-item-detail-layout';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
 import { useVersions } from '@/hooks/work-item/use-versions';
-import { useThread } from '@/hooks/work-item/use-thread';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
@@ -48,14 +47,12 @@ export default function WorkItemDetailPage({
 }: WorkItemDetailPageProps) {
   const { workItem, isLoading, error, refetch } = useWorkItem(id);
   const { versions } = useVersions(id);
-  const { thread } = useThread(id);
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
 
   // Pick the latest version id — null while versions haven't loaded yet
   const latestVersionId = versions.length > 0 ? (versions[0]?.id ?? null) : null;
-  const threadId = thread?.id ?? '';
 
   if (isLoading) {
     return (
@@ -259,7 +256,7 @@ export default function WorkItemDetailPage({
         <WorkItemHeader workItem={workItem} slug={slug} />
       </div>
 
-      <WorkItemDetailLayout workItemId={id} threadId={threadId}>
+      <WorkItemDetailLayout workItemId={id}>
         {contentPanel}
       </WorkItemDetailLayout>
     </div>

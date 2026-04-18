@@ -33,7 +33,7 @@ class PersonDashboardService:
         self._cache = cache
 
     async def get_metrics(self, user_id: UUID, *, workspace_id: UUID) -> dict[str, Any]:
-        cache_key = f"dashboard:person:{user_id}"
+        cache_key = f"dashboard:person:{workspace_id}:{user_id}"
         cached = await self._cache.get(cache_key)
         if cached is not None:
             return json.loads(cached)
@@ -42,8 +42,8 @@ class PersonDashboardService:
         await self._cache.set(cache_key, json.dumps(data, default=str), _CACHE_TTL)
         return data
 
-    async def invalidate(self, user_id: UUID) -> None:
-        await self._cache.delete(f"dashboard:person:{user_id}")
+    async def invalidate(self, user_id: UUID, *, workspace_id: UUID) -> None:
+        await self._cache.delete(f"dashboard:person:{workspace_id}:{user_id}")
 
     # ------------------------------------------------------------------
     # Internals
@@ -72,12 +72,15 @@ class PersonDashboardService:
         in_clarification_count = owned_by_state.get("in_clarification", 0)
         overloaded = in_clarification_count > _OVERLOAD_THRESHOLD
 
-        # Pending review requests where this user is the reviewer
+        # Pending review requests where this user is the reviewer, scoped to workspace
+        # ReviewRequestORM has no workspace_id — JOIN to work_items to enforce scope.
         reviews_stmt = (
             select(func.count(ReviewRequestORM.id))
+            .join(WorkItemORM, WorkItemORM.id == ReviewRequestORM.work_item_id)
             .where(
                 ReviewRequestORM.reviewer_id == user_id,
                 ReviewRequestORM.status == "pending",
+                WorkItemORM.workspace_id == workspace_id,
             )
         )
         pending_reviews_count: int = (

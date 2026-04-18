@@ -157,8 +157,18 @@ async function renderAndWait(state = 'draft') {
 }
 
 describe('EP-22 Phase 7 — WorkItemDetailPage layout', () => {
-  it('renders WorkItemDetailLayout (ChatPanel present in left slot) on desktop', async () => {
+  let originalInnerWidth: number;
+
+  beforeEach(() => {
+    originalInnerWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: originalInnerWidth });
+  });
+
+  it('renders WorkItemDetailLayout (ChatPanel present in left slot) on desktop', async () => {
     await renderAndWait();
     expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
   });
@@ -198,5 +208,35 @@ describe('EP-22 Phase 7 — WorkItemDetailPage layout', () => {
     const tabs = screen.queryAllByRole('tab');
     const clarTab = tabs.find((t) => t.textContent?.toLowerCase().includes('clarific'));
     expect(clarTab).toBeUndefined();
+  });
+
+  it('renders correctly for READY state', async () => {
+    await renderAndWait('ready');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-editor')).toBeInTheDocument();
+  });
+
+  it('renders correctly for IN_PROGRESS state', async () => {
+    await renderAndWait('in_progress');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-editor')).toBeInTheDocument();
+  });
+
+  it('renders correctly for DONE state', async () => {
+    await renderAndWait('done');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-editor')).toBeInTheDocument();
+  });
+
+  it('renders correctly for BLOCKED state', async () => {
+    await renderAndWait('blocked');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-editor')).toBeInTheDocument();
+  });
+
+  it('renders correctly for DISCARDED state', async () => {
+    await renderAndWait('discarded');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-editor')).toBeInTheDocument();
   });
 });
