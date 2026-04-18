@@ -21,11 +21,12 @@ import { ReviewsTab } from '@/components/work-item/reviews-tab';
 import { CommentsTab } from '@/components/work-item/comments-tab';
 import { TimelineTab } from '@/components/work-item/timeline-tab';
 import { ChildItemsTab } from '@/components/work-item/child-items-tab';
-import { ClarificationTab } from '@/components/clarification/clarification-tab';
 import { VersionHistoryPanel } from '@/components/work-item/version-history-panel';
 import { DocPreviewPanel } from '@/components/docs/doc-preview-panel';
+import { WorkItemDetailLayout } from '@/components/detail/work-item-detail-layout';
 import { useWorkItem } from '@/hooks/work-item/use-work-item';
 import { useVersions } from '@/hooks/work-item/use-versions';
+import { useThread } from '@/hooks/work-item/use-thread';
 import { useAuth } from '@/app/providers/auth-provider';
 import { isSessionExpired } from '@/lib/types/auth';
 import { PageContainer } from '@/components/layout/page-container';
@@ -47,12 +48,14 @@ export default function WorkItemDetailPage({
 }: WorkItemDetailPageProps) {
   const { workItem, isLoading, error, refetch } = useWorkItem(id);
   const { versions } = useVersions(id);
+  const { thread } = useThread(id);
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
 
   // Pick the latest version id — null while versions haven't loaded yet
   const latestVersionId = versions.length > 0 ? (versions[0]?.id ?? null) : null;
+  const threadId = thread?.id ?? '';
 
   if (isLoading) {
     return (
@@ -96,14 +99,8 @@ export default function WorkItemDetailPage({
     void updated;
   }
 
-  return (
-    <div data-testid="detail-page-wrapper" className="overflow-x-hidden">
+  const contentPanel = (
     <PageContainer variant="wide" className="flex flex-col gap-6">
-      {/* Header row: full width on mobile, constrained on desktop */}
-      <div className="flex-1 min-w-0">
-        <WorkItemHeader workItem={workItem} slug={slug} />
-      </div>
-
       {canEdit && (
         <WorkItemEditModal
           open={editOpen}
@@ -150,7 +147,6 @@ export default function WorkItemDetailPage({
       <Tabs defaultValue="especificacion">
         <TabsList aria-label="Secciones del elemento">
           <TabsTrigger value="especificacion">Especificación</TabsTrigger>
-          <TabsTrigger value="clarificacion">Clarificación</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="revisiones">Revisiones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
@@ -177,14 +173,6 @@ export default function WorkItemDetailPage({
               </Suspense>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="clarificacion" className="mt-4">
-          <ClarificationTab
-            workItemId={id}
-            workItemVersion={workItem.updated_at ? 1 : 1}
-            canEdit={canEdit}
-          />
         </TabsContent>
 
         <TabsContent value="tareas" className="mt-4">
@@ -262,6 +250,18 @@ export default function WorkItemDetailPage({
         </StickyActionBar>
       )}
     </PageContainer>
+  );
+
+  return (
+    <div data-testid="detail-page-wrapper" className="overflow-x-hidden h-full">
+      {/* Header row: full width */}
+      <div className="px-6 pt-6 pb-2">
+        <WorkItemHeader workItem={workItem} slug={slug} />
+      </div>
+
+      <WorkItemDetailLayout workItemId={id} threadId={threadId}>
+        {contentPanel}
+      </WorkItemDetailLayout>
     </div>
   );
 }

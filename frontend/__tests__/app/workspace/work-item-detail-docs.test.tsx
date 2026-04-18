@@ -64,8 +64,13 @@ vi.mock('@/components/work-item/ownership-history', () => ({
 vi.mock('@/components/work-item/version-history-panel', () => ({
   VersionHistoryPanel: () => null,
 }));
-vi.mock('@/components/clarification/clarification-tab', () => ({
-  ClarificationTab: () => null,
+vi.mock('@/components/detail/work-item-detail-layout', () => ({
+  WorkItemDetailLayout: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="work-item-detail-layout">{children}</div>
+  ),
+}));
+vi.mock('@/components/clarification/chat-panel', () => ({
+  ChatPanel: () => null,
 }));
 vi.mock('@/app/providers/auth-provider', () => ({
   useAuth: () => ({ user: { id: 'u1', is_superadmin: false } }),
