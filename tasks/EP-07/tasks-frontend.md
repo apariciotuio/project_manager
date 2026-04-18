@@ -301,8 +301,7 @@ interface CommentThreadProps {
 }
 ```
 
-- [ ] 4.1 [RED] Test: renders body; edit button only for own non-AI comments; delete button for own; deleted comment shows `[deleted]` with greyed styling; reply count badge; orphaned anchor shows warning chip "Anchor text no longer found"
-- [ ] 4.2 [GREEN] Implement `src/components/comments/CommentThread.tsx`
+- [~] 4.1/4.2 Functionally covered by `CommentItem` inside `frontend/components/work-item/comments-tab.tsx` (commit 5691218). Ticks the new schema (actor_type/actor_id), `[eliminado]` body when soft-deleted, orphaned-anchor status chip ("Anchor perdido"), and reply nesting. NOT yet extracted as a standalone `CommentThread.tsx` per spec — refactor deferred to avoid duplicating already-tested code; can be lifted out when Group 6.3 (comment count badge) needs to listen on a single component. Edit/own-vs-other gating not built (no currentUserId wiring) — separate slice.
 
 ### CommentInput component
 
@@ -315,9 +314,8 @@ interface CommentInputProps {
 }
 ```
 
-- [ ] 4.3 [RED] Test: textarea; submit on Cmd/Ctrl+Enter or button; empty body disabled; anchor data passed when provided
-- [ ] 4.3a [RED] Test: paste image from clipboard → upload starts via EP-16 upload flow, placeholder `![Uploading…]()` inserted at cursor, replaced with `![filename](attachment_id)` on upload success; drag-drop image onto editor same flow; failed upload shows inline error and removes placeholder
-- [ ] 4.4 [GREEN] Implement `src/components/comments/CommentInput.tsx` — support paste-from-clipboard (`paste` event on `ClipboardData.files`) and drag-drop (`drop` event) for images; each image triggers EP-16 upload flow (`POST /api/v1/work-items/:id/attachments` multipart → authenticated streaming, no presigned URL — decision #29); markdown image syntax `![filename](attachment_id)` inserted at cursor position on success
+- [~] 4.3/4.4 Functionally covered by `CommentForm` inside `comments-tab.tsx` (commit 5691218). Submit button + textarea + empty-body disable + correct `parent_comment_id` shape. NOT yet extracted as `CommentInput.tsx`. Cmd/Ctrl+Enter submit + anchor-data-passed-as-second-arg behaviours pending — small follow-up.
+- [ ] 4.3a [DEFERRED] Image paste/drag → upload — depends on EP-16 v2 (file ingestion DEFERRED out of MVP per decision #29 / EP-16 status)
 
 ### CommentFeed component
 
@@ -329,8 +327,7 @@ interface CommentFeedProps {
 }
 ```
 
-- [ ] 4.5 [RED] Test: renders all `CommentThread` components; `CommentInput` at top; loading skeleton; empty state "No comments yet"; cursor pagination "Load more" button
-- [ ] 4.6 [GREEN] Implement `src/components/comments/CommentFeed.tsx`
+- [~] 4.5/4.6 Functionally covered by `CommentsTab` (commit 5691218 + earlier work) — list + loading skeleton + empty state ("Sin comentarios todavía") + form. Cursor "Load more" not implemented (current `useComments` fetches all comments in one call); pagination is a separate slice when comment volume becomes a concern.
 
 ### Anchored inline comments (section view integration)
 
