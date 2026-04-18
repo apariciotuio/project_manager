@@ -23,20 +23,13 @@ def register_event_subscribers(bus: EventBus) -> None:
         from app.application.events.timeline_subscriber import (
             register_timeline_subscribers,
         )
-        from app.application.services.timeline_service import TimelineService
         from app.infrastructure.persistence.database import get_session_factory
-        from app.infrastructure.persistence.timeline_repository_impl import (
-            TimelineEventRepositoryImpl,
-        )
 
-        async def _get_timeline_svc() -> TimelineService:
-            factory = get_session_factory()
-            async with factory() as session:
-                return TimelineService(
-                    timeline_repo=TimelineEventRepositoryImpl(session)
-                )
-
-        register_timeline_subscribers(bus, _get_timeline_svc)
+        # Pass the session factory directly so each handler owns the full
+        # open→write→commit→close lifecycle.  The old pattern of returning
+        # a service from inside an async-with block closed the session before
+        # the service was used, leaving connections idle-in-transaction.
+        register_timeline_subscribers(bus, get_session_factory())
         logger.info("register_event_subscribers: timeline subscribers registered")
     except Exception:
         logger.exception(

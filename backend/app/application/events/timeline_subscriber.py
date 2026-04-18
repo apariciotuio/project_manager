@@ -9,8 +9,10 @@ translate them into timeline_events rows via TimelineService.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable
 from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.application.events.event_bus import Event, EventBus
 from app.application.events.events import (
@@ -19,70 +21,79 @@ from app.application.events.events import (
 )
 from app.application.services.timeline_service import TimelineService
 from app.domain.models.timeline_event import TimelineActorType
+from app.infrastructure.persistence.timeline_repository_impl import (
+    TimelineEventRepositoryImpl,
+)
 
 logger = logging.getLogger(__name__)
 
+SessionFactory = Callable[[], Any]  # async_sessionmaker
+
 
 def _make_state_changed_handler(
-    get_svc: Callable[[], Coroutine[Any, Any, TimelineService]],
-) -> Callable[[Event], Coroutine[Any, Any, None]]:
+    session_factory: SessionFactory,
+) -> Callable[[Event], Any]:
     async def handle(event: Event) -> None:
         if not isinstance(event, WorkItemStateChangedEvent):
             return
-        svc = await get_svc()
-        actor_type = TimelineActorType.HUMAN if event.actor_id else TimelineActorType.SYSTEM
-        summary = (
-            f"State changed from {event.from_state.value} to {event.to_state.value}"
-        )
-        if len(summary) > 255:
-            summary = summary[:255]
-        await svc.append(
-            work_item_id=event.work_item_id,
-            workspace_id=event.workspace_id,
-            event_type="state_transition",
-            actor_type=actor_type,
-            actor_id=event.actor_id,
-            summary=summary,
-            payload={
-                "from_state": event.from_state.value,
-                "to_state": event.to_state.value,
-                "is_override": event.is_override,
-                "reason": event.reason,
-            },
-        )
+        async with session_factory() as session:
+            svc = TimelineService(timeline_repo=TimelineEventRepositoryImpl(session))
+            actor_type = TimelineActorType.HUMAN if event.actor_id else TimelineActorType.SYSTEM
+            summary = (
+                f"State changed from {event.from_state.value} to {event.to_state.value}"
+            )
+            if len(summary) > 255:
+                summary = summary[:255]
+            await svc.append(
+                work_item_id=event.work_item_id,
+                workspace_id=event.workspace_id,
+                event_type="state_transition",
+                actor_type=actor_type,
+                actor_id=event.actor_id,
+                summary=summary,
+                payload={
+                    "from_state": event.from_state.value,
+                    "to_state": event.to_state.value,
+                    "is_override": event.is_override,
+                    "reason": event.reason,
+                },
+            )
+            await session.commit()
 
     return handle
 
 
 def _make_owner_changed_handler(
-    get_svc: Callable[[], Coroutine[Any, Any, TimelineService]],
-) -> Callable[[Event], Coroutine[Any, Any, None]]:
+    session_factory: SessionFactory,
+) -> Callable[[Event], Any]:
     async def handle(event: Event) -> None:
         if not isinstance(event, WorkItemOwnerChangedEvent):
             return
-        svc = await get_svc()
-        await svc.append(
-            work_item_id=event.work_item_id,
-            workspace_id=event.workspace_id,
-            event_type="owner_changed",
-            actor_type=TimelineActorType.HUMAN,
-            actor_id=event.changed_by,
-            summary="Owner changed",
-            payload={
-                "previous_owner_id": str(event.previous_owner_id),
-                "new_owner_id": str(event.new_owner_id),
-                "reason": event.reason,
-            },
-        )
+        async with session_factory() as session:
+            svc = TimelineService(timeline_repo=TimelineEventRepositoryImpl(session))
+            await svc.append(
+                work_item_id=event.work_item_id,
+                workspace_id=event.workspace_id,
+                event_type="owner_changed",
+                actor_type=TimelineActorType.HUMAN,
+                actor_id=event.changed_by,
+                summary="Owner changed",
+                payload={
+                    "previous_owner_id": str(event.previous_owner_id),
+                    "new_owner_id": str(event.new_owner_id),
+                    "reason": event.reason,
+                },
+            )
+            await session.commit()
 
     return handle
 
 
 def register_timeline_subscribers(
     bus: EventBus,
-    get_timeline_svc: Callable[[], Coroutine[Any, Any, TimelineService]],
+    session_factory: SessionFactory,
 ) -> None:
     """Register all timeline event handlers on the given EventBus."""
-    bus.subscribe(WorkItemStateChangedEvent, _make_state_changed_handler(get_timeline_svc))
-    bus.subscribe(WorkItemOwnerChangedEvent, _make_owner_changed_handler(get_timeline_svc))
+    bus.subscribe(WorkItemStateChangedEvent, _make_state_changed_handler(session_factory))
+    bus.subscribe(WorkItemOwnerChangedEvent, _make_owner_changed_handler(session_factory))
     logger.info("timeline_subscriber: registered handlers for state_changed, owner_changed")
