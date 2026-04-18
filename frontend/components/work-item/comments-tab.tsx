@@ -7,16 +7,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OwnerAvatar } from '@/components/domain/owner-avatar';
 import { RelativeTime } from '@/components/domain/relative-time';
 import { useComments } from '@/hooks/work-item/use-comments';
-import type { Comment, AddCommentRequest } from '@/lib/types/work-item-detail';
+import type { Comment, CreateCommentRequest } from '@/lib/types/versions';
+
+function actorDisplay(comment: Comment): string {
+  if (comment.actor_type === 'ai_suggestion') return 'AI';
+  if (comment.actor_type === 'system') return 'System';
+  return comment.actor_id ?? 'Unknown';
+}
 
 interface CommentFormProps {
-  onSubmit: (req: AddCommentRequest) => Promise<void>;
-  parentId?: string | null;
+  onSubmit: (req: CreateCommentRequest) => Promise<void>;
+  parentCommentId?: string | null;
   onCancel?: () => void;
   placeholder?: string;
 }
 
-function CommentForm({ onSubmit, parentId, onCancel, placeholder }: CommentFormProps) {
+function CommentForm({ onSubmit, parentCommentId, onCancel, placeholder }: CommentFormProps) {
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,7 +31,7 @@ function CommentForm({ onSubmit, parentId, onCancel, placeholder }: CommentFormP
     if (!body.trim()) return;
     setSubmitting(true);
     try {
-      await onSubmit({ body: body.trim(), parent_id: parentId ?? null });
+      await onSubmit({ body: body.trim(), parent_comment_id: parentCommentId ?? null });
       setBody('');
       onCancel?.();
     } finally {
@@ -60,30 +66,43 @@ function CommentForm({ onSubmit, parentId, onCancel, placeholder }: CommentFormP
 
 interface CommentItemProps {
   comment: Comment;
-  onReply: (req: AddCommentRequest) => Promise<void>;
+  onReply: (req: CreateCommentRequest) => Promise<void>;
   isReply?: boolean;
 }
 
 function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
   const [replying, setReplying] = useState(false);
+  const display = actorDisplay(comment);
 
   return (
     <div className={isReply ? 'pl-10' : undefined}>
       <div className="flex gap-3">
         <OwnerAvatar
-          name={comment.author_name ?? undefined}
+          name={display}
           size="sm"
           className="shrink-0 mt-0.5"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {comment.author_name ?? comment.author_id}
-            </span>
+            <span className="text-sm font-medium text-foreground">{display}</span>
             <RelativeTime iso={comment.created_at} />
+            {comment.anchor_status === 'orphaned' && (
+              <span
+                role="status"
+                className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-900 border border-yellow-300"
+              >
+                Anchor perdido
+              </span>
+            )}
           </div>
-          <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{comment.body}</p>
-          {!isReply && (
+          <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">
+            {comment.deleted_at ? (
+              <span className="italic text-muted-foreground">[eliminado]</span>
+            ) : (
+              comment.body
+            )}
+          </p>
+          {!isReply && !comment.deleted_at && (
             <Button
               variant="ghost"
               size="sm"
@@ -98,7 +117,7 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
             <div className="mt-2">
               <CommentForm
                 onSubmit={onReply}
-                parentId={comment.id}
+                parentCommentId={comment.id}
                 onCancel={() => setReplying(false)}
                 placeholder="Escribe una respuesta…"
               />
