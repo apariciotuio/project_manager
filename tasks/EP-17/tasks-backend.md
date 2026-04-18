@@ -28,7 +28,12 @@ Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.
   - AuditService injection + log_event call in force_release_lock endpoint
   - Audit category: 'domain', action: 'force_released_section_lock', context includes reason
   - Tests: test_force_release_with_reason_persists_to_audit_event, test_force_release_without_reason_persists_none_to_audit_event — GREEN (2 passed)
-- [ ] **Task 2: list-embed lock summary** — GET /work-items should embed lock_summary per item (has_locks, count, held_by_me)
+- [x] **Task 2: list-embed lock summary** — GET /work-items embeds lock_summary per item (has_locks, count, held_by_me) — (2026-04-18)
+  - LockSummary schema in work_item_schemas.py
+  - WorkItemResponse.from_domain() accepts optional lock_summary param
+  - SectionLockRepositoryImpl.get_lock_info_by_work_item_ids(ids) — single aggregated query, returns {work_item_id: {count, held_by}}
+  - Controller hydrates responses in memory from aggregated query (no N+1)
+  - Tests: test_list_work_items_includes_lock_summary_per_item, test_list_work_items_held_by_me_reflects_caller — GREEN (2 passed)
 
 ---
 
