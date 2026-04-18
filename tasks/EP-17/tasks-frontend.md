@@ -92,28 +92,20 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ---
 
-## Group 7: `ForceReleaseDialog` Component (Admin) (DEFERRED — backend gap: no reason param, no RBAC)
+## Group 7: `ForceReleaseDialog` Component (Admin)
 
-- [ ] **RED** — Write component tests:
-  - `test_not_rendered_for_user_without_force_unlock_capability`
-  - `test_rendered_for_user_with_force_unlock_capability`
-  - `test_shows_current_lock_summary`
-  - `test_submit_disabled_until_reason_and_checkbox_filled`
-  - `test_submit_disabled_when_reason_less_than_10_chars`
-  - `test_submit_calls_force_release_api`
-  - `test_success_closes_dialog_and_shows_toast`
-  - `test_503_shows_error_banner`
-
-- [ ] Implement `src/components/locks/ForceReleaseDialog.tsx`
-  - Props: `workItemId: UUID`, `lock: LockDTO`, `isOpen: boolean`, `onClose: () => void`
-  - Gate render on `user.capabilities.includes('force_unlock')` (from auth context)
-  - Lock summary: "Currently editing: {holder_name} · Since {relativeTime(acquired_at)} · Expires {relativeTime(expires_at)}"
-  - Reason `<textarea>`: Zod min(10) max(1000)
-  - Confirmation checkbox: "I understand this will immediately end {holder_name}'s edit session"
-  - "Force unlock" button: disabled until reason valid AND checkbox checked
-  - On success: close + toast "Lock released successfully."
-
-- [ ] **GREEN** — All dialog tests pass
+- [x] **RED+GREEN** — 9 tests in `__tests__/components/locks/force-release-dialog.test.tsx` — all pass (2026-04-18)
+- [x] Implement `components/locks/force-release-dialog.tsx`
+  - Props: `sectionId: string`, `lock: SectionLockDTO`, `holderDisplayName: string`, `currentUser: AuthUser`, `isOpen: boolean`, `onClose: () => void`
+  - Gate: `currentUser.is_superadmin` (capabilities.force_unlock pending RBAC — EP-10 TODO)
+  - Lock summary with holder name + RelativeTime for acquired_at and expires_at
+  - Reason textarea: min 10 chars, max 1000 chars
+  - Confirmation checkbox with holder name substituted
+  - Submit disabled until reason valid AND checkbox checked
+  - On success: close + toast "Bloqueo liberado correctamente."
+  - On 503: inline alert error
+- [x] **GREEN** — 9/9 tests pass (2026-04-18)
+- Note: BE force-release endpoint does not yet accept reason param (TODO in lock_controller.py). Reason is validated UI-side only until BE adds it.
 
 ---
 
@@ -198,7 +190,7 @@ NOTE: renamed `useWorkItemLock` → `useSectionLock` to match actual backend mod
 
 ---
 
-**Status: PARTIAL** (2026-04-18) — Foundation shipped (types, API client, useSectionLock hook, lock indicator in spec tab). Groups 5-10 deferred on backend unlock-request/respond endpoints.
+**Status: PARTIAL** (2026-04-18) — Foundation + G3/G5/G6/G7 shipped. Types extended, API client extended (unlock-request/respond), LockBanner, UnlockRequestDialog, HolderResponsePanel, ForceReleaseDialog — 35 new tests, all GREEN. Remaining: Groups 8 (detail page integration), 9 (list badge), 10 (lock-loss recovery), 11 (a11y audit).
 
 ## Acceptance Criteria Checklist
 
