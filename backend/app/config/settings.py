@@ -45,6 +45,22 @@ class AppSettings(BaseSettings):
     _split_cors = field_validator("cors_allowed_origins", mode="before")(_csv_to_list)
     _split_csp = field_validator("csp_overrides", mode="before")(_csv_to_kv_dict)
 
+    @model_validator(mode="after")
+    def _validate_cors_in_production(self) -> "AppSettings":
+        """EP-12: in production, APP_CORS_ALLOWED_ORIGINS must be explicit.
+
+        An empty list would otherwise fall through with no origins accepted,
+        breaking browser clients at startup. The CORSPolicyMiddleware already
+        rejects '*' in prod; this closes the reciprocal gap (empty origin
+        list in non-dev is a misconfiguration, not a valid default).
+        """
+        if self.env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError  # deferred — avoid circular
+        if not self.cors_allowed_origins:
+            raise ConfigurationError("cors_allowed_origins")
+        return self
+
 
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DATABASE_", env_file=".env", extra="ignore")

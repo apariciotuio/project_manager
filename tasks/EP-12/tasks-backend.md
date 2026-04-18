@@ -106,10 +106,10 @@ THEN the response includes `Access-Control-Max-Age: 600`
 
 ### CORS
 - [x] [RED] Test: CORS middleware rejects origin not in `ALLOWED_ORIGINS` — 9 tests in `tests/unit/presentation/middleware/test_cors_policy.py`
-- [ ] [RED] Test: app startup raises `ConfigurationError` when `ALLOWED_ORIGINS` is empty in non-dev env — pending (settings validation)
+- [x] [RED] Test: app startup raises `ConfigurationError` when `ALLOWED_ORIGINS` is empty in non-dev env — `test_production_empty_cors_raises` + `_populated_cors_passes` + `_dev_env_empty_cors_passes` (2026-04-18)
 - [x] [GREEN] Implement `CORSPolicyMiddleware` in `app/presentation/middleware/cors_policy.py` — commit 1dcddcb (wildcard-in-prod raises ValueError at startup)
 - [x] [GREEN] Wire `CORSPolicyMiddleware` into `app/main.py` replacing FastAPI `CORSMiddleware` — commit 6a4d1c4 (2026-04-17)
-- [ ] [GREEN] Add startup validation for `ALLOWED_ORIGINS` in settings — pending (settings layer)
+- [x] [GREEN] Add startup validation for `ALLOWED_ORIGINS` in settings — `AppSettings._validate_cors_in_production` raises `ConfigurationError` when empty in prod (2026-04-18)
 
 ### Acceptance Criteria — Rate Limiting
 
@@ -159,7 +159,7 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 ### Audit Log Integration
 - [x] [RED] Test: login success writes audit record with required fields — `tests/integration/test_audit_integration_auth.py` (3 tests: login_success ip_address/entity_type, login_invalid_state failure, 403 ip_address)
 - [x] [RED] Test: 403 response writes audit record with `outcome=failure` — covered in `test_audit_integration_auth.py::test_403_audit_includes_ip_address`
-- [ ] [RED] Test: element status transition writes audit record
+- [x] [RED] Test: element status transition writes audit record — `tests/integration/test_audit_status_transition.py` (3 tests: valid transition success+actor/workspace, invalid FSM edge failure); all 3 green (2026-04-18)
 - [x] [RED] Test: audit log write failure rolls back the originating operation (same transaction) — `tests/integration/test_audit_log_repository.py` (5 tests: fields persisted, minimal fields, actor/workspace, hasattr append-only guard, rollback semantics)
 - [x] [GREEN] Implement `AuditLogRepository.append()` (append-only; no update/delete) — schema confirmed in `0005_create_audit_events.py` (EP-00) + `AuditEventORM` orm.py:135; renamed `record()` → `append()` in `IAuditRepository`/`AuditRepositoryImpl`/`AuditService`; DB-level via Postgres RULES `no_update_audit`/`no_delete_audit`; 5/5 tests green (2026-04-18)
 - [x] [GREEN] login success/failure + 403 handler — done (Option B JSONB context); `auth_service.handle_callback`: added `login_invalid_state` audit before InvalidStateError raise, added `entity_type='user'`+`entity_id` to `login_success` audit; `error_middleware._audit_authorization_denied`: added `ip_address` to context (2026-04-18); status transitions + credential CRUD + export deferred

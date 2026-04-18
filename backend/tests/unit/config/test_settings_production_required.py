@@ -171,3 +171,31 @@ class TestProductionRequiredSecrets:
             service_key="dev-service-key",
         )
         assert settings.service_key == "dev-service-key"
+
+    def test_production_empty_cors_raises(self) -> None:
+        """EP-12: APP_CORS_ALLOWED_ORIGINS empty in production → error.
+
+        An empty allowlist in prod breaks all browser clients silently at the
+        middleware layer; fail fast at startup instead.
+        """
+        from app.config.settings import AppSettings
+        from app.domain.errors.codes import ConfigurationError
+
+        with pytest.raises(ConfigurationError) as exc_info:
+            AppSettings(env="production", cors_allowed_origins=[])
+        assert "cors_allowed_origins" in str(exc_info.value).lower()
+
+    def test_production_populated_cors_passes(self) -> None:
+        from app.config.settings import AppSettings
+
+        s = AppSettings(
+            env="production",
+            cors_allowed_origins=["https://app.tuio.com", "https://admin.tuio.com"],
+        )
+        assert "https://app.tuio.com" in s.cors_allowed_origins
+
+    def test_dev_env_empty_cors_passes(self) -> None:
+        from app.config.settings import AppSettings
+
+        s = AppSettings(env="development", cors_allowed_origins=[])
+        assert s.cors_allowed_origins == []
