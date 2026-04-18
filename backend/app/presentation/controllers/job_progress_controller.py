@@ -3,7 +3,7 @@
 GET /api/v1/jobs/{job_id}/progress
   - Auth required
   - 404 when job not found (or not owned — we use the job_id UUID as the auth check)
-  - Streams SSE frames from Redis pub/sub channel
+  - Streams SSE frames from Redis pub/sub channel via SseHandler
   - Sends `: keepalive` comment every 30s of idle time
   - Sends `event: done` when Celery task completes
   - Sends `event: error` when Celery task fails
@@ -11,20 +11,21 @@ GET /api/v1/jobs/{job_id}/progress
 
 Dependency overrides (override_current_user, override_job_progress_service) are
 exposed for test injection only. Production code uses the real dependencies.
+
+_stream_job_progress is module-level to allow monkeypatching in integration tests.
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.infrastructure.sse.job_progress_service import JobProgressService
+from app.infrastructure.sse.redis_pubsub import RedisPubSub
+from app.infrastructure.sse.sse_handler import SseHandler
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)
@@ -57,26 +58,7 @@ async def override_job_progress_service() -> JobProgressService:
 
 
 # ---------------------------------------------------------------------------
-# SSE frame helpers
-# ---------------------------------------------------------------------------
-
-
-def _sse_data(event_type: str | None, data: dict[str, Any]) -> str:
-    lines = []
-    if event_type:
-        lines.append(f"event: {event_type}")
-    lines.append(f"data: {json.dumps(data)}")
-    lines.append("")  # blank line terminator
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _sse_keepalive() -> str:
-    return ": keepalive\n\n"
-
-
-# ---------------------------------------------------------------------------
-# SSE generator
+# SSE streaming (module-level for monkeypatching in tests)
 # ---------------------------------------------------------------------------
 
 
@@ -85,53 +67,17 @@ async def _stream_job_progress(
     redis_url: str,
     keepalive_interval: float = _KEEPALIVE_INTERVAL,
 ) -> AsyncGenerator[str]:
+    """Build a SseHandler backed by a per-request Redis client and stream job progress."""
     client = aioredis.from_url(redis_url, decode_responses=True)
-    pubsub_obj = client.pubsub()
-    channel = f"{_SSE_CHANNEL_PREFIX}{job_id}"
-
-    await pubsub_obj.subscribe(channel)
-    last_event_time = asyncio.get_event_loop().time()
-
     try:
-        while True:
-            now = asyncio.get_event_loop().time()
-            elapsed = now - last_event_time
-
-            if elapsed >= keepalive_interval:
-                yield _sse_keepalive()
-                last_event_time = now
-
-            msg = await pubsub_obj.get_message(
-                ignore_subscribe_messages=True, timeout=1.0
-            )
-            if msg is not None and msg.get("type") == "message":
-                raw = msg["data"]
-                if isinstance(raw, bytes):
-                    raw = raw.decode()
-                try:
-                    event = json.loads(raw)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-
-                event_type = event.get("type")
-
-                if event_type == "done":
-                    yield _sse_data("done", event.get("payload", event))
-                    return
-                elif event_type == "error":
-                    yield _sse_data("error", event.get("payload", event))
-                    return
-                else:
-                    yield _sse_data(None, event)
-                    last_event_time = asyncio.get_event_loop().time()
-            else:
-                await asyncio.sleep(0.05)
-    except asyncio.CancelledError:
-        logger.debug("SSE client disconnected for job %s", job_id)
+        pubsub = RedisPubSub(client)  # type: ignore[arg-type]
+        handler = SseHandler(pubsub, keepalive_interval=keepalive_interval)  # type: ignore[arg-type]
+        channel = f"{_SSE_CHANNEL_PREFIX}{job_id}"
+        # Delegate to SseHandler generator — yields SSE frames
+        async for frame in handler._generate(channel):
+            yield frame
     finally:
-        await pubsub_obj.unsubscribe(channel)
-        await pubsub_obj.close()
-        await client.aclose()
+        await client.aclose()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
