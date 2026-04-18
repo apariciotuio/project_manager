@@ -151,3 +151,106 @@ class TestValidateSignals:
 
         result = validate_signals({})
         assert "suggested_sections" in result
+
+
+class TestSuggestedSectionsListCap:
+    """SEC-INVAL-001: bound list length to prevent runaway FE memory use."""
+
+    def test_list_trimmed_to_max(self) -> None:
+        from app.presentation.schemas.dundun_signals import (
+            _MAX_SUGGESTED_SECTIONS,
+            validate_signals,
+        )
+
+        # Emit one more than the cap, all valid.
+        oversize = _MAX_SUGGESTED_SECTIONS + 10
+        raw = {
+            "suggested_sections": [
+                {"section_type": f"sec_{i}", "proposed_content": "x"}
+                for i in range(oversize)
+            ]
+        }
+        result = validate_signals(raw)
+        assert len(result["suggested_sections"]) == _MAX_SUGGESTED_SECTIONS
+
+    def test_list_at_cap_unchanged(self) -> None:
+        from app.presentation.schemas.dundun_signals import (
+            _MAX_SUGGESTED_SECTIONS,
+            validate_signals,
+        )
+
+        raw = {
+            "suggested_sections": [
+                {"section_type": f"sec_{i}", "proposed_content": "x"}
+                for i in range(_MAX_SUGGESTED_SECTIONS)
+            ]
+        }
+        result = validate_signals(raw)
+        assert len(result["suggested_sections"]) == _MAX_SUGGESTED_SECTIONS
+
+    def test_overflow_log_emitted(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        from app.presentation.schemas.dundun_signals import (
+            _MAX_SUGGESTED_SECTIONS,
+            validate_signals,
+        )
+
+        raw = {
+            "suggested_sections": [
+                {"section_type": f"s{i}", "proposed_content": "x"}
+                for i in range(_MAX_SUGGESTED_SECTIONS + 5)
+            ]
+        }
+        with caplog.at_level(logging.WARNING, logger="app.presentation.schemas.dundun_signals"):
+            validate_signals(raw)
+        assert any("suggested_sections_overflow" in rec.message for rec in caplog.records)
+
+
+class TestInvalidReasonsSanitised:
+    """SEC-LOG-001: invalid_reasons must not leak raw input values to logs."""
+
+    def test_invalid_reasons_exclude_input_values(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        import logging
+
+        from app.presentation.schemas.dundun_signals import validate_signals
+
+        # Input values that would be embedded in a raw Pydantic error message.
+        leak_token = "SENSITIVE_LEAK_MARKER_XYZ"  # noqa: S105 — test marker
+        raw = {
+            "suggested_sections": [
+                {
+                    "section_type": "valid",
+                    "proposed_content": leak_token * 5000,  # 80k chars → too long
+                },
+            ]
+        }
+        with caplog.at_level(logging.WARNING, logger="app.presentation.schemas.dundun_signals"):
+            validate_signals(raw)
+        joined = " ".join(rec.getMessage() for rec in caplog.records)
+        assert leak_token not in joined, (
+            "Raw input value leaked into log message — SEC-LOG-001 regression"
+        )
+        # The sanitised summary should still name the field + error type.
+        assert "proposed_content" in joined or "suggested_sections_dropped" in joined
+
+    def test_invalid_reasons_format_is_loc_and_type(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        import logging
+
+        from app.presentation.schemas.dundun_signals import validate_signals
+
+        raw = {
+            "suggested_sections": [
+                {"proposed_content": "x"},  # missing section_type
+            ]
+        }
+        with caplog.at_level(logging.WARNING, logger="app.presentation.schemas.dundun_signals"):
+            validate_signals(raw)
+        joined = " ".join(rec.getMessage() for rec in caplog.records)
+        # Pydantic v2 error type for missing field is "missing"
+        assert "missing" in joined
+        assert "section_type" in joined

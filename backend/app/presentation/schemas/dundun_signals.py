@@ -10,13 +10,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
 
 _MAX_PROPOSED_CONTENT = 20_000  # chars (~20 KB)
 _MAX_RATIONALE = 2_000  # chars (~2 KB)
 _MAX_SECTION_TYPE = 64
+_MAX_SUGGESTED_SECTIONS = 25  # list length cap (SEC-INVAL-001)
 
 
 class SuggestedSection(BaseModel):
@@ -50,10 +51,32 @@ class ConversationSignalsWire(BaseModel):
 _DEFAULT_SIGNALS: dict[str, Any] = {"conversation_ended": False, "suggested_sections": []}
 
 
+def _safe_error_summary(exc: Exception, idx: int) -> str:
+    """Compact error summary safe to log — never includes input values.
+
+    For Pydantic ValidationError, extract only the field path + error type
+    (e.g. "item[3].proposed_content: string_too_long"). For any other
+    exception, record the exception class name. The raw input (which may be
+    LLM-generated user-like content or PII) is never logged (SEC-LOG-001).
+    """
+    if isinstance(exc, ValidationError):
+        parts: list[str] = []
+        for err in exc.errors():
+            loc = ".".join(str(p) for p in err.get("loc", ()))
+            parts.append(f"{loc}:{err.get('type', 'error')}")
+        detail = ",".join(parts) if parts else "validation_error"
+    else:
+        detail = type(exc).__name__
+    return f"item[{idx}]:{detail}"
+
+
 def validate_signals(raw: Any) -> dict[str, Any]:
     """Parse raw signals dict from Dundun, drop invalid items, return clean dict.
 
-    - Individual item failures: item is dropped with a warn-level log.
+    - Individual item failures: item is dropped with a warn-level log that
+      records error types + field paths only (no raw input values).
+    - Over-length list: trimmed to ``_MAX_SUGGESTED_SECTIONS``; overflow
+      dropped with a warn log.
     - All items invalid: returns ``{"conversation_ended": False, "suggested_sections": []}``.
     - Top-level parse failure: returns the same defaults.
     - Never raises — always returns a dict safe to forward to FE.
@@ -70,6 +93,18 @@ def validate_signals(raw: Any) -> dict[str, Any]:
     if not isinstance(raw_items, list):
         raw_items = []
 
+    # SEC-INVAL-001: cap list length before we spend cycles validating items.
+    overflow_dropped = 0
+    if len(raw_items) > _MAX_SUGGESTED_SECTIONS:
+        overflow_dropped = len(raw_items) - _MAX_SUGGESTED_SECTIONS
+        raw_items = raw_items[:_MAX_SUGGESTED_SECTIONS]
+        logger.warning(
+            "suggested_sections_overflow received=%d cap=%d overflow_dropped=%d",
+            overflow_dropped + _MAX_SUGGESTED_SECTIONS,
+            _MAX_SUGGESTED_SECTIONS,
+            overflow_dropped,
+        )
+
     valid_items: list[dict[str, Any]] = []
     invalid_reasons: list[str] = []
 
@@ -78,15 +113,16 @@ def validate_signals(raw: Any) -> dict[str, Any]:
             parsed = SuggestedSection.model_validate(item)
             valid_items.append(parsed.model_dump())
         except Exception as exc:  # noqa: BLE001
-            reason = str(exc)
-            invalid_reasons.append(f"item[{idx}]: {reason}")
+            # SEC-LOG-001: never embed raw Pydantic error messages (they contain
+            # input values) — summarise to field path + error type only.
+            invalid_reasons.append(_safe_error_summary(exc, idx))
 
     dropped_count = len(raw_items) - len(valid_items)
     if dropped_count > 0:
         logger.warning(
-            "suggested_sections_dropped dropped_count=%d invalid_reasons=%r",
+            "suggested_sections_dropped dropped_count=%d invalid_reasons=%s",
             dropped_count,
-            invalid_reasons,
+            ";".join(invalid_reasons),
         )
 
     # Re-validate top-level fields (conversation_ended, extra fields) safely.
