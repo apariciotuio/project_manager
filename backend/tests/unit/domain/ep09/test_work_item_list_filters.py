@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
 
@@ -25,7 +26,7 @@ class TestDefaults:
 
 class TestCompletenessValidation:
     def test_min_gt_max_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(completeness_min=80, completeness_max=20)
 
     def test_equal_min_max_allowed(self) -> None:
@@ -33,21 +34,21 @@ class TestCompletenessValidation:
         assert f.completeness_min == 50
 
     def test_min_below_zero_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(completeness_min=-1)
 
     def test_max_above_100_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(completeness_max=101)
 
 
 class TestLimitBounds:
     def test_limit_zero_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(limit=0)
 
     def test_limit_101_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(limit=101)
 
     def test_limit_100_accepted(self) -> None:
@@ -62,7 +63,7 @@ class TestSortOptions:
             assert f.sort == opt
 
     def test_invalid_sort_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(sort="nonexistent_sort")
 
 

@@ -57,7 +57,8 @@ class TestWorkItemVersionInvariants:
 
     def test_immutable_after_construction(self) -> None:
         v = _make()
-        with pytest.raises(Exception):  # FrozenInstanceError
+        from dataclasses import FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             v.version_number = 99  # type: ignore[misc]
 
     def test_snapshot_schema_version_defaults_to_1(self) -> None:

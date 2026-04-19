@@ -122,7 +122,7 @@ def test_done_frame_stops_generator_no_subsequent_frames() -> None:
     # 'event: done' present
     assert "event: done" in body
     # No progress data frame after done
-    lines = [l for l in body.splitlines() if l.startswith("data: ")]
+    lines = [line for line in body.splitlines() if line.startswith("data: ")]
     # Only one data line (the done payload)
     assert len(lines) == 1
 
@@ -135,7 +135,7 @@ def test_error_frame_stops_generator_no_subsequent_frames() -> None:
     ]
     body = _body(events)
     assert "event: error" in body
-    lines = [l for l in body.splitlines() if l.startswith("data: ")]
+    lines = [line for line in body.splitlines() if line.startswith("data: ")]
     assert len(lines) == 1
 
 
@@ -147,7 +147,7 @@ def test_multiple_progress_events_before_done_all_emitted() -> None:
         {"type": "done", "payload": {"result": "ok"}},
     ]
     body = _body(events)
-    data_lines = [l for l in body.splitlines() if l.startswith("data: ")]
+    data_lines = [line for line in body.splitlines() if line.startswith("data: ")]
     # 2 progress frames + 1 done frame = 3 data lines
     assert len(data_lines) == 3
     assert "event: done" in body

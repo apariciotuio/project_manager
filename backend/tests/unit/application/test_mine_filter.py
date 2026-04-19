@@ -7,6 +7,7 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from app.application.services.work_item_list_service import WorkItemListQueryBuilder
 from app.domain.queries.work_item_list_filters import WorkItemListFilters
@@ -105,5 +106,5 @@ class TestMineFilterAny:
 
 class TestMineFilterInvalidType:
     def test_mine_type_invalid_raises_422(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WorkItemListFilters(mine=True, mine_type="invalid")  # type: ignore[arg-type]
