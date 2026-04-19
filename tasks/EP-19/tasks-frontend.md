@@ -2,6 +2,8 @@
 
 Frontend-only epic. Executed in three phases: **A — Foundation**, **B — Catalog**, **C — Migration**. TDD where feasible (token tests, component tests, hook tests, lint-rule tests). Storybook stories authored alongside components.
 
+**Status: MVP COMPLETE** (2026-04-19) — 25 components + 6 hooks + Phase A/B/C core shipped. 1 stale-tick resolved (`EmptyStateWithCTA` shipped as `cta` prop). 8 items carved to v2 (`CommandPalette` family, `DiffHunk`, 4 CI gates) — see `v2-carveout.md`.
+
 ## Phase A — Foundation
 **Status: COMPLETED** (2026-04-16)
 
@@ -75,15 +77,15 @@ For each component the pattern is: **RED** tests → **GREEN** component → **R
 ### B.6 Navigation & shortcuts
 
 - [x] Hook `useKeyboardShortcut(combo, handler, options?)` — modifier matching, form-field suppression, cleanup on unmount (2026-04-16)
-- [ ] `CommandPalette` — `⌘K` / `Ctrl+K`, fuzzy search, recents, registry — DEFERRED to follow-up (infrastructure from B.6 hook + shadcn Command ready)
-- [ ] `ShortcutCheatSheet` — `?` key — DEFERRED to follow-up
+- [ ] `CommandPalette` — `⌘K` / `Ctrl+K`, fuzzy search, recents, registry — **→ v2-carveout.md** (infrastructure ready via B.6 hook + shadcn Command; no consumer in MVP scope)
+- [ ] `ShortcutCheatSheet` — `?` key — **→ v2-carveout.md** (depends on CommandPalette)
 
 ### B.7 Content
 
 - [x] `HumanError` (code → ES message, generic fallback, console.warn for unmapped, role=alert, text nodes only) (2026-04-16)
 - [x] `RelativeTime` (wraps `<time datetime>`, 1 Hz update, `useRelativeTime` hook) (2026-04-16)
-- [ ] `DiffHunk` — DEFERRED (no consumer in EP-00..current migration scope)
-- [ ] `EmptyStateWithCTA` — DEFERRED (EP-12 EmptyState not yet available)
+- [ ] `DiffHunk` — **→ v2-carveout.md** (no consumer in MVP migration scope)
+- [x] `EmptyStateWithCTA` — shipped as `EmptyState` with `cta?: ReactNode` prop in `frontend/components/layout/empty-state.tsx` (test at `frontend/__tests__/components/layout/empty-state.test.tsx`) (2026-04-19)
 
 ### B.8 Hooks
 
@@ -93,7 +95,7 @@ For each component the pattern is: **RED** tests → **GREEN** component → **R
 - [x] `useKeyboardShortcut` — modifier matching + cleanup (2026-04-16)
 - [x] `useTheme()` — wraps next-themes (2026-04-16)
 - [x] `useHumanError(code)` — resolves + marks unmapped with console.warn (2026-04-16)
-- [ ] `useCommandPalette()` — DEFERRED with CommandPalette
+- [ ] `useCommandPalette()` — **→ v2-carveout.md** (ships with CommandPalette)
 
 ## Phase C — Migration (per-epic retrofit)
 **Status: COMPLETED for EP-00** (2026-04-16)
@@ -111,10 +113,10 @@ For each component the pattern is: **RED** tests → **GREEN** component → **R
 - [x] ESLint rules fire on violations (verified on login page pre-migration) (2026-04-16)
 - [x] All 171 unit tests pass (2026-04-16)
 - [x] TypeScript strict — clean (2026-04-16)
-- [ ] Lighthouse a11y ≥ 95 — requires deployed environment (CI gate)
-- [ ] axe-playwright on E2E — requires Playwright run (CI gate)
-- [ ] `size-limit` per route — requires `next build` (CI gate)
-- [ ] Storybook builds without errors — install complete, build not yet run
+- [ ] Lighthouse a11y ≥ 95 — **→ v2-carveout.md** (CI gate, matches EP-12 v2)
+- [ ] axe-playwright on E2E — **→ v2-carveout.md** (CI gate, matches EP-12 v2)
+- [ ] `size-limit` per route — **→ v2-carveout.md** (CI gate; requires `next build` in CI)
+- [ ] Storybook builds without errors — **→ v2-carveout.md** (story authoring + CI build deferred)
 
 ## Storybook coverage
 
