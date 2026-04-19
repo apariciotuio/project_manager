@@ -10,18 +10,13 @@ GET /api/v1/jobs/{job_id}/progress
 """
 from __future__ import annotations
 
-import json
 from typing import Any
-from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from starlette.requests import Request
 
+from app.infrastructure.sse.job_progress_service import JobState
 from app.presentation.controllers.job_progress_controller import router
-from app.infrastructure.sse.job_progress_service import JobProgressService, JobState
-
 
 # ---------------------------------------------------------------------------
 # Fake job progress service
@@ -70,7 +65,10 @@ def test_job_progress_requires_auth() -> None:
 
 def test_job_progress_404_when_job_not_found() -> None:
     """Returns 404 when job_id is unknown."""
-    from app.presentation.controllers.job_progress_controller import router, override_job_progress_service
+    from app.presentation.controllers.job_progress_controller import (
+        override_job_progress_service,
+        router,
+    )
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
@@ -80,9 +78,10 @@ def test_job_progress_404_when_job_not_found() -> None:
     app.dependency_overrides[override_job_progress_service] = lambda: fake_svc
 
     # Create a mock user so auth passes
-    from app.presentation.middleware.auth_middleware import CurrentUser
     from uuid import uuid4
+
     from app.presentation.controllers.job_progress_controller import override_current_user
+    from app.presentation.middleware.auth_middleware import CurrentUser
 
     fake_user = CurrentUser(id=uuid4(), email="u@example.com", workspace_id=uuid4(), is_superadmin=False)
     app.dependency_overrides[override_current_user] = lambda: fake_user

@@ -20,7 +20,6 @@ from app.domain.models.work_item_version import (
 )
 from app.domain.repositories.work_item_version_repository import IWorkItemVersionRepository
 
-
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------

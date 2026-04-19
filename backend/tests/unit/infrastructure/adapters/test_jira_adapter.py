@@ -5,7 +5,6 @@ Uses httpx.MockTransport to avoid network calls.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest

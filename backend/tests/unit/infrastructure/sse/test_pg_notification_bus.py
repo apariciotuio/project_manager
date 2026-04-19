@@ -23,8 +23,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.infrastructure.sse.pg_notification_bus import PgNotificationBus, PayloadTooLarge
-
+from app.infrastructure.sse.pg_notification_bus import PayloadTooLarge, PgNotificationBus
 
 # ---------------------------------------------------------------------------
 # Fake asyncpg connection

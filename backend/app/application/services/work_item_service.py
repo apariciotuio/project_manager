@@ -17,7 +17,7 @@ force_ready() bypasses the gate by design.
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 

@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 class TestMorpheoResponseParsing:
     """Round-trip parse/serialize for each of the 4 kinds."""

@@ -15,8 +15,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.domain.models.team import Notification, NotificationState
-
+from app.domain.models.team import Notification
 
 # ---------------------------------------------------------------------------
 # Fakes

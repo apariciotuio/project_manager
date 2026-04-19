@@ -22,7 +22,11 @@ from app.domain.models.review import (
     WaiveRequiredRuleError,
 )
 from app.infrastructure.persistence.work_item_repository_impl import WorkItemRepositoryImpl
-from app.presentation.dependencies import get_current_user, get_validation_service, get_work_item_repo_scoped
+from app.presentation.dependencies import (
+    get_current_user,
+    get_validation_service,
+    get_work_item_repo_scoped,
+)
 from app.presentation.middleware.auth_middleware import CurrentUser
 
 logger = logging.getLogger(__name__)

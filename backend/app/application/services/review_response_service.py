@@ -12,7 +12,6 @@ Events emitted:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from uuid import UUID
 
 from app.application.events.event_bus import EventBus
@@ -23,10 +22,8 @@ from app.application.services.review_request_service import (
     ReviewWithResponses,
 )
 from app.domain.models.review import (
-    ContentRequiredError,
     ReviewAlreadyClosedError,
     ReviewDecision,
-    ReviewRequest,
     ReviewResponse,
     ReviewStatus,
 )

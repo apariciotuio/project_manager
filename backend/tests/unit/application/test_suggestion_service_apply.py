@@ -18,7 +18,6 @@ import pytest
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeAssistantSuggestionRepository
 
-
 # ---------------------------------------------------------------------------
 # Domain imports (deferred to avoid import-time side effects in RED phase)
 # ---------------------------------------------------------------------------
@@ -94,8 +93,6 @@ class _FakeVersioningService:
 
     def __init__(self) -> None:
         from app.domain.models.work_item_version import (
-            VersionActorType,
-            VersionTrigger,
             WorkItemVersion,
         )
 

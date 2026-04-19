@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
 from app.application.services.task_service import (
     TaskNodeNotFoundError,
     TaskService,
 )
+from app.domain.models.task_node import TaskGenerationSource, TaskNode
 from tests.unit.fakes.fake_task_repositories import (
     FakeTaskDependencyRepository,
     FakeTaskNodeRepository,

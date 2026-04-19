@@ -12,8 +12,6 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
 from app.application.events.event_bus import Event, EventBus
 from app.application.events.events import (
     WorkItemOwnerChangedEvent,

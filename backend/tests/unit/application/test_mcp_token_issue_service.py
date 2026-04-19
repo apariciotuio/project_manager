@@ -4,18 +4,17 @@ RED → GREEN → REFACTOR cycle.
 """
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 
 from app.application.services.mcp_token_issue_service import (
+    _TOKEN_REGEX,
     MCPTokenIssueService,
     MCPTokenLimitError,
     MCPTokenNotMemberError,
     MCPTokenTTLError,
-    _TOKEN_REGEX,
     generate_token_plaintext,
 )
 from tests.fakes.fake_mcp_token_repositories import (
@@ -80,9 +79,10 @@ async def test_issue_rejects_when_user_already_at_10_tokens() -> None:
     svc = MCPTokenIssueService(token_repo=repo, membership_repo=membership_repo, pepper=_PEPPER)
 
     # Pre-fill 10 active tokens
-    from app.domain.models.mcp_token import MCPToken
     import hashlib
     import hmac as _hmac
+
+    from app.domain.models.mcp_token import MCPToken
 
     for i in range(10):
         plaintext = f"mcp_{'x' * 43}"

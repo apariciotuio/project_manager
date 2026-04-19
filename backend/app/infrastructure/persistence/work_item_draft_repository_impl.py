@@ -4,8 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.exceptions import DraftForbiddenError, WorkItemDraftNotFoundError

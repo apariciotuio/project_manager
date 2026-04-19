@@ -38,8 +38,8 @@ def app_with_fake_service(override_settings) -> FastAPI:
     """Stand-alone FastAPI app with faked PersonDashboardService dependency."""
     from app.main import create_app
     from app.presentation.dependencies import (
-        get_person_dashboard_service,
         get_cache_adapter,
+        get_person_dashboard_service,
     )
     from tests.fakes.fake_repositories import FakeCache
 

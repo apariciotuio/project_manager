@@ -13,8 +13,6 @@ Scenarios:
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -22,12 +20,10 @@ import pytest
 
 from app.domain.exceptions import WorkItemNotFoundError
 from app.domain.models.section import Section
-from app.domain.models.section_type import GenerationSource, SectionType
+from app.domain.models.section_type import SectionType
 from app.domain.models.work_item import WorkItem
 from app.domain.value_objects.priority import Priority
-from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
-
 from apps.mcp_server.tools.read_work_item import handle_read_work_item
 
 WORKSPACE_ID = uuid4()

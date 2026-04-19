@@ -1,8 +1,6 @@
 """EP-09 — Unit tests for WorkItemListFilters."""
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 
 from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters

@@ -13,6 +13,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.commands.create_work_item_command import CreateWorkItemCommand
 from app.application.commands.delete_work_item_command import DeleteWorkItemCommand
@@ -28,10 +29,9 @@ from app.domain.value_objects.work_item_type import WorkItemType
 from app.presentation.dependencies import (
     get_current_user,
     get_draft_service,
-    get_work_item_service,
     get_scoped_session,
+    get_work_item_service,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.presentation.middleware.auth_middleware import CurrentUser
 from app.presentation.schemas.draft_schemas import SaveCommittedDraftRequest
 from app.presentation.schemas.work_item_schemas import (

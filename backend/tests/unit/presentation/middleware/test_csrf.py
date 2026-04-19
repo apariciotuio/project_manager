@@ -19,7 +19,6 @@ from starlette.testclient import TestClient
 
 from app.presentation.middleware.csrf import CSRF_COOKIE, CSRF_HEADER, CSRFMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

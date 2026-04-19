@@ -15,7 +15,6 @@ from tests.fakes.fake_repositories import FakeCache, FakeTemplateRepository
 
 def _make_template(workspace_id, type_, *, is_system: bool = False):
     from app.domain.models.template import Template
-    from app.domain.value_objects.work_item_type import WorkItemType
 
     return Template(
         id=uuid4(),
@@ -77,7 +76,6 @@ class TestTemplateServiceGet:
         assert result is None
 
     async def test_cache_hit_avoids_db_call(self) -> None:
-        from app.domain.models.template import Template
         from app.domain.value_objects.work_item_type import WorkItemType
 
         ws_id = uuid4()

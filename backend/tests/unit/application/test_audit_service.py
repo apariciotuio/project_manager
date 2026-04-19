@@ -19,7 +19,6 @@ from app.application.services.audit_service import AuditService
 from app.domain.models.audit_event import AuditCategory
 from tests.fakes.fake_repositories import FakeAuditRepository
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

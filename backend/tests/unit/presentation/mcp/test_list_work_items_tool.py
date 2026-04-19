@@ -21,11 +21,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.value_objects.work_item_state import WorkItemState
-from app.domain.value_objects.work_item_type import WorkItemType
-from app.domain.value_objects.priority import Priority
 from app.domain.models.work_item import WorkItem
-
+from app.domain.value_objects.work_item_type import WorkItemType
 from apps.mcp_server.tools.list_work_items import handle_list_work_items
 
 WORKSPACE_ID = uuid4()

@@ -8,14 +8,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.versioning_service import VersionConflictError, VersioningService
+from app.application.services.versioning_service import VersioningService
 from app.domain.models.work_item_version import (
     VersionActorType,
     VersionTrigger,
     WorkItemVersion,
 )
 from app.domain.repositories.work_item_version_repository import IWorkItemVersionRepository
-
 
 # ---------------------------------------------------------------------------
 # Fakes

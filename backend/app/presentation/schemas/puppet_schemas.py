@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Puppet ingest callback (Puppet → our platform)
 # ---------------------------------------------------------------------------

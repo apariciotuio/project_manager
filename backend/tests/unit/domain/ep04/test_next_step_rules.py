@@ -7,8 +7,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-import pytest
-
 from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
 from app.domain.quality.next_step_rules import evaluate
 from app.domain.value_objects.work_item_state import WorkItemState

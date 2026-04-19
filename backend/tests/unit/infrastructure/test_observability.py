@@ -13,7 +13,6 @@ from app.infrastructure.observability.metrics import (
 )
 from app.infrastructure.observability.tracing import span
 
-
 # ---------------------------------------------------------------------------
 # Metrics — Counter
 # ---------------------------------------------------------------------------

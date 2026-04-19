@@ -3,10 +3,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
-from tests.unit.fakes.fake_task_repositories import FakeTaskNodeRepository
 
 
 def _make_node(

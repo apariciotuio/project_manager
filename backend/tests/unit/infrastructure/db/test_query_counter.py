@@ -10,11 +10,9 @@ from __future__ import annotations
 
 import logging
 from contextvars import copy_context
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Counter core — event listener behaviour
@@ -136,7 +134,6 @@ class TestProductionGuard:
 
         mock_engine.sync_engine.connect.assert_not_called()
         # event.listen should NOT have been called
-        from sqlalchemy import event as sa_event
         # The sync engine's event should not have received a listener
         mock_engine.sync_engine.dispatch.before_cursor_execute.assert_not_called() if hasattr(
             mock_engine.sync_engine, "dispatch"
@@ -199,7 +196,6 @@ class TestProductionGuard:
 class TestQueryCounterMiddleware:
     def test_middleware_resets_counter_between_requests(self) -> None:
         """Each request starts with a fresh counter (token reset on exit)."""
-        import asyncio
         from starlette.applications import Starlette
         from starlette.requests import Request
         from starlette.responses import PlainTextResponse
@@ -237,7 +233,7 @@ class TestQueryCounterMiddleware:
         from starlette.routing import Route
         from starlette.testclient import TestClient
 
-        from app.infrastructure.db.query_counter import _query_count, before_cursor_execute_listener
+        from app.infrastructure.db.query_counter import before_cursor_execute_listener
         from app.presentation.middleware.query_counter import QueryCounterMiddleware
 
         async def endpoint(request: Request) -> PlainTextResponse:

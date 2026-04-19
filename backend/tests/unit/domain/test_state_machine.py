@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import pytest
 
-
 VALID_TRANSITIONS_EXPECTED = [
     ("draft", "in_clarification"),
     ("in_clarification", "in_review"),

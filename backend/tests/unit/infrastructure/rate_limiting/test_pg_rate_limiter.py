@@ -13,15 +13,12 @@ Scenarios:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import sqlalchemy as sa
 
 from app.infrastructure.rate_limiting.pg_rate_limiter import PgRateLimiter
-
 
 # ---------------------------------------------------------------------------
 # Fake AsyncSession

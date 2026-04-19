@@ -17,7 +17,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import sqlalchemy as sa

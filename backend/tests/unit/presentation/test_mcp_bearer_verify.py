@@ -12,7 +12,6 @@ import pytest
 from app.application.services.mcp_token_verify_service import (
     MCPTokenExpired,
     MCPTokenInvalid,
-    VerifiedToken,
 )
 
 _WORKSPACE_ID = uuid4()
@@ -61,7 +60,6 @@ def test_decode_token_jwt_prefix_does_not_call_opaque_handler() -> None:
 
 def test_decode_mcp_opaque_token_reraises_expired_as_value_error() -> None:
     """_decode_mcp_opaque_token wraps MCPTokenExpired in ValueError."""
-    import asyncio
     import apps.mcp_server.server as srv
 
     async def _raise_expired() -> tuple:

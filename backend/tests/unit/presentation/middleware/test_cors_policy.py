@@ -11,7 +11,6 @@ from starlette.testclient import TestClient
 
 from app.presentation.middleware.cors_policy import CORSPolicyMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import base64
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app.application.services.audit_service import AuditService

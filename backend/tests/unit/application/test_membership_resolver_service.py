@@ -8,7 +8,6 @@ import pytest
 
 from app.application.services.membership_resolver_service import (
     MembershipResolverService,
-    ResolverOutcome,
 )
 from app.domain.models.workspace_membership import WorkspaceMembership
 from tests.fakes.fake_repositories import FakeWorkspaceMembershipRepository

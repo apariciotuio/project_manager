@@ -19,7 +19,6 @@ Covers:
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 

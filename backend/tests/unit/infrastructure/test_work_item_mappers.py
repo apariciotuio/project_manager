@@ -5,7 +5,7 @@ Round-trip tests: domain → ORM → domain for all enum values and edge fields.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone, UTC
+from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -16,12 +16,12 @@ from app.domain.value_objects.priority import Priority
 from app.domain.value_objects.state_transition import StateTransition
 from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
-from app.infrastructure.persistence.mappers import ownership_record_mapper
-from app.infrastructure.persistence.mappers import state_transition_mapper
-from app.infrastructure.persistence.mappers import work_item_mapper
+from app.infrastructure.persistence.mappers import (
+    ownership_record_mapper,
+    state_transition_mapper,
+    work_item_mapper,
+)
 from app.infrastructure.persistence.models.orm import (
-    OwnershipHistoryORM,
-    StateTransitionORM,
     WorkItemORM,
 )
 

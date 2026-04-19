@@ -13,18 +13,16 @@ Scenarios:
 """
 from __future__ import annotations
 
-import pytest
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-from app.domain.models.project import Project
+import pytest
 
+from app.domain.models.project import Project
 from apps.mcp_server.tools.list_projects import (
-    ProjectSummary,
     handle_list_projects,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

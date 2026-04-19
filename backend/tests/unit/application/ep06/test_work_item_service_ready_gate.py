@@ -8,16 +8,15 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.commands.transition_state_command import TransitionStateCommand
-from app.application.services.ready_gate_service import Blocker, GateResult
-from app.application.services.work_item_service import WorkItemService
-from app.domain.exceptions import MandatoryValidationsPendingError, ReadyGateBlockedError
-from app.domain.value_objects.work_item_state import WorkItemState
 import app.application.services.work_item_service as _wis_module
+from app.application.commands.transition_state_command import TransitionStateCommand
 from app.application.events.event_bus import Event, EventBus
 from app.application.services.audit_service import AuditService
-from app.domain.models.audit_event import AuditEvent
+from app.application.services.ready_gate_service import Blocker, GateResult
+from app.application.services.work_item_service import WorkItemService
+from app.domain.exceptions import ReadyGateBlockedError
 from app.domain.models.work_item import WorkItem
+from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
 from tests.fakes.fake_repositories import (
     FakeAuditRepository,

@@ -6,6 +6,7 @@ no real DB, no Redis.
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 from typing import Any
 
 import pytest
@@ -17,10 +18,7 @@ from starlette.testclient import TestClient
 
 from app.infrastructure.rate_limiting.pg_rate_limiter import (
     RateLimitMiddleware,
-    RateLimitResult,
 )
-from datetime import UTC
-
 
 # ---------------------------------------------------------------------------
 # Fake session + factory
@@ -29,7 +27,7 @@ from datetime import UTC
 
 class _FakeRow:
     def __init__(self, count: int, window_start_minute: Any) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         self.count = count
         self.window_start_minute = window_start_minute or datetime(
@@ -55,7 +53,7 @@ class FakeSession:
     async def execute(self, statement: Any, params: dict | None = None) -> _FakeResult:
         if self._raise:
             raise RuntimeError("DB unavailable")
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         identifier = (params or {}).get("identifier", "")
         self._buckets[identifier] = self._buckets.get(identifier, 0) + 1

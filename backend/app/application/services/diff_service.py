@@ -10,7 +10,6 @@ Performance target: < 2s for 100KB combined content.
 from __future__ import annotations
 
 import difflib
-from enum import StrEnum
 from typing import Any
 
 

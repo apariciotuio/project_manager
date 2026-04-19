@@ -3,23 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import UTC
 from uuid import UUID
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import sqlalchemy as sa
 from app.domain.exceptions import InvalidWorkItemError, UserNotFoundError
 from app.domain.models.work_item import WorkItem
+from app.domain.pagination import PaginationCursor as DomainPaginationCursor
 from app.domain.queries.page import Page
 from app.domain.queries.work_item_filters import WorkItemFilters
+from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.domain.value_objects.ownership_record import OwnershipRecord
 from app.domain.value_objects.state_transition import StateTransition
-from app.domain.pagination import PaginationCursor as DomainPaginationCursor
-from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
 from app.infrastructure.pagination import PaginationCursor, PaginationResult
 from app.infrastructure.persistence.mappers import (
     ownership_record_mapper,
@@ -31,7 +31,6 @@ from app.infrastructure.persistence.models.orm import (
     StateTransitionORM,
     WorkItemORM,
 )
-from datetime import UTC
 
 # CHECK constraint name fragments used for error classification
 _CHECK_TITLE = "work_items_title_length"
@@ -225,13 +224,11 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
             last = rows[-1]
             sort = filters.sort
             if sort == SortOption.updated_desc or sort == SortOption.updated_asc:
-                from datetime import timezone
                 ts = last.updated_at
                 if ts is not None and ts.tzinfo is None:
                     ts = ts.replace(tzinfo=UTC)
                 sv: object = ts.isoformat() if ts else ""
             elif sort == SortOption.created_desc:
-                from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
                     ts = ts.replace(tzinfo=UTC)
@@ -241,7 +238,6 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
             elif sort == SortOption.completeness_desc:
                 sv = last.completeness_score or 0
             else:
-                from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
                     ts = ts.replace(tzinfo=UTC)

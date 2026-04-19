@@ -28,7 +28,6 @@ from app.application.services.mcp_token_revoke_service import (
     MCPTokenRevokeService,
 )
 from app.application.services.mcp_token_rotate_service import MCPTokenRotateService
-from app.domain.repositories.mcp_token_repository import IMCPTokenRepository
 from app.infrastructure.persistence.mcp_token_repository_impl import MCPTokenRepositoryImpl
 from app.infrastructure.persistence.workspace_membership_repository_impl import (
     WorkspaceMembershipRepositoryImpl,

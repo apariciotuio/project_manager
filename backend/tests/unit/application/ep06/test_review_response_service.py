@@ -12,7 +12,10 @@ import pytest
 
 from app.application.events.event_bus import EventBus
 from app.application.events.review_events import ReviewRespondedEvent
-from app.application.services.review_request_service import ReviewForbiddenError, ReviewNotFoundError
+from app.application.services.review_request_service import (
+    ReviewForbiddenError,
+    ReviewNotFoundError,
+)
 from app.application.services.review_response_service import ReviewResponseService
 from app.domain.models.review import (
     ContentRequiredError,

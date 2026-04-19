@@ -13,14 +13,13 @@ session; the service/repo bodies are also faked so no real DB is touched.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.models.team import Notification, NotificationState
-
+from app.domain.models.team import Notification
 
 # ---------------------------------------------------------------------------
 # Spy session

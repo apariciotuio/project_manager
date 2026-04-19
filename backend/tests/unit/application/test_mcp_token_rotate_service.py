@@ -6,11 +6,21 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.services.mcp_token_issue_service import MCPTokenIssueService, compute_lookup_key
-from app.application.services.mcp_token_revoke_service import MCPTokenNotFoundError, MCPTokenRevokeService
+from app.application.services.mcp_token_issue_service import (
+    MCPTokenIssueService,
+    compute_lookup_key,
+)
+from app.application.services.mcp_token_revoke_service import (
+    MCPTokenNotFoundError,
+    MCPTokenRevokeService,
+)
 from app.application.services.mcp_token_rotate_service import MCPTokenRotateService
 from app.domain.models.mcp_token import MCPToken
-from tests.fakes.fake_mcp_token_repositories import FakeCache, FakeMCPTokenRepository, FakeMembershipRepo
+from tests.fakes.fake_mcp_token_repositories import (
+    FakeCache,
+    FakeMCPTokenRepository,
+    FakeMembershipRepo,
+)
 
 _PEPPER = "test-pepper-32-chars-exactly-here"
 _WORKSPACE_ID = uuid4()

@@ -102,7 +102,9 @@ class AuthSettings(BaseSettings):
     def _validate_production_secrets(self) -> "AuthSettings":
         if self.app_env.lower() not in _PRODUCTION_ENVS:
             return self
-        from app.domain.errors.codes import ConfigurationError  # deferred — avoids circular at module load
+        from app.domain.errors.codes import (
+            ConfigurationError,  # deferred — avoids circular at module load
+        )
         if self.jwt_secret == _AUTH_JWT_SECRET_SENTINEL:
             raise ConfigurationError("jwt_secret")
         return self

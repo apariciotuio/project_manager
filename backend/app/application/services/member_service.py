@@ -15,8 +15,8 @@ import hashlib
 import logging
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from datetime import datetime
+from uuid import UUID
 
 from app.application.services.audit_service import AuditService
 from app.domain.models.invitation import Invitation
@@ -149,11 +149,12 @@ class MemberService:
         cursor: PaginationCursor | None = None,
         limit: int = 50,
     ) -> PaginationResult:
-        from sqlalchemy import select, and_, or_
+        from sqlalchemy import and_, or_, select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import (
-            UserORM,
             TeamMembershipORM,
+            UserORM,
         )
 
         session: AsyncSession = self._session  # type: ignore[assignment]
@@ -305,8 +306,8 @@ class MemberService:
             "capabilities": list(membership.capabilities if hasattr(membership, "capabilities") else []),
         }
 
-        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import AsyncSession
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         row = (
@@ -387,7 +388,6 @@ class MemberService:
     ) -> Invitation:
         invitation = await self._invitation_repo.get_by_id(invitation_id)
         if invitation is None or invitation.workspace_id != workspace_id:
-            from app.domain.repositories.invitation_repository import IInvitationRepository
             raise MemberNotFoundError(invitation_id)
 
         if not invitation.is_resendable():
@@ -444,6 +444,7 @@ class MemberService:
     ) -> WorkspaceMembership | None:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import UserORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
@@ -473,7 +474,7 @@ class MemberService:
     async def _guard_last_admin(
         self, workspace_id: UUID, membership_id: UUID, session: object
     ) -> None:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
         from sqlalchemy.ext.asyncio import AsyncSession
 
         s: AsyncSession = session  # type: ignore[assignment]

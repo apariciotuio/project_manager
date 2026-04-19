@@ -18,15 +18,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.infrastructure.sse.job_progress_service import JobProgressService, JobState
-from app.infrastructure.sse.pg_notification_bus import PgNotificationBus, PayloadTooLarge
-
+from app.infrastructure.sse.pg_notification_bus import PayloadTooLarge, PgNotificationBus
 
 # ---------------------------------------------------------------------------
 # Fake asyncpg connection for unit tests

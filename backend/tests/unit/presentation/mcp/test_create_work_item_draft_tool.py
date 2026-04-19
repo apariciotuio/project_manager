@@ -13,7 +13,7 @@ Scenarios:
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,7 +21,6 @@ import pytest
 
 from app.domain.models.work_item_draft import WorkItemDraft
 from app.domain.value_objects.draft_conflict import DraftConflict
-
 from apps.mcp_server.tools.create_work_item_draft import handle_create_work_item_draft
 
 WORKSPACE_ID = uuid4()

@@ -54,17 +54,18 @@ class AdminDashboardService:
     async def _compute_dashboard(
         self, workspace_id: UUID, project_id: UUID | None
     ) -> dict[str, Any]:
-        from sqlalchemy import func, select, and_
+        from datetime import UTC, datetime, timedelta
+
+        from sqlalchemy import func, select
         from sqlalchemy.ext.asyncio import AsyncSession
+
         from app.infrastructure.persistence.models.orm import (
+            IntegrationConfigORM,
+            TeamMembershipORM,
+            TeamORM,
             WorkItemORM,
             WorkspaceMembershipORM,
-            UserORM,
-            TeamORM,
-            TeamMembershipORM,
-            IntegrationConfigORM,
         )
-        from datetime import UTC, datetime, timedelta
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         now = datetime.now(UTC)

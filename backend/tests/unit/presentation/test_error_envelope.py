@@ -255,7 +255,7 @@ def test_domain_error_http_status_property() -> None:
 def test_500_domain_error_logs_original_message(caplog: pytest.LogCaptureFixture) -> None:
     """Server log must contain the original (sensitive) message for debugging."""
     import logging
-    import pytest
+
 
     c = TestClient(_make_app_with_500(), raise_server_exceptions=False)
     with caplog.at_level(logging.ERROR, logger="app.presentation.middleware.error_envelope"):

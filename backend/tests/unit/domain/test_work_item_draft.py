@@ -4,8 +4,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-import pytest
-
 
 class TestWorkItemDraftConstruction:
     def test_create_with_valid_fields(self) -> None:

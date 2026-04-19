@@ -13,7 +13,6 @@ import pytest
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeAssistantSuggestionRepository
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

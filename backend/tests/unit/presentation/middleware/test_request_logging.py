@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from collections.abc import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.applications import Starlette
@@ -13,10 +10,8 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
-from starlette.types import ASGIApp
 
 from app.presentation.middleware.request_logging import RequestLoggingMiddleware
-
 
 # ---------------------------------------------------------------------------
 # Helpers

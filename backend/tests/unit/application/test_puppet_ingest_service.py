@@ -9,12 +9,10 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-import pytest_asyncio
 
 from app.application.services.puppet_ingest_service import PuppetIngestService
 from app.domain.models.puppet_ingest_request import PuppetIngestRequest
 from tests.fakes.fake_puppet_client import FakePuppetClient
-
 
 # ---------------------------------------------------------------------------
 # In-memory repository fake

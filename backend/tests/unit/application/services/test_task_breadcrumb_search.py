@@ -21,7 +21,6 @@ def _make_node(
     display_order=0,
     materialized_path="",
 ) -> TaskNode:
-    from app.application.services.task_service import TaskService
     node = TaskNode.create(
         work_item_id=work_item_id,
         parent_id=parent_id,

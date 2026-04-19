@@ -1,8 +1,6 @@
 """Unit tests for MCPTokenVerifyService — EP-18 Capability 1."""
 from __future__ import annotations
 
-import hashlib
-import hmac as _hmac
 import statistics
 import time
 from datetime import UTC, datetime, timedelta
@@ -11,7 +9,6 @@ from uuid import uuid4
 import pytest
 
 from app.application.services.mcp_token_issue_service import (
-    MCPTokenIssueService,
     compute_lookup_key,
     generate_token_plaintext,
     hash_token_argon2,
@@ -27,7 +24,6 @@ from app.domain.models.mcp_token import MCPToken
 from tests.fakes.fake_mcp_token_repositories import (
     FakeCache,
     FakeMCPTokenRepository,
-    FakeMembershipRepo,
 )
 
 _PEPPER = "test-pepper-32-chars-exactly-here"

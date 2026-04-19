@@ -12,12 +12,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.work_item_version import (
-    VersionActorType,
-    VersionTrigger,
     WorkItemVersion,
 )
 from app.domain.repositories.work_item_version_repository import (

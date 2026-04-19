@@ -5,10 +5,7 @@ from __future__ import annotations
 import base64
 import json
 
-import pytest
-
 from app.presentation.pagination.cursor import decode_cursor, encode_cursor
-
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -58,8 +55,9 @@ def test_decode_returns_none_on_missing_separator() -> None:
 
 def test_decode_returns_none_on_malformed_json() -> None:
     """Token with non-JSON body is rejected."""
-    import hmac
     import hashlib
+    import hmac
+
     from app.config.settings import get_settings
 
     secret = get_settings().auth.jwt_secret.encode()

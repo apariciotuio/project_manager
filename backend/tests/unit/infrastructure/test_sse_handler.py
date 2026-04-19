@@ -21,13 +21,12 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from starlette.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Fake pub/sub for SseHandler tests

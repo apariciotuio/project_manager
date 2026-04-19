@@ -10,7 +10,6 @@ import pytest
 
 from app.application.services.task_service import (
     InvalidPositionError,
-    TaskNodeNotFoundError,
     TaskService,
 )
 from app.domain.models.task_node import TaskGenerationSource, TaskNode

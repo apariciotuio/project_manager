@@ -21,7 +21,6 @@ import pytest
 
 from tests.fakes.fake_puppet_client import FakePuppetClient
 
-
 # ---------------------------------------------------------------------------
 # In-memory stubs
 # ---------------------------------------------------------------------------
@@ -128,7 +127,6 @@ def _make_outbox_row(
 @pytest.mark.asyncio
 async def test_empty_outbox_returns_zero() -> None:
     """WHEN no outbox rows THEN returns zeros without error."""
-    import asyncio
     from app.infrastructure.tasks import puppet_ingest_tasks as module
 
     original = module._build_ingest_deps

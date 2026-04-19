@@ -3,13 +3,10 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 
 class TestWorkItemDraftDataExtension:
     def _make_item(self) -> object:
         from app.domain.models.work_item import WorkItem
-        from app.domain.value_objects.work_item_state import WorkItemState
         from app.domain.value_objects.work_item_type import WorkItemType
 
         return WorkItem.create(

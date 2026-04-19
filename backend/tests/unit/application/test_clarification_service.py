@@ -4,7 +4,6 @@ Uses fake repos, fake cache, fake Dundun. No DB, no Redis, no HTTP.
 """
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -12,7 +11,6 @@ import pytest
 
 from tests.fakes.fake_dundun_client import FakeDundunClient
 from tests.fakes.fake_repositories import FakeCache, FakeWorkItemRepository
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -259,8 +257,7 @@ class TestGetNextQuestions:
 
     async def test_item_with_no_blocking_returns_empty(self) -> None:
         """A fully-populated item might have no blocking findings."""
-        from app.domain.models.gap_finding import GapFinding, GapReport, GapSeverity
-        from app.domain.gap_detection.gap_detector import GapDetector
+        from app.domain.models.gap_finding import GapSeverity
 
         ws_id = uuid4()
         repo = FakeWorkItemRepository()

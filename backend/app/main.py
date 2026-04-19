@@ -4,15 +4,19 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config.logging import configure_logging
 from app.infrastructure.rate_limiting.pg_rate_limiter import RateLimitMiddleware
+from app.presentation.controllers.admin_context_presets_controller import (
+    router as admin_context_presets_router,
+)
 from app.presentation.controllers.admin_controller import router as admin_router
-from app.presentation.controllers.admin_mcp_tokens_controller import router as admin_mcp_tokens_router
-from app.presentation.controllers.admin_members_controller import router as admin_members_router
-from app.presentation.controllers.admin_context_presets_controller import router as admin_context_presets_router
-from app.presentation.controllers.admin_rules_controller import router as admin_rules_router
-from app.presentation.controllers.admin_jira_controller import router as admin_jira_router
-from app.presentation.controllers.admin_support_controller import router as admin_support_router
 from app.presentation.controllers.admin_dashboard_controller import router as admin_dashboard_router
-from app.presentation.controllers.internal_jobs_controller import router as internal_jobs_router
+from app.presentation.controllers.admin_jira_controller import router as admin_jira_router
+from app.presentation.controllers.admin_mcp_tokens_controller import (
+    router as admin_mcp_tokens_router,
+)
+from app.presentation.controllers.admin_members_controller import router as admin_members_router
+from app.presentation.controllers.admin_rules_controller import router as admin_rules_router
+from app.presentation.controllers.admin_support_controller import router as admin_support_router
+from app.presentation.controllers.assignment_controller import router as assignment_router
 from app.presentation.controllers.attachment_controller import router as attachment_router
 from app.presentation.controllers.auth import router as auth_router
 from app.presentation.controllers.clarification_controller import (
@@ -27,19 +31,19 @@ from app.presentation.controllers.conversation_controller import (
 )
 from app.presentation.controllers.csp_report_controller import router as csp_report_router
 from app.presentation.controllers.dashboard_controller import router as dashboard_router
-from app.presentation.controllers.pipeline_controller import router as pipeline_router
-from app.presentation.controllers.kanban_controller import router as kanban_router
 from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
-from app.presentation.controllers.assignment_controller import router as assignment_router
 from app.presentation.controllers.health import router as health_router
+from app.presentation.controllers.inbox_controller import router as inbox_router
 from app.presentation.controllers.integration_controller import router as integration_router
+from app.presentation.controllers.internal_jobs_controller import router as internal_jobs_router
 from app.presentation.controllers.job_progress_controller import router as job_progress_router
+from app.presentation.controllers.kanban_controller import router as kanban_router
 from app.presentation.controllers.lock_controller import router as lock_router
 from app.presentation.controllers.next_step_controller import router as next_step_router
-from app.presentation.controllers.inbox_controller import router as inbox_router
 from app.presentation.controllers.notification_controller import router as notification_router
+from app.presentation.controllers.pipeline_controller import router as pipeline_router
 from app.presentation.controllers.project_controller import router as project_router
 from app.presentation.controllers.puppet_controller import router as puppet_router
 from app.presentation.controllers.ready_gate_controller import router as ready_gate_router
@@ -69,11 +73,11 @@ from app.presentation.controllers.workspace_controller import (
 from app.presentation.middleware.body_size_limit import BodySizeLimitMiddleware
 from app.presentation.middleware.correlation_id import CorrelationIDMiddleware
 from app.presentation.middleware.cors_policy import CORSPolicyMiddleware
+from app.presentation.middleware.csrf import CSRFMiddleware
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 from app.presentation.middleware.error_middleware import register_error_handlers
-from app.presentation.middleware.csrf import CSRFMiddleware
-from app.presentation.middleware.request_logging import RequestLoggingMiddleware
 from app.presentation.middleware.query_counter import QueryCounterMiddleware
+from app.presentation.middleware.request_logging import RequestLoggingMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.rate_limit import build_limiter
 

@@ -1,9 +1,10 @@
 """Unit tests for WorkItem entity — RED phase."""
 from __future__ import annotations
 
-import pytest
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+
+import pytest
 
 
 def _make_work_item(**kwargs):  # type: ignore[no-untyped-def]
@@ -23,7 +24,6 @@ def _make_work_item(**kwargs):  # type: ignore[no-untyped-def]
 
 class TestWorkItemConstruction:
     def test_defaults_set_correctly(self) -> None:
-        from app.domain.value_objects.derived_state import DerivedState
         from app.domain.value_objects.work_item_state import WorkItemState
 
         wi = _make_work_item()
@@ -137,8 +137,8 @@ class TestApplyTransition:
         assert before - timedelta(seconds=1) <= result.triggered_at <= after + timedelta(seconds=1)
 
     def test_invalid_transition_raises(self) -> None:
-        from app.domain.value_objects.work_item_state import WorkItemState
         from app.domain.exceptions import InvalidTransitionError
+        from app.domain.value_objects.work_item_state import WorkItemState
 
         owner = uuid4()
         wi = _make_work_item(owner_id=owner)
@@ -146,8 +146,8 @@ class TestApplyTransition:
             wi.apply_transition(WorkItemState.READY, owner, reason=None)
 
     def test_non_owner_raises_not_owner_error(self) -> None:
-        from app.domain.value_objects.work_item_state import WorkItemState
         from app.domain.exceptions import NotOwnerError
+        from app.domain.value_objects.work_item_state import WorkItemState
 
         owner = uuid4()
         other = uuid4()

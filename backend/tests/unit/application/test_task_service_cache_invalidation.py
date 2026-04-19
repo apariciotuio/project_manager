@@ -21,7 +21,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskGenerationSource, TaskNode, TaskStatus
+from app.domain.models.task_node import TaskNode
 
 
 class _FakeCache:

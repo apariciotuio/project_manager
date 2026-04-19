@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-
-from app.infrastructure.adapters.jwt_adapter import (
-    JwtAdapter,
-    TokenExpiredError,
-    TokenInvalidError,
-)
-from app.presentation.dependencies import get_jwt_adapter
 
 from app.application.services.auth_service import (
     AuthService,
@@ -26,6 +19,11 @@ from app.application.services.auth_service import (
     UserSuspendedError,
 )
 from app.infrastructure.adapters.google_oauth_adapter import OAuthExchangeError
+from app.infrastructure.adapters.jwt_adapter import (
+    JwtAdapter,
+    TokenExpiredError,
+    TokenInvalidError,
+)
 from app.infrastructure.persistence.user_repository_impl import UserRepositoryImpl
 from app.infrastructure.persistence.workspace_repository_impl import (
     WorkspaceRepositoryImpl,
@@ -33,6 +31,7 @@ from app.infrastructure.persistence.workspace_repository_impl import (
 from app.presentation.dependencies import (
     get_auth_service,
     get_current_user,
+    get_jwt_adapter,
     get_user_repo,
     get_workspace_repo,
 )

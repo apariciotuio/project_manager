@@ -5,7 +5,6 @@ Each test class covers one service method. At least 2-3 variations per behavior.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime, date
 from typing import Any
 from uuid import uuid4
 
@@ -52,7 +51,6 @@ from tests.fakes.fake_repositories import (
     FakeWorkItemRepository,
     FakeWorkspaceMembershipRepository,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

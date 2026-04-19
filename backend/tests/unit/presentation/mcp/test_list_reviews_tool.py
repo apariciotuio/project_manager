@@ -14,15 +14,13 @@ Scenarios:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.exceptions import WorkItemNotFoundError
-from app.domain.models.review import ReviewRequest, ReviewResponse, ReviewStatus, ReviewerType
-
+from app.domain.models.review import ReviewerType, ReviewRequest, ReviewStatus
 from apps.mcp_server.tools.list_reviews import handle_list_reviews
 
 WORKSPACE_ID = uuid4()

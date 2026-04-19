@@ -16,17 +16,14 @@ Cases:
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from starlette.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Fake pub/sub

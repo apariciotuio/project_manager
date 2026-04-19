@@ -9,7 +9,6 @@ import hashlib
 import hmac
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -57,7 +56,7 @@ def _cache_key(lookup_key_hmac: bytes) -> str:
 
 def _verify_argon2(plaintext: str, token_hash: str) -> bool:
     from argon2 import PasswordHasher
-    from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
+    from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
     ph = PasswordHasher()
     try:

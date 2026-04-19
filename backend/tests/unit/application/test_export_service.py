@@ -8,15 +8,13 @@ Verifies that after a successful Jira export:
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
 from app.application.services.export_service import ExportService, WorkItemNotFoundError
 from app.domain.models.work_item import WorkItem
-from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
 from app.infrastructure.adapters.jira_adapter import JiraIssue
 

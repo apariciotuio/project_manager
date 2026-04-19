@@ -14,8 +14,6 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from app.domain.models.audit_event import AuditCategory
-from app.domain.models.work_item import WorkItem
 from app.domain.repositories.work_item_repository import IWorkItemRepository
 from app.infrastructure.adapters.jira_adapter import (
     JiraAuthError,

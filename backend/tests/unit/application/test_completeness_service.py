@@ -5,16 +5,14 @@ Uses in-memory fakes for all I/O boundaries.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from dataclasses import asdict
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.domain.quality.dimension_result import CompletenessResult, DimensionResult
+from app.domain.quality.dimension_result import DimensionResult
 from app.domain.quality.score_calculator import compute as score_compute
-
 
 # ---------------------------------------------------------------------------
 # ScoreCalculator unit tests

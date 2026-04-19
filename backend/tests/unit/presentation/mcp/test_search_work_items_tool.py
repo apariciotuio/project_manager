@@ -12,22 +12,20 @@ Scenarios:
 """
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
+
+import pytest
 
 from app.domain.models.work_item import WorkItem
 from app.domain.value_objects.work_item_state import WorkItemState
 from app.domain.value_objects.work_item_type import WorkItemType
 from app.infrastructure.pagination import PaginationResult
-
 from apps.mcp_server.tools.search_work_items import (
     SearchWorkItemsInput,
-    WorkItemSearchResult,
-    handle_search_work_items,
     _build_excerpt,
+    handle_search_work_items,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

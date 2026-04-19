@@ -9,11 +9,9 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import String, and_, inspect, select
 
 from app.application.services.work_item_list_service import WorkItemListQueryBuilder
 from app.domain.queries.work_item_list_filters import SortOption, WorkItemListFilters
-from app.infrastructure.persistence.models.orm import WorkItemORM
 
 
 def _builder(workspace_id: UUID | None = None, **kw: object) -> WorkItemListQueryBuilder:

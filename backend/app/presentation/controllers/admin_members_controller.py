@@ -19,15 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.audit_service import AuditService
 from app.application.services.member_service import (
+    ALL_CAPABILITIES,
     CannotGrantUnpossessedCapabilityError,
     CannotSuspendLastAdminError,
     DuplicateActiveMemberError,
-    InvitePendingError,
-    InviteNotResendableError,
     InvalidCapabilityError,
+    InviteNotResendableError,
+    InvitePendingError,
     MemberNotFoundError,
     MemberService,
-    ALL_CAPABILITIES,
 )
 from app.infrastructure.pagination import InvalidCursorError, PaginationCursor
 from app.infrastructure.persistence.invitation_repository_impl import InvitationRepositoryImpl
@@ -243,6 +243,7 @@ async def _get_actor_capabilities(service: MemberService, current_user: CurrentU
     if current_user.is_superadmin:
         return list(ALL_CAPABILITIES)
     from sqlalchemy import select
+
     from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
     session = service._session

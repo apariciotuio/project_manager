@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.services.mcp_token_issue_service import compute_lookup_key, hash_token_argon2
+from app.application.services.mcp_token_issue_service import compute_lookup_key
 from app.application.services.mcp_token_revoke_service import (
     MCPTokenNotFoundError,
     MCPTokenRevokeService,

@@ -6,12 +6,11 @@ RED phase: all tests must fail before implementation exists.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, UTC
-from uuid import UUID
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import String, event
+from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # ---------------------------------------------------------------------------

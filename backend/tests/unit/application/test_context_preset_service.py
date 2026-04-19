@@ -1,8 +1,8 @@
 """Unit tests for ContextPresetService — EP-10 admin context presets."""
 from __future__ import annotations
 
-from uuid import UUID, uuid4
 from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -10,9 +10,8 @@ from app.application.services.context_preset_service import (
     ContextPresetNotFoundError,
     ContextPresetService,
     DuplicatePresetNameError,
-    PresetInUseError,
 )
-from app.domain.models.context_preset import ContextPreset, ContextSource
+from app.domain.models.context_preset import ContextPreset
 from app.domain.repositories.context_preset_repository import IContextPresetRepository
 
 # ---------------------------------------------------------------------------

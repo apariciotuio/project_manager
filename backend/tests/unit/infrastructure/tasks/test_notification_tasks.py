@@ -20,7 +20,6 @@ import pytest
 
 from app.domain.models.team import Notification, NotificationState
 
-
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------

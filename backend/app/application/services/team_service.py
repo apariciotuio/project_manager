@@ -284,7 +284,6 @@ class NotificationService:
             NotificationNotFoundError: notification not found.
             StaleActionError: notification is already actioned.
         """
-        from typing import Any
 
         notification = await self._notifications.get(notification_id)
         if notification is None:

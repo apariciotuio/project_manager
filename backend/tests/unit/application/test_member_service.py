@@ -6,15 +6,11 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.audit_service import AuditService
 from app.application.services.member_service import (
-    ALL_CAPABILITIES,
-    CannotGrantUnpossessedCapabilityError,
-    CannotSuspendLastAdminError,
     DuplicateActiveMemberError,
-    InvitePendingError,
-    InviteNotResendableError,
     InvalidCapabilityError,
+    InviteNotResendableError,
+    InvitePendingError,
     MemberNotFoundError,
     MemberService,
 )

@@ -15,7 +15,6 @@ from app.domain.repositories.validation_rule_template_repository import (
     IValidationRuleTemplateRepository,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake
 # ---------------------------------------------------------------------------

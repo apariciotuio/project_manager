@@ -14,8 +14,7 @@ from typing import Any
 
 import pytest
 
-from app.infrastructure.sse.job_progress_service import JobProgressService, JobState
-
+from app.infrastructure.sse.job_progress_service import JobProgressService
 
 # ---------------------------------------------------------------------------
 # Fakes

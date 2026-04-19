@@ -6,14 +6,12 @@ and IDOR check on list.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.domain.models.team import Notification, NotificationState
 from app.domain.queries.page import Page
-
 
 # ---------------------------------------------------------------------------
 # Fake repository

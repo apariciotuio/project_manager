@@ -6,14 +6,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
-from app.domain.models.task_node import TaskNode, TaskStatus
-
+from app.domain.models.task_node import TaskNode
 
 # ---------------------------------------------------------------------------
 # Helpers

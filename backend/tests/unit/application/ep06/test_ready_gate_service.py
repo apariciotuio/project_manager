@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.application.services.ready_gate_service import GateResult, ReadyGateService
+from app.application.services.ready_gate_service import ReadyGateService
 from app.domain.models.review import (
     ValidationRequirement,
     ValidationState,

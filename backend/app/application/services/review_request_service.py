@@ -18,10 +18,8 @@ from uuid import UUID
 from app.application.events.event_bus import EventBus
 from app.application.events.review_events import ReviewDismissedEvent, ReviewRequestedEvent
 from app.domain.models.review import (
-    ReviewAlreadyClosedError,
     ReviewRequest,
     ReviewResponse,
-    ReviewStatus,
 )
 from app.domain.repositories.review_repository import (
     IReviewRequestRepository,

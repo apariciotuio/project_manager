@@ -23,7 +23,7 @@ Indexes required (migration C2.1):
 """
 from __future__ import annotations
 
-from datetime import timezone, UTC
+from datetime import UTC
 from uuid import UUID
 
 from sqlalchemy import text

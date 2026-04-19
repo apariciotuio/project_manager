@@ -20,10 +20,10 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-from dataclasses import dataclass
-from datetime import datetime, timezone, UTC
-from typing import Any
 from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa

@@ -24,7 +24,6 @@ from app.application.services.validation_rule_template_service import (
     ValidationRuleTemplateService,
 )
 from app.presentation.dependencies import (
-    get_current_user,
     get_validation_rule_template_service,
     require_admin,
 )

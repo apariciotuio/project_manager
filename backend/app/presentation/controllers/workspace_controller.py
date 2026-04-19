@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.models.orm import (
-    SessionORM,
     UserORM,
     WorkspaceMembershipORM,
     WorkspaceORM,

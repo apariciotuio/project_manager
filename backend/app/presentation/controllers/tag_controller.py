@@ -22,13 +22,18 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.errors.codes import NotFoundError, TagArchivedDomainError, TagNameTakenError, InvalidInputError
+from app.domain.errors.codes import (
+    InvalidInputError,
+    NotFoundError,
+    TagArchivedDomainError,
+    TagNameTakenError,
+)
 from app.domain.models.tag import Tag, TagArchivedError, WorkItemTag
+from app.infrastructure.persistence.models.orm import WorkItemORM
 from app.infrastructure.persistence.tag_repository_impl import (
     TagRepositoryImpl,
     WorkItemTagRepositoryImpl,
 )
-from app.infrastructure.persistence.models.orm import WorkItemORM
 from app.presentation.dependencies import get_current_user, get_scoped_session
 from app.presentation.middleware.auth_middleware import CurrentUser
 

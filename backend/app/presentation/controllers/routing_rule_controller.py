@@ -24,7 +24,6 @@ from app.application.services.project_service import (
     RoutingRuleNotFoundError,
 )
 from app.presentation.dependencies import (
-    get_current_user,
     get_project_service,
     require_admin,
 )

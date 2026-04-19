@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -242,7 +242,6 @@ class NotificationRepositoryImpl(INotificationRepository):
         cursor: PaginationCursor | None,
         page_size: int,
     ) -> PaginationResult:
-        from datetime import timezone
         from uuid import UUID as _UUID
 
         stmt = (

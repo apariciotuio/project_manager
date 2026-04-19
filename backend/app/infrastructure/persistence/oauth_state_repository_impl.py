@@ -7,7 +7,7 @@ the browser can never succeed twice.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert

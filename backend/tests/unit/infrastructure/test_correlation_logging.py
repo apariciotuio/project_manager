@@ -9,15 +9,12 @@ from __future__ import annotations
 import json
 import logging
 
-import pytest
-
 from app.config.logging import (
     CorrelationIdFilter,
     JsonFormatter,
     configure_logging,
     correlation_id_var,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

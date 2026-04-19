@@ -1,6 +1,5 @@
 import json
 import logging
-import traceback
 from contextvars import ContextVar
 from typing import Any
 

@@ -34,7 +34,6 @@ from app.presentation.dependencies import (
 )
 from app.presentation.schemas.puppet_schemas import (
     PuppetCallbackRequest,
-    PuppetIngestRequestResponse,
     PuppetSearchRequest,
 )
 
@@ -184,7 +183,6 @@ async def puppet_search(
         tags.append(safe_cat)
 
     try:
-        from app.domain.ports.puppet import PuppetClientError
         hits = await puppet_client.search(body.query, tags)
     except Exception as exc:
         logger.error("puppet_search: Puppet unavailable: %s", exc)

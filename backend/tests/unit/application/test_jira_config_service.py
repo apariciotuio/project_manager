@@ -9,7 +9,6 @@ from app.application.services.jira_config_service import (
     InvalidBaseUrlError,
     JiraConfigDisabledError,
     JiraConfigExistsError,
-    JiraConfigNotFoundError,
     JiraConfigService,
 )
 from app.domain.models.jira_config import JiraConfig, JiraProjectMapping

@@ -21,7 +21,6 @@ from app.application.events.events import (
 )
 from app.domain.value_objects.work_item_state import WorkItemState
 
-
 # ---------------------------------------------------------------------------
 # Fake NotificationService
 # ---------------------------------------------------------------------------

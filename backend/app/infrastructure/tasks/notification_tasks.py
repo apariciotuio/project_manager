@@ -39,8 +39,8 @@ async def _build_fan_out_deps(
     Recipients are resolved from the payload. For team events the payload must
     include `team_member_ids`; for direct events `recipient_id` suffices.
     """
-    from app.config.settings import get_settings
     from app.application.services.notification_service import ExtendedNotificationService
+    from app.config.settings import get_settings
     from app.infrastructure.persistence.database import get_session_factory
     from app.infrastructure.persistence.team_repository_impl import NotificationRepositoryImpl
 

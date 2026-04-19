@@ -141,7 +141,7 @@ class TestCreateMcpServerUsesAuthContext:
 
     def test_resolve_auth_context_called_once_at_server_startup(self) -> None:
         """create_mcp_server() resolves auth context once at startup, not per call."""
-        from apps.mcp_server.server import create_mcp_server, _resolve_auth_context
+        from apps.mcp_server.server import _resolve_auth_context, create_mcp_server
 
         ws_id = uuid4()
         user_id = uuid4()

@@ -5,7 +5,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 

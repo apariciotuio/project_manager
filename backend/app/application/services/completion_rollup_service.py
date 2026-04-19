@@ -12,7 +12,6 @@ Rollup logic:
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from app.domain.models.task_node import TaskNode, TaskStatus
 
