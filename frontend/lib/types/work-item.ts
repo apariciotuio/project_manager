@@ -30,6 +30,15 @@ export type DerivedState = 'in_progress' | 'blocked' | 'ready';
 
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
 
+// ─── EP-17 Lock summary embedded in list response ─────────────────────────────
+
+/** Embedded by GET /api/v1/work-items when the workspace has active locks. */
+export interface LockSummary {
+  has_locks: boolean;
+  count: number;
+  held_by_me: boolean;
+}
+
 // ─── Core response shape ──────────────────────────────────────────────────────
 
 export interface WorkItemResponse {
@@ -55,6 +64,8 @@ export interface WorkItemResponse {
   deleted_at: string | null;
   // EP-11: Jira export key — null until a successful export has been confirmed
   external_jira_key: string | null;
+  // EP-17: Lock summary — present when backend embeds it; undefined when omitted
+  lock_summary?: LockSummary | null;
 }
 
 // ─── Tag types ────────────────────────────────────────────────────────────────

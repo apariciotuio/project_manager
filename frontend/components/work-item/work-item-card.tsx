@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { TypeBadge } from '@/components/domain/type-badge';
 import { StateBadge } from '@/components/domain/state-badge';
 import { CompletenessBar } from '@/components/domain/completeness-bar';
+import { LockBadge } from '@/components/domain/lock-badge';
 import type { WorkItemResponse, WorkItemState, WorkItemType } from '@/lib/types/work-item';
 import type { WorkitemState } from '@/components/domain/state-badge';
 import type { WorkitemType } from '@/components/domain/type-badge';
@@ -85,6 +86,17 @@ export function WorkItemCard({ workItem, slug, ownerDisplayName }: WorkItemCardP
       <div className="w-28 shrink-0">
         <CompletenessBar level={level} percent={workItem.completeness_score} showLabel />
       </div>
+
+      {/* Lock badge — only when backend embeds lock_summary */}
+      {workItem.lock_summary?.has_locks && (
+        <div className="shrink-0">
+          <LockBadge
+            locked
+            count={workItem.lock_summary.count}
+            heldByMe={workItem.lock_summary.held_by_me}
+          />
+        </div>
+      )}
 
       {/* Owner */}
       {ownerDisplayName && (
