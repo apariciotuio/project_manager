@@ -38,6 +38,7 @@ const mockSearchItem: WorkItemResponse = {
   created_at: '2026-04-01T00:00:00Z',
   updated_at: '2026-04-15T00:00:00Z',
   deleted_at: null,
+  external_jira_key: null,
 };
 
 function stubSearch(items = [mockSearchItem], took_ms = 42, source: 'puppet' | 'sql_fallback' = 'puppet') {

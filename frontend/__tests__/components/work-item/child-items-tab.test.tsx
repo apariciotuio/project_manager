@@ -36,6 +36,7 @@ const PARENT_ITEM: WorkItemResponse = {
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   deleted_at: null,
+  external_jira_key: null,
 };
 
 const WORK_ITEM: WorkItemResponse = {
