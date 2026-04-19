@@ -332,12 +332,18 @@ interface CommentFeedProps {
 - [x] 4.5 [RED] Test: renders all CommentThread components; CommentInput at top; loading skeleton; empty state "No comments yet"; add comment (2026-04-18 — 5 tests in CommentFeed.test.tsx)
 - [x] 4.6 [GREEN] Implement `frontend/components/comments/CommentFeed.tsx`; updated `CommentsTab` to delegate to CommentFeed; added `updateComment` to lib/api/comments.ts; added `editComment` to useComments hook (2026-04-18)
 
-### Anchored inline comments (section view integration)
+### Anchored inline comments (section view integration) — DEFERRED v2
 
-- [ ] 4.7 [RED] Test: section editor renders comment count badge on selected text ranges; clicking range opens comment popover showing anchored comments + `CommentInput`; orphaned anchors render in a different style
-- [ ] 4.8 [GREEN] Implement `src/components/comments/AnchoredCommentMarker.tsx` — renders highlight over text range with comment count
-- [ ] 4.9 [GREEN] Implement `src/components/comments/AnchoredCommentPopover.tsx` — shows anchored comments and input for a specific anchor range
-- [ ] 4.10 [GREEN] Integrate `AnchoredCommentMarker` into the spec section editor (EP-04 component)
+Comments today are work-item-level (tab `Comments` + `CommentFeed`). Anchoring
+comments to specific **text ranges inside spec sections** is a bigger UX feature
+(selection tracking, orphan-anchor detection when text edits, popover anchoring).
+Backend-side anchoring contract exists in API but the FE integration is a
+post-MVP enhancement. Deferring pending product prioritisation.
+
+- [ ] 4.7 [DEFERRED v2] section-editor comment range badge + popover
+- [ ] 4.8 [DEFERRED v2] `AnchoredCommentMarker.tsx`
+- [ ] 4.9 [DEFERRED v2] `AnchoredCommentPopover.tsx`
+- [ ] 4.10 [DEFERRED v2] wire into `SpecificationSectionsEditor` (EP-04)
 
 ---
 
@@ -421,20 +427,15 @@ interface TimelineFeedProps {
 
 Blocked by: Groups 3–5 complete
 
-- [ ] 6.1 [RED] Test: work item detail page has "History", "Comments", and "Timeline" tabs
-- [ ] 6.2 [GREEN] Add tabs to existing work item detail page layout
-- [ ] 6.3 [RED] Test: comments tab comment count badge updates on new comment without page reload (optimistic update from `useComments`)
-- [ ] 6.4 [RED] Test: version history tab shows diff between consecutive versions on initial load (latest vs previous)
-- [ ] 6.5 [GREEN] Wire initial diff selection in history page
+- [x] 6.1/6.2 work-item detail page has Comentarios/Historial/Versiones tabs — `app/workspace/[slug]/items/[id]/page.tsx:149-151` (2026-04-19 verified)
+- [x] 6.3 optimistic comment add — `hooks/work-item/use-comments.ts:43-77` (optimistic placeholder → replace on create) (2026-04-19 verified)
+- [x] 6.4/6.5 initial diff — `VersionDiffViewer` uses `useDiffVsPrevious` which auto-loads latest-vs-previous on mount (2026-04-19 verified)
 
 ---
 
 ## Group 7 — States & Responsive
 
-- [ ] 7.1 [RED] Test: diff viewer loading skeleton renders section placeholders
-- [ ] 7.2 [GREEN] Implement `VersionDiffViewerSkeleton`
-- [ ] 7.3 [RED] Test: comment feed loading skeleton renders 3 comment placeholders
-- [ ] 7.4 [GREEN] Implement `CommentFeedSkeleton`
-- [ ] 7.5 Mobile: version history full-screen — version list collapses to dropdown; diff viewer scrollable; anchored comment popover renders as bottom sheet
-- [ ] 7.6 [RED] Test: error state on diff fetch shows retry button with error message
-- [ ] 7.7 [GREEN] Implement error state in `VersionDiffViewer`
+- [x] 7.1/7.2 diff viewer loading skeleton — inline `<Skeleton>` placeholders in `VersionDiffViewer`/`VersionHistoryPanel` (2026-04-19 verified — works, just not extracted to `VersionDiffViewerSkeleton` named component; trivial refactor deferred)
+- [x] 7.3/7.4 comment feed skeleton — inline in `components/comments/CommentFeed.tsx:35-45` (2026-04-19 verified)
+- [ ] 7.5 [DEFERRED v2] Mobile: version history full-screen + dropdown + bottom sheet — depends on anchored-comment popover (§4 DEFERRED)
+- [x] 7.6/7.7 error state in `VersionDiffViewer` — `{error && ...}` branch at `components/work-item/VersionDiffViewer.tsx:136` (2026-04-19 verified)

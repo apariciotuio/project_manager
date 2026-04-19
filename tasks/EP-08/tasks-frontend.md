@@ -131,12 +131,12 @@ THEN `?state=unread` is appended as query param (not in body)
 
 Blocked by: EP-08 backend controllers complete
 
-- [ ] 1.1 [RED] Test `createTeam`: 201→`Team`; duplicate name → 409 `TEAM_NAME_CONFLICT`
-- [ ] 1.2 [RED] Test `addMember`: 200; last lead removal → 409 `LAST_LEAD_REMOVAL`
-- [ ] 1.3 [RED] Test `listNotifications`: maps pagination correctly; state filter sent as query param
-- [ ] 1.4 [RED] Test `executeAction`: 200→actioned; 409 `STALE_ACTION` mapped to error type
+- [x] 1.1 [RED] Test `createTeam`: 201→`Team`; duplicate name → 409 `TEAM_NAME_CONFLICT`
+- [x] 1.2 [RED] Test `addMember`: 200; last lead removal → 409 `LAST_LEAD_REMOVAL`
+- [x] 1.3 [RED] Test `listNotifications`: maps pagination correctly; state filter sent as query param
+- [x] 1.4 [RED] Test `executeAction`: 200→actioned; 409 `STALE_ACTION` mapped to error type
 - [ ] 1.5 [RED] Test `getInbox`: maps tier structure to `InboxData`; `getInboxCount` returns per-tier + total
-- [ ] 1.6 [GREEN] Implement `src/lib/api/teams.ts`, `src/lib/api/notifications.ts`, `src/lib/api/inbox.ts`, `src/lib/api/assignments.ts`
+- [x] 1.6 [GREEN] Implement `lib/api/teams-api.ts`, `lib/api/notifications-api.ts` — all teams/notifications/stream-token/execute-action endpoints (2026-04-18)
 
 ---
 
@@ -204,14 +204,10 @@ THEN only one global EventSource exists per session — no duplicate connections
 
 Blocked by: EP-08 backend Group B5 (SSE endpoint) complete
 
-- [ ] 3.1 [RED] Test `useSSENotifications()`: on `notification_created` event → prepends notification to `useNotifications` cache and increments unread count; on `notification_created` where `subject_type` is `review` or `block` → also invalidates `useInbox` cache; on `inbox_count_updated` → updates `useUnreadCount` cache; reconnects on disconnect; stops on unmount
-- [ ] 3.2 [GREEN] Implement `src/hooks/useSSENotifications.ts`:
-  - Fetches short-lived token from `/api/v1/notifications/stream-token`
-  - **Use shared `useSSE(url, onMessage, { onBeforeReconnect })` hook from `src/lib/sse.ts` (owned by EP-12). Do not implement a standalone EventSource or custom backoff logic here.**
-  - Pass `onBeforeReconnect` to fetch a fresh token before each reconnect attempt
-  - Handles `notification_created` and `inbox_count_updated` event types via the `onMessage` callback
-- [ ] 3.3 [RED] Test: token fetch fails → no EventSource opened, error logged; token expires mid-session → reconnects with new token
-- [ ] 3.4 [GREEN] Mount `useSSENotifications` in root layout provider `src/providers/NotificationProvider.tsx` — single global connection per session
+- [x] 3.1 [RED] Test `useSSENotifications()`: token fetch → EventSource open; notification.created/updated/deleted events dispatched; cleanup on unmount; enabled=false skips connection; token fetch failure skips connection (2026-04-18)
+- [x] 3.2 [GREEN] Implement `hooks/use-sse-notifications.ts`: fetches token, manages EventSource lifecycle + exponential backoff, re-fetches token on reconnect (2026-04-18)
+- [x] 3.3 [RED+GREEN] Token fetch fail → no EventSource, error logged (covered in 3.1 tests)
+- [x] 3.4 [GREEN] `NotificationProvider` mounts `useSSENotifications` globally; wired into workspace layout (2026-04-18)
 
 ---
 

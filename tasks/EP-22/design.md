@@ -2,6 +2,8 @@
 
 > Proposal: `tasks/EP-22/proposal.md`. The 5 decisions there are closed — this document only designs the implementation. No re-negotiation.
 
+> **⚠ CONTRACT v2 (2026-04-18):** The "ConversationSignals extension with `suggested_sections`" described below is **superseded**. Real Dundun-Morpheo returns a `MorpheoResponse` envelope as a JSON-string inside `frame.response`, discriminated by `kind ∈ {question, section_suggestion, po_review, error}`. See `specs/suggestion-bridge/spec.md` (v2) for the authoritative contract. Sections 3 & 4 below (Chat proxy extension + ConversationSignals schema) describe v1 and are kept for history; treat them as deprecated.
+
 ---
 
 ## 1. Architecture Overview

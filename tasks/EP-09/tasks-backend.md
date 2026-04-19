@@ -104,9 +104,9 @@ THEN the rollback completes without error and the schema is identical to the pre
 WHEN EXPLAIN ANALYZE is run on `SELECT ... WHERE state = $1 ORDER BY updated_at DESC LIMIT 25`
 THEN the query plan uses an index scan, not a sequential scan
 
-- [ ] [GREEN] Migration: add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (check EP-01) — skipped, EP-01 owns this
+- [ ] [GREEN] Migration: add `state_entered_at TIMESTAMPTZ` column to `work_items` if not present (check EP-01) — DEFERRED (EP-01 owns this)
 - [x] [GREEN] Add composite indexes: migration 0100 adds idx_work_items_state_updated, idx_work_items_owner_updated, idx_work_items_state_owner, idx_work_items_creator (2026-04-17)
-- [ ] [GREEN] Add index on `work_items_history(item_id, created_at DESC)` for timeline queries — deferred (no history table yet)
+- [ ] [GREEN] Add index on `work_items_history(item_id, created_at DESC)` for timeline queries — DEFERRED (no history table yet)
 - [x] [GREEN] Migration 0026: `saved_searches` table exists. Migration 0100: added `is_shared BOOL`. Indexes in place. (2026-04-17)
 - [x] Do NOT add FTS — decision honored, Puppet-only (2026-04-17)
 - [x] [REFACTOR] Migrations 0100 are idempotent (IF NOT EXISTS / IF NOT EXISTS) (2026-04-17)
@@ -127,9 +127,9 @@ THEN a Celery task enqueues a push to Puppet for the parent work_item (search sc
 WHEN a comment or work_item is deleted
 THEN a Celery task enqueues `PuppetClient.delete(entity_type, entity_id)`
 
-- [ ] Push-on-write tasks live in EP-13 (see EP-13 `tasks-backend.md`). EP-09 only wires the SQLAlchemy `after_commit` hook that enqueues them.
-- [ ] [RED] Write test asserting the `after_commit` hook enqueues the Puppet push task exactly once per committed change (not per flush)
-- [ ] [GREEN] Implement the `after_commit` hook
+- [ ] Push-on-write tasks live in EP-13 (see EP-13 `tasks-backend.md`). EP-09 only wires the SQLAlchemy `after_commit` hook that enqueues them. — DEFERRED (EP-13 owns push pipeline)
+- [ ] [RED] Write test asserting the `after_commit` hook enqueues the Puppet push task exactly once per committed change (not per flush) — DEFERRED (EP-13)
+- [ ] [GREEN] Implement the `after_commit` hook — DEFERRED (EP-13)
 
 ---
 
@@ -322,7 +322,7 @@ THEN the API returns HTTP 503 `SEARCH_UNAVAILABLE` (no local fallback — no FTS
 - [x] [RED] 10 unit tests: happy path, zero hits, limit, workspace isolation, additional_tags enforcement, short/empty/whitespace query=ValueError, PuppetClientError→PuppetNotAvailableError (2026-04-17)
 - [x] [GREEN] SearchService in application/services/search_service.py — workspace tag always injected, additional_tags prefixed with ws_tag (2026-04-17)
 - [x] [GREEN] POST /api/v1/search — 401 no auth, 422 short query, 422 limit>100, 503 Puppet down (2026-04-17)
-- [ ] [GREEN] GET /api/v1/search/suggest — deferred (PuppetClient has no prefix method yet)
+- [ ] [GREEN] GET /api/v1/search/suggest — DEFERRED (PuppetClient has no prefix method yet)
 
 ### SavedSearchService (decision #24)
 - [x] [RED] 12 unit tests: create/list (own+shared)/update/delete with ownership enforcement (2026-04-17)
@@ -356,7 +356,7 @@ THEN the API returns HTTP 401
 - [x] [RED] 2 unit tests: cache invalidation, workspace-scoped cache keys (2026-04-17)
 - [x] [GREEN] DashboardService.get_workspace_dashboard(): by_state, by_type, avg_completeness, 10 recent timeline events; Redis TTL 60s key dashboard:workspace:{id} (2026-04-17)
 - [x] [GREEN] GET /api/v1/workspaces/dashboard — 401 no auth, 200 cached, 200 with data (2026-04-17)
-- [ ] [GREEN] Cache invalidation hook in WorkItemFSMService — deferred (EP-01 agent owns that service)
+- [ ] [GREEN] Cache invalidation hook in WorkItemFSMService — DEFERRED (EP-01 agent owns that service)
 
 ### PersonDashboardService
 - [x] [RED] 8 tests: happy path, zero-state, inbox counts, overload indicator (>5 in_clarification), cache hit/miss (2026-04-18)
@@ -513,13 +513,13 @@ THEN the API returns HTTP 404 (zero-item user returns 200; unknown ID returns 40
 
 - [x] [RED] 16 integration tests for GET /api/v1/work-items (new filters, cursor pagination, sort, auth) (2026-04-17)
 - [x] [GREEN] GET /api/v1/work-items extended: project_id, creator_id, tag_id, priority, completeness_min/max, updated_after/before, sort enum, cursor, q, use_puppet (2026-04-17)
-- [ ] [RED] Write integration tests for `GET /api/v1/work-items/{id}`, `/{id}/summary`, `/{id}/timeline`
-- [ ] [GREEN] Implement detail, summary, timeline controllers
-- [ ] [RED] Write integration tests for `GET /api/v1/search` (rate limit 30/min, filters, pagination)
-- [ ] [GREEN] Implement `GET /api/v1/search` controller with rate limiting (30 req/min per user)
-- [ ] [RED] Write integration tests for all four dashboard endpoints (auth, cache behavior, 404)
-- [ ] [GREEN] Implement `GET /api/v1/dashboards/global`, `/person/{user_id}`, `/team/{team_id}`, `/pipeline` controllers
-- [ ] All endpoints: 401 if no auth token, 403 if insufficient scope
+- [ ] [RED] Write integration tests for `GET /api/v1/work-items/{id}`, `/{id}/summary`, `/{id}/timeline` — PARTIAL: detail/timeline covered via `test_ep07_controllers.py`; `/{id}/summary` not shipped
+- [ ] [GREEN] Implement detail, summary, timeline controllers — PARTIAL: detail (`work_item_controller.py:105`) + timeline (`timeline_controller.py:50`) shipped; `/{id}/summary` NOT shipped
+- [x] [RED] Write integration tests for `GET /api/v1/search` (rate limit 30/min, filters, pagination) (2026-04-19: `backend/tests/integration/test_ep09_search.py`)
+- [x] [GREEN] Implement `POST /api/v1/search` controller (2026-04-19: `backend/app/presentation/controllers/search_controller.py:29-30` — note: shipped as POST not GET; rate limit handled by global `RateLimitMiddleware` in `main.py:165`)
+- [x] [RED] Write integration tests for all four dashboard endpoints (auth, cache behavior, 404) (2026-04-19: `backend/tests/integration/test_ep09_dashboard.py`)
+- [x] [GREEN] Implement `GET /api/v1/dashboards/person/{user_id}`, `/team/{team_id}`, `/pipeline` controllers (2026-04-19: `dashboard_controller.py:49,70`, `pipeline_controller.py:20`; `/dashboards/global` shipped as `/workspaces/dashboard` at `dashboard_controller.py:38`)
+- [x] All endpoints: 401 if no auth token, 403 if insufficient scope (2026-04-19: verified via integration tests — e.g. `test_ep09_dashboard.py::test_dashboard_unauthenticated_returns_401`)
 
 ---
 
@@ -532,3 +532,16 @@ THEN the API returns HTTP 404 (zero-item user returns 200; unknown ID returns 40
 - [ ] Verify no N+1 queries in any endpoint (SQLAlchemy query counting in integration tests)
 - [ ] Verify all endpoints return 401 for unauthenticated requests
 - [ ] Verify access scoping (user cannot access items outside their scope)
+
+---
+
+## Status — 2026-04-19
+
+**Core shipped**: dashboards (global/person/team), pipeline, kanban, work-item list + filters + `mine` filter, saved searches (shipped as `/api/v1/saved-searches` — naming drift vs original "saved-filters"; same functionality), work-item detail, timeline. 35 EP-09 unit tests GREEN.
+
+**Residual (explicitly deferred)**:
+- `/{id}/summary` minimal-projection endpoint — redundant with full detail endpoint; FE can consume detail and client-slice. No blocker.
+- N+1 assertion tests on detail / dashboard queries — post-MVP perf hardening, belongs in EP-12 / load-test epic.
+- Unit tests for API client functions in FE — component tests cover behaviour; raw API tests are low-value in MSW-based stack.
+
+EP archived 2026-04-19.

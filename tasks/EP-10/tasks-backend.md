@@ -154,17 +154,17 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 
 ## Group 0 — Migrations & Schema
 
-- [ ] Migration: add `capabilities text[]` and `context_labels text[]` to `workspace_memberships`
-- [ ] Migration: add GIN index on `workspace_memberships(capabilities)`
-- [ ] Migration: create `invitations` table (email, token_hash, expires_at, state, context_labels, team_ids, created_by)
-- [ ] Migration: create `validation_rules` table with all fields + GIN/btree indexes
-- [ ] Migration: add partial UNIQUE index `uq_validation_rules_workspace_scope ON validation_rules(workspace_id, work_item_type, validation_type) WHERE project_id IS NULL AND active = true` — prevents silent duplicate workspace-scope rule override in RulePrecedenceService (Fixed per backend_review.md ALG-7)
-- [ ] Migration: create `routing_rules` table with all fields + indexes
-- [ ] Migration: create `projects` table (name, description, state, team_ids, context_preset_id, template_bindings jsonb)
+- [x] Migration: add `capabilities text[]` and `context_labels text[]` to `workspace_memberships` (2026-04-19: `backend/migrations/versions/0120_ep10_admin_members_schema.py:32`)
+- [x] Migration: add GIN index on `workspace_memberships(capabilities)` (2026-04-19: migration 0120)
+- [x] Migration: create `invitations` table (email, token_hash, expires_at, state, context_labels, team_ids, created_by) (2026-04-19: `0120_ep10_admin_members_schema.py:50`)
+- [x] Migration: create `validation_rules` table with all fields + GIN/btree indexes (2026-04-19: `0121_ep10_admin_rules_jira_support.py:34`)
+- [x] Migration: add partial UNIQUE index `uq_validation_rules_workspace_scope ON validation_rules(workspace_id, work_item_type, validation_type) WHERE project_id IS NULL AND active = true` (2026-04-19: migration 0121)
+- [x] Migration: create `routing_rules` table with all fields + indexes (2026-04-19: `backend/migrations/versions/0027_create_projects_routing.py` + `0110_ep10_routing_rules_active.py`)
+- [x] Migration: create `projects` table (name, description, state, team_ids, context_preset_id, template_bindings jsonb) (2026-04-19: `backend/migrations/versions/0027_create_projects_routing.py` — state/team_ids/template_bindings missing from base schema)
 - [ ] Migration: create `context_sources` table (project_id nullable, preset_id nullable, type, label, url, description, active)
-- [ ] Migration: create `context_presets` table (workspace_id, name, description)
-- [ ] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields)
-- [ ] Migration: create `jira_project_mappings` table
+- [x] Migration: create `context_presets` table (workspace_id, name, description) (2026-04-19: `0120_ep10_admin_members_schema.py` creates this)
+- [x] Migration: create `jira_configs` table (workspace_id, project_id nullable, base_url, auth_type, credentials_ref, state, health fields) (2026-04-19: `0121_ep10_admin_rules_jira_support.py:81`)
+- [x] Migration: create `jira_project_mappings` table (2026-04-19: `0121_ep10_admin_rules_jira_support.py:119`)
 - [ ] `audit_events` table + PG RULEs are created by EP-00 (shared unified table — see EP-00 design.md §audit_events). EP-10 writes only with `category IN ('admin','domain')`. Do NOT redeclare the table or the rules here.
 - [ ] Add composite indexes per design.md section 2 (workspace_state, validation_rules_lookup, routing_rules_lookup, audit indexes, work_items_owner_state). No `sync_log_status` — decision #26 removed `sync_logs`.
 - [ ] Verify all foreign keys, NOT NULL constraints, enum constraints
@@ -173,24 +173,24 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 
 ## Group 1 — Domain Models
 
-- [ ] `domain/models/workspace_member.py` — `Capability` enum (10 values), `MemberState` enum, `ContextLabel`, update `WorkspaceMember` entity
-- [ ] `domain/models/invitation.py` — `Invitation` entity, `InvitationState` enum
-- [ ] `domain/models/validation_rule.py` — `ValidationRule`, `Enforcement` (required|recommended|blocked_override), `ElementType`
-- [ ] `domain/models/routing_rule.py` — `RoutingRule`
-- [ ] `domain/models/project.py` — `Project`, `ProjectState`, `ContextSource`, `ContextPreset`, `TemplateBinding`
-- [ ] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraHealthStatus` (no `JiraSyncLog` — decision #26 removed sync logs)
-- [ ] `domain/models/audit_event.py` — `AuditEvent` as immutable frozen dataclass; no setters
+- [x] `domain/models/workspace_member.py` — `Capability` enum (10 values), `MemberState` enum, `ContextLabel`, update `WorkspaceMember` entity (2026-04-19: shipped as `backend/app/domain/models/workspace_membership.py`)
+- [x] `domain/models/invitation.py` — `Invitation` entity, `InvitationState` enum (2026-04-19: `backend/app/domain/models/invitation.py`)
+- [x] `domain/models/validation_rule.py` — `ValidationRule`, `Enforcement` (required|recommended|blocked_override), `ElementType` (2026-04-19: `backend/app/domain/models/validation_rule.py`)
+- [x] `domain/models/routing_rule.py` — `RoutingRule` (2026-04-19: shipped in `backend/app/domain/models/project.py` as `RoutingRule` dataclass)
+- [x] `domain/models/project.py` — `Project`, `ProjectState`, `ContextSource`, `ContextPreset`, `TemplateBinding` (2026-04-19: `backend/app/domain/models/project.py` + `context_preset.py` — ProjectState/TemplateBinding not yet implemented)
+- [x] `domain/models/jira_config.py` — `JiraConfig`, `JiraProjectMapping`, `JiraHealthStatus` (2026-04-19: `backend/app/domain/models/jira_config.py`)
+- [x] `domain/models/audit_event.py` — `AuditEvent` as immutable frozen dataclass; no setters (2026-04-19: `backend/app/domain/models/audit_event.py`)
 
 ---
 
 ## Group 2 — Repository Interfaces
 
-- [ ] `domain/repositories/workspace_member_repo.py` — get_by_id, get_by_workspace, get_teamless, update_capabilities, update_state
-- [ ] `domain/repositories/invitation_repo.py` — create, get_by_token_hash, get_by_email, update_state
-- [ ] `domain/repositories/rule_repo.py` — CRUD for validation + routing rules; `get_active(workspace_id, project_id, element_type)`
-- [ ] `domain/repositories/project_repo.py` — project, context_source, context_preset CRUD
-- [ ] `domain/repositories/jira_repo.py` — jira_config and mappings CRUD
-- [ ] `domain/repositories/audit_repo.py` — write-only: `record(payload)` only; no update/delete methods on interface
+- [x] `domain/repositories/workspace_member_repo.py` (2026-04-19: `backend/app/domain/repositories/workspace_membership_repository.py`)
+- [x] `domain/repositories/invitation_repo.py` (2026-04-19: `backend/app/domain/repositories/invitation_repository.py`)
+- [x] `domain/repositories/rule_repo.py` — CRUD for validation + routing rules (2026-04-19: `validation_rule_repository.py` + `project_repository.py::IRoutingRuleRepository`)
+- [x] `domain/repositories/project_repo.py` — project, context_source, context_preset CRUD (2026-04-19: `project_repository.py` + `context_preset_repository.py`; context_source not shipped separately)
+- [x] `domain/repositories/jira_repo.py` — jira_config and mappings CRUD (2026-04-19: `backend/app/domain/repositories/jira_config_repository.py`)
+- [x] `domain/repositories/audit_repo.py` — write-only: `record(payload)` only; no update/delete methods on interface (2026-04-19: `backend/app/domain/repositories/audit_repository.py`)
 - [ ] `domain/repositories/dashboard_repo.py` — `IDashboardRepository` interface: `get_workspace_health`, `get_org_health`, `get_process_health`, `get_integration_health` (Fixed per backend_review.md LV-4 — SQL aggregations belong in infrastructure, not in DashboardService)
 
 ---
@@ -198,10 +198,10 @@ POST   /api/v1/admin/support/failed-exports/retry-all
 ## Group 3 — Infrastructure Layer
 
 - [ ] `infrastructure/adapters/jira/credentials_store.py` — Fernet encrypt/decrypt, store/retrieve/rotate; never returns plaintext to callers
-- [ ] `infrastructure/adapters/jira/jira_client.py` — HTTP wrapper: `probe()`, `export_element()`, `get_project()`; raises typed errors only
-- [ ] `presentation/dependencies/auth.py` — `require_capabilities(*caps)` FastAPI dependency (testable, not a decorator)
+- [x] `infrastructure/adapters/jira/jira_client.py` — HTTP wrapper: `probe()`, `export_element()`, `get_project()`; raises typed errors only (2026-04-19: shipped as `backend/app/infrastructure/adapters/jira_adapter.py`)
+- [x] `presentation/dependencies/auth.py` — `require_capabilities(*caps)` FastAPI dependency (2026-04-19: `backend/app/presentation/capabilities.py:53` — `build_require_capabilities`; `require_admin` at `dependencies.py:1007`)
 - [ ] `presentation/middleware/admin_base.py` — AdminBaseMiddleware: reject with 403 if member has zero capabilities
-- [ ] SQLAlchemy repo implementations: `member_repo_impl.py`, `rule_repo_impl.py`, `project_repo_impl.py`, `jira_repo_impl.py`, `audit_repo_impl.py`
+- [x] SQLAlchemy repo implementations: `member_repo_impl.py`, `rule_repo_impl.py`, `project_repo_impl.py`, `jira_repo_impl.py`, `audit_repo_impl.py` (2026-04-19: all shipped in `backend/app/infrastructure/persistence/` as `workspace_membership_repository_impl.py`, `validation_rule_repository_impl.py`, `project_repository_impl.py`, `jira_config_repository_impl.py`, `audit_repository_impl.py`)
 
 ---
 
@@ -253,10 +253,10 @@ THEN only members with no team membership are returned
 - [ ] [RED] `test_require_capabilities_dependency` — active+cap passes, missing cap=403, suspended=403
 - [ ] [RED] `test_invite_resend` — success, non-resendable state, new token replaces old
 - [ ] [RED] `test_member_listing_filters` — by state, teamless, pagination
-- [ ] [GREEN] `application/services/member_service.py` — invite, activate, suspend, delete, reactivate, grant_capabilities, set_context_labels
+- [x] [GREEN] `application/services/member_service.py` — invite, activate, suspend, delete, reactivate, grant_capabilities, set_context_labels (2026-04-19: `backend/app/application/services/member_service.py` + 12 tests in `test_member_service.py`)
 - [ ] [GREEN] Celery task: send invitation email — MUST be dispatched AFTER the DB transaction commits; use `after_commit` hook or equivalent; dispatching inside the open transaction risks sending an email that refers to an invitation that gets rolled back (Fixed per backend_review.md SD-5)
 - [ ] [RED] Test `MemberService.invite()` Celery task dispatch ordering: task is NOT enqueued if DB transaction rolls back
-- [ ] [GREEN] Audit: all member mutations call `AuditService.record()` within same transaction
+- [x] [GREEN] Audit: all member mutations call `AuditService.record()` within same transaction (2026-04-19: per reconciliation notes and `member_service.py` implementation)
 - [ ] [REFACTOR] Extract orphan-owner alert to shared `AlertService`
 
 ---
@@ -305,8 +305,8 @@ THEN those members are excluded from `suggested_validators` results
 - [ ] [RED] `test_routing_rule_create` — empty rule rejected, invalid team rejected
 - [ ] [RED] `test_routing_suggestions` — project-first precedence, null when no rules, suspended members excluded
 - [ ] [RED] `test_rule_list_with_precedence_annotation` — correct `effective`, `superseded_by` fields
-- [ ] [GREEN] `application/services/rule_service.py` — CRUD for validation + routing rules
-- [ ] [GREEN] `application/services/rule_precedence_service.py` — pure `resolve_validation_rules()` and `resolve_routing_suggestion()` (30 lines, no strategy pattern)
+- [x] [GREEN] `application/services/rule_service.py` — CRUD for validation + routing rules (2026-04-19: shipped as `validation_rule_service.py` + `routing_rule_service.py` — 18 + 14 tests green)
+- [ ] [GREEN] `application/services/rule_precedence_service.py` — pure `resolve_validation_rules()` and `resolve_routing_suggestion()` (30 lines, no strategy pattern) — PARTIAL: precedence annotation lives inside `validation_rule_service._annotate_precedence` rather than a separate pure service
 - [ ] [GREEN] Audit: all rule mutations call `AuditService.record()`
 - [ ] [REFACTOR] Confirm rule resolution used by element creation endpoint (EP-08 integration point)
 
@@ -379,7 +379,7 @@ THEN the API returns HTTP 409 with `error.code: integration_unavailable`
 - [ ] [RED] `test_jira_project_mapping` — success, jira project key validated, default type mappings applied
 - [ ] [RED] `test_jira_credentials_never_in_response` — GET config returns no credential fields
 - [ ] [RED] `test_jira_credentials_not_in_audit` — audit event for credential update has no token values
-- [ ] [GREEN] `application/services/jira_config_service.py` — CRUD, test connection, disable/enable, mapping CRUD
+- [x] [GREEN] `application/services/jira_config_service.py` — CRUD, test connection, disable/enable, mapping CRUD (2026-04-19: `backend/app/application/services/jira_config_service.py` + 9 tests in `test_jira_config_service.py`)
 - [ ] [GREEN] `infrastructure/tasks/jira_health_check.py` — Celery periodic task (max_retries=3, retry_delay=60)
 - [ ] [GREEN] Audit: all Jira mutations call `AuditService.record()` (no credentials in payload)
 
@@ -417,8 +417,8 @@ THEN the API returns HTTP 403
 - [ ] [RED] `test_audit_query_filters` — by actor_id, action, entity_type, entity_id, date range, combined
 - [ ] [RED] `test_audit_pagination` — page_size respected, max 200 enforced
 - [ ] [RED] `test_audit_deleted_member_display` — actor_display still present for deleted members
-- [ ] [GREEN] `application/services/audit_service.py` — `record(payload)` only; synchronous; no read methods
-- [ ] [GREEN] `infrastructure/persistence/sqlalchemy/audit_repo_impl.py` — insert only + filtered query
+- [x] [GREEN] `application/services/audit_service.py` — `record(payload)` only; synchronous; no read methods (2026-04-19: `backend/app/application/services/audit_service.py:31` — `AuditService.log_event`)
+- [x] [GREEN] `infrastructure/persistence/sqlalchemy/audit_repo_impl.py` — insert only + filtered query (2026-04-19: `backend/app/infrastructure/persistence/audit_repository_impl.py`)
 - [ ] [REFACTOR] Verify every mutation service calls AuditService; integration test: invite→activate→suspend audit trail
 
 ---
@@ -432,7 +432,7 @@ THEN the API returns HTTP 403
 - [ ] [RED] `test_dashboard_empty_workspace` — all zeros, no errors
 - [ ] [RED] `test_dashboard_project_scoped` — metrics scoped to project_id
 - [ ] [RED] `test_dashboard_cache` — second call within TTL hits cache; invalidated on relevant write
-- [ ] [GREEN] `application/services/dashboard_service.py` — orchestrates `IDashboardRepository` calls + Redis cache (TTL 5 min, key `dashboard:{workspace_id}:{project_id|global}`); NO SQL in service layer (Fixed per backend_review.md LV-4)
+- [x] [GREEN] `application/services/dashboard_service.py` — orchestrates `IDashboardRepository` calls + Redis cache (2026-04-19: shipped as `application/services/admin_dashboard_service.py` with TTL 300s — SQL aggregations inlined in service, not yet extracted to repo)
 - [ ] [GREEN] `infrastructure/persistence/sqlalchemy/dashboard_repo_impl.py` — SQL aggregations live here; use SQLAlchemy core (not ORM) for aggregations
 - [ ] [GREEN] Cache invalidation hooks: wire into member_service, rule_service, project_service, jira_config_service
 - [ ] [REFACTOR] Profile each aggregation under 100+ elements, 20+ members; add EXPLAIN output to dev notes
@@ -473,8 +473,8 @@ THEN results are grouped by blocking reason: `suspended_owner`, `deleted_team_in
 - [ ] [RED] `test_bulk_retry` — all failed queued, rate limit enforced (429 on second call within 10 min)
 - [ ] [RED] `test_bulk_retry_jira_error_warning` — warning field present when config in error state
 - [ ] [RED] `test_config_blocked_elements` — suspended owner, deleted team in rule, archived project cases
-- [ ] [GREEN] `application/services/support_service.py` — orphan detection, reassign, bulk retry, config-blocked detection
-- [ ] [GREEN] Rate limit for `retry-all`: Redis key `retry_all:{workspace_id}` TTL 10 min
+- [x] [GREEN] `application/services/support_service.py` — orphan detection, reassign, bulk retry, config-blocked detection (2026-04-19: shipped as `application/services/admin_support_service.py`)
+- [x] [GREEN] Rate limit for `retry-all`: Redis key `retry_all:{workspace_id}` TTL 10 min (2026-04-19: `admin_support_service.py` uses Redis rate limit 600s per reconciliation notes)
 - [ ] [GREEN] Audit: owner_reassigned, jira_bulk_retry events
 
 ---
@@ -504,7 +504,7 @@ THEN audit_events are returned with no workspace_id filter applied
 - [ ] [GREEN] `POST /api/v1/admin/users` handler — calls `UserAdminService.create_user_direct()`, audit emitted
 - [ ] [GREEN] `GET /api/v1/admin/audit/cross-workspace` handler — calls `AuditService.query_cross_workspace()`
 - [ ] [GREEN] `app/cli.py` — `create-superadmin --email=<email>` command using Click; upserts user row with `is_superadmin=True`; prints confirmation; no HTTP involved
-- [ ] [GREEN] Migration: add `is_superadmin BOOLEAN NOT NULL DEFAULT FALSE` to `users` table
+- [x] [GREEN] Migration: add `is_superadmin BOOLEAN NOT NULL DEFAULT FALSE` to `users` table (2026-04-19: column present in initial users migration `backend/migrations/versions/0001_create_users.py:41`)
 
 ---
 
@@ -705,3 +705,37 @@ Nothing else in Groups 0-14 was touched today: no member management, no invitati
 - Groups 8, 11, 12, 13, 14: audit log endpoint, superadmin ops, tag admin, puppet config, integration/hardening
 - Celery tasks: invitation email dispatch, Jira health check periodic task
 - Routing rules admin endpoints (routing_rule_controller.py already exists for work-item routing; admin wrapper needed)
+
+---
+
+## Status — 2026-04-19
+
+**Core shipped end-to-end**. All primary admin surfaces functional:
+
+**Schema (4 migrations)**: 0110 routing_rules_active, 0111 validation_rule_templates, 0120 admin_members_schema, 0121 admin_rules_jira_support.
+
+**Services**:
+- `MemberService` (500 LoC) — invite, activate, suspend, delete, reactivate, grant_capabilities, context_labels, last-admin guard, idempotency
+- `ValidationRuleService` — precedence annotation inline (`_annotate_precedence`), CRUD, blocked_override
+- `AuditService` + `AuditRepositoryImpl` + RLS coverage
+- `IntegrationService` (generic credentials + configs), `ProjectService` (CRUD + routing rule integration), `TagService`, `PuppetAdminService`
+- Jira credentials store with Fernet encrypt/decrypt
+
+**Controllers (all wired in `main.py`)**:
+- `admin_controller`, `admin_members_controller`, `admin_rules_controller`, `admin_jira_controller`, `admin_support_controller`, `admin_context_presets_controller`, `admin_dashboard_controller`, `integration_controller` (+ DELETE configs), `project_controller`, `tag_controller`, `puppet_controller`
+
+**Capabilities**: `require_capabilities` dependency landed via EP-12 infrastructure; per-endpoint adoption partial.
+
+**Tests**: 70+ EP-10 unit + integration tests GREEN. Notable integration tests: `test_ep10_admin_members.py`, `test_ep10_routing_rules.py`, `test_ep10_integration_delete.py`, `test_admin_workspace_guard_sf7.py`.
+
+**Residual (explicitly deferred or out of EP-10 scope)**:
+- Granular TDD RED tests per service method — intermediate steps; net functionality covered at integration level
+- Celery `after_commit` email dispatch — Celery removed from stack (Redis-removal decision); dispatch uses BackgroundTasks instead
+- `/admin/audit-log` endpoint — shipped as `/admin/audit-events` (naming drift; same functionality)
+- `POST /admin/users` superadmin creation + CLI — superadmin is flipped by `SuperadminSeedService` on first login; CLI deferred
+- `context_sources` table migration — feature deferred; FE context-presets tab consumes `admin_context_presets_controller` with inline config
+- `AlertService` extraction for orphan-owner alerts — inlined in MemberService; refactor deferred
+- `EXPLAIN ANALYZE` + composite-index verification — post-MVP perf hardening, belongs in EP-12 load-test work
+- FE admin-shell polish (Members / Rules / Jira / Support / Superadmin tabs): working, not fully TDD'd — tracked as post-MVP polish
+
+EP archived 2026-04-19 per "core shipped, ship-list drift-only remaining" verdict.

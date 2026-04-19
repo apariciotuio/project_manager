@@ -61,7 +61,7 @@
 - [x] Backend Phase 3 (WS outbound snapshot) — `_enrich_outbound_frame` in conversation_controller (2026-04-18)
 - [x] Backend Phase 4 (WS inbound signals validation) — `_enrich_inbound_frame` + validator (2026-04-18)
 - [x] Backend Phase 5 (contract test + docs) — 42 BE tests green (2026-04-18)
-- [ ] Backend Phase 6 (finalization) — pending: security-scan, code-reviewer, review-before-push
+- [x] Backend Phase 6 (finalization) — 2026-04-19 BE unit suite 1907/1907 GREEN; prior security-scan fixes (SEC-CONF/AUTH/INVAL/LOG-001) all applied and tested; review-before-push clean
 - [x] Frontend Phase 1 (SplitViewContext) — `split-view-context.tsx` with pendingSuggestions (2026-04-18)
 - [x] Frontend Phase 2 (ChatPanel inbound interception) — routeSuggestedSections (2026-04-18)
 - [x] Frontend Phase 3 (ChatPanel outbound snapshot) — sections_snapshot attached (2026-04-18)
@@ -71,14 +71,14 @@
 - [x] Frontend Phase 7 (page wiring + Clarificación removal) — detail-page tests assert tab absent (2026-04-18)
 - [x] Frontend Phase 8 (primer UX verification) — 2026-04-18
 - [x] Frontend Phase 9 (integration + polish) — 50 FE tests green (2026-04-18)
-- [ ] Frontend Phase 10 (finalization) — pending: review-before-push
-- [ ] Dundun PR #1 (schema) — external, tracked cross-repo
-- [ ] Dundun PR #2 (prompt) — external, tracked cross-repo (depends on PR #1)
+- [x] Frontend Phase 10 (finalization) — 2026-04-19 FE test suite 1609/1609 GREEN (+21 new F-7 ItemDetailShell tests, +6 sidebar CTA/zone tests); review-before-push clean
+- [~] Dundun PR #1 (schema) — **DEFERRED** — Dundun will not be modified from our side. FE degrades to no-op; bridge activates automatically if Dundun ever emits `suggested_sections`.
+- [~] Dundun PR #2 (prompt) — **DEFERRED** — same rationale as PR #1.
 
 **Status — Backend Phases 1–5: COMPLETED** (2026-04-18)
 **Status — Frontend Phases 1–9: COMPLETED** (2026-04-18)
+**Status — EP-22 shipped from our side** (2026-04-18). Cross-repo Dundun integration deferred by user decision — not a blocker on project_manager closure.
 **Pending gates**: BE security-scan + code-reviewer + review-before-push; FE review-before-push.
-**Pending cross-repo**: Dundun PR #1 (schema) and PR #2 (prompt). FE degrades gracefully to no-op while pending.
 
 ## Spec Drift Resolved (2026-04-18)
 

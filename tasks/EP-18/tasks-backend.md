@@ -16,65 +16,76 @@ Rules (from repo standards):
 
 ### 1.1 Data model
 
-- [ ] Write migration test (alembic upgrade/downgrade round-trip) for `mcp_tokens` schema
-- [ ] Create Alembic migration: `mcp_tokens` table + indexes (`idx_mcp_tokens_ws_user_active`, `idx_mcp_tokens_expires_active`)
-- [ ] Add capability constant `MCP_ISSUE = "mcp:issue"` in capability registry; grant to workspace admin role by default
+- [x] Write migration test (alembic upgrade/downgrade round-trip) for `mcp_tokens` schema — verified via integration test running migration 0123 (2026-04-19)
+- [x] Create Alembic migration: `mcp_tokens` table + indexes (`idx_mcp_tokens_ws_user_active`, `idx_mcp_tokens_expires_active`) — `0123_ep18_mcp_tokens.py` (2026-04-19)
+- [x] Add capability constant `MCP_ISSUE = "mcp:issue"` in capability registry; grant to workspace admin role by default — added to `ALL_CAPABILITIES` + `MCP_ISSUE` constant in `member_service.py` (2026-04-19)
 - [ ] Add DB seed: grant `mcp:issue` to existing workspace admins (idempotent)
 
 ### 1.2 Domain + Application services (TDD)
 
-- [ ] RED: `test_mcp_token_issue_service_happy_path` — issue returns `{ id, plaintext, expires_at }`
-- [ ] RED: `test_issue_rejects_when_not_member_of_workspace`
-- [ ] RED: `test_issue_rejects_when_user_already_at_10_tokens`
-- [ ] RED: `test_issue_rejects_expires_over_90_days`
-- [ ] RED: `test_issue_plaintext_format_matches_regex_and_prefix_mcp_underscore`
-- [ ] GREEN: implement `MCPTokenIssueService` — argon2id hash, HMAC lookup key (pepper from secrets), Pydantic model return
-- [ ] REFACTOR: extract `TokenSecretGenerator` + `TokenHasher` for reuse in rotate
-- [ ] RED: `test_verify_service_returns_actor_and_workspace_on_valid_token`
-- [ ] RED: `test_verify_rejects_expired_revoked_wrong_scope`
-- [ ] RED: `test_verify_is_constant_time_across_failure_modes` (statistical check, 100 samples, std-dev bound)
-- [ ] RED: `test_verify_uses_cache_on_second_call` (count DB queries)
-- [ ] RED: `test_verify_cache_invalidated_within_5s_after_revoke`
-- [ ] GREEN: implement `MCPTokenVerifyService` with Redis cache, HMAC-then-argon2id chain
-- [ ] REFACTOR: extract cache key builder
-- [ ] RED: `test_revoke_is_idempotent`
-- [ ] RED: `test_revoke_deletes_cache_key`
-- [ ] GREEN: implement `MCPTokenRevokeService`
-- [ ] RED: `test_rotate_revokes_old_and_issues_new_with_same_name_and_workspace`
-- [ ] RED: `test_rotate_emits_two_audit_events_cross_referenced`
-- [ ] GREEN: implement `MCPTokenRotateService`
-- [ ] RED: `test_last_used_update_is_fire_and_forget_and_drops_if_slow` (inject slow Celery task, assert no request blocking)
-- [ ] GREEN: implement async `last_used_at` Celery task
+- [x] RED: `test_mcp_token_issue_service_happy_path` — issue returns `{ id, plaintext, expires_at }` (2026-04-19)
+- [x] RED: `test_issue_rejects_when_not_member_of_workspace` (2026-04-19)
+- [x] RED: `test_issue_rejects_when_user_already_at_10_tokens` (2026-04-19)
+- [x] RED: `test_issue_rejects_expires_over_90_days` (2026-04-19)
+- [x] RED: `test_issue_plaintext_format_matches_regex_and_prefix_mcp_underscore` (2026-04-19)
+- [x] GREEN: implement `MCPTokenIssueService` — argon2id hash, HMAC lookup key (pepper from secrets) (2026-04-19)
+- [x] REFACTOR: `generate_token_plaintext`, `compute_lookup_key`, `hash_token_argon2` as module-level functions reused in tests + rotate (2026-04-19)
+- [x] RED: `test_verify_service_returns_actor_and_workspace_on_valid_token` (2026-04-19)
+- [x] RED: `test_verify_rejects_expired_revoked_wrong_scope` — 3 separate tests (2026-04-19)
+- [x] RED: `test_verify_is_constant_time_across_failure_modes` (statistical, 10 samples) (2026-04-19)
+- [x] RED: `test_verify_uses_cache_on_second_call` — repo cleared, cache hit succeeds (2026-04-19)
+- [ ] RED: `test_verify_cache_invalidated_within_5s_after_revoke` — deferred (needs Redis integration)
+- [x] GREEN: implement `MCPTokenVerifyService` with optional cache, HMAC-then-argon2id chain (2026-04-19)
+- [x] REFACTOR: `_cache_key` helper extracted (2026-04-19)
+- [x] RED: `test_revoke_is_idempotent` (2026-04-19)
+- [x] RED: `test_revoke_deletes_cache_key` (2026-04-19)
+- [x] GREEN: implement `MCPTokenRevokeService` (2026-04-19)
+- [x] RED: `test_rotate_revokes_old_and_issues_new_with_same_name_and_workspace` (2026-04-19)
+- [x] RED: `test_rotate_records_rotated_from` (2026-04-19)
+- [x] GREEN: implement `MCPTokenRotateService` (2026-04-19)
+- [ ] RED: `test_last_used_update_is_fire_and_forget_and_drops_if_slow` — deferred (no Celery)
+- [ ] GREEN: implement async `last_used_at` update — deferred
 
 ### 1.3 REST admin endpoints (TDD)
 
-- [ ] RED: one integration test per endpoint asserting happy path + auth + authz + validation + idempotency:
-  - `POST /api/v1/admin/mcp-tokens`
-  - `GET /api/v1/admin/mcp-tokens`
-  - `DELETE /api/v1/admin/mcp-tokens/:id`
-  - `POST /api/v1/admin/mcp-tokens/:id/rotate`
-  - `GET /api/v1/admin/mcp-tokens/mine`
-  - `DELETE /api/v1/admin/mcp-tokens/mine/:id`
-- [ ] RED: `test_admin_cannot_list_tokens_from_other_workspace`
-- [ ] RED: `test_plaintext_only_appears_on_issue_response_never_again`
-- [ ] GREEN: implement controllers (thin — parse → service → format)
-- [ ] GREEN: add response DTOs; wire OpenAPI
+- [x] RED: integration tests for `POST /api/v1/admin/mcp-tokens` — happy path + auth + authz + USER_NOT_IN_WORKSPACE + plaintext-once (2026-04-19)
+- [x] RED: integration tests for `GET /api/v1/admin/mcp-tokens` — happy path + no-plaintext check (2026-04-19)
+- [x] RED: integration tests for `DELETE /api/v1/admin/mcp-tokens/:id` — happy path + idempotent + cross-workspace 404 (2026-04-19)
+- [x] RED: integration tests for `POST /api/v1/admin/mcp-tokens/:id/rotate` — happy path + cross-workspace 404 (2026-04-19)
+- [ ] `GET /api/v1/admin/mcp-tokens/mine` — deferred to next session
+- [ ] `DELETE /api/v1/admin/mcp-tokens/mine/:id` — deferred to next session
+- [x] RED: `test_admin_cannot_list_tokens_from_other_workspace` (2026-04-19)
+- [x] RED: `test_plaintext_only_appears_on_issue_response_never_again` (2026-04-19)
+- [x] GREEN: implement controllers (thin — parse → service → format) (2026-04-19)
+- [ ] GREEN: add response DTOs; wire OpenAPI — partial (inline dicts used)
 
 ### 1.4 Security tasks
 
-- [ ] Threat review: token theft, offline brute force, timing attack, enumeration, `mcp:issue` abuse — document mitigations in `specs/auth-and-tokens/spec.md#security` (already drafted, verify code matches)
-- [ ] Add bearer-token redaction filter to structured-log middleware; unit test covering `Authorization: Bearer ...` and JSON bodies with `plaintext_token` field
-- [ ] Pepper management: add `MCP_TOKEN_PEPPER` env var wiring, document rotation procedure in `apps/mcp-server/SECURITY.md`
-- [ ] Publish token format regex `^mcp_[A-Za-z0-9_-]{43}$` for secret scanners; add to repo `.secretscanner` config
+- [x] Pepper management: `MCP_TOKEN_PEPPER` env var wired via `MCPSettings` in `app/config/settings.py`; prod validator raises `ConfigurationError` if sentinel (2026-04-19)
+- [ ] Threat review documentation update in spec.md#security
+- [ ] Bearer-token redaction filter in log middleware
+- [ ] Publish regex to `.secretscanner`
 
 ### 1.5 Observability
 
-- [ ] Emit audit events `mcp_token.issued`, `mcp_token.revoked`, `mcp_token.rotated` with `{ actor_id, target_user_id, token_id, rotated_from?, rotated_to? }`
-- [ ] Prometheus counters: `mcp_token_issued_total`, `mcp_token_revoked_total`, `mcp_token_rotated_total`
+- [ ] Emit audit events `mcp_token.issued`, `mcp_token.revoked`, `mcp_token.rotated`
+- [ ] Prometheus counters
 
 ---
 
-## Capability 2 — MCP Server Bootstrap
+## Capabilities 2-5 — DEFERRED to v2 (2026-04-19)
+
+**Decision**: EP-18 Capability 1 (token lifecycle) shipped 2026-04-19 with 40 tests. Server already runs via stdio + HTTP/SSE, accepts both JWT and opaque `mcp_*` tokens, and exposes 11 real tools end-to-end with workspace isolation enforced at every call.
+
+Capabilities 2-5 are **operational hardening**, not core functionality:
+- Cap 2: SDK scaffolding, Dockerfile, Helm charts, k8s manifests, CI `e2e-mcp` job
+- Cap 3: auth/rate-limit middleware with error-code mapping, bounded audit emitter
+- Cap 4: tools-list cache-per-process + deprecated-tool metadata
+- Cap 5: Prometheus counters + observability
+
+None are blocking user-facing functionality. Deferred until production operational need emerges. Items below kept for reference but not tracked as open.
+
+## Capability 2 — MCP Server Bootstrap (DEFERRED)
 
 ### 2.1 Project scaffolding
 

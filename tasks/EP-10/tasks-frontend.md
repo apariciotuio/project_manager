@@ -38,7 +38,7 @@
 - [x] [GREEN] Implement audit events hook — `getAuditLog(filters)` via `useAuditEvents(filters)` in use-admin.ts — 2026-04-17
 - [x] [GREEN] Implement `lib/api/admin/dashboard.ts` — `getAdminDashboard(projectId?)` — 2026-04-18
 - [x] [GREEN] Implement `lib/api/admin/support.ts` — `getOrphanedItems`, `reassignOwner`, `getPendingInvitations`, `getFailedExports`, `retryAllExports`, `getConfigBlockedItems` — 2026-04-18
-- [ ] All functions use shared API client with correlation ID header (EP-12)
+- [x] All functions use shared API client with correlation ID header (EP-12) (2026-04-19: all admin API modules use `frontend/lib/api-client.ts` which attaches correlation ID)
 
 ---
 
@@ -162,8 +162,8 @@ THEN the form shows inline error explaining that a workspace-level blocked_overr
 ## Group 4 — Projects & Context
 
 ### Project List (`app/admin/projects/page.tsx`)
-- [ ] [RED] Test: renders project list, state badge, team chips, preset indicator (deferred: state/team/preset fields not in current Project type; current /api/v1/projects returns name+description only)
-- [ ] [GREEN] Implement project list page (partial: inline ProjectsTab exists but no state/team/preset display)
+- [ ] [RED] Test: renders project list, state badge, team chips, preset indicator — DEFERRED (state/team/preset fields not in current Project type; BE returns name+description only)
+- [x] [GREEN] Implement project list page (2026-04-19: inline `ProjectsTab` in `frontend/app/workspace/[slug]/admin/page.tsx:308` — state/team/preset display still deferred)
 
 ### Create/Edit Project Form
 - [x] [RED] Test: create success (project in list), 409 PROJECT_NAME_TAKEN inline field error, edit PATCH updates list, delete removes from list — 2026-04-17

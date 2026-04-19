@@ -209,7 +209,7 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/post
   - SF-2: merged duplicate imports in chat-panel-send-snapshot.test.tsx
   - SF-3: removed unused ChatPanel import from ep22-happy-path.test.tsx
 - [ ] [SEC] PendingSuggestionCard XSS check — deferred to EP-22-full (component already built; no additional work needed)
-- [ ] [REVIEW] `review-before-push`
+- [x] [REVIEW] `review-before-push` — 2026-04-19 (FE 1609/1609 GREEN including 50 EP-22 tests)
 - [ ] Update `tasks.md` — EP-22-lite phases 1/6/7/8 COMPLETED; phases 2/3/4/5/9 deferred to EP-22-full
 
 ---

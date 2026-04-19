@@ -174,7 +174,7 @@ PATCH /api/v1/teams/{id}/members/{user_id}/role:
 ### A2. Migrations & Persistence
 
 - [ ] A2.1 [RED] Write migration test: `teams` table `UNIQUE (workspace_id, name)` rejects duplicate — no migration test file found
-- [ ] A2.2 [GREEN] Create Alembic migration: `teams` table with `idx_teams_workspace_status` — teams table exists (migration 0025 era) but unique constraint on `(workspace_id, name)` needs verification; `idx_teams_workspace_status` not confirmed
+- [x] A2.2 [GREEN] Create Alembic migration: `teams` table with `idx_teams_workspace_status` — teams table exists (migration 0025 era) but unique constraint on `(workspace_id, name)` needs verification; `idx_teams_workspace_status` not confirmed (2026-04-19: `backend/migrations/versions/0025_create_teams_notifications.py:36-42` ships unique `idx_teams_workspace_active_name(workspace_id, name) WHERE deleted_at IS NULL` + `idx_teams_workspace_active` index)
 - [ ] A2.3 [RED] Write migration test: `team_memberships` partial unique index `WHERE removed_at IS NULL` allows re-add after soft remove — not found
 - [x] A2.4 [GREEN] Create Alembic migration: `team_memberships` table with partial index — `idx_team_memberships_team_active` migration 0032 (`backend/migrations/versions/0032_team_memberships_idx.py`)
 - [ ] A2.5 [RED] Write repository tests: `create`, `add_member`, `remove_member` (soft), `get` with members, `list_by_workspace` excludes deleted — no dedicated repo integration tests found
@@ -310,16 +310,16 @@ GET /api/v1/notifications/stream:
 - [x] B5.1 [RED] Test `PgNotificationBus`: publish serializes payload; subscribe yields messages; LISTEN/UNLISTEN; PayloadTooLarge — `backend/tests/unit/infrastructure/sse/test_pg_notification_bus.py`; roundtrip integration test in `backend/tests/integration/test_pg_notification_bus_roundtrip.py`
 - [x] B5.2 [GREEN] Implement `infrastructure/sse/pg_notification_bus.py` — `PgNotificationBus` with `publish`/`subscribe`; Redis replaced with Postgres LISTEN/NOTIFY (`backend/app/infrastructure/sse/pg_notification_bus.py`)
 - [ ] B5.3 [RED] Test SSE notifications endpoint: authenticated connection receives events; short-lived token validated — SSE endpoint for notifications not implemented (job_progress_controller.py is a different SSE endpoint)
-- [ ] B5.4 [GREEN] Implement `GET /api/v1/notifications/stream` — not implemented; no SSE notifications endpoint in `notification_controller.py`
-- [ ] B5.5 [GREEN] Implement `POST /api/v1/notifications/stream-token` — not implemented
+- [x] B5.4 [GREEN] Implement `GET /api/v1/notifications/stream` (2026-04-19: `backend/app/presentation/controllers/notification_controller.py:246-258` — SSE endpoint with short-lived token query param)
+- [x] B5.5 [GREEN] Implement `POST /api/v1/notifications/stream-token` (2026-04-19: `backend/app/presentation/controllers/notification_controller.py:224-245`)
 
 ### B6. NotificationService
 
 - [x] B6.1 [RED] Test `list`: paginates; `state` filter works; only recipient's notifications returned (IDOR check) — 5 unit tests in `backend/tests/unit/application/ep08/test_notification_service.py`
 - [x] B6.2 [RED] Test `mark_read`: sets state=read; already read → idempotent
 - [x] B6.3 [RED] Test `mark_all_read`: bulk update only for requesting user's notifications
-- [ ] B6.4 [RED] Test `execute_action`: validates action type; calls `QuickActionDispatcher.dispatch(action_type, subject_id, actor_id)`; transitions notification to `actioned`; review already resolved → raises `StaleActionError(409)` — `NotificationService` must NOT directly depend on `ReviewResponseService`, `WorkItemService`, etc. (Fixed per backend_review.md SD-4)
-- [ ] B6.4a [GREEN] Implement `application/services/quick_action_dispatcher.py` — `dispatch(action_type: str, subject_id: UUID, actor_id: UUID) -> dict` maps action types to downstream service calls; `NotificationService` depends only on `QuickActionDispatcher`, not on individual domain services
+- [x] B6.4 [RED] Test `execute_action`: validates action type; calls `QuickActionDispatcher.dispatch(action_type, subject_id, actor_id)`; transitions notification to `actioned`; review already resolved → raises `StaleActionError(409)` (2026-04-19: `backend/tests/unit/application/ep08/test_execute_action.py` covers dispatcher + service; `StaleActionError` at `team_service.py:38-39`)
+- [x] B6.4a [GREEN] Implement `application/services/quick_action_dispatcher.py` (2026-04-19: `backend/app/application/services/quick_action_dispatcher.py:22-47` — `QuickActionDispatcher.register/dispatch`)
 - [x] B6.5 [GREEN] Implement `application/services/notification_service.py` — `NotificationService` + `ExtendedNotificationService` with `unread_count`, `mark_all_read`, `bulk_enqueue` (`backend/app/application/services/notification_service.py`)
 
 ### B7. Controllers
@@ -457,11 +457,11 @@ POST /api/v1/items/bulk-assign:
 
 ### D3. AssignmentService
 
-- [ ] D3.1 [RED] Test `assign_owner`: valid user set; suspended user → raises `ValidationError`; not workspace member → raises `ValidationError`; publishes `assignment.changed` event — `AssignmentService` not implemented
-- [ ] D3.2 [RED] Test `suggest_owner`: routing rule matches by `item_type` → returns first valid; no match → `None` — `RoutingRuleService.suggest_*` in `backend/tests/unit/application/test_routing_rule_service.py` covers suggest logic; dedicated `AssignmentService` still missing
-- [ ] D3.3 [RED] Test `suggest_reviewer` — same as D3.2; covered via `RoutingRuleService` tests
-- [ ] D3.4 [RED] Test `bulk_assign` — not implemented
-- [ ] D3.5 [GREEN] Implement `application/services/assignment_service.py` — not implemented; `RoutingRuleService` handles suggest-only; `assign_owner` / `bulk_assign` missing
+- [x] D3.1 [RED] Test `assign_owner`: valid user set; suspended user → raises `ValidationError`; not workspace member → raises `ValidationError`; publishes `assignment.changed` event (2026-04-19: `backend/tests/unit/application/ep08/test_assignment_service.py` + `WorkItemOwnerChangedEvent` emitted via subscriber `notification_subscriber.py:97-109`)
+- [x] D3.2 [RED] Test `suggest_owner`: routing rule matches by `item_type` → returns first valid; no match → `None` (2026-04-19: `AssignmentService.suggest_owner` at `assignment_service.py:109` + tests in `test_assignment_service.py`)
+- [x] D3.3 [RED] Test `suggest_reviewer` (2026-04-19: `AssignmentService.suggest_reviewer` at `assignment_service.py:128` + tests)
+- [x] D3.4 [RED] Test `bulk_assign` (2026-04-19: `AssignmentService.bulk_assign` at `assignment_service.py:149` + tests)
+- [x] D3.5 [GREEN] Implement `application/services/assignment_service.py` (2026-04-19: `backend/app/application/services/assignment_service.py:37` — `AssignmentService` with assign_owner/suggest_owner/suggest_reviewer/bulk_assign)
 
 ### D4. Controllers
 
@@ -475,7 +475,7 @@ POST /api/v1/items/bulk-assign:
 ### E1. Notification Trigger Wiring
 
 - [ ] E1.1 [GREEN] Wire `TeamService` events → fan-out: `TeamMemberAdded`, `TeamMemberRemoved`, `TeamLeadChanged` — `TeamService` emits no domain events; fan-out for team events missing
-- [ ] E1.2 [GREEN] Wire `AssignmentService.assignment.changed` → fan-out — `AssignmentService` not implemented
+- [x] E1.2 [GREEN] Wire `AssignmentService.assignment.changed` → fan-out (2026-04-19: `backend/app/application/events/notification_subscriber.py:97-109,216` — `WorkItemOwnerChangedEvent` handler emits `assignment.changed` notifications)
 - [x] E1.3 [GREEN] Wire EP-06 review service events → fan-out: `review.assigned`, `review.responded`, `item.returned` — `ReviewRequestedEvent`, `ReviewRespondedEvent` handlers in `NotificationSubscriber`; `WorkItemStateChangedEvent` covers `item.returned` (`backend/app/application/events/notification_subscriber.py`)
 - [ ] E1.4 [GREEN] Wire EP-01 block events → fan-out: `item.blocked`, `item.unblocked` — no block event handlers in notification subscriber
 - [ ] E1.5 [RED] Integration test: domain event published → notification record created end-to-end — no end-to-end integration test; Celery removed, inline fan-out untested at integration level
@@ -484,14 +484,14 @@ POST /api/v1/items/bulk-assign:
 
 - [x] E2.1 [RED] Test: workspace-scoped access enforced on team get — `TeamService.get` IDOR-safe (cross-workspace → 404); integration test coverage missing but service layer enforces it (`backend/app/application/services/team_service.py:65-75`)
 - [x] E2.2 [RED] Test: IDOR on notifications — `test_ep08_notification_controller.py` covers user A cannot see user B's notifications
-- [ ] E2.3 [RED] Test: `GET /inbox` — inbox controller not implemented; not testable yet
+- [x] E2.3 [RED] Test: `GET /inbox` (2026-04-19: `backend/tests/integration/test_ep08_inbox_controller.py` — 5 integration tests green against `inbox_controller.py:41-72`)
 - [x] E2.4 [GREEN] External input validated at controller boundary — Pydantic models on all team + notification endpoints; `page_size` ge/le constraints; UUID path params auto-validated by FastAPI
 - [ ] E2.5 [GREEN] Rate limiting on notification mutation endpoints — not applied
 
 ### E3. Observability
 
 - [x] E3.1 [GREEN] Structured log on notification created — `notification_subscriber.py` does not log per-notification; `notification_tasks.py` logs fan-out events; `notification_service.py` logs `mark_all_read`
-- [ ] E3.2 [GREEN] Structured log on quick action executed — `QuickActionDispatcher` not implemented
+- [x] E3.2 [GREEN] Structured log on quick action executed (2026-04-19: `QuickActionDispatcher` logs via `logger` at `backend/app/application/services/quick_action_dispatcher.py`)
 - [ ] E3.3 [GREEN] Dead-letter queue / failure logging on fan-out — `notification_tasks.py` logs errors but no DLQ mechanism; Celery removed
 - [ ] E3.4 [GREEN] Histogram metric `notification_fan_out_duration_ms` — not implemented
 

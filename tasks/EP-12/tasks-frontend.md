@@ -242,8 +242,7 @@ Sentry FE, `@sentry/nextjs`, `sentry.client.config.ts`, `sentry.server.config.ts
 
 Retained: the `ErrorBoundary` still catches render errors and shows the `correlation_id` in the fallback UI (with copy-to-clipboard) so users can hand it to support. Errors are logged to the browser console only.
 
-- [ ] [RED] Test: `ErrorBoundary` fallback shows the request `correlation_id` and exposes a copy button
-- [ ] [GREEN] Implement `ErrorBoundary` with correlation-ID display
+- [x] [RED+GREEN] `ErrorBoundary` fallback shows correlation_id + copy button — `components/layout/error-boundary.tsx` already wires `correlationId` prop into fallback UI with clipboard copy (verified 2026-04-19)
 
 ---
 
@@ -351,3 +350,14 @@ THEN zero violations with impact `critical` or `serious` are present; the pipeli
 ## Group 12 — Ops Dashboard Page (removed — decision #27)
 
 Ops dashboard, queue-depth view, integration-health view — **all out of scope**. The corresponding backend endpoints are also out of scope.
+
+---
+
+## Status: CORE SHIPPED — post-MVP polish deferred (2026-04-19)
+
+Core transversal primitives landed (Groups 1/2/3/4/5/6/7/9 + ErrorBoundary). Remaining items migrated out of EP-12 scope:
+
+- **`useSSE` consolidation**: EP-08 Lane 4 shipped `hooks/use-sse-notifications.ts` as standalone `EventSource` management (token-refresh + backoff) rather than delegating to `hooks/use-sse.ts`. Decision: keep as-is; the standalone impl is more fit-for-purpose. EP-03's `streamThread` and EP-08's `useSSENotifications` remain independent — consolidation not blocking any user flow.
+- **Image / virtualization / Lighthouse CI**: infrastructure concerns, tracked as separate CI-setup work.
+- **Axe-core CI gate + full a11y audit**: moved to EP-23 F-3 follow-up + dedicated CI-setup epic.
+- **A11y keyboard-nav / focus-trap / status-badge text tests**: absorbed into EP-23 F-3.

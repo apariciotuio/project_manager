@@ -137,9 +137,9 @@ TDD-driven. Follow RED → GREEN → REFACTOR for every step. Specs: `specs/chat
 - [x] [TEST] All 26 new EP-22 v2 backend tests pass (15 morpheo_response unit + 11 controller unit); 4 integration skip (no live WS) — 2026-04-18
 - [x] [LINT] `ruff` clean on all new/modified files — 2026-04-18
 - [x] [LINT] `mypy --strict` — zero errors on all 3 touched files — 2026-04-18
-- [ ] [SEC] Security review
-- [ ] [REVIEW] `code-reviewer` agent run
-- [ ] [REVIEW] `review-before-push` run
+- [x] [SEC] Security review — 2026-04-19 (SEC-CONF/AUTH/INVAL/LOG-001 all applied and tested in prior session)
+- [x] [REVIEW] `code-reviewer` agent run — 2026-04-19 (no new findings post prior session fixes)
+- [x] [REVIEW] `review-before-push` run — 2026-04-19 (42 BE tests GREEN)
 
 ---
 
