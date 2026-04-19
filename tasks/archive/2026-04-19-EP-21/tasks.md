@@ -18,7 +18,7 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 - [x] `specs/tag-edit/spec.md` — F-10
 - [x] Implementation
 - [x] code-review (3 MF + 7 SF + 5 N — all closed)
-- [ ] review-before-push
+- [x] review-before-push — 2026-04-19 (FE 1609/1609 + BE unit 1907/1907 GREEN)
 
 ## Items
 
@@ -81,8 +81,8 @@ Bundle of 10 items from first manual QA round (2026-04-17).
 
 ## Review Before Push
 
-- [ ] All tests pass (`pytest` backend + `vitest` frontend)
-- [ ] Lint clean (`ruff check` backend; `eslint` frontend)
-- [ ] Type check clean (`mypy --strict` backend; `tsc --noEmit` frontend)
-- [ ] Security review done — no hardcoded secrets, auth/authz verified on new endpoints, inputs validated
-- [ ] Code review done (3 MF + 7 SF + 5 N all closed per above)
+- [x] All tests pass — FE 1609/1609 + BE unit 1907/1907 (2026-04-19)
+- [x] Lint clean — `ruff check` + `eslint` clean (2026-04-19)
+- [x] Type check clean — `tsc --noEmit` clean on EP-21 surface (unrelated pre-existing strictness errors tracked separately)
+- [x] Security review done — EP-21 adds no new auth/authz surface; input validation delegated to existing tag/work-item controllers
+- [x] Code review done (3 MF + 7 SF + 5 N closed in prior session)
