@@ -92,4 +92,32 @@ describe('WorkItemList', () => {
     const { container } = render(<WorkItemList items={[]} slug="acme" />);
     expect(container.firstChild).toBeNull();
   });
+
+  // EP-17 G7 — Lock badge in list rows
+  it('renders lock badge when lock_summary.has_locks is true', () => {
+    const locked = {
+      ...mockItem,
+      lock_summary: { has_locks: true, count: 1, held_by_me: false },
+    };
+    render(<WorkItemList items={[locked]} slug="acme" />);
+    expect(screen.getByRole('img', { name: /bloqueado|locked/i })).toBeInTheDocument();
+  });
+
+  it('does not render lock badge when lock_summary.has_locks is false', () => {
+    const unlocked = {
+      ...mockItem,
+      lock_summary: { has_locks: false, count: 0, held_by_me: false },
+    };
+    render(<WorkItemList items={[unlocked]} slug="acme" />);
+    expect(screen.queryByRole('img', { name: /bloqueado|locked/i })).toBeNull();
+  });
+
+  it('shows "Locked by me" tooltip when held_by_me is true', () => {
+    const myLock = {
+      ...mockItem,
+      lock_summary: { has_locks: true, count: 1, held_by_me: true },
+    };
+    render(<WorkItemList items={[myLock]} slug="acme" />);
+    expect(screen.getByRole('img', { name: /locked by me/i })).toBeInTheDocument();
+  });
 });
