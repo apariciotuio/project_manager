@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { WorkspaceSidebar } from '@/components/workspace/workspace-sidebar';
 import { useAuth } from '@/app/providers/auth-provider';
+import { NotificationProvider } from '@/app/providers/notification-provider';
 
 interface WorkspaceLayoutProps {
   children: ReactNode;
@@ -28,11 +29,13 @@ export default function WorkspaceLayout({ children, params }: WorkspaceLayoutPro
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <WorkspaceSidebar slug={slug} />
-      <main className="flex flex-1 flex-col overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <NotificationProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <WorkspaceSidebar slug={slug} />
+        <main className="flex flex-1 flex-col overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </NotificationProvider>
   );
 }

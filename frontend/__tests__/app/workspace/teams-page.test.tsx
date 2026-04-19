@@ -22,11 +22,24 @@ vi.mock('@/app/providers/auth-provider', () => ({
   }),
 }));
 
+// EP-08 API shape: TeamMember has display_name + role + joined_at
 const mockTeams = [
-  { id: 'team1', name: 'Frontend', description: 'UI team', member_count: 3, members: [
-    { id: 'm1', user_id: 'u1', full_name: 'Ada Lovelace', email: 'ada@co.com', avatar_url: null },
-  ] },
-  { id: 'team2', name: 'Backend', description: null, member_count: 1, members: [] },
+  {
+    id: 'team1', name: 'Frontend', description: 'UI team',
+    workspace_id: 'ws1', status: 'active', can_receive_reviews: false, created_at: '2026-01-01T00:00:00Z',
+    members: [
+      { user_id: 'u1', display_name: 'Ada Lovelace', role: 'lead', joined_at: '2026-01-01T00:00:00Z' },
+      { user_id: 'u2', display_name: 'Bob', role: 'member', joined_at: '2026-01-02T00:00:00Z' },
+      { user_id: 'u3', display_name: 'Carol', role: 'member', joined_at: '2026-01-03T00:00:00Z' },
+    ],
+  },
+  {
+    id: 'team2', name: 'Backend', description: null,
+    workspace_id: 'ws1', status: 'active', can_receive_reviews: true, created_at: '2026-01-01T00:00:00Z',
+    members: [
+      { user_id: 'u4', display_name: 'Dave', role: 'lead', joined_at: '2026-01-01T00:00:00Z' },
+    ],
+  },
 ];
 
 describe('TeamsPage', () => {

@@ -93,24 +93,16 @@ describe('useTeams', () => {
     expect(result.current.teams[0]!.id).toBe('team2');
   });
 
-  it('addMember re-fetches team and updates member list in state', async () => {
-    const teamWithMember = {
-      ...mockTeams[0],
-      member_count: 1,
-      members: [{ id: 'm1', user_id: 'u1', full_name: 'Alice', email: 'alice@co.com', avatar_url: null }],
-    };
-    let fetchCount = 0;
+  it('addMember appends returned member to local state without re-fetching', async () => {
+    let listFetchCount = 0;
     server.use(
       http.get('http://localhost/api/v1/teams', () => {
-        fetchCount++;
-        if (fetchCount === 1) return HttpResponse.json({ data: mockTeams });
-        return HttpResponse.json({
-          data: [teamWithMember, mockTeams[1]],
-        });
+        listFetchCount++;
+        return HttpResponse.json({ data: mockTeams });
       }),
       http.post('http://localhost/api/v1/teams/team1/members', () =>
         HttpResponse.json(
-          { data: { id: 'm1', team_id: 'team1', user_id: 'u1', role: 'member', joined_at: '2026-01-01T00:00:00Z', removed_at: null } },
+          { data: { user_id: 'u1', display_name: 'Alice', role: 'member', joined_at: '2026-01-01T00:00:00Z' } },
           { status: 201 }
         )
       )
@@ -126,11 +118,12 @@ describe('useTeams', () => {
       await result.current.addMember('team1', { user_id: 'u1' });
     });
 
-    // After addMember, list re-fetched — team1 now has a member
+    // After addMember: member appended locally from POST response — no second GET
     await waitFor(() => {
       expect(result.current.teams[0]!.members).toHaveLength(1);
     });
     expect(result.current.teams[0]!.members[0]!.full_name).toBe('Alice');
+    expect(listFetchCount).toBe(1);
   });
 
   it('addMember does not update state when backend returns error', async () => {

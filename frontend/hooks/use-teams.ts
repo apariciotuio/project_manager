@@ -1,14 +1,36 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
+import {
+  listTeams as apiListTeams,
+  createTeam as apiCreateTeam,
+  deleteTeam as apiDeleteTeam,
+  addMember as apiAddMember,
+} from '@/lib/api/teams-api';
+import type { Team as ApiTeam } from '@/lib/api/teams-api';
 import type {
   Team,
-  TeamsResponse,
-  TeamResponse,
   TeamCreateRequest,
   TeamAddMemberRequest,
 } from '@/lib/types/api';
+
+// Map EP-08 API Team to the legacy Team shape used by existing UI.
+// member_count is derived from the members array length.
+function toTeam(t: ApiTeam): Team {
+  return {
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    member_count: t.members.length,
+    members: t.members.map((m) => ({
+      id: m.user_id,
+      user_id: m.user_id,
+      full_name: m.display_name,
+      email: '',
+      avatar_url: null,
+    })),
+  };
+}
 
 interface UseTeamsResult {
   teams: Team[];
@@ -26,17 +48,12 @@ export function useTeams(): UseTeamsResult {
   const [error, setError] = useState<Error | null>(null);
   const [isPendingMutation, setIsPendingMutation] = useState(false);
 
-  const fetchTeams = useCallback(async () => {
-    const res = await apiGet<TeamsResponse>('/api/v1/teams');
-    setTeams(res.data);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await apiGet<TeamsResponse>('/api/v1/teams');
-        if (!cancelled) setTeams(res.data);
+        const raw = await apiListTeams();
+        if (!cancelled) setTeams(raw.map(toTeam));
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
@@ -49,17 +66,16 @@ export function useTeams(): UseTeamsResult {
   }, []);
 
   const createTeam = useCallback(async (req: TeamCreateRequest): Promise<Team> => {
-    // Update local state from response body (no round-trip)
-    const res = await apiPost<TeamResponse>('/api/v1/teams', req);
-    setTeams((prev) => [...prev, res.data]);
-    return res.data;
+    const raw = await apiCreateTeam({ name: req.name, description: req.description });
+    const team = toTeam(raw);
+    setTeams((prev) => [...prev, team]);
+    return team;
   }, []);
 
   const deleteTeam = useCallback(async (id: string): Promise<void> => {
-    // Update local state pessimistically after 2xx
     setIsPendingMutation(true);
     try {
-      await apiDelete(`/api/v1/teams/${id}`);
+      await apiDeleteTeam(id);
       setTeams((prev) => prev.filter((t) => t.id !== id));
     } finally {
       setIsPendingMutation(false);
@@ -68,17 +84,34 @@ export function useTeams(): UseTeamsResult {
 
   const addMember = useCallback(
     async (teamId: string, req: TeamAddMemberRequest): Promise<void> => {
-      // Re-fetch list after 2xx: response body is a membership payload,
-      // not a full Team — re-fetch is cheaper than merging partial data.
       setIsPendingMutation(true);
       try {
-        await apiPost(`/api/v1/teams/${teamId}/members`, req);
-        await fetchTeams();
+        const member = await apiAddMember(teamId, { user_id: req.user_id });
+        setTeams((prev) =>
+          prev.map((t) =>
+            t.id === teamId
+              ? {
+                  ...t,
+                  member_count: t.member_count + 1,
+                  members: [
+                    ...t.members,
+                    {
+                      id: member.user_id,
+                      user_id: member.user_id,
+                      full_name: member.display_name,
+                      email: '',
+                      avatar_url: null,
+                    },
+                  ],
+                }
+              : t,
+          ),
+        );
       } finally {
         setIsPendingMutation(false);
       }
     },
-    [fetchTeams]
+    []
   );
 
   return { teams, isLoading, error, isPendingMutation, createTeam, deleteTeam, addMember };
