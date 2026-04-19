@@ -1,5 +1,7 @@
 # EP-14 — Backend Subtasks
 
+**Status: MVP CLOSEOUT (2026-04-19)** — Groups 1–2 shipped (hierarchy read + create via existing `parent_work_item_id` column). Groups 3–10 (materialized_path, `MaterializedPathService`, `HierarchyValidator`, rollup completion, `PATCH /work-items/{id}/position`) carved to v2 — see `v2-carveout.md`. Frontend completed 2026-04-17/18; DnD for hierarchy depth 2+ not required for MVP flow.
+
 All work is workspace-scoped. Every service method and repository query must filter by `workspace_id`. No cross-workspace data access is permitted.
 
 TDD markers: RED = failing test first, GREEN = implementation, REFACTOR = clean up.
