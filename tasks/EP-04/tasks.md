@@ -1,6 +1,8 @@
 # EP-04 — Implementation Checklist
 
-**Status: NOT STARTED**
+**Status: MVP COMPLETE (2026-04-17)** — all Phases 1–8 shipped (migrations, domain, repositories, services, controllers, dimension checkers, completeness, gaps, NextStep, spec-gen callback). The item-level checklist below pre-dates the implementation and was never back-ticked; canonical state is in `tasks-backend.md` (Phase 4+5+6 LANDED, Phase 7 NextStep LANDED, Phase 8 controllers shipped) and `tasks-frontend.md` (**Status: COMPLETED 2026-04-17**, commit `af0f867`).
+
+v2 carveouts (see `v2-carveout.md`): POST `/specification/generate` dispatch (requires redesign — references ripped-out Redis lock + Celery), PATCH `/sections` bulk, GET section versions history, ValidatorSuggestionEngine, workspace_id param refactor, cache-invalidation hooks.
 
 ---
 

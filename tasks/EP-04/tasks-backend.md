@@ -331,7 +331,7 @@ THEN `DimensionResult.filled = False` (suspended owner does not count)
 - [x] [RED] Write integration tests: GET /specification empty+with sections, PATCH /sections/{id} update+404+401 (2026-04-17 — test_ep04_controllers.py)
 - [x] [GREEN] Implement `presentation/controllers/specification_controller.py` (2026-04-16)
 - [ ] Missing: 422 on empty required section, 403 on non-owner (test + impl deferred)
-- [ ] Missing: POST /generate, PATCH /sections bulk, GET section versions (deferred)
+- [ ] Missing: POST /generate, PATCH /sections bulk, GET section versions — **→ v2-carveout.md** (dispatch endpoint requires redesign without Redis lock + Celery; bulk + versions are nice-to-have)
 
 ### CompletenessController
 
