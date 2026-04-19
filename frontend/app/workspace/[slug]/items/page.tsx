@@ -101,7 +101,7 @@ export default function WorkItemsPage({ params }: WorkItemsPageProps) {
     p.set('page', String(page));
     router.replace(`?${p.toString()}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, ancestorId, page]);
+  }, [stateFilter, typeFilter, priorityFilter, completenessMin, updatedAfter, updatedBefore, ancestorId, sortOption, page]);
 
   useEffect(() => {
     syncUrl();
