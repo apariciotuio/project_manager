@@ -360,13 +360,13 @@ def get_membership_repo_scoped(
 def get_membership_for_current_user(
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_scoped_session),
-) -> GetMembershipDep:
+) -> WorkspaceMembershipRepositoryImpl:
     """Return a callable that resolves the current user's membership in their workspace."""
     from app.infrastructure.persistence.workspace_membership_repository_impl import (
         WorkspaceMembershipRepositoryImpl as _MR,
     )
 
-    return _MR(session)  # type: ignore[return-value]
+    return _MR(session)
 
 
 async def get_callback_session() -> AsyncGenerator[AsyncSession]:

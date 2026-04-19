@@ -5,6 +5,7 @@ Covers: DomainError subclasses, field/details propagation, http_status mapping.
 """
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
