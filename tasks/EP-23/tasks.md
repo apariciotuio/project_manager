@@ -4,7 +4,7 @@ Batch epic. Items appended as manual QA surfaces more feedback. Check proposal.m
 
 ## Status
 
-**Phase**: F-1/F-2/F-4/F-5/F-6 shipped; F-7 component shipped in isolation (21 tests); F-3 heading gaps fixed (5 pages, work-item `<h1>`, dashboard `<h1>`, admin h3→h2 + ES); axe-core CI + F-7 page integration deferred.
+**MVP COMPLETE (2026-04-19)** — F-1/F-2/F-4/F-5/F-6 shipped; F-7 component shipped in isolation (21 tests); F-3 heading gaps fixed (5 pages, work-item `<h1>`, dashboard `<h1>`, admin h3→h2 + ES). Full a11y sweep + axe-core CI + F-7 page integration + F-6 polish formally carved — see `v2-carveout.md`.
 
 ## Progress
 
