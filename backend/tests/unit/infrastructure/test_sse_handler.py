@@ -47,7 +47,9 @@ class FakePubSub:
         max_messages: int | None = None,
         poll_interval: float = 0.05,
     ) -> AsyncIterator[dict[str, Any]]:
-        self.unsubscribed_channels  # just access to ensure attribute exists
+        # Touch the attribute so the fake blows up if the test harness forgot
+        # to initialise it. Intentional access, not a dead expression.
+        _ = self.unsubscribed_channels
         for event in self._events:
             if self._raise_cancel:
                 raise asyncio.CancelledError

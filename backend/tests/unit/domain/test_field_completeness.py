@@ -26,10 +26,6 @@ def _make_work_item(**kwargs):  # type: ignore[no-untyped-def]
     }
     defaults.update(kwargs)
     wi = WorkItem.create(**defaults)
-    # Allow caller to override post-construction fields
-    for k, v in kwargs.items():
-        if k not in defaults or k in ("owner_suspended_flag",):
-            pass
     return wi
 
 

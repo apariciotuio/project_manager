@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from app.domain.models.section_catalog import SECTION_CATALOG, catalog_for
+from app.domain.models.section_type import SectionType
 from app.domain.value_objects.work_item_type import WorkItemType
 
 
@@ -40,9 +41,6 @@ def test_catalog_covers_all_eight_types() -> None:
 # ---------------------------------------------------------------------------
 # EP-25 — technical_approach coverage
 # ---------------------------------------------------------------------------
-
-
-from app.domain.models.section_type import SectionType
 
 
 @pytest.mark.parametrize("wit", list(WorkItemType))
