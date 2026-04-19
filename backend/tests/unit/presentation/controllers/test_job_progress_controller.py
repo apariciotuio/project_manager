@@ -54,7 +54,6 @@ class FakeJobProgressService:
 
 def test_job_progress_requires_auth() -> None:
     """Returns 401 when no access_token cookie."""
-    from app.presentation.controllers.job_progress_controller import router
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
@@ -71,7 +70,6 @@ def test_job_progress_requires_auth() -> None:
 
 def test_job_progress_404_when_job_not_found() -> None:
     """Returns 404 when job_id is unknown."""
-    from app.infrastructure.sse.job_progress_service import JobProgressService
     from app.presentation.controllers.job_progress_controller import router, override_job_progress_service
 
     app = FastAPI()

@@ -115,8 +115,8 @@ class GoogleOAuthAdapter:
         try:
             if int(exp) <= int(time.time()):
                 raise OAuthExchangeError("invalid_id_token: token has expired")
-        except (TypeError, ValueError):
-            raise OAuthExchangeError("invalid_id_token: missing or invalid exp claim")
+        except (TypeError, ValueError) as exc:
+            raise OAuthExchangeError("invalid_id_token: missing or invalid exp claim") from exc
 
         # email_verified — accept both string "true" and bool True; default to "false"
         raw_verified = info.get("email_verified", "false")

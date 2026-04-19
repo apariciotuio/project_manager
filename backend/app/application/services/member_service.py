@@ -152,7 +152,6 @@ class MemberService:
         from sqlalchemy import select, and_, or_
         from sqlalchemy.ext.asyncio import AsyncSession
         from app.infrastructure.persistence.models.orm import (
-            WorkspaceMembershipORM,
             UserORM,
             TeamMembershipORM,
         )
@@ -308,7 +307,6 @@ class MemberService:
 
         from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy import select
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         row = (
@@ -419,7 +417,6 @@ class MemberService:
     ) -> WorkspaceMembership:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         row = (
@@ -447,7 +444,7 @@ class MemberService:
     ) -> WorkspaceMembership | None:
         from sqlalchemy import select
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM, UserORM
+        from app.infrastructure.persistence.models.orm import UserORM
 
         session: AsyncSession = self._session  # type: ignore[assignment]
         stmt = (
@@ -478,7 +475,6 @@ class MemberService:
     ) -> None:
         from sqlalchemy import select, func
         from sqlalchemy.ext.asyncio import AsyncSession
-        from app.infrastructure.persistence.models.orm import WorkspaceMembershipORM
 
         s: AsyncSession = session  # type: ignore[assignment]
         count_stmt = select(func.count()).where(

@@ -362,7 +362,7 @@ async def respond_to_unlock_request(
             await lock_repo.delete(section_id)
         else:
             unlock_request.decline(body.note)
-    except AlreadyRespondedError:
+    except AlreadyRespondedError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_409_CONFLICT,
             detail={
@@ -372,7 +372,7 @@ async def respond_to_unlock_request(
                     "details": {},
                 }
             },
-        )
+        ) from exc
 
     await req_repo.save(unlock_request)
     await session.commit()
