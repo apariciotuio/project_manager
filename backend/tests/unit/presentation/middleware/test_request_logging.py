@@ -37,6 +37,13 @@ def _build_app(status: int = 200) -> Starlette:
 # ---------------------------------------------------------------------------
 
 
+def _middleware_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [
+        r for r in caplog.records
+        if r.name == "app.presentation.middleware.request_logging"
+    ]
+
+
 def test_log_line_emitted_per_request(caplog: pytest.LogCaptureFixture) -> None:
     """A single structured log line is emitted for every request."""
     app = _build_app(200)
@@ -44,7 +51,7 @@ def test_log_line_emitted_per_request(caplog: pytest.LogCaptureFixture) -> None:
         with TestClient(app) as client:
             client.get("/test")
 
-    assert len(caplog.records) == 1
+    assert len(_middleware_records(caplog)) == 1
 
 
 def test_log_contains_required_fields(caplog: pytest.LogCaptureFixture) -> None:
@@ -54,7 +61,7 @@ def test_log_contains_required_fields(caplog: pytest.LogCaptureFixture) -> None:
         with TestClient(app, headers={"X-Correlation-Id": "test-cid-123"}) as client:
             client.get("/test")
 
-    record = caplog.records[0]
+    record = _middleware_records(caplog)[0]
     assert record.method == "GET"  # type: ignore[attr-defined]
     assert record.path == "/test"  # type: ignore[attr-defined]
     assert record.status_code == 200  # type: ignore[attr-defined]
@@ -69,8 +76,9 @@ def test_4xx_logged_at_info_level(caplog: pytest.LogCaptureFixture) -> None:
         with TestClient(app, raise_server_exceptions=False) as client:
             client.get("/test")
 
-    assert len(caplog.records) == 1
-    assert caplog.records[0].levelno == logging.INFO
+    records = _middleware_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.INFO
 
 
 def test_5xx_logged_at_error_level(caplog: pytest.LogCaptureFixture) -> None:
@@ -80,8 +88,9 @@ def test_5xx_logged_at_error_level(caplog: pytest.LogCaptureFixture) -> None:
         with TestClient(app, raise_server_exceptions=False) as client:
             client.get("/test")
 
-    assert len(caplog.records) == 1
-    assert caplog.records[0].levelno == logging.ERROR
+    records = _middleware_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.ERROR
 
 
 def test_authorization_header_not_logged(caplog: pytest.LogCaptureFixture) -> None:
@@ -139,5 +148,5 @@ def test_correlation_id_attached_from_contextvar(caplog: pytest.LogCaptureFixtur
         with TestClient(app) as client:
             client.get("/test")
 
-    record = caplog.records[0]
+    record = _middleware_records(caplog)[0]
     assert getattr(record, "correlation_id", None) == "fixed-cid"

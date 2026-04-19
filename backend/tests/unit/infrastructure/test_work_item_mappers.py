@@ -62,6 +62,7 @@ def _make_work_item(
         deleted_at=None,
         exported_at=None,
         export_reference=None,
+        external_jira_key=None,
     )
 
 
