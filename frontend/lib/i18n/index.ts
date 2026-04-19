@@ -187,11 +187,10 @@ type DeepGet<T, Path extends string> = Path extends `${infer Head}.${infer Tail}
 
 export function t<K extends DictKey>(key: K): DeepGet<Dict, K> {
   const parts = key.split('.');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let current: any = es;
+  let current: unknown = es;
   for (const part of parts) {
     if (current == null) return key as DeepGet<Dict, K>;
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
   return (current ?? key) as DeepGet<Dict, K>;
 }
