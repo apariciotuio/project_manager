@@ -973,7 +973,7 @@ function PuppetTab({ slug }: { slug: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="mb-4 text-sm font-semibold text-foreground">Puppet Configuration</h3>
+        <h2 className="mb-4 text-sm font-semibold text-foreground">Configuración de Puppet</h2>
         <PuppetConfigForm
           existingConfig={currentConfig}
           workspaceId={workspaceId}
@@ -982,7 +982,7 @@ function PuppetTab({ slug }: { slug: string }) {
       </div>
 
       <div>
-        <h3 className="mb-4 text-sm font-semibold text-foreground">Documentation Sources</h3>
+        <h2 className="mb-4 text-sm font-semibold text-foreground">Fuentes de documentación</h2>
         <DocSourcesTable
           sources={sources}
           isLoading={sourcesLoading}
