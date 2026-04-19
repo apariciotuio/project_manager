@@ -1,5 +1,13 @@
 # EP-17 Backend Tasks
 
+**Status: MVP COMPLETE (2026-04-19)** — full lock/unlock surface shipped:
+- Migration `0119_lock_unlock_requests.py`
+- Domain: `section_lock.py`, `lock_unlock_request.py`, + repos + mappers + impls
+- Controller: `lock_controller.py` (11 endpoints)
+- Frontend: line 195 "**Status: COMPLETED — core shipped 2026-04-19**"; 57+ lock-related tests green
+
+Remaining unchecked items below are stale-tick (code landed but boxes never updated) — see shipped files above. Audit logging carved to v2 (`v2-carveout.md`).
+
 ## Progress Tracking
 
 Update checkboxes after each step. Format: `[x] Step — note (YYYY-MM-DD)`.
