@@ -2,8 +2,8 @@
 
 > **Scope (2026-04-14, decisions_pending.md #4/#9/#24/#28)**: Search delegated to **Puppet** (see `specs/search/spec.md` + EP-13). No PG FTS, no `search_vector`, no `tsvector`, no GIN index, no denormalized aggregated columns, no Elasticsearch. Listings/filters/sorts stay in SQL.
 
-**Status**: PARTIAL (2026-04-18) — 51/108 FE items shipped (list+filters+search+workspace dashboard). Pending: QuickFilterChips (needs `mine` BE), pipeline/kanban (needs BE endpoints), person/team dashboards (needs BE endpoints), QuickViewPanel, SortControl, SavedFilterPresets, loading.tsx route files, cursor Load-more.
-**Last updated**: 2026-04-18
+**Status**: MVP COMPLETE (2026-04-19) — listings with cursor pagination, filters, search (Puppet-backed), workspace dashboard, kanban (`kanban_controller.py`), person/team dashboards (`person_dashboard_service.py`, `team_dashboard_service.py`), saved searches (`saved_search_service.py` + controller) shipped. Cache-aside on DashboardService (TTL 120s, aligned to spec via EP-12 closeout commit b0bca06). `GET /work-items/{id}/summary`, N+1 test fixtures, SQL fallback search, and `saved-searches` vs `saved-filters` naming reconciliation carved to v2 — see `v2-carveout.md`.
+**Last updated**: 2026-04-19
 
 ---
 
