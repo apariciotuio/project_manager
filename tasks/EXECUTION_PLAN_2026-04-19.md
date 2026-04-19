@@ -26,13 +26,19 @@ This plan sequences those 14 by dependency + urgency.
 
 ## Fase 1 — Foundations (serial, unblocks everything)
 
-### Step 1 — EP-12: Responsive, Security, Performance & Observability (no CI)
+### Step 1 — EP-12: Responsive, Security, Performance & Observability (no CI) ✅
 - **Scope**: close out non-CI items — correlation-id polish, CSP review, secrets-scrub verification, observability gaps. Exclude: axe-core CI gate, Lighthouse, image-virt (tracked separately as v2 CI epic).
 - **Dependencies**: none
-- **Effort**: ~4h
-- **Artifacts to refresh before starting**:
-  - `tasks/EP-12/tasks-backend.md` and `tasks-frontend.md` — audit 163 unchecked items; flag which are stale-tick vs real work
-- **Exit**: zero DEFERRED markers in EP-12 tasks-*.md (excluding CI carveout).
+- **Effort**: ~4h (actual ~4h — audit + impl + review)
+- **Status**: COMPLETED (2026-04-19, commits b0bca06 + cdc1a52)
+- **Delivered**:
+  - Audit: 138 unchecked items triaged → 68 stale-tick ticked, 18 carved to v2, ~3 real pending reduced to 1 (inbox cache)
+  - Inbox cache-aside via `ICache` port: key `inbox:{user_id}:{workspace_id}[:type={item_type}]` TTL 30s; `invalidate()` contract; cache errors fall back to DB with WARN log
+  - Dashboard TTL aligned to spec (60s → 120s)
+  - 9 new unit tests (7 cache-aside + 2 failure-path triangulation)
+  - Code-reviewer addressed: narrowed exception scopes, documented filter-variant key in design.md, added non-atomicity note
+  - `v2-carveout.md` with 18 items (CI gates, file ingestion, per-epic adoption, search cache + pagination Puppet-limitation, client-disconnect SSE test harness)
+- **Not archived**: pending user sign-off on v2 carveouts before moving to `tasks/archive/`
 
 ### Step 2 — EP-19: Design System & Frontend Foundations
 - **Scope**: close 10 DEFERRED markers. Likely polish items on tokens, shared components, a11y.
