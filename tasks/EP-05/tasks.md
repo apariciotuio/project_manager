@@ -1,6 +1,12 @@
 # EP-05 — Implementation Checklist
 # Breakdown, Hierarchy & Dependencies
 
+**Status: MVP COMPLETE (2026-04-17)** — full stack shipped: backend phases 1–6 + cross-EP cache-invalidation wiring (`tasks-backend.md` line 47 "**Status: COMPLETED (2026-04-17)**"), and frontend shipped (`components/work-item/task-tree.tsx` + `task-tree-node` + `task-tree-add-dialog` + `hooks/work-item/use-task-tree.ts` + `use-task-mutations.ts` + `lib/api/hierarchy.ts` + `lib/api/tasks.ts`). Tests present in `__tests__/components/work-item/task-tree*.test.tsx` and `__tests__/hooks/work-item/use-task-tree.test.ts`.
+
+The item-level checklist below pre-dates the implementation and was never back-ticked (same pattern as EP-04). Canonical state is `tasks-backend.md` + the code.
+
+v2 carveouts (see `v2-carveout.md`): `TaskService.update_section_links()` service + controller, `GET /work-items/{id}/sections/{section_id}/tasks` controller — both intentionally scope-excluded per the original plan.
+
 Progress tracking: mark `[x]` with a brief note immediately after completing each step.
 Phase complete → add `**Status: COMPLETED** (YYYY-MM-DD)`.
 

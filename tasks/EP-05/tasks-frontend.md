@@ -1,10 +1,18 @@
 # EP-05 Frontend Tasks — Breakdown, Hierarchy & Dependencies
 
-> **Follows EP-19 (Design System & Frontend Foundations)**. Adopt `StateBadge` for task status (draft/in_progress/done), `SeverityBadge` warning for blocked tasks, `HumanError` for cycle-detection errors with readable task-title chain, semantic tokens, i18n `i18n/es/hierarchy.ts`. Tree virtualization, drag-to-reorder, split/merge dialogs remain feature-specific. See `tasks/extensions.md#EP-19`.
+**Status: MVP COMPLETE** — shipped per the following surface:
+- Components: `frontend/components/work-item/task-tree.tsx`, `task-tree-node.tsx`, `task-tree-add-dialog.tsx`, `tasks-tab.tsx`
+- Hooks: `frontend/hooks/work-item/use-task-tree.ts`, `use-task-mutations.ts`
+- API clients: `frontend/lib/api/hierarchy.ts`, `lib/api/tasks.ts`
+- Tests: `frontend/__tests__/components/work-item/task-tree*.test.tsx`, `__tests__/hooks/work-item/use-task-tree.test.ts`
+
+The item-level checklist below pre-dates the implementation and was never back-ticked. Canonical state is the shipped code + tests.
+
+> **Follows EP-19 (Design System & Frontend Foundations)**. Adopts `StateBadge`, `SeverityBadge`, `HumanError`, semantic tokens, i18n. Tree virtualization, drag-to-reorder, split/merge dialogs are feature-specific.
 
 Tech stack: Next.js 14+ App Router, TypeScript strict, Tailwind CSS
 
-Blocked by: All backend API endpoints for EP-05 must exist and be accessible. EP-19 catalog available.
+Blocked by: All backend API endpoints for EP-05 must exist and be accessible. EP-19 catalog available. ✓ satisfied.
 
 ---
 
