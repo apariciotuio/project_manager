@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -77,8 +77,12 @@ export function TaskTreeNode({
   const handleTitleClick = useCallback(() => {
     setRenaming(true);
     setRenameValue(node.title);
-    setTimeout(() => inputRef.current?.focus(), 0);
   }, [node.title]);
+
+  // Focus input after entering rename mode (replaces setTimeout hack)
+  useEffect(() => {
+    if (renaming) inputRef.current?.focus();
+  }, [renaming]);
 
   const handleRenameBlur = useCallback(async () => {
     const trimmed = renameValue.trim();

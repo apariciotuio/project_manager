@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { StateBadge } from '@/components/domain/state-badge';
@@ -66,9 +66,18 @@ export function WorkItemHeader({ workItem, slug, onTitleChange }: WorkItemHeader
   const attachedIds = new Set(tags.map((t) => t.id));
   const availableTags = allTags.filter((t) => !attachedIds.has(t.id));
 
+  // Resync local title when prop changes and we're not editing (prevents stale state on external updates)
+  useEffect(() => {
+    if (!editing) setTitle(workItem.title);
+  }, [workItem.title, editing]);
+
+  // Focus + select after entering edit mode (replaces setTimeout hack)
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
   function startEdit() {
     setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
   }
 
   function commitEdit() {
@@ -105,7 +114,7 @@ export function WorkItemHeader({ workItem, slug, onTitleChange }: WorkItemHeader
       )}
 
       <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
+        <h1 className="flex-1 min-w-0 m-0 text-2xl font-semibold">
           {editing ? (
             <input
               ref={inputRef}
@@ -120,12 +129,12 @@ export function WorkItemHeader({ workItem, slug, onTitleChange }: WorkItemHeader
             <button
               onClick={startEdit}
               aria-label="Editar título"
-              className="text-left w-full text-2xl font-semibold text-foreground hover:text-primary transition-colors cursor-text truncate"
+              className="text-left w-full text-2xl font-semibold text-foreground hover:text-primary transition-colors cursor-text truncate bg-transparent border-0 p-0"
             >
               {title}
             </button>
           )}
-        </div>
+        </h1>
         <div className="flex items-center gap-2 shrink-0 mt-1">
           <span
             aria-label={`Completitud: ${workItem.completeness_score}%`}
