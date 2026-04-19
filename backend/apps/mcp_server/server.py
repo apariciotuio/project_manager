@@ -342,10 +342,21 @@ def _build_tool_list() -> list[dict[str, Any]]:
         },
         {
             "name": "list_tags",
-            "description": "List tags in the workspace",
+            "description": (
+                "List tags in the workspace. "
+                "By default returns only active (non-archived) tags. "
+                "Set include_archived=true to include archived tags."
+            ),
             "inputSchema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "include_archived": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include archived tags (default: false)",
+                    },
+                },
+                "additionalProperties": False,
             },
         },
         {
