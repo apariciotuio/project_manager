@@ -91,16 +91,15 @@ describe('middleware — CSP and security headers', () => {
   });
 
   it('CSP connect-src in dev includes ws: for HMR', () => {
-    // Note: In test env, process.env.NODE_ENV is controlled by vitest config.
-    // This test documents expected behavior but may not execute if NODE_ENV is 'test'.
-    // The actual dev CSP is tested in a real dev build or via env override.
+    // Middleware treats IS_DEV as strictly NODE_ENV==='development'.
+    // In test env (NODE_ENV='test'), the prod CSP is emitted without ws:; skip the check.
     const req = makeRequest('/workspace/acme', { access_token: 'tok' });
     const res = middleware(req);
     const csp = res.headers.get('content-security-policy') ?? '';
-    // If NODE_ENV is 'production' in test, this will skip the ws: check.
-    // In CI, NODE_ENV should be 'test' and this will verify the dev CSP pattern.
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV === 'development') {
       expect(csp).toContain('ws:');
+    } else {
+      expect(csp).not.toContain('ws:');
     }
   });
 });

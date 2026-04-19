@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ['/login', '/favicon.ico'];
 // `/api/v1/auth/` is excluded by `config.matcher` below — no need to list here.
 const PUBLIC_PREFIXES = ['/_next/'];
 
-const IS_DEV = process.env.NODE_ENV !== 'production';
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 /**
  * Decode a JWT payload without verifying the signature.
