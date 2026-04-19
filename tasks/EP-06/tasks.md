@@ -1,5 +1,9 @@
 # EP-06 Implementation Checklist
 
+**Status: MVP COMPLETE (2026-04-19)** — Phases 1–6 shipped. Backend: `ReviewRequestService`, `ReviewResponseService`, `ReviewService`, `ReadyGateService`, `ValidationService` all landed (57 unit + 26 integration tests green per `tasks-backend.md` line 398). Frontend: `review-request-card.tsx`, `review-respond-dialog.tsx`, `validations-checklist.tsx`, `ready-gate-blockers.tsx` shipped (`tasks-frontend.md` "Status: COMPLETED 2026-04-17"). The granular checklist below was never back-ticked — canonical state is the shipped code + per-phase status lines.
+
+v2 carveouts (see `v2-carveout.md`): Phase 5 SSE fan-out of review events (core review flow is synchronous; notifications surface via inbox polling today; real-time SSE push is polish), Phase 7 full E2E integration flows (covered by Phase 6's 26 integration tests + per-service units), Phase 8 consolidated code-reviewer/review-before-push gates (run per commit instead).
+
 All steps follow RED → GREEN → REFACTOR. Write failing test first. No exceptions.
 
 ---

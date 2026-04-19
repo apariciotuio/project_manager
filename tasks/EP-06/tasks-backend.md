@@ -323,7 +323,7 @@ THEN event is logged to dead-letter queue with full payload; no silent discard
 - [ ] 5.5 [GREEN] Implement review_notification_tasks.py (pending EP-08)
 - [ ] 5.6 [REFACTOR] Reuse EP-08 SSE publisher (pending EP-08)
 
-**Status: BLOCKED on EP-08 (2026-04-17)**
+**Status: → v2-carveout.md** (2026-04-19) — EP-08 SSE infra landed; wiring review events into SSE fan-out is polish on top of the synchronous review flow that already ships. Core flow works; notifications surface via inbox polling today.
 
 ---
 
