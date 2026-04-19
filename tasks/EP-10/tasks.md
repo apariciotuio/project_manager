@@ -1,8 +1,8 @@
 # EP-10 — Implementation Checklist
 
 **Epic**: Configuration, Projects, Rules & Administration
-**Status**: PARTIAL (2026-04-18) — 24/123 FE items shipped (Projects, Integrations, Tags, Puppet, Health tabs). Blocked on 8 BE gaps: admin/members, admin/rules, admin/jira, admin/support, admin/context-presets, admin dashboard, DELETE integrations/configs/{id}, admin shell.
-**Last updated**: 2026-04-18
+**Status**: MVP COMPLETE (2026-04-19) — 8 admin controllers shipped: `admin_controller.py`, `admin_context_presets_controller.py`, `admin_dashboard_controller.py`, `admin_jira_controller.py`, `admin_mcp_tokens_controller.py`, `admin_members_controller.py`, `admin_rules_controller.py`, `admin_support_controller.py`, plus `project_controller.py` and `integration_controller.py`. Services: `admin_dashboard_service.py`, `admin_support_service.py`, `project_service.py`, `superadmin_seed_service.py`. Remaining items are stale-tick or carved to v2 — see `v2-carveout.md`: superadmin CLI command, `context_sources` table + migration, `AlertService` extraction from admin dashboard, admin-query EXPLAIN ANALYZE audit.
+**Last updated**: 2026-04-19
 
 ---
 
