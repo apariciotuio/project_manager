@@ -67,20 +67,31 @@ class CountingInboxRepository(IInboxRepository):
 
 
 class RaisingCache:
-    """ICache whose .get raises — simulates backend unavailability."""
+    """ICache whose every call raises — simulates backend unavailability."""
 
-    def __init__(self) -> None:
-        self.set_calls: int = 0
-        self.delete_calls: int = 0
+    def __init__(
+        self,
+        *,
+        on_get: bool = True,
+        on_set: bool = False,
+        on_delete: bool = False,
+    ) -> None:
+        self._on_get = on_get
+        self._on_set = on_set
+        self._on_delete = on_delete
 
     async def get(self, key: str) -> str | None:  # noqa: ARG002
-        raise ConnectionError("cache backend unreachable")
+        if self._on_get:
+            raise ConnectionError("cache backend unreachable")
+        return None
 
     async def set(self, key: str, value: str, ttl_seconds: int) -> None:  # noqa: ARG002
-        self.set_calls += 1
+        if self._on_set:
+            raise TimeoutError("cache backend slow")
 
     async def delete(self, key: str) -> None:  # noqa: ARG002
-        self.delete_calls += 1
+        if self._on_delete:
+            raise OSError("cache backend down")
 
 
 _TIER_LABELS = {
@@ -206,20 +217,49 @@ class TestInboxCacheAside:
         assert repo.get_inbox_calls == 2, "invalidated cache must force a repo fetch"
 
     @pytest.mark.asyncio
-    async def test_cache_unavailable_falls_back_to_db(self) -> None:
+    async def test_cache_get_unavailable_falls_back_to_db(self) -> None:
         """Per design: cache errors must NOT propagate as HTTP 5xx."""
         from app.application.services.inbox_service import InboxService
 
         user_id = uuid4()
         workspace_id = uuid4()
         repo = CountingInboxRepository([_item(user_id, 1)])
-        cache = RaisingCache()
+        cache = RaisingCache(on_get=True)
 
         svc = InboxService(inbox_repo=repo, cache=cache)
         result = await svc.get_inbox(user_id=user_id, workspace_id=workspace_id)
 
         assert result["total"] == 1
         assert repo.get_inbox_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_set_unavailable_still_returns_data(self) -> None:
+        """If cache write fails after a DB fetch, the request still succeeds."""
+        from app.application.services.inbox_service import InboxService
+
+        user_id = uuid4()
+        workspace_id = uuid4()
+        repo = CountingInboxRepository([_item(user_id, 1)])
+        cache = RaisingCache(on_get=False, on_set=True)
+
+        svc = InboxService(inbox_repo=repo, cache=cache)
+        result = await svc.get_inbox(user_id=user_id, workspace_id=workspace_id)
+
+        assert result["total"] == 1
+        assert repo.get_inbox_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_invalidate_unavailable_is_silent(self) -> None:
+        """Invalidation failure must not raise into the mutation path."""
+        from app.application.services.inbox_service import InboxService
+
+        user_id = uuid4()
+        workspace_id = uuid4()
+        repo = CountingInboxRepository([_item(user_id, 1)])
+        cache = RaisingCache(on_get=False, on_delete=True)
+
+        svc = InboxService(inbox_repo=repo, cache=cache)
+        await svc.invalidate(user_id=user_id, workspace_id=workspace_id)
 
     @pytest.mark.asyncio
     async def test_service_without_cache_still_works(self) -> None:

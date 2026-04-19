@@ -177,12 +177,14 @@ All list endpoints use this shape. No offset pagination anywhere.
 
 | Cache key pattern | TTL | Invalidation trigger |
 |-------------------|-----|---------------------|
-| `inbox:{user_id}:{workspace_id}` | 30s | Element status change affecting assignee |
+| `inbox:{user_id}:{workspace_id}[:type={item_type}]` | 30s | Element status change affecting assignee |
 | `work_item:agg:{work_item_id}` | 60s | Comment added, attachment added |
-| `dashboard:{workspace_id}` | 120s | Celery background refresh every 90s |
+| `dashboard:workspace:{workspace_id}` | 120s | Background refresh every 90s |
 | `search:{workspace_id}:{hash(query)}` | 15s | Any element create/update in workspace |
 
 Cache-aside pattern: read → miss → DB → write cache → return. Write-through for invalidation.
+
+**Inbox filter-variant keys:** a filtered view (e.g. `?item_type=bug`) uses a distinct key `inbox:{user_id}:{workspace_id}:type=bug` so it does not poison the unfiltered entry. `InboxService.invalidate()` purges the base key only — filtered entries are bounded by the 30s TTL. This is an intentional trade-off: tracking every filter variant would require a scan API on `ICache` which today exposes only `get`/`set`/`delete`.
 
 ### N+1 detection in development
 

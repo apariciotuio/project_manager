@@ -133,7 +133,7 @@ class InboxService:
         key = _cache_key(user_id, workspace_id, None)
         try:
             await self._cache.delete(key)
-        except Exception as exc:  # pragma: no cover — cache is best-effort
+        except (ConnectionError, TimeoutError, OSError) as exc:
             logger.warning(
                 "inbox_cache: invalidation failed for key=%s: %s", key, exc
             )
@@ -156,11 +156,13 @@ class InboxService:
         return {"tiers": tiers, "total": total}
 
     async def _cache_get(self, key: str) -> dict[str, Any] | None:
+        # Cache-aside is NOT atomic: concurrent misses both hit the repo and
+        # both write. Acceptable for a 30s TTL read-through; don't add locks.
         if self._cache is None:
             return None
         try:
             raw = await self._cache.get(key)
-        except Exception as exc:
+        except (ConnectionError, TimeoutError, OSError) as exc:
             logger.warning("inbox_cache: get failed key=%s: %s", key, exc)
             return None
         if raw is None:
@@ -179,5 +181,5 @@ class InboxService:
             await self._cache.set(
                 key, json.dumps(payload), _CACHE_TTL_SECONDS
             )
-        except Exception as exc:
+        except (ConnectionError, TimeoutError, OSError) as exc:
             logger.warning("inbox_cache: set failed key=%s: %s", key, exc)
