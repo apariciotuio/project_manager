@@ -1,6 +1,6 @@
 # Work Maturation Platform — Task Tracker
 
-> **Status as of 2026-04-19 (post Fase 0 decision)**: Previous archival flagged 26/26 EPs done, audit found 18 incomplete. After Fase 0 decisions, **4 EPs (EP-13, EP-16, EP-18, EP-22) closed as MVP-complete with documented v2 carveouts**, leaving **14 EPs active** for closeout. 12 EPs genuinely archived (8 complete + 4 v2-carveout). See each archive folder's `v2-carveout.md` for the punted scope.
+> **Status as of 2026-04-19 (post-closeout session)**: **All 14 active EPs archived as MVP-complete with v2 carveouts.** Each archive folder carries a `v2-carveout.md`. See `EXECUTION_PLAN_2026-04-19.md` for the session summary.
 
 ## Epic Summary
 
@@ -9,27 +9,27 @@
 | ~~EP-00~~ | ~~Access, Identity & Bootstrap~~ | — | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-18** → `tasks/archive/2026-04-18-EP-00/` |
 | ~~EP-01~~ | ~~Core Model, States & Ownership~~ | EP-00 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-18** → `tasks/archive/2026-04-18-EP-01/` |
 | ~~EP-02~~ | ~~Capture, Drafts & Templates~~ | EP-00, EP-01 | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-18** → `tasks/archive/2026-04-18-EP-02/` |
-| **EP-03** | Clarification, Conversation & Assisted Actions | EP-02 | High | 🟡 In progress | 🟡 In progress | ⚠️ **Unarchived 2026-04-19** — 40 DEFERRED markers in `tasks/EP-03/tasks-*.md`; complete before re-archiving |
-| **EP-04** | Structured Specification & Quality Engine | EP-01, EP-02, EP-03 | High | 🟡 In progress (NextStep, spec-gen pending) | 🟡 Spec tab + completeness | ⚠️ **Unarchived 2026-04-19** — 16 DEFERRED markers |
-| **EP-05** | Breakdown, Hierarchy & Dependencies | EP-04 | Medium-High | 🟡 In progress | 🟡 In progress | ⚠️ **Unarchived 2026-04-19** — 232 unchecked items, 2 scope-excluded endpoints pending |
-| **EP-06** | Reviews, Validations & Flow to Ready | EP-01, EP-04, EP-05, EP-08 | High | 🟡 In progress | 🟡 In progress | ⚠️ **Unarchived 2026-04-19** — Groups 6.3-6.8, 7, 8 deferred pending EP-08 SSE |
-| **EP-07** | Comments, Versions, Diff & Traceability | EP-01, EP-04, EP-05, EP-06 | High | 🟡 In progress (diff engine, SSE pending) | 🟡 Comments + Timeline tabs | ⚠️ **Unarchived 2026-04-19** — 22 DEFERRED markers |
-| **EP-08** | Teams, Assignments, Notifications & Inbox | EP-00, EP-01 | Medium-High | 🟡 In progress (TeamValidator refactor + owner_id EP-06 follow-up pending) | 🟡 Teams + Inbox + SSE provider | ⚠️ **Unarchived 2026-04-19** — "Still missing / deferred" section in tasks-backend.md |
-| **EP-09** | Listings, Dashboards, Search & Workspace | EP-01, EP-02, EP-06, EP-08 | Medium-High | 🟡 Core shipped (`/{id}/summary`, N+1 audit pending) | 🟡 Quick views, pipeline, kanban, dashboards | ⚠️ **Unarchived 2026-04-19** — 19 DEFERRED markers; saved-searches naming drift |
-| **EP-10** | Configuration, Projects, Rules & Admin | EP-00, EP-08 | High | 🟡 Services + controllers shipped, granular TDD checklist never synced | 🟡 All admin tabs functional | ⚠️ **Unarchived 2026-04-19** — 29 DEFERRED (Celery→BackgroundTasks, CLI superadmin, context_sources, AlertService, EXPLAIN ANALYZE) |
+| ~~EP-03~~ | ~~Clarification, Conversation & Assisted Actions~~ | EP-02 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-03/` |
+| ~~EP-04~~ | ~~Structured Specification & Quality Engine~~ | EP-01, EP-02, EP-03 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-04/` |
+| ~~EP-05~~ | ~~Breakdown, Hierarchy & Dependencies~~ | EP-04 | Medium-High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-05/` |
+| ~~EP-06~~ | ~~Reviews, Validations & Flow to Ready~~ | EP-01, EP-04, EP-05, EP-08 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-06/` |
+| ~~EP-07~~ | ~~Comments, Versions, Diff & Traceability~~ | EP-01, EP-04, EP-05, EP-06 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-07/` |
+| ~~EP-08~~ | ~~Teams, Assignments, Notifications & Inbox~~ | EP-00, EP-01 | Medium-High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-08/` |
+| ~~EP-09~~ | ~~Listings, Dashboards, Search & Workspace~~ | EP-01, EP-02, EP-06, EP-08 | Medium-High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-09/` |
+| ~~EP-10~~ | ~~Configuration, Projects, Rules & Admin~~ | EP-00, EP-08 | High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-10/` |
 | ~~EP-11~~ | ~~Export & Sync with Jira~~ | EP-01, EP-04, EP-06, EP-10 | Medium-High | ✅ Real HTTP client + retry + ExportService + migration 0118 + dual-write + audit | ✅ JiraExportButton + IntegrationsTab | 📦 **Archived 2026-04-18** → `tasks/archive/2026-04-18-EP-11/` |
-| **EP-12** | Responsive, Security, Performance & Observability | Transversal | Medium | 🟡 75/85 shipped, infra/CI deferred | 🟡 Groups 1-7/9 shipped + ErrorBoundary | ⚠️ **Unarchived 2026-04-19** — axe-core CI, Lighthouse, image/virt pending |
+| ~~EP-12~~ | ~~Responsive, Security, Performance & Observability~~ | Transversal | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-12/` (inbox cache-aside + dashboard TTL shipped) |
 | ~~EP-13~~ | ~~Semantic Search + Puppet Integration~~ | EP-09, EP-10, EP-12 | High | ✅ Core shipped (outbox + Celery task) | ✅ Suggest + detail docs + admin + i18n | 📦 **Archived 2026-04-19 with v2 carveout** (React Query adoption → v2 refactor; see `tasks/archive/2026-04-19-EP-13/v2-carveout.md`) |
-| **EP-14** | Hierarchy: Milestones, Epics, Stories | EP-01, EP-05, EP-09, EP-10 | High | ✅ Types + catalog + rules | 🟡 DnD reparenting deferred — no position PATCH endpoint yet | ⚠️ **Unarchived 2026-04-19** — 2 DEFERRED markers |
+| ~~EP-14~~ | ~~Hierarchy: Milestones, Epics, Stories~~ | EP-01, EP-05, EP-09, EP-10 | High | ✅ Groups 1-2 MVP | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-14/` (Groups 3-10 = PATCH /position + materialized_path → v2) |
 | ~~EP-15~~ | ~~Tags + Labels~~ | EP-01, EP-09, EP-10 | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-18** → `tasks/archive/2026-04-18-EP-15/` |
 | ~~EP-16~~ | ~~Attachments + Media~~ | EP-01, EP-07, EP-10, EP-12 | High | ✅ metadata CRUD | ✅ List/delete/drop-zone + validation (upload blocked) | 📦 **Archived 2026-04-19 with v2 carveout** (file ingestion pipeline → new EP-26 Attachments v2; see `tasks/archive/2026-04-19-EP-16/v2-carveout.md`) |
-| **EP-17** | Edit Locking + Collaboration Control | EP-01, EP-08, EP-10, EP-12 | Medium-High | 🟡 Core services shipped | 🟡 G0-G8 list shipped; G8 detail-integration + G10 draft capture + G11 axe-core pending | ⚠️ **Unarchived 2026-04-19** — 13 DEFERRED markers |
+| ~~EP-17~~ | ~~Edit Locking + Collaboration Control~~ | EP-01, EP-08, EP-10, EP-12 | Medium-High | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-17/` (migration 0119 + 11-endpoint lock_controller + 57+ FE tests) |
 | ~~EP-18~~ | ~~MCP Server: Read & Query Interface~~ | EP-00..EP-19 | Medium | ✅ Cap 1 shipped (11 tools + mcp_token lifecycle + admin REST, ~210 tests) | N/A | 📦 **Archived 2026-04-19 with v2 carveout** (Cap 2-5: SDK, k8s, middleware hardening, Prometheus → operational epic; see `tasks/archive/2026-04-19-EP-18/v2-carveout.md`) |
-| **EP-19** | Design System & Frontend Foundations | EP-12 | Medium | N/A | 🟡 In progress | ⚠️ **Unarchived 2026-04-19** — 10 DEFERRED markers |
-| **EP-20** | Theme System: Light / Dark / Matrix | EP-19 | Low-Medium | N/A | 🟡 In progress | ⚠️ **Unarchived 2026-04-19** — 10 DEFERRED markers |
+| ~~EP-19~~ | ~~Design System & Frontend Foundations~~ | EP-12 | Medium | N/A | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-19/` |
+| ~~EP-20~~ | ~~Theme System: Light / Dark / Matrix~~ | EP-19 | Low-Medium | N/A | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-20/` |
 | ~~EP-21~~ | ~~Post-MVP Feedback Batch~~ | EP-19, EP-08, EP-03 | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19** → `tasks/archive/2026-04-19-EP-21/` |
 | ~~EP-22~~ | ~~Chat-first Capture Flow~~ | EP-02, EP-03, EP-04, EP-07, Dundun | Medium | ✅ Done | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** (Dundun `suggested_sections` emission → external team, tracked as side-task; see `tasks/archive/2026-04-19-EP-22/v2-carveout.md`) |
-| **EP-23** | Post-MVP Feedback Batch 2 | EP-03, EP-04, EP-07, EP-12, EP-17, EP-19, EP-21 | Medium-High | N/A | 🟡 F-1..F-6 shipped + F-7 shell component; F-7 page-integration + axe-core CI + keyboard a11y pending | ⚠️ **Unarchived 2026-04-19** — 9 DEFERRED markers |
+| ~~EP-23~~ | ~~Post-MVP Feedback Batch 2~~ | EP-03, EP-04, EP-07, EP-12, EP-17, EP-19, EP-21 | Medium-High | N/A | ✅ Done | 📦 **Archived 2026-04-19 with v2 carveout** → `tasks/archive/2026-04-19-EP-23/` |
 | ~~EP-24~~ | ~~Hierarchy expansion — idea + business_change as parent types~~ | EP-14 | XS | ✅ `HIERARCHY_RULES` + 9 tests | ✅ `VALID_PARENT_TYPES` + 8 tests | 📦 **Archived 2026-04-19** → `tasks/archive/2026-04-19-EP-24/` |
 | **EP-25** | `technical_approach` wiring — section present in enum but unused; wired into all 10 type catalogs | EP-04 | XS | ✅ `SECTION_CATALOG` + 20 tests (BE 1964/1964) | ✅ `SectionType` union extended (FE 1670/1670) | ✅ **Shipped 2026-04-19** — inline hotfix, no folder |
 
