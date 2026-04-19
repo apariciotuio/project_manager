@@ -98,9 +98,9 @@ File: `src/lib/api/conversation.ts`, `src/lib/api/suggestions.ts`, `src/lib/api/
 - [x] Implement `getSuggestionSet(setId: string): Promise<SuggestionSet>`
 - [x] Implement `applySuggestions(setId: string, acceptedItemIds: string[]): Promise<ApplySuggestionsResult>` — throws ApiError(409) on conflict
 - [x] Implement `updateSuggestionItemStatus(itemId, status): Promise<void>`
-- [ ] `sendMessage` via WS (not REST — chat is WS-only; deferred — WS frame handling in ChatPanel)
-- [ ] `executeQuickAction` / `undoQuickAction` — deferred to Phase 7 (quick actions out of scope for Phases 1-6)
-- [ ] SSE stream client — EP-12-owned; not implemented here
+- [x] `sendMessage` via WS — shipped in `frontend/components/clarification/chat-panel.tsx:287` (`wsRef.current.send(JSON.stringify(frame))`) (stale-tick 2026-04-19)
+- [ ] `executeQuickAction` / `undoQuickAction` — **→ v2-carveout.md** (EP-04 scope)
+- [ ] SSE stream client — **→ v2-carveout.md** (EP-12 owned; not used by EP-03)
 - [x] [RED→GREEN] Unit tests: 14 tests covering threads, suggestions, gaps API clients (→ `__tests__/lib/api/`)
 
 **Status: COMPLETED** (2026-04-17)
@@ -155,10 +155,10 @@ AND no findings list is rendered
 
 ---
 
-## Phase 4 — ClarificationQuestion Component (DEFERRED — not in Phases 1-6 scope)
+## Phase 4 — ClarificationQuestion Component — **→ v2-carveout.md** (ChatPanel handles Q&A flow via WS; standalone component not needed for MVP)
 
-- [ ] [RED] Write component tests
-- [ ] [GREEN] Implement `ClarificationQuestion` — deferred; ChatPanel handles Q&A flow via WS
+- [ ] [RED] Write component tests — **→ v2-carveout.md**
+- [ ] [GREEN] Implement `ClarificationQuestion` — **→ v2-carveout.md**
 
 ---
 
@@ -384,25 +384,25 @@ interface WorkItemDetailLayoutProps {
 ### ChatPanel Integration
 
 - [x] [GREEN] `SplitViewContext` created at `components/detail/split-view-context.tsx` — provides `highlightedSectionId` + setter; `WorkItemDetailLayout` wraps children in it
-- [ ] [GREEN] ChatPanel wrapper with `onSuggestionEmitted` prop — deferred: `suggestion_card` WS frame not in current Dundun schema (EP-12 scope); WS transport is WS-only per decision #17; SSE not in scope
-- [ ] [RED] Write tests: deferred alongside above
+- [ ] [GREEN] ChatPanel wrapper with `onSuggestionEmitted` prop — **→ v2-carveout.md** (suggestion_card WS frame not in Dundun schema yet)
+- [ ] [RED] Write tests — **→ v2-carveout.md**
 
 ### Content Panel Sync
 
 - [x] [GREEN] `SplitViewContext` wires `highlightedSectionId` to content panel children
-- [ ] [GREEN] Section pulse animation consumer — deferred: requires EP-04 SpecificationSectionsEditor integration (EP-04-owned)
-- [ ] [RED] Write tests: deferred alongside above
-- [ ] [GREEN] "Apply this change" in suggestion_card — deferred: WS `suggestion_card` frame not in current schema
-- [ ] [RED] Write tests: deferred alongside above
+- [ ] [GREEN] Section pulse animation consumer — **→ v2-carveout.md** (requires EP-04 SpecificationSectionsEditor)
+- [ ] [RED] Write tests — **→ v2-carveout.md**
+- [ ] [GREEN] "Apply this change" in suggestion_card — **→ v2-carveout.md** (suggestion_card WS frame missing)
+- [ ] [RED] Write tests — **→ v2-carveout.md**
 
 ### Integration: Work Item Detail Page
 
 Update: `src/app/workspace/[slug]/work-items/[id]/page.tsx`
 
-- [ ] [GREEN] Wrap existing detail page content in `WorkItemDetailLayout`, passing element `threadId` and `workItemId` — deferred: requires thread ID from work item API; EP-03 backend needed
-- [ ] [GREEN] Move `SpecificationPanel` (EP-04) + task tree (EP-05) into the content slot — deferred: EP-04 must land first
-- [ ] [GREEN] `ConversationThread` is rendered inside `ChatPanel` (left panel), not below main content — deferred: see above
-- [ ] [RED] Test: detail page on desktop renders `WorkItemDetailLayout` — deferred: see above
+- [ ] [GREEN] Wrap existing detail page content in `WorkItemDetailLayout` — **→ v2-carveout.md** (EP-04/EP-05 slots must land first)
+- [ ] [GREEN] Move `SpecificationPanel` (EP-04) + task tree (EP-05) into the content slot — **→ v2-carveout.md** (EP-04 dependency)
+- [ ] [GREEN] `ConversationThread` rendered inside `ChatPanel` left panel — **→ v2-carveout.md**
+- [ ] [RED] Test: detail page on desktop renders `WorkItemDetailLayout` — **→ v2-carveout.md**
 
 ### Acceptance Criteria — WorkItemDetailLayout
 
@@ -434,7 +434,7 @@ AND the pulse animation resolves on the updated section
 
 - [x] All component tests pass — 1096 tests passing (156 test files) as of 2026-04-18
 - [x] `tsc --noEmit` — no new errors introduced; 7 pre-existing errors in hierarchy (unrelated to EP-03)
-- [ ] Zod schemas validate all API responses at runtime — deferred; not in EP-03 scope per design.md
+- [ ] Zod schemas validate all API responses at runtime — **→ v2-carveout.md** (not in EP-03 scope per design.md)
 - [x] WebSocket closed on component unmount — ChatPanel useEffect cleanup closes WS
 - [x] Suggestion apply: 409 conflict handled — `SuggestionBatchCard` shows conflict banner + Regenerate button
 - [x] Quick action undo: countdown functional, clears on unmount — QuickActionMenu with 10s setTimeout

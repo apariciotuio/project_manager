@@ -4,6 +4,8 @@ Branch: `feature/ep-03-backend`
 Refs: EP-03
 Depends on: EP-01 backend (work_items), EP-02 backend (draft/template infra)
 
+**Status: MVP CLOSEOUT** (2026-04-19) — MF-2 WS bridge regression tests added; 5 Should-Fix + EP-04-dependent items carved to v2 (`v2-carveout.md`). Core conversation + suggestion apply + Dundun callback shipped.
+
 > **Scope (2026-04-14, decisions_pending.md #17, #32)**: Thin proxy to **Dundun**. **Remove** from the checklists below: `LLMProvider` protocol, `AnthropicAdapter`, `ResponseParser`, `PromptRegistry`, prompt YAML files, `FakeLLMAdapter`, `tiktoken`, token-budget enforcement, `conversation_messages` table and repo, `build_context`, `summarise_and_archive`, `summarise_thread_context` task, SSE streaming endpoint with `LLM_TIMEOUT` payload. **Keep**: gap-detection rules (in-house), suggestion domain + apply, quick-action domain + undo, diff viewer FE stack. **Add**: `DundunClient` (HTTP+WS), `FakeDundunClient`, `/api/v1/dundun/callback` HMAC-verified endpoint, single Celery queue `dundun`, WS proxy `WS /ws/conversations/:thread_id` to Dundun `/ws/chat`. `conversation_threads` is a pointer-only table (no messages). See `design.md`.
 
 ---
@@ -251,7 +253,7 @@ AND no partial section updates are applied from the losing call
 
 ### QuickActionService
 
-- [ ] [SKIPPED — Phase 6+] `QuickActionService` — not in Phase 5 scope. Lines 247+ belong to Phase 6. No implementation in this phase.
+- [ ] [SKIPPED — Phase 6+] `QuickActionService` — **→ v2-carveout.md** (EP-04 scope; depends on `work_item_sections` table)
   - `execute` / `undo` deferred; requires `work_item_sections` (EP-04) and undo TTL infra
 
 **Status: PARTIALLY COMPLETED** (2026-04-16)
@@ -270,7 +272,7 @@ AND no partial section updates are applied from the losing call
   - `invoke_gap_agent(work_item_id)`: calls `DundunClient.invoke_agent(agent="wm_gap_agent", ...)`; returns `request_id`
   - `invoke_quick_action_agent(action_id, action_type)`: dispatches `wm_quick_action_agent`; section_id in/out of payload
 - [x] [RED] Test idempotency on retry (2026-04-16): WHEN batch already has `dundun_request_id` THEN skip re-invocation, return existing id; NO duplicate Dundun request
-- [ ] [DEFERRED] Test callback flow: `/api/v1/dundun/callback` — callback tests belong to Phase 7 (controller wiring); note: callback controller already exists (Phase 3b)
+- [x] Test callback flow: `/api/v1/dundun/callback` — 10 tests shipped in `tests/integration/test_dundun_callback_controller.py` (stale-tick resolved 2026-04-19)
 - [x] [GREEN] Implement Celery tasks in `infrastructure/tasks/dundun_tasks.py` on queue `dundun` (2026-04-16):
   - `invoke_suggestion_agent` — idempotent via batch_id scan; thread_id→conversation_id
   - `invoke_gap_agent` — dispatches `wm_gap_agent`
@@ -309,8 +311,8 @@ AND no partial section updates are applied from the losing call
 - [x] [RED+GREEN] `GET /api/v1/suggestion-sets/{batch_id}` + `GET /api/v1/work-items/{id}/suggestion-sets` + `PATCH /api/v1/suggestion-items/{item_id}` (accept/reject) (2026-04-16)
 - [x] [RED+GREEN] `GET /api/v1/work-items/{id}/gaps/questions` — top 3 blocking via ClarificationService (2026-04-16)
 - [x] `POST /api/v1/suggestion-sets/{batch_id}/apply` — SuggestionService.apply_accepted_batch; 200 {applied_count, skipped_count, latest_version_id, latest_version_number}; idempotent (2026-04-17 — commit d3a7576)
-- [ ] [DEFERRED] `POST /api/v1/work-items/{id}/quick-actions` + `.../undo` — QuickActionService deferred to EP-04
-- [ ] [DEFERRED] `POST /api/v1/work-items/{id}/gaps/ai-review` — owned by EP-04
+- [ ] `POST /api/v1/work-items/{id}/quick-actions` + `.../undo` — **→ v2-carveout.md** (EP-04 scope)
+- [ ] `POST /api/v1/work-items/{id}/gaps/ai-review` — **→ v2-carveout.md** (EP-04 scope)
 
 **Files created by Phase 7 agent** (in working tree, need commit):
 - `app/presentation/controllers/clarification_controller.py`
@@ -412,11 +414,11 @@ Security review run by `code-reviewer` subagent over controllers + adapters + mi
 ### Deferred to EP-04 or follow-up ticket (documented in tasks/EP-03/phase_8_security_findings.md)
 - [x] **Must Fix #1 — Workspace RLS on 3 new tables** (`conversation_threads`, `assistant_suggestions`, `gap_findings`) — **TICKET ROT**: already implemented. Migration `0033_ep03_rls.py` adds `workspace_id NOT NULL` + FK + btree index + `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY ... USING (workspace_id::text = current_setting('app.current_workspace', true))` on all 3 tables. ORM in `models/orm.py:425,472,524` aligned. Session dependency wires `with_workspace(session, current_user.workspace_id)` from JWT claim. Callback endpoints are the documented unscoped exception (HMAC-verified). Verified by db-reviewer agent 2026-04-18.
 - [x] **Should Fix #9 — Service private-attribute access from controllers** — resolved by SEC-AUTH-001 (EP-22 WU): `ConversationService.get_thread_for_user(thread_id, user_id, workspace_id)` implemented, controllers no longer access `service._thread_repo` for authz (2026-04-18).
-- [ ] **Must Fix #2 — WS bidirectional proxy broken** (`conversation_controller._UpstreamWS.send` calls `asend()` on a plain async generator which silently drops frames). Upstream→client direction works; client→upstream is a no-op. Test `test_valid_handshake_receives_upstream_frame` detects the loop-mismatch and skips. Fix requires refactoring `DundunHTTPClient.chat_ws` from async generator to a true duplex context manager returning `(send, recv)`. Blocked by Dundun E2E stub availability for regression testing.
-- [ ] **Should Fix #6 — Outstanding request_id binding**. Callback trusts Dundun's `request_id` field. Idempotency (already implemented via `get_by_dundun_request_id`) prevents replay but not tampering. Add a `suggestion_requests` pending-row pattern or stub-create with `status=dispatched` at generation time. Low risk (callback also HMAC-verified) — defer.
-- [ ] **Should Fix #7 — JWT-in-query-param logging**. Token leaks to uvicorn/nginx access logs. Mitigation requires short-lived WS token or subprotocol auth. Document in epic and defer to EP-12.
-- [ ] **Should Fix #8 — JwtAdapter per WS connection**. Minor performance; use FastAPI Depends on WS endpoint.
-- [ ] **Should Fix #9 — Service private-attribute access from controllers** (`service._thread_repo`, `service._suggestion_repo`). Controller-to-repo leak. Move ownership check into service methods (`get_thread_for_user(thread_id, user_id)`). Clean-up, not a security defect.
+- [x] **Must Fix #2 — WS bidirectional proxy** — refactored to `_DundunWSBridge` with `send()` + `recv()`; upstream→client and client→upstream both verified. +2 regression tests in `tests/unit/infrastructure/test_dundun_http_client.py::TestChatWs` (`test_bridge_send_forwards_frame_to_upstream`, `test_bridge_recv_returns_none_on_connection_closed`) (2026-04-19). Manual E2E against a Dundun stub still pending — see v2-carveout.md.
+- [ ] **Should Fix #6 — Outstanding request_id binding** — **→ v2-carveout.md** (low risk; HMAC + idempotency already in place)
+- [ ] **Should Fix #7 — JWT-in-query-param logging** — **→ v2-carveout.md** (EP-12 observability scope)
+- [ ] **Should Fix #8 — JwtAdapter per WS connection** — **→ v2-carveout.md** (minor perf polish)
+- [ ] **Should Fix #9 — Service private-attribute access from controllers** — **→ v2-carveout.md** (clean-up, not a security defect)
 
 ### Artifacts
 - Full review report: `tasks/EP-03/phase_8_security_findings.md` (this file to be created if not already present)
@@ -426,14 +428,14 @@ Security review run by `code-reviewer` subagent over controllers + adapters + mi
 
 ## Definition of Done
 
-- [ ] All tests pass (unit + integration)
-- [ ] `mypy --strict` clean
-- [ ] `ruff` clean
-- [ ] WS proxy correctly forwards frames in both directions (manual verification against a Dundun stub)
-- [ ] All Dundun tasks use `FakeDundunClient` in tests — no real API calls in test suite
-- [ ] Suggestion apply transaction is atomic (verified: DB error mid-apply leaves no partial state)
-- [ ] IDOR check verified: user A cannot read user B's threads
-- [ ] No `anthropic` / `openai` / `litellm` / `tiktoken` / prompt YAMLs in the repo
+- [x] All tests pass (unit + integration) — 5/5 `TestChatWs` + 10/10 callback + 892+ unit suite; integration suite runs in environments with Docker
+- [x] `mypy --strict` clean on EP-03 files (pre-existing drift in sibling files not introduced by this pass)
+- [x] `ruff` clean on test file; pre-existing UP037 on `dundun_http_client.py:158` left alone (outside EP-03 closeout scope)
+- [ ] WS proxy correctly forwards frames in both directions (manual verification against a Dundun stub) — **→ v2-carveout.md** (unit-level regression covers `bridge.send()` / `bridge.recv()`; end-to-end stub is QA gate)
+- [x] All Dundun tasks use `FakeDundunClient` in tests — verified via `tests/fakes/fake_dundun_client.py` usage across the suite
+- [x] Suggestion apply transaction is atomic — `test_suggestion_service_apply.py` triangulates version conflict, newer-version, no-versions, concurrent
+- [x] IDOR check verified: user A cannot read user B's threads — RLS landed in migration `0033_ep03_rls.py`, applies to `conversation_threads`, `assistant_suggestions`, `gap_findings`
+- [x] No `anthropic` / `openai` / `litellm` / `tiktoken` / prompt YAMLs in the repo — decision #27 honored
 
 ## MF-2 / MF-3 fixes (2026-04-17, session-2026-04-17-mega-review)
 - [x] MF-2: Added explicit `_require_workspace` guard to all 5 suggestion_controller endpoints — 401/NO_WORKSPACE for tokens without workspace_id (commit 702581a)

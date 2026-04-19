@@ -519,3 +519,56 @@ class TestChatWs:
                     received.append(frame)
 
         assert received == []
+
+    @pytest.mark.asyncio
+    async def test_bridge_send_forwards_frame_to_upstream(self) -> None:
+        """MF-2 regression: client frames must reach the upstream WS.
+
+        The prior async-generator shape silently dropped client frames via
+        asend() — this asserts the bridge.send() path actually calls through
+        to the websockets client.
+        """
+        ws, connect_mock = _make_ws_connect([])
+
+        with patch(
+            "app.infrastructure.adapters.dundun_http_client.websockets.connect",
+            connect_mock,
+        ):
+            transport = _mock_transport(200, {})
+            client = _make_client(transport)
+
+            async with client.chat_ws(
+                conversation_id=CONV_ID,
+                user_id=USER_ID,
+                work_item_id=None,
+            ) as bridge:
+                await bridge.send({"type": "user_message", "content": "hello"})
+                await bridge.send({"type": "user_message", "content": "second"})
+
+        assert len(ws.sent) == 2
+        first = json.loads(ws.sent[0])
+        second = json.loads(ws.sent[1])
+        assert first == {"type": "user_message", "content": "hello"}
+        assert second["content"] == "second"
+
+    @pytest.mark.asyncio
+    async def test_bridge_recv_returns_none_on_connection_closed(self) -> None:
+        """recv() must not propagate ConnectionClosed; it signals end-of-stream
+        to the caller by returning None so the read loop exits cleanly."""
+        ws, connect_mock = _make_ws_connect([])  # empty → recv raises ConnectionClosed
+
+        with patch(
+            "app.infrastructure.adapters.dundun_http_client.websockets.connect",
+            connect_mock,
+        ):
+            transport = _mock_transport(200, {})
+            client = _make_client(transport)
+
+            async with client.chat_ws(
+                conversation_id=CONV_ID,
+                user_id=USER_ID,
+                work_item_id=None,
+            ) as bridge:
+                result = await bridge.recv()
+
+        assert result is None
