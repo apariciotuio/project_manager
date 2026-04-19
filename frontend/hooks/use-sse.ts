@@ -18,6 +18,11 @@ export interface SSEOptions {
    * Each event is dispatched to the same onMessage callback with event.type set.
    */
   extraEvents?: string[];
+  /**
+   * When false, the hook does not open an EventSource. Flip to true to connect.
+   * Also skipped when url is an empty string. Default: true.
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -36,6 +41,7 @@ export function useSSE(
     maxDelay = 30000,
     onBeforeReconnect,
     extraEvents = [],
+    enabled = true,
   } = options;
 
   const [status, setStatus] = useState<SSEStatus>('connecting');
@@ -47,7 +53,12 @@ export function useSSE(
   onMessageRef.current = onMessage;
 
   useEffect(() => {
+    if (!enabled || !url) {
+      setStatus('closed');
+      return;
+    }
     unmountedRef.current = false;
+    retryCount.current = 0;
 
     function connect() {
       if (unmountedRef.current) return;
@@ -106,9 +117,9 @@ export function useSSE(
       }
       setStatus('closed');
     };
-    // Only re-connect when url changes — onMessage is stable via ref
+    // Re-connect on url / enabled change — onMessage is stable via ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, enabled]);
 
   function close() {
     unmountedRef.current = true;
