@@ -1,6 +1,6 @@
 # EP-08 — Implementation Tasks
 
-## Status: IN PROGRESS (2026-04-18) — 44/93 items shipped (audit + guards). Remaining: Inbox full (Group C), AssignmentService, SSE /notifications/stream, QuickActionDispatcher, TeamService unit tests. See `tasks-backend.md`.
+## Status: MVP COMPLETE (2026-04-19) — core teams, assignments, notifications, inbox shipped. AssignmentController landed (`backend/app/presentation/controllers/assignment_controller.py`: bulk-assign, suggested-owner, suggested-reviewer). Inbox shipped (EP-12 also wired cache-aside on top). Frontend status line 528 "**Status: COMPLETED 2026-04-17**". Remaining items carved to v2 — see `v2-carveout.md`: `TeamValidator` extraction, TeamService domain events + fan-out wiring, notifications SSE stream (Celery replacement), inbox index migration + EXPLAIN ANALYZE, DLQ/metric polish, rate limiting on notification mutations.
 
 Dependencies: EP-00 (auth, JWT sessions), EP-01 (work_items), EP-06 (review_requests, review_responses)
 
