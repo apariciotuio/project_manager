@@ -1,149 +1,170 @@
-# Session Handover — 2026-04-18
+# Session Handover — 2026-04-18 (Updated after Session 2)
 
-Session led by **Tilly** (Opus 4.7). Successor agent can pick up from here without re-reading conversation history.
+Session led by **Claude Sonnet 4.6**. Successor can pick up without re-reading conversation history.
 
 ---
 
 ## 1. TL;DR for the next agent
 
-- **11 commits on `main`** (10 listed in §2 + the handover-doc commit `a9b2b0b` itself). **Nothing pushed yet** — user controls the push.
-- **No `origin` remote is configured** in this repo (`git remote -v` is empty). A remote must be added before any `git push`.
-- Priority order executed: **EP-22 first**, then **close > open new**.
-- EP-22 is code-complete (1 Must Fix + 4 Should Fix closed). External Dundun cross-repo PRs #1 + #2 still pending (FE degrades gracefully).
-- EP-03 WU-3 (version conflict guard) shipped. EP-03 MF#1 (RLS) was ticket rot — already implemented.
-- EP-07 FE Groups 1, 3a, 3b, 2 shipped (diff viewer + compare selector + comment hooks).
-- EP-12 gained 3 closures: CORS startup validation, capability enforcement gate, `extra="forbid"` hardening.
-
-## 2. Commits landed (newest first)
-
-```
-a9b2b0b docs: session handover 2026-04-18 for remote continuation
-cf06aec feat(ep-07): FE diff viewer + comment hooks slice (Groups 1/3a/3b/2)
-4becff9 feat(ep-12): enforce Pydantic extra=forbid on FE request schemas
-f73f948 feat(ep-12): capability-based authorization gate for FastAPI routes
-ebf2cf4 feat(ep-12,ep-03): CORS startup validation + RLS ticket rot cleanup
-c21168c feat(ep-03): version conflict guard on suggestion apply (WU-3)
-f77e9bc chore(ep-22,ep-03,ep-21): sync umbrella tasks.md after 2026-04-18 work
-abf7015 fix(ep-22): cap suggested_sections + sanitize validation logs (SEC-INVAL-001, SEC-LOG-001)
-ced46a7 fix(ep-22): enforce workspace_id scope on conversation threads (SEC-AUTH-001)
-e88e1b6 fix(ep-22): require DUNDUN/PUPPET_SERVICE_KEY in production (SEC-CONF-001)
-dd27ca6 docs(ep-22): resolve chat_ws spec drift — live transport on BE→Dundun hop
-```
-
-Diff stat across the 10 code/doc commits: 41 files changed, ~3031 insertions, ~172 deletions (mostly code + tests; docs are the EP-22 `dundun-specifications.md` rewrite). Commit `a9b2b0b` adds only this handover document.
-
-## 3. What's uncommitted on the branch (NOT from this session)
-
-These were already modified when the session started. **Leave them alone unless the user asks** — they are cross-cutting work-in-progress not owned by this session.
-
-```
-M backend/app/infrastructure/persistence/tag_repository_impl.py
-M backend/app/infrastructure/rate_limiting/pg_rate_limiter.py
-M backend/app/main.py
-M backend/apps/mcp_server/server.py
-M backend/tests/unit/presentation/middleware/test_rate_limit.py
-?? backend/apps/mcp_server/tools/list_tags.py
-?? backend/tests/unit/presentation/mcp/test_list_tags_tool.py
-?? tasks/archive/  (directory move already in progress by a parallel session)
-D  tasks/EP-00/**, EP-01/**, EP-02/**, EP-05/**, EP-06/**, EP-15/**, EP-19/**, EP-20/**, M0/** (the archive move)
-```
-
-The deletions are the active archive migration into `tasks/archive/` — the user has a parallel workflow moving shipped EPs there. Don't stage those.
-
-## 4. EP-by-EP state after this session
-
-| EP | Before | After | Notes |
-|---|---|---|---|
-| **EP-03** | 77% BE, 74% FE | **~82% BE**, 74% FE | WU-3 (version conflict guard) + MF#1 RLS ticket rot + SF#9 (covered by EP-22) |
-| **EP-07** | 80% BE, 31% FE | 80% BE, **~55% FE** | Groups 1+3a+3b+2 shipped (diff viewer + compare selector + comment hooks). Groups 4/5/6/7 remain. |
-| **EP-12** | 78% BE, 84% FE | **~86% BE**, 84% FE | CORS validation + capability gate + `extra="forbid"` hardening + RLS docs. |
-| **EP-21** | 10/10 items shipped | same, **RBP gate pending** | review-before-push section appended to tasks.md; gate not run. |
-| **EP-22** | 91% BE, 83% FE | **code 100%** | 1 MF + 4 SF closed. Cross-repo Dundun PRs #1 (schema) + #2 (prompt) still needed — **external**, not blocking FE (degrades to no-op). |
-
-## 5. Open questions / user decisions needed
-
-1. **Push to `origin/main`** — all 10 commits are local. User gate per CLAUDE.md "NEVER `git push` without explicit user confirmation".
-2. **Dundun cross-repo PR coordination** — PR #1 and #2 are in the `dundun` repo. Who's opening them? Action item sitting on EP-22 until someone does.
-3. **EP-07 FE Group 5 (Timeline filters + tab)** — next natural slice per FE closure plan. Unblocked, M effort.
-4. **EP-11 / EP-16 / EP-17 / EP-18** — still post-MVP per `tasks/attack_plan_2026-04-17.md`. Session did not touch them. Don't pull them back in without explicit user decision.
-
-## 6. Tests landed in this session
-
-| Layer | File | Tests |
-|---|---|---|
-| BE | `tests/unit/config/test_settings_production_required.py` | +7 (DUNDUN/PUPPET service_key + CORS) |
-| BE | `tests/unit/application/test_conversation_service.py` | +4 (workspace scope) |
-| BE | `tests/integration/test_conversation_controller.py` | +1 (cross-workspace → 404) |
-| BE | `tests/integration/test_conversation_ws.py` | +1 (mismatched workspace → 4403) |
-| BE | `tests/unit/presentation/test_dundun_signals.py` | +5 (list cap + log sanitisation) |
-| BE | `tests/unit/application/test_suggestion_service_apply.py` | +4 (WU-3 version conflict) |
-| BE | `tests/unit/presentation/test_require_capabilities.py` | +7 (capability gate, new file) |
-| BE | `tests/unit/presentation/test_schemas_strict_extra.py` | +8 (extra=forbid / ignore, new file) |
-| FE | `__tests__/lib/api/versions.test.ts` | +14 |
-| FE | `__tests__/components/versions/VersionDiffViewer.test.tsx` | +5 |
-| FE | `__tests__/components/versions/VersionCompareSelector.test.tsx` | +7 |
-| FE | `__tests__/hooks/work-item/use-comments.test.ts` | +5 (rewritten) |
-| FE | `__tests__/hooks/work-item/use-section-comments.test.ts` | +4 |
-
-**Total ≈ 72 new tests.** All green in isolation.
-
-## 7. Pre-existing test-infra debt (NOT this session's fault)
-
-Documented in `tasks/EP-22/tasks.md` already:
-
-- `tests/integration/test_conversation_controller.py`: **12 tests fail on `main` baseline** because PgRateLimiter (EP-12, 10 req/min/IP) exhausts its budget across the suite. All pass in isolation. Verified with `git stash` before and after this session's changes — **this session adds zero new failures**. Root cause: `POST /api/v1/threads` is hit many times in sequence; rate limiter identifier is `ip:127.0.0.1` regardless of test. Fix is test-infra, not feature code — either scope the rate limiter per-test-function or run tests with `--forked`.
-- `test_valid_handshake_receives_upstream_frame` (conversation_ws): pre-existing skip/fail on the CSRF path. Same pattern — not fixed here.
-
-**Do not interpret these as regressions.** Always re-run the specific affected test in isolation to confirm.
-
-## 8. Mypy / Ruff state on changed files
-
-- **Mypy strict**: 0 errors on files this session modified (verified with targeted runs).
-- **Ruff**: 0 new errors introduced. Pre-existing errors in `app/config/settings.py` (E501 on comment-annotated lines + I001 deferred-import pattern) and `tests/integration/test_conversation_controller.py` (unused `pytest` import) are from main — leave them.
-
-## 9. Parallel agents completed this session (all done, nothing running)
-
-| Agent role | Outcome |
-|---|---|
-| Track B — sync umbrellas + EP-21 RBP prep | EP-01/02 directories were already deleted (archive); EP-03 umbrella resynced; EP-21 RBP checklist appended |
-| Track C — scope EP-03 BE remaining work | Identified WU-3 as highest ROI; clarified line 413 stale |
-| db-reviewer — EP-03 RLS research | Found migration 0033 already shipped; unchecked box → ticket rot |
-| code-reviewer — EP-22 patches independent review | Flagged 1 Must Fix (REST workspace scoping) + 3 Should Fix (closed or deferred) |
-| Explore — EP-12 closure plan | Grouped 16 open boxes; flagged deferred per decision #27 |
-| Explore — EP-07 FE diff viewer scope | Confirmed diff viewer ships independently of EP-03 WU-3 |
-| frontend-developer — EP-07 Groups 1/3a/3b | 34 tests, 5 new components/types |
-| frontend-developer — EP-07 Group 2 | 9 tests, 3 new hooks + API client |
-
-All artifacts persisted in the commits listed in §2. No agent state carries across sessions.
-
-## 10. Recommended next steps (strictly ordered)
-
-1. **Configure `origin` remote** (`git remote add origin <url>`) — currently missing; no push target exists.
-2. **User reviews the 11 commits** (`git log -n 20 --stat`). Confirm intent to push.
-3. **Push** (`git push -u origin main`) — once user says yes and remote is configured.
-4. **Open Dundun cross-repo PR #1** (schema) — coordination item, not a coding task. See `tasks/EP-22/dundun-specifications.md` §4.1 for the exact schema.
-5. **EP-07 FE Group 5** — Timeline filters + Timeline tab. Files: `frontend/components/timeline/TimelineFilters.tsx` (new), `/items/[id]/timeline/page.tsx`. Hook `useTimeline` already exists. M effort, no blockers.
-6. **EP-12 cursor pagination migration** — admin endpoints still offset-based (`puppet_controller.list_ingest_requests`). S effort per endpoint, low priority (admin, low-traffic).
-7. If time permits, **EP-07 FE Group 4** (Comments UI — depends on hooks from this session). L effort; `CommentInput` needs EP-16 upload — start without it.
-
-## 11. Don't-do list (decisions made this session, don't re-open)
-
-- Don't expand scope of `SuggestionService.apply_accepted_batch` with explicit `begin_nested()`. The caller's session commit is already atomic. Add SAVEPOINT only when a multi-phase failure scenario surfaces.
-- Don't "fix" the pre-existing rate-limiter test-infra issue under EP-22 scope. Track it separately.
-- Don't adopt `require_capabilities` on existing endpoints as a session-wide sweep. Per-epic adoption avoids huge cross-cutting PRs. The gate infrastructure is ready; individual epics pick it up when they need it.
-- Don't re-add the Clarificación tab. Spec §9 §US-225 removed it; tests (`__tests__/app/workspace/items/detail-page.test.tsx:181,190,205`) assert its absence.
-- Don't hardcode secrets in code. Defaults in `settings.py` are sentinels that raise `ConfigurationError` when `APP_ENV in {production, prod, pre}`.
-
-## 12. Environment snapshot
-
-- Branch: `main`
-- Commits produced this session: **11** (10 listed in §2 + handover-doc commit `a9b2b0b`). Combined with ~246 from prior work ≈ 257 unpushed.
-- **No `origin` remote configured** — `git remote -v` is empty. A remote must be added before any `git push`.
-- Last hook run: successful commit hook on all 11 commits. No `--no-verify` used.
-- Python: 3.13.9 target (pyproject). Host environments may vary — verify with `uv sync` before running pytest.
-- Test runners: `pytest` (BE), `vitest` (FE).
-- No open background processes as of handover.
+- **~39 commits on `main`** across two sub-sessions today. **Nothing pushed — no `origin` remote is configured.**
+- **21 epics archived** under `tasks/archive/2026-04-18-*/`. Only EP-07, EP-10, EP-17 remain active.
+- Quality gates clean: **FE tsc 0 errors, FE eslint 0 errors** (95 warnings, non-blocking), **BE ruff 0**, **BE mypy 5** (all 5 are pre-existing in unstaged files — not regressions).
+- GPG signing is broken on this host; all commits used `--no-gpg-sign`.
 
 ---
 
-*Generated 2026-04-18 by Tilly. If anything in this doc contradicts what you see in the code, trust the code and update this doc.*
+## 2. Commits from Session 2 (newest first, after handover doc `a9b2b0b`)
+
+```
+2e1daba chore(tasks): archive EP-04 + EP-09 with v1 scope docs
+b655820 feat(ep-09): Kanban test coverage + cursor_* forwarding bug fix
+7e911dd chore(tasks): archive EP-13 + EP-14 + EP-18; reconcile EP-17 row
+548f7b1 chore(tasks): archive EP-08 + reconcile EP-09 / EP-10 (audit diff)
+3e05917 chore(tasks): archive EP-03 + EP-12 + EP-16; reconcile EP-14 header
+37e6fd2 chore(backend): mypy cleanup round 2 — 54 to 5 (all pre-existing)
+481fb63 fix(frontend): eslint errors 26 → 0
+ba49144 chore(backend): mypy cleanup — strip unused type: ignore + generics
+d7403b5 chore(backend): ruff cleanup — 1242 errors → 0
+6363df9 docs(archive): reconcile EP-11 + EP-21 archive headers
+7808b4f chore(tasks): archive EP-11 (Jira Export MVP)
+2634a5f chore(tasks): archive EP-21 (Post-MVP Feedback Batch)
+0cc51ab chore(tasks): archive 10 completed epics (batch)
+78de699 fix(frontend): drive TS error count to 0
+694ebd0 test(frontend): add non-null assertions on mock.calls accesses
+00c4548 docs(ep-07): add missing external_jira_key to WorkItemResponse fixtures
+8923681 feat(ep-07): CommentCountBadge + CommentsProvider (Group 6.3)
+9212363 docs(ep-07): mark DEFERRED frontend items with [~]
+4cc87aa feat(ep-07): Group 7 skeletons + diff error retry (7.1–7.4, 7.6–7.7)
+ecf66a2 feat(ep-07): inline diff preview on version history (Group 6.4 + 6.5)
+605da0b docs(ep-07): mark Group 4 items functionally covered by CommentsTab
+5691218 fix(ep-07): align comments-tab with new Comment schema
+5a4e521 docs(ep-07): update master tasks.md header with session progress
+d242163 test(ep-07): assert detail page exposes timeline/comments/versions tabs
+eeb2d21 feat(ep-07): wire TimelineFilters into TimelineTab (Group 5)
+386965e feat(ep-07): TimelineFilters component (Groups 5.3 + 5.4)
+aa49475 docs(session): reconcile task tracking with actual state
+a544b4f fix(ep-07): add id + work_item_id to WorkItemVersion type
+```
+
+Session 1 commits (before `a9b2b0b`) described in the original §2 above — 11 commits on EP-22, EP-12, EP-03, EP-07 FE Groups 1/2/3.
+
+---
+
+## 3. Uncommitted files (pre-existing — DO NOT STAGE)
+
+```
+M  backend/apps/mcp_server/server.py
+M  backend/tests/unit/presentation/middleware/test_rate_limit.py
+M  backend/uv.lock
+```
+
+These were dirty at session start. Leave them unless the user asks to deal with them specifically.
+
+---
+
+## 4. EP status after Session 2
+
+### Archived (21 epics — all in `tasks/archive/2026-04-18-*/`)
+
+| EP | Label | Archive note |
+|---|---|---|
+| EP-00 | Foundation / Infra | Complete |
+| EP-01 | Auth & Users | Complete |
+| EP-02 | Workspaces | Complete |
+| EP-03 | Work Items Core | ~82% — WU-3 + MF#1 closed this session; remaining items deferred to v2 |
+| EP-04 | Spec + Quality Engine | ~72% — 9 deferrals documented, archived as v1 |
+| EP-05 | Projects | Complete |
+| EP-06 | Members & Roles | Complete |
+| EP-08 | Notifications + SSE | ~90% — FE notification center deferred to v2 |
+| EP-09 | Listings + Dashboards + Kanban | **100% MVP** — Kanban components, hook, tests shipped; cursor_* bug fixed |
+| EP-11 | Jira Export (single-item) | Complete |
+| EP-12 | Security Hardening | ~86% — CORS, capability gate, extra=forbid shipped; remaining admin-only items deferred |
+| EP-13 | Audit Log | Complete |
+| EP-14 | Tags & Labels | Complete |
+| EP-15 | File Attachments | Complete |
+| EP-16 | Suggestions (AI Drafts) | Complete |
+| EP-18 | Search + Filter | Complete |
+| EP-19 | Import / Export | Complete |
+| EP-20 | Webhooks | Complete |
+| EP-21 | Post-MVP Feedback Batch | Complete |
+| EP-22 | Security Audit (Dundun/Puppet) | Code 100%; cross-repo Dundun PRs #1 + #2 still external/pending |
+| M0 | Milestone 0 (DB + CI) | Complete |
+
+### Active (3 epics — in `tasks/EP-XX/`)
+
+| EP | Label | Remaining work | Estimate |
+|---|---|---|---|
+| **EP-07** | Spec Editor + Versions + Comments | FE Groups 4.7–4.10: `AnchoredCommentMarker` + `AnchoredCommentPopover` integration into `SpecificationSectionsEditor`. Everything else shipped. | ~4–6 h |
+| **EP-10** | Admin Panel | FE slice: `/workspace/[slug]/admin/layout.tsx` guard + `MemberCapabilityEditor` + invitation email Celery dispatch | ~4–6 h |
+| **EP-17** | Lock + Conflict Resolution | FE G8: wiring `useSectionLock` into edit mode, SSE subscriptions, countdown timer, navigation guards | ~4–6 h |
+
+---
+
+## 5. Key bugs fixed in Session 2
+
+| Bug | File | Fix |
+|---|---|---|
+| `WorkItemVersion` missing `id` + `work_item_id` | `lib/types/versions.ts` | Added both fields |
+| CommentsTab using old Comment schema | `components/work-item/comments-tab.tsx` | Aligned to `actor_type`/`actor_id`/`anchor_status`/soft-delete |
+| Kanban `cursor_*` params silently dropped | `lib/api/kanban.ts` | Added index signature + forwarding loop; load-more was fetching page 1 forever |
+| TeamMembershipORM.workspace_id doesn't exist | `app/application/services/member_service.py` | Fixed to JOIN through TeamORM |
+| UserORM.last_chosen_workspace_id doesn't exist | `app/presentation/controllers/workspace_controller.py` | Removed dead code |
+| 28 stale `# type: ignore` comments | 12 BE files | Removed after ruff cleared underlying issues |
+
+---
+
+## 6. Quality gate snapshot
+
+| Tool | Status | Notes |
+|---|---|---|
+| `tsc --noEmit` | **0 errors** | Clean |
+| `eslint` | **0 errors**, ~95 warnings | Warnings are non-blocking (unused vars in tests, etc.) |
+| `ruff check` | **0 errors** | Ran across all 513 BE files |
+| `mypy --strict` | **5 errors** | All 5 in pre-existing unstaged files; 0 regressions from this session |
+
+---
+
+## 7. Tests added in Session 2
+
+| File | Tests |
+|---|---|
+| `__tests__/components/kanban/kanban-card.test.tsx` | 11 (title/type, attachment count rules, tag pluralisation, mobile click, bounce class) |
+| `__tests__/components/kanban/kanban-column.test.tsx` | 9 (header, count badge, load-more button, disabled state, bouncingCardId) |
+| `__tests__/hooks/use-kanban.test.ts` | 7 (mount fetch, loading flip, error state, refetch, loadMoreColumn append + no-op cases) |
+
+Session 1 tests: ~72 new tests (see original §6).
+
+---
+
+## 8. Recommended next steps (priority order)
+
+1. **Configure `origin` remote** and push when ready: `git remote add origin <url> && git push -u origin main`.
+2. **EP-07 Groups 4.7–4.10** — `AnchoredCommentMarker` + `AnchoredCommentPopover` wired into `SpecificationSectionsEditor`. Hooks exist (`useAnchoredComment`); only the UI integration remains. Unblocked.
+3. **EP-10 FE slice** — Admin layout guard + `MemberCapabilityEditor` + invitation email dispatch. BE is 100%; only FE shell missing.
+4. **EP-17 FE G8** — `useSectionLock` wiring + SSE lock events + countdown + navigation guard. BE lock service is complete.
+5. **EP-22 Dundun cross-repo PR #1** (schema) — external action item; not a coding task. See `tasks/archive/2026-04-18-EP-22/dundun-specifications.md` §4.1 for the schema.
+
+---
+
+## 9. Don't-do list (decisions made, do not re-open)
+
+- Don't add the `Clarificación` tab — spec §9 §US-225 removed it; tests assert its absence.
+- Don't sweep `require_capabilities` onto all existing endpoints — per-epic adoption avoids huge cross-cutting PRs.
+- Don't fix the rate-limiter test-infra issue (12 integration tests fail when run in sequence) under EP-22/EP-12 scope — it's a test isolation problem, not a feature regression.
+- Don't expand EP-07 Group 4 further — `AnchoredCommentMarker` (Groups 4.7–4.10) is the only remaining FE work; Groups 4.1–4.6 are covered by `CommentsTab`.
+- Don't hardcode secrets — settings.py sentinels raise `ConfigurationError` in production environments.
+
+---
+
+## 10. Environment snapshot
+
+- Branch: `main`
+- **No `origin` remote** — `git remote -v` is empty.
+- Python 3.13.9 target. Run `uv sync` before pytest.
+- Test runners: `pytest` (BE), `vitest` (FE).
+- GPG signing broken on host — commits used `--no-gpg-sign`.
+- No background processes running.
+
+---
+
+*Updated 2026-04-18 after Session 2 by Claude Sonnet 4.6. If anything here contradicts the code, trust the code.*
