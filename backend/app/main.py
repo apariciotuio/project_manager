@@ -5,6 +5,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config.logging import configure_logging
 from app.infrastructure.rate_limiting.pg_rate_limiter import RateLimitMiddleware
 from app.presentation.controllers.admin_controller import router as admin_router
+from app.presentation.controllers.admin_mcp_tokens_controller import router as admin_mcp_tokens_router
 from app.presentation.controllers.admin_members_controller import router as admin_members_router
 from app.presentation.controllers.admin_context_presets_controller import router as admin_context_presets_router
 from app.presentation.controllers.admin_rules_controller import router as admin_rules_router
@@ -31,6 +32,7 @@ from app.presentation.controllers.kanban_controller import router as kanban_rout
 from app.presentation.controllers.dundun_callback_controller import (
     router as dundun_callback_router,
 )
+from app.presentation.controllers.assignment_controller import router as assignment_router
 from app.presentation.controllers.health import router as health_router
 from app.presentation.controllers.integration_controller import router as integration_router
 from app.presentation.controllers.job_progress_controller import router as job_progress_router
@@ -166,6 +168,9 @@ def create_app() -> FastAPI:
         session_factory=_get_sf(),
         unauth_limit=settings.auth.rate_limit_per_minute,
         auth_limit=300,
+        exempt_paths={
+            "/api/v1/notifications/stream",
+        },
     )
 
     app.add_middleware(
@@ -217,6 +222,7 @@ def create_app() -> FastAPI:
     # EP-08 — teams + notifications + inbox
     app.include_router(team_router, prefix="/api/v1")
     app.include_router(notification_router, prefix="/api/v1")
+    app.include_router(assignment_router, prefix="/api/v1")
     app.include_router(inbox_router, prefix="/api/v1")
     # EP-09 — saved searches
     app.include_router(saved_search_router, prefix="/api/v1")
@@ -233,6 +239,8 @@ def create_app() -> FastAPI:
     app.include_router(admin_jira_router, prefix="/api/v1")
     app.include_router(admin_support_router, prefix="/api/v1")
     app.include_router(admin_dashboard_router, prefix="/api/v1")
+    # EP-18 — MCP token lifecycle
+    app.include_router(admin_mcp_tokens_router, prefix="/api/v1")
     app.include_router(routing_rule_router, prefix="/api/v1")
     app.include_router(vrt_router, prefix="/api/v1")
     # EP-11 — integrations
