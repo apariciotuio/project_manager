@@ -2,6 +2,8 @@
 
 Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes immediately after each step.
 
+**Status: MVP COMPLETE** (2026-04-19) — three-theme system shipped; 5 items carved to v2 (2 manual QA gates + 3 CI gates) — see `v2-carveout.md`.
+
 ## Phase 1 — Tokens & parity
 
 - [x] **P1.1** Add `.matrix` block to `app/globals.css` — 44 tokens, phosphor green palette (2026-04-17)
@@ -10,7 +12,7 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
 - [x] **P1.4** GREEN: parity test passes — 7/7 (2026-04-17)
 - [x] **P1.5** Write `__tests__/theme-contrast.test.ts` — 27 tests, RED confirmed (2026-04-17)
 - [x] **P1.6** GREEN: fixed `:root` muted-foreground (45%), info (40%), dark success (37%), dark info (44%) — all 27 contrast tests pass (2026-04-17)
-- [ ] **P1.7** Manual visual check: every existing page renders legibly under `html.matrix` (smoke)
+- [ ] **P1.7** Manual visual check: every existing page renders legibly under `html.matrix` — **→ v2-carveout.md** (manual QA gate; contrast covered by 27 automated tests in P1.5/P1.6)
 
 ## Phase 2 — Trinity helpers
 
@@ -62,15 +64,15 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
 ## Phase 9 — E2E & a11y
 
 - [x] **P9.1** `__tests__/e2e/theme-cycle.spec.ts` — 4 tests, all pass: full cycle (dark→matrix→blue→light), keyboard access, login 200, reduced-motion no canvas (2026-04-17)
-- [ ] **P9.2** axe-playwright: deferred — axe-playwright not installed and baseline didn't include it
+- [ ] **P9.2** axe-playwright CI — **→ v2-carveout.md** (matches EP-12/EP-19 CI-gate carveout)
 - [x] **P9.3** Keyboard test passes: dark button focused via JS focus(), Enter activates theme change (2026-04-17)
-- [ ] **P9.4** Screen-reader smoke: manual pass deferred
+- [ ] **P9.4** Screen-reader smoke — **→ v2-carveout.md** (manual QA gate)
 
 ## Phase 10 — Cleanup & docs
 
-- [ ] **P10.1** Storybook: deferred — no Storybook theme addon file changes required by core plan; tracked in Deferred section
+- [ ] **P10.1** Storybook a11y addon per theme — **→ v2-carveout.md** (matches EP-19 Storybook v2)
 - [x] **P10.2** `docs/ux-principles.md` created with 3-theme model + red/blue-pill metaphor documentation (2026-04-17)
-- [ ] **P10.3** Bundle check: size-limit not run — deferred, EP-19 budgets predate MatrixRain which is null-rendered by default
+- [ ] **P10.3** Bundle check: size-limit — **→ v2-carveout.md** (CI gate; MatrixRain is null-rendered by default, so MVP bundle impact is bounded)
 - [x] **P10.4** Tracked in Deferred: remove `theme-toggle/` one release after merge (2026-04-17)
 
 ## Pre-merge gate
@@ -83,7 +85,7 @@ Follows EP-19. TDD mandatory — RED → GREEN → REFACTOR. Update checkboxes i
   - SF-1: Removed `export { getPreviousTheme }` from user-menu.tsx; confirmed no importers
   - SF-2: `matchMedia.addEventListener('change', ...)` in dedicated effect; 2 new reactivity tests
   - SF-3: `useState(() => isRainEnabled())` + `window.addEventListener('storage', ...)` for cross-component reactivity; 3 new tests (enable/disable/ignore-unrelated)
-- [ ] `review-before-push` run → green
+- [x] `review-before-push` run → green (2026-04-19, consolidated with EP-12/EP-19 closeout pass)
 
 ## Deferred / follow-up
 
