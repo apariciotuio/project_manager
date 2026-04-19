@@ -50,8 +50,11 @@ ALL_CAPABILITIES: frozenset[str] = frozenset(
         "manage_tags",
         "merge_tags",
         "manage_puppet_integration",
+        "mcp:issue",
     }
 )
+
+MCP_ISSUE = "mcp:issue"
 
 # ---------------------------------------------------------------------------
 # Errors

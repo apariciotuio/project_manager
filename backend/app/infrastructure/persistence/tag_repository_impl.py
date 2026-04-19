@@ -52,6 +52,15 @@ class TagRepositoryImpl:
         rows = (await self._session.execute(stmt)).scalars().all()
         return [tag_to_domain(r) for r in rows]
 
+    async def list_all_for_workspace(self, workspace_id: UUID) -> list[Tag]:
+        stmt = (
+            select(TagORM)
+            .where(TagORM.workspace_id == workspace_id)
+            .order_by(TagORM.name)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [tag_to_domain(r) for r in rows]
+
     async def search_by_prefix(self, workspace_id: UUID, prefix: str) -> list[Tag]:
         stmt = (
             select(TagORM)

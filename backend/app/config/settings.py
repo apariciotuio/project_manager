@@ -193,6 +193,26 @@ class JiraSettings(BaseSettings):
         return self
 
 
+_MCP_TOKEN_PEPPER_SENTINEL = "dev-mcp-pepper-change-me-in-prod-32chars"
+
+
+class MCPSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="MCP_", env_file=".env", extra="ignore")
+
+    app_env: str = Field(default="dev", alias="APP_ENV")
+
+    token_pepper: str = _MCP_TOKEN_PEPPER_SENTINEL
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "MCPSettings":
+        if self.app_env.lower() not in _PRODUCTION_ENVS:
+            return self
+        from app.domain.errors.codes import ConfigurationError
+        if self.token_pepper == _MCP_TOKEN_PEPPER_SENTINEL:
+            raise ConfigurationError("mcp.token_pepper")
+        return self
+
+
 class Settings:
     def __init__(self) -> None:
         self.app = AppSettings()
@@ -201,6 +221,7 @@ class Settings:
         self.dundun = DundunSettings()
         self.puppet = PuppetSettings()
         self.jira = JiraSettings()
+        self.mcp = MCPSettings()
 
 
 @lru_cache(maxsize=1)

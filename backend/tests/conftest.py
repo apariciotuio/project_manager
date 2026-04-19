@@ -34,6 +34,7 @@ def override_settings(postgres_container):
         DatabaseSettings,
         DundunSettings,
         JiraSettings,
+        MCPSettings,
         PuppetSettings,
     )
 
@@ -43,6 +44,7 @@ def override_settings(postgres_container):
     test_settings.dundun = DundunSettings(use_fake=True)
     test_settings.puppet = PuppetSettings(use_fake=True)
     test_settings.jira = JiraSettings()
+    test_settings.mcp = MCPSettings()
 
     get_settings.cache_clear()
 
