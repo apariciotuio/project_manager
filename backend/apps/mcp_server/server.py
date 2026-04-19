@@ -42,13 +42,17 @@ def load_auth_context_from_env() -> tuple[UUID, UUID]:
 
 
 def _decode_token(token: str) -> tuple[UUID, UUID]:
-    """Decode a JWT and extract (workspace_id, user_id).
+    """Decode a JWT or opaque mcp_* token and return (workspace_id, user_id).
 
-    Reads AUTH_JWT_SECRET (and optional AUTH_JWT_* overrides) directly from
-    the environment to avoid the get_settings() lru_cache trap at process
-    startup.  The sentinel default matches AuthSettings so the dev default
-    works without extra configuration.
+    For JWT tokens: reads AUTH_JWT_SECRET from env.
+    For opaque mcp_* tokens: verifies via MCPTokenVerifyService using the
+    MCP_TOKEN_PEPPER env var and a real DB session.
+
+    Reads settings directly from env to avoid the get_settings() lru_cache trap.
     """
+    if token.startswith("mcp_"):
+        return _decode_mcp_opaque_token(token)
+
     from app.infrastructure.adapters.jwt_adapter import (
         JwtAdapter,
         TokenExpiredError,
@@ -82,6 +86,42 @@ def _decode_token(token: str) -> tuple[UUID, UUID]:
         raise ValueError(f"MCP_TOKEN contains malformed claims: {exc}") from exc
 
     return workspace_id, user_id
+
+
+def _decode_mcp_opaque_token(token: str) -> tuple[UUID, UUID]:
+    """Synchronously verify an opaque mcp_* token via MCPTokenVerifyService.
+
+    Runs an asyncio event loop to drive the async verify call.
+    Called at process startup — blocking is acceptable here.
+    """
+    import asyncio
+
+    from app.application.services.mcp_token_verify_service import (
+        MCPTokenVerifyService,
+        MCPTokenExpired,
+        MCPTokenInvalid,
+        MCPTokenRevoked,
+    )
+    from app.infrastructure.persistence.database import get_session_factory
+    from app.infrastructure.persistence.mcp_token_repository_impl import MCPTokenRepositoryImpl
+
+    _PEPPER_SENTINEL = "dev-mcp-pepper-change-me-in-prod-32chars"
+    pepper = os.environ.get("MCP_TOKEN_PEPPER", _PEPPER_SENTINEL)
+
+    async def _verify() -> tuple[UUID, UUID]:
+        factory = get_session_factory()
+        async with factory() as session:
+            repo = MCPTokenRepositoryImpl(session)
+            svc = MCPTokenVerifyService(token_repo=repo, pepper=pepper)
+            result = await svc.verify(token)
+            return result.workspace_id, result.user_id
+
+    try:
+        return asyncio.run(_verify())
+    except MCPTokenExpired as exc:
+        raise ValueError(f"MCP_TOKEN has expired: {exc}") from exc
+    except (MCPTokenInvalid, MCPTokenRevoked) as exc:
+        raise ValueError(f"MCP_TOKEN is invalid: {exc}") from exc
 
 
 def _resolve_auth_context() -> tuple[UUID, UUID]:
@@ -159,84 +199,6 @@ def _build_tool_list() -> list[dict[str, Any]]:
                     "id": {"type": "string", "description": "Work item UUID"},
                 },
                 "required": ["id"],
-            },
-        },
-        {
-            "name": "get_specification",
-            "description": "Get the structured specification sections for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_completeness",
-            "description": "Get completeness score and dimension breakdown for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_gaps",
-            "description": "Get unfilled quality gaps for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_task_tree",
-            "description": "Get the task breakdown tree for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_reviews",
-            "description": "Get review requests and responses for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_comments",
-            "description": "Get comments on a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                },
-                "required": ["work_item_id"],
-            },
-        },
-        {
-            "name": "get_timeline",
-            "description": "Get the activity timeline for a work item",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string"},
-                    "cursor": {"type": "string", "description": "Pagination cursor"},
-                },
-                "required": ["work_item_id"],
             },
         },
         {
@@ -333,19 +295,22 @@ def _build_tool_list() -> list[dict[str, Any]]:
             },
         },
         {
-            "name": "list_teams",
-            "description": "List active teams in the workspace",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
-            },
-        },
-        {
             "name": "list_tags",
-            "description": "List tags in the workspace",
+            "description": (
+                "List tags in the workspace. "
+                "By default returns only active (non-archived) tags. "
+                "Set include_archived=true to include archived tags."
+            ),
             "inputSchema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "include_archived": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include archived tags (default: false)",
+                    },
+                },
+                "additionalProperties": False,
             },
         },
         {
@@ -404,24 +369,6 @@ def _build_tool_list() -> list[dict[str, Any]]:
                 },
                 "required": ["work_item_id"],
                 "additionalProperties": False,
-            },
-        },
-        {
-            "name": "get_inbox",
-            "description": "Get the current user's notification inbox",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "limit": {"type": "integer", "default": 50},
-                },
-            },
-        },
-        {
-            "name": "get_dashboard",
-            "description": "Get workspace health dashboard data",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
             },
         },
     ]
@@ -688,22 +635,24 @@ async def _handle_tool_call(
             result_data = await handle_list_reviews(arguments, svc, review_repo, workspace_id)
             return json.dumps(result_data)
 
-        if name in (
-            "get_specification",
-            "get_completeness",
-            "get_gaps",
-            "get_task_tree",
-            "get_reviews",
-            "get_comments",
-            "get_timeline",
-        ):
-            return json.dumps({
-                "tool": name,
-                "work_item_id": arguments.get("work_item_id"),
-                "status": "stub — wire to service layer",
-            })
+        if name == "list_tags":
+            from apps.mcp_server.tools.list_tags import handle_list_tags
+            from app.infrastructure.persistence.tag_repository_impl import TagRepositoryImpl
 
-        return json.dumps({"tool": name, "status": "stub"})
+            tag_repo = TagRepositoryImpl(session)
+            result_data = await handle_list_tags(
+                arguments=arguments,
+                tag_repo=tag_repo,
+                workspace_id=workspace_id,
+            )
+            return json.dumps(result_data)
+
+        return json.dumps({
+            "error": {
+                "code": "UNKNOWN_TOOL",
+                "message": f"Tool '{name}' is not registered on this server.",
+            }
+        })
 
 
 def create_mcp_server() -> Any:

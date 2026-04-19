@@ -1678,3 +1678,38 @@ class JiraProjectMappingORM(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class MCPTokenORM(Base):
+    __tablename__ = "mcp_tokens"
+    __table_args__ = (
+        Index(
+            "idx_mcp_tokens_ws_user_active",
+            "workspace_id",
+            "user_id",
+            postgresql_where=sa.text("revoked_at IS NULL"),
+        ),
+        Index(
+            "idx_mcp_tokens_expires_active",
+            "expires_at",
+            postgresql_where=sa.text("revoked_at IS NULL"),
+        ),
+        UniqueConstraint("lookup_key_hmac", name="uq_mcp_tokens_lookup_key"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    workspace_id: Mapped[UUID] = mapped_column(nullable=False)
+    user_id: Mapped[UUID] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    token_hash_argon2: Mapped[str] = mapped_column(Text, nullable=False)
+    lookup_key_hmac: Mapped[bytes] = mapped_column(sa.LargeBinary, nullable=False, unique=True)
+    scopes: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=sa.text("'{}'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rotated_from: Mapped[UUID | None] = mapped_column(nullable=True)
