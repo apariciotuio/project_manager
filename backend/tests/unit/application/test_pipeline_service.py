@@ -56,7 +56,7 @@ class FakeSession:
         self._items = items
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self._call_count += 1
         return _FR(agg_rows=self._agg_rows, items=self._items, call=self._call_count)
 
@@ -72,7 +72,7 @@ class _FR:
             return self._agg_rows
         return self._items
 
-    def scalars(self) -> "_ScalarResult":
+    def scalars(self) -> _ScalarResult:
         return _ScalarResult(self._items)
 
 

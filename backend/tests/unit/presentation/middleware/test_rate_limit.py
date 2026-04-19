@@ -19,6 +19,7 @@ from app.infrastructure.rate_limiting.pg_rate_limiter import (
     RateLimitMiddleware,
     RateLimitResult,
 )
+from datetime import UTC
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ class _FakeRow:
 
         self.count = count
         self.window_start_minute = window_start_minute or datetime(
-            2026, 4, 18, 10, 0, tzinfo=timezone.utc
+            2026, 4, 18, 10, 0, tzinfo=UTC
         )
 
 
@@ -61,7 +62,7 @@ class FakeSession:
         return _FakeResult(
             _FakeRow(
                 count=self._buckets[identifier],
-                window_start_minute=datetime(2026, 4, 18, 10, 0, tzinfo=timezone.utc),
+                window_start_minute=datetime(2026, 4, 18, 10, 0, tzinfo=UTC),
             )
         )
 
@@ -69,7 +70,7 @@ class FakeSession:
         """No-op for fake session."""
         pass
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

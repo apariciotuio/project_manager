@@ -37,7 +37,7 @@ class MCPToken:
         scopes: list[str],
         expires_at: datetime,
         rotated_from: UUID | None = None,
-    ) -> "MCPToken":
+    ) -> MCPToken:
         if not name or not name.strip():
             raise ValueError("name must not be empty")
         if len(name) > 200:

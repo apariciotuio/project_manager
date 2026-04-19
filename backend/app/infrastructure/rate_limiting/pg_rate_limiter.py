@@ -17,7 +17,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Protocol
 
 import sqlalchemy as sa
@@ -103,7 +103,7 @@ class PgRateLimiter:
             window_start: datetime = row.window_start_minute
             # Reset is the start of the *next* minute.
             if window_start.tzinfo is None:
-                window_start = window_start.replace(tzinfo=timezone.utc)
+                window_start = window_start.replace(tzinfo=UTC)
             reset_at = int(window_start.timestamp()) + 60
 
             return RateLimitResult(
@@ -118,7 +118,7 @@ class PgRateLimiter:
                 exc,
                 exc_info=True,
             )
-            now_epoch = int(datetime.now(tz=timezone.utc).timestamp())
+            now_epoch = int(datetime.now(tz=UTC).timestamp())
             window_minute = now_epoch // 60
             return RateLimitResult(
                 allowed=True,

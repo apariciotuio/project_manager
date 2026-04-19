@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from urllib.parse import quote
 from uuid import UUID
 
@@ -206,10 +206,10 @@ async def google_callback(
             location = f"/workspace/{slug}"
 
     response = RedirectResponse(url=location, status_code=302)
-    access_ttl = max(1, int((tokens.access_token_expires_at - datetime.now(timezone.utc)).total_seconds()))
+    access_ttl = max(1, int((tokens.access_token_expires_at - datetime.now(UTC)).total_seconds()))
     refresh_ttl = max(
         1,
-        int((tokens.refresh_token_expires_at - datetime.now(timezone.utc)).total_seconds()),
+        int((tokens.refresh_token_expires_at - datetime.now(UTC)).total_seconds()),
     )
     _set_access_cookie(
         response, tokens.access_token, access_ttl, secure=secure_cookies
@@ -275,7 +275,7 @@ async def refresh_token(
 
     access_ttl = max(
         1,
-        int((pair.access_token_expires_at - datetime.now(timezone.utc)).total_seconds()),
+        int((pair.access_token_expires_at - datetime.now(UTC)).total_seconds()),
     )
     _set_access_cookie(
         response, pair.access_token, access_ttl, secure=secure_cookies

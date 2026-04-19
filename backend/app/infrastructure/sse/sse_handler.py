@@ -39,7 +39,7 @@ class _PubSubProto(Protocol):
         channel: str,
         max_messages: int | None = None,
         poll_interval: float = 0.05,
-    ) -> AsyncGenerator[dict[str, Any], None]: ...
+    ) -> AsyncGenerator[dict[str, Any]]: ...
 
 
 class SseHandler:

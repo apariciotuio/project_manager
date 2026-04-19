@@ -45,7 +45,7 @@ class SectionService:
         section_version_repo: ISectionVersionRepository,
         work_item_repo: IWorkItemRepository,
         cache: ICache | None = None,
-        versioning_service: "VersioningService | None" = None,
+        versioning_service: VersioningService | None = None,
     ) -> None:
         self._sections = section_repo
         self._versions = section_version_repo

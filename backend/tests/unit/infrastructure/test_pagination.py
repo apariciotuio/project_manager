@@ -6,7 +6,7 @@ RED phase: all tests must fail before implementation exists.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from uuid import UUID
 
 import pytest
@@ -49,7 +49,7 @@ def session(sync_engine):
 
 
 def _dt(iso: str) -> datetime:
-    return datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(iso).replace(tzinfo=UTC)
 
 
 def _seed(session, items: list[dict]) -> None:

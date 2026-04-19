@@ -44,7 +44,7 @@ class FakeSession:
         self._blocked_count = blocked_count
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self._call_count += 1
         return _FR(
             rows=self._state_rows,

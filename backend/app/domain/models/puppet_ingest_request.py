@@ -38,7 +38,7 @@ class PuppetIngestRequest:
         source_kind: str,
         work_item_id: UUID | None = None,
         payload: dict[str, Any] | None = None,
-    ) -> "PuppetIngestRequest":
+    ) -> PuppetIngestRequest:
         if source_kind not in ("outbox", "manual", "webhook"):
             raise ValueError(f"Invalid source_kind: {source_kind!r}")
         now = datetime.now(UTC)

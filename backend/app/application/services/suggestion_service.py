@@ -49,8 +49,8 @@ class SuggestionService:
         dundun_client: DundunClient,
         callback_url: str,
         now: Callable[[], datetime] = _utcnow,
-        section_service: "SectionService | None" = None,
-        versioning_service: "VersioningService | None" = None,
+        section_service: SectionService | None = None,
+        versioning_service: VersioningService | None = None,
         workspace_id: UUID | None = None,
     ) -> None:
         self._suggestion_repo = suggestion_repo

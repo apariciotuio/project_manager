@@ -155,7 +155,7 @@ class DundunHTTPClient:
         conversation_id: str,
         user_id: UUID,
         work_item_id: UUID | None,
-    ) -> AsyncIterator["_DundunWSBridge"]:
+    ) -> AsyncIterator[_DundunWSBridge]:
         """Open a bidirectional Dundun /ws/chat connection.
 
         The prior async-generator shape only yielded frames — no way to push

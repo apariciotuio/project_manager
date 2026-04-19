@@ -82,7 +82,7 @@ class DundunClient(Protocol):
         conversation_id: str,
         user_id: UUID,
         work_item_id: UUID | None,
-    ) -> AbstractAsyncContextManager["DundunWSBridge"]:
+    ) -> AbstractAsyncContextManager[DundunWSBridge]:
         """Open a WebSocket to Dundun /ws/chat as a bidirectional channel.
 
         Returns an async context manager yielding a DundunWSBridge with send/recv.

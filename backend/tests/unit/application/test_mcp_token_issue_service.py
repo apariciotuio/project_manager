@@ -81,7 +81,8 @@ async def test_issue_rejects_when_user_already_at_10_tokens() -> None:
 
     # Pre-fill 10 active tokens
     from app.domain.models.mcp_token import MCPToken
-    import hashlib, hmac as _hmac
+    import hashlib
+    import hmac as _hmac
 
     for i in range(10):
         plaintext = f"mcp_{'x' * 43}"

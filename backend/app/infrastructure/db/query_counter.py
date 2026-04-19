@@ -45,7 +45,7 @@ def before_cursor_execute_listener(
         _query_count.set(current + 1)
 
 
-def register_query_counter(engine: "AsyncEngine", environment: str) -> None:
+def register_query_counter(engine: AsyncEngine, environment: str) -> None:
     """Attach the `before_cursor_execute` listener to *engine*.
 
     No-op in production environments to eliminate any overhead.

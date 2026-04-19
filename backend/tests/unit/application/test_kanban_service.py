@@ -51,7 +51,7 @@ class FakeSession:
         self._items = items
         self.call_count = 0
 
-    async def execute(self, stmt: object) -> "_FR":
+    async def execute(self, stmt: object) -> _FR:
         self.call_count += 1
         return _FR(self._items)
 
@@ -60,7 +60,7 @@ class _FR:
     def __init__(self, items: list[object]) -> None:
         self._items = items
 
-    def scalars(self) -> "_SR":
+    def scalars(self) -> _SR:
         return _SR(self._items)
 
     def all(self) -> list[object]:

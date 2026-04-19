@@ -5,7 +5,7 @@ Round-trip tests: domain → ORM → domain for all enum values and edge fields.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, UTC
 from uuid import UUID, uuid4
 
 import pytest
@@ -34,7 +34,7 @@ def _make_work_item(
     parent_work_item_id: UUID | None = None,
     tags: list[str] | None = None,
 ) -> WorkItem:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return WorkItem(
         id=uuid4(),
         project_id=uuid4(),
@@ -182,7 +182,7 @@ class TestStateTransitionMapperRoundTrip:
             from_state=from_state,
             to_state=to_state,
             actor_id=uuid4(),
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             reason="test reason",
             is_override=False,
             override_justification=None,
@@ -212,7 +212,7 @@ class TestStateTransitionMapperRoundTrip:
             from_state=WorkItemState.IN_CLARIFICATION,
             to_state=WorkItemState.READY,
             actor_id=uuid4(),
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             reason=None,
             is_override=True,
             override_justification="urgent release",
@@ -243,7 +243,7 @@ class TestOwnershipRecordMapperRoundTrip:
             previous_owner_id=prev if prev is not None else uuid4(),
             new_owner_id=new_owner,
             changed_by=uuid4(),
-            changed_at=datetime.now(timezone.utc),
+            changed_at=datetime.now(UTC),
             reason="reassign",
         )
 

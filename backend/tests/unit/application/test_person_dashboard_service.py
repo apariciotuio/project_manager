@@ -34,7 +34,7 @@ class FakeSession:
         self._notification_count = notification_count
         self._call_count = 0
 
-    async def execute(self, stmt: object) -> "_FakeResult":
+    async def execute(self, stmt: object) -> _FakeResult:
         self._call_count += 1
         return _FakeResult(
             state_rows=self._state_rows,

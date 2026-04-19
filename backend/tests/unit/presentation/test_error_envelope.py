@@ -21,7 +21,7 @@ from app.domain.errors.codes import (
 from app.presentation.middleware.error_envelope import register_domain_error_handler
 
 
-def _make_app_with_500() -> "FastAPI":
+def _make_app_with_500() -> FastAPI:
     """Extend the base app with 500-class routes."""
     app = FastAPI()
     register_domain_error_handler(app)

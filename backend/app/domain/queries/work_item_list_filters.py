@@ -79,7 +79,7 @@ class WorkItemListFilters(BaseModel):
         return v  # pydantic ge/le handles it
 
     @model_validator(mode="after")
-    def _validate_completeness_range(self) -> "WorkItemListFilters":
+    def _validate_completeness_range(self) -> WorkItemListFilters:
         if (
             self.completeness_min is not None
             and self.completeness_max is not None

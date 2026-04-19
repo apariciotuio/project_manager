@@ -28,7 +28,7 @@ async def with_workspace(session: AsyncSession, workspace_id: UUID) -> None:
 async def get_scoped_session(
     factory: async_sessionmaker[AsyncSession],
     workspace_id: UUID,
-) -> AsyncGenerator[AsyncSession, None]:
+) -> AsyncGenerator[AsyncSession]:
     """Yield a session with workspace RLS set.
 
     Usage (Phase 4 — controllers via Depends):

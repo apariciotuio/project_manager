@@ -180,7 +180,7 @@ class PgNotificationBus:
                     data = await asyncio.wait_for(queue.get(), timeout=poll_interval)
                     yield data
                     count += 1
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if max_messages is not None:
                         # bounded iteration with no message — keep waiting
                         continue

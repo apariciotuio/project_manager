@@ -7,7 +7,7 @@ the browser can never succeed twice.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert
@@ -37,7 +37,7 @@ class OAuthStateRepositoryImpl(IOAuthStateRepository):
     ) -> None:
         if ttl_seconds <= 0:
             raise ValueError("ttl_seconds must be positive")
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+        expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
         stmt = insert(OAuthStateORM).values(
             state=state,
             verifier=verifier,

@@ -31,6 +31,7 @@ from app.infrastructure.persistence.models.orm import (
     StateTransitionORM,
     WorkItemORM,
 )
+from datetime import UTC
 
 # CHECK constraint name fragments used for error classification
 _CHECK_TITLE = "work_items_title_length"
@@ -227,13 +228,13 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
                 from datetime import timezone
                 ts = last.updated_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv: object = ts.isoformat() if ts else ""
             elif sort == SortOption.created_desc:
                 from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv = ts.isoformat() if ts else ""
             elif sort == SortOption.title_asc:
                 sv = last.title
@@ -243,7 +244,7 @@ class WorkItemRepositoryImpl(IWorkItemRepository):
                 from datetime import timezone
                 ts = last.created_at
                 if ts is not None and ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 sv = ts.isoformat() if ts else ""
 
             from uuid import UUID as _UUID

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import timezone, UTC
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -84,7 +84,7 @@ class AuditRepositoryImpl(IAuditRepository):
             last = rows[-1]
             ts = last.created_at
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
             next_cursor = PaginationCursor(
                 id=UUID(str(last.id)),
                 created_at=ts,

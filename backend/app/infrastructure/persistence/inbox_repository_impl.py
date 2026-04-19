@@ -23,7 +23,7 @@ Indexes required (migration C2.1):
 """
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import timezone, UTC
 from uuid import UUID
 
 from sqlalchemy import text
@@ -299,7 +299,7 @@ class InboxRepositoryImpl(IInboxRepository):
         for row in rows:
             event_age = row["event_age"]
             if event_age is not None and event_age.tzinfo is None:
-                event_age = event_age.replace(tzinfo=timezone.utc)
+                event_age = event_age.replace(tzinfo=UTC)
             result.append(
                 InboxItem(
                     item_id=row["item_id"],

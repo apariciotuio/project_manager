@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from uuid import uuid4
 
 import pytest
@@ -49,7 +49,7 @@ async def _call(app: FastAPI, *, cookie: str | None = None):
 
 
 def _valid_token(adapter: JwtAdapter, **overrides) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(uuid4()),
         "email": "a@tuio.com",
@@ -84,7 +84,7 @@ async def test_valid_token_injects_current_user(app, jwt_adapter) -> None:
 
 
 async def test_expired_token_returns_401_token_expired(app, jwt_adapter) -> None:
-    past = int((datetime.now(timezone.utc) - timedelta(seconds=5)).timestamp())
+    past = int((datetime.now(UTC) - timedelta(seconds=5)).timestamp())
     token = _valid_token(jwt_adapter, exp=past)
     resp = await _call(app, cookie=token)
     assert resp.status_code == 401

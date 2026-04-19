@@ -41,7 +41,7 @@ class AuditService:
         self._factory: _SessionFactory | None = None
 
     @classmethod
-    def isolated(cls, session_factory: _SessionFactory) -> "AuditService":
+    def isolated(cls, session_factory: _SessionFactory) -> AuditService:
         """Build an AuditService that commits each audit write in its own session.
 
         Use this when the surrounding request session may be rolled back (e.g.

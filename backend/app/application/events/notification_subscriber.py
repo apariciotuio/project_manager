@@ -43,7 +43,7 @@ def _ikey(event_name: str, primary_id: UUID | str, recipient_id: UUID | str) -> 
 @asynccontextmanager
 async def _svc_ctx(
     get_svc: Callable[[], Awaitable[NotificationServiceLike]],
-) -> AsyncGenerator[NotificationServiceLike, None]:
+) -> AsyncGenerator[NotificationServiceLike]:
     """Async context manager that yields the notification service.
 
     In production, get_svc builds a service with its own session and commits

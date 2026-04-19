@@ -42,7 +42,7 @@ class SpySession:
     async def rollback(self) -> None:
         self.rolled_back = True
 
-    async def __aenter__(self) -> "SpySession":
+    async def __aenter__(self) -> SpySession:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

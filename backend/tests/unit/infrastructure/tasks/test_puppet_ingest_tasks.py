@@ -86,7 +86,7 @@ class FakeSession:
     async def rollback(self) -> None:
         pass
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

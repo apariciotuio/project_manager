@@ -29,7 +29,7 @@ class PaginationCursor:
         return base64.urlsafe_b64encode(raw.encode()).decode()
 
     @classmethod
-    def decode(cls, token: str) -> "PaginationCursor":
+    def decode(cls, token: str) -> PaginationCursor:
         try:
             raw = base64.urlsafe_b64decode(token.encode()).decode()
             data = json.loads(raw)

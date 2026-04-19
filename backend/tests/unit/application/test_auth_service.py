@@ -5,7 +5,7 @@ All collaborators are fakes; no DB, no HTTP.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from uuid import uuid4
 
 import pytest
@@ -366,7 +366,7 @@ async def test_refresh_token_expired_raises(service, users, sessions) -> None:
         user_id=user.id, raw_token=raw, ttl_seconds=3600,
         ip_address=None, user_agent=None,
     )
-    session.expires_at = datetime.now(timezone.utc) - timedelta(seconds=10)
+    session.expires_at = datetime.now(UTC) - timedelta(seconds=10)
     await sessions.create(session)
 
     with pytest.raises(SessionExpiredError):

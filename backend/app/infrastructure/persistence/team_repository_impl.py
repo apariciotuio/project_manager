@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -277,7 +277,7 @@ class NotificationRepositoryImpl(INotificationRepository):
             last = rows[-1]
             ts = last.created_at
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
             next_cursor = PaginationCursor(
                 id=_UUID(str(last.id)),
                 created_at=ts,
