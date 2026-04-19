@@ -34,7 +34,9 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.ENVIRONMENT, 5, False),
         SectionConfig(SectionType.IMPACT, 6, False),
         SectionConfig(SectionType.ACCEPTANCE_CRITERIA, 7, True),
-        SectionConfig(SectionType.NOTES, 8, False),
+        # EP-25 — bug requires technical_approach (fix approach known before ready)
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 8, True),
+        SectionConfig(SectionType.NOTES, 9, False),
     ],
     WorkItemType.REQUIREMENT: [
         SectionConfig(SectionType.SUMMARY, 1, True),
@@ -44,7 +46,8 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.DEFINITION_OF_DONE, 5, False),
         SectionConfig(SectionType.DEPENDENCIES, 6, False),
         SectionConfig(SectionType.RISKS, 7, False),
-        SectionConfig(SectionType.NOTES, 8, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 8, False),
+        SectionConfig(SectionType.NOTES, 9, False),
     ],
     WorkItemType.ENHANCEMENT: [
         SectionConfig(SectionType.SUMMARY, 1, True),
@@ -52,28 +55,32 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.OBJECTIVE, 3, True),
         SectionConfig(SectionType.ACCEPTANCE_CRITERIA, 4, True),
         SectionConfig(SectionType.IMPACT, 5, False),
-        SectionConfig(SectionType.NOTES, 6, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 6, False),
+        SectionConfig(SectionType.NOTES, 7, False),
     ],
     WorkItemType.IDEA: [
         SectionConfig(SectionType.SUMMARY, 1, True),
         SectionConfig(SectionType.CONTEXT, 2, True),
         SectionConfig(SectionType.HYPOTHESIS, 3, False),
         SectionConfig(SectionType.SUCCESS_METRICS, 4, False),
-        SectionConfig(SectionType.NOTES, 5, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 5, False),
+        SectionConfig(SectionType.NOTES, 6, False),
     ],
     WorkItemType.TASK: [
         SectionConfig(SectionType.SUMMARY, 1, True),
         SectionConfig(SectionType.OBJECTIVE, 2, False),
         SectionConfig(SectionType.DEFINITION_OF_DONE, 3, True),
         SectionConfig(SectionType.DEPENDENCIES, 4, False),
-        SectionConfig(SectionType.NOTES, 5, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 5, False),
+        SectionConfig(SectionType.NOTES, 6, False),
     ],
     WorkItemType.SPIKE: [
         SectionConfig(SectionType.SUMMARY, 1, True),
         SectionConfig(SectionType.HYPOTHESIS, 2, True),
         SectionConfig(SectionType.SCOPE, 3, True),
         SectionConfig(SectionType.SUCCESS_METRICS, 4, False),
-        SectionConfig(SectionType.NOTES, 5, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 5, False),
+        SectionConfig(SectionType.NOTES, 6, False),
     ],
     WorkItemType.INITIATIVE: [
         SectionConfig(SectionType.SUMMARY, 1, True),
@@ -83,6 +90,7 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.DEPENDENCIES, 5, False),
         SectionConfig(SectionType.RISKS, 6, False),
         SectionConfig(SectionType.SUCCESS_METRICS, 7, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 8, False),
     ],
     WorkItemType.BUSINESS_CHANGE: [
         SectionConfig(SectionType.SUMMARY, 1, True),
@@ -92,6 +100,7 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.IMPACT, 5, True),
         SectionConfig(SectionType.DEPENDENCIES, 6, False),
         SectionConfig(SectionType.RISKS, 7, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 8, False),
     ],
     # EP-14 hierarchy types
     WorkItemType.MILESTONE: [
@@ -101,6 +110,7 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.BREAKDOWN, 4, True),
         SectionConfig(SectionType.SUCCESS_METRICS, 5, False),
         SectionConfig(SectionType.RISKS, 6, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 7, False),
     ],
     WorkItemType.STORY: [
         SectionConfig(SectionType.SUMMARY, 1, True),
@@ -108,7 +118,8 @@ SECTION_CATALOG: dict[WorkItemType, list[SectionConfig]] = {
         SectionConfig(SectionType.ACCEPTANCE_CRITERIA, 3, True),
         SectionConfig(SectionType.DEFINITION_OF_DONE, 4, False),
         SectionConfig(SectionType.DEPENDENCIES, 5, False),
-        SectionConfig(SectionType.NOTES, 6, False),
+        SectionConfig(SectionType.TECHNICAL_APPROACH, 6, False),
+        SectionConfig(SectionType.NOTES, 7, False),
     ],
 }
 

@@ -37,7 +37,11 @@ export type SectionType =
   | 'success_metrics'
   | 'constraints'
   | 'test_strategy'
-  | 'rollback_plan';
+  | 'rollback_plan'
+  | 'technical_approach'
+  | 'context'
+  | 'objective'
+  | 'breakdown';
 
 export interface Section {
   id: string;
