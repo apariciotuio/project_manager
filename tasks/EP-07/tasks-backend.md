@@ -437,7 +437,7 @@ See also: specs/versioning/spec.md, specs/comments/spec.md, specs/timeline/spec.
 ## Phase 5 — Authorization
 
 - [x] 5.1 [RED] Unauthenticated → 401 — integration tests: test_create_comment_unauthenticated, test_versions_unauthenticated, test_timeline_unauthenticated
-- [ ] 5.2 [RED] No read access → 403 — deferred: workspace membership check not implemented in version/timeline controllers
+- [x] 5.2 [RED] No read access → 404 (better than 403 — don't leak existence) — controllers pass `workspace_id` from `current_user` to service; cross-workspace reads return 404 via filter in `version_service.get_by_number` / `timeline_controller.get` (verified 2026-04-19: `version_controller.py` lines 72/76, `timeline_controller.py` lines 62-71)
 - [x] 5.3 [RED] Own comment edit/delete; AI → 403 — test_edit_comment_other_user, test_ai_comment_cannot_be_edited pass
 - [x] 5.4 [GREEN] Authorization in service layer — AI check in CommentService.edit; author check in edit/delete
 

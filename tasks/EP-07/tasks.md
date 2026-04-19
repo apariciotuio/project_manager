@@ -1,7 +1,10 @@
 # EP-07 — Implementation Checklist
 
-**Status: PLANNED**
-**Last updated: 2026-04-13**
+**Status: MVP COMPLETE (2026-04-19)** — Comments, Versions, Diff & Traceability shipped. `DiffService` in `backend/app/application/services/diff_service.py` uses pure `difflib` (2-pass structural+content, `SectionChangeType` enum) — no external diff library required. Version + timeline controllers scope by `workspace_id`. Frontend version/timeline tabs shipped.
+
+The granular checklist below pre-dates the implementation (last updated 2026-04-13); canonical state is the shipped code + tests in `__tests__/components/work-item/` and `backend/tests/`. See `tasks-backend.md`, `tasks-frontend.md`, and `v2-carveout.md` for what's deferred.
+
+**Last updated: 2026-04-19**
 
 ---
 
