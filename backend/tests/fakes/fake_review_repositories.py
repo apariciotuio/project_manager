@@ -39,6 +39,12 @@ class FakeReviewRequestRepository(IReviewRequestRepository):
             if r.reviewer_id == user_id and r.status is ReviewStatus.PENDING
         ]
 
+    async def has_open_reviews_for_team(self, team_id: UUID) -> bool:
+        return any(
+            getattr(r, "team_id", None) == team_id and r.status is ReviewStatus.PENDING
+            for r in self._store.values()
+        )
+
 
 class FakeReviewResponseRepository(IReviewResponseRepository):
     def __init__(self) -> None:

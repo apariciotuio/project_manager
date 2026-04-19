@@ -65,6 +65,10 @@ class FakeSession:
             )
         )
 
+    async def commit(self) -> None:
+        """No-op for fake session."""
+        pass
+
     async def __aenter__(self) -> "FakeSession":
         return self
 
@@ -96,6 +100,7 @@ def _build_app(
     unauth_limit: int = 10,
     auth_limit: int = 300,
     get_user_id=None,
+    exempt_paths: set[str] | None = None,
 ) -> Any:
     async def handler(request: Request) -> Response:
         return PlainTextResponse("ok")
@@ -108,6 +113,7 @@ def _build_app(
         unauth_limit=unauth_limit,
         auth_limit=auth_limit,
         get_user_id=get_user_id or (lambda _r: None),
+        exempt_paths=exempt_paths,
     )
 
 
@@ -261,3 +267,39 @@ def test_429_response_has_error_envelope() -> None:
     body = resp.json()
     assert "error" in body
     assert body["error"]["code"] == "TOO_MANY_REQUESTS"
+
+
+# ---------------------------------------------------------------------------
+# Tests — exempt paths (SSE streams, etc.)
+# ---------------------------------------------------------------------------
+
+
+def test_exempt_paths_bypass_rate_limit() -> None:
+    """Exempt paths should allow unlimited requests without consuming the IP bucket."""
+    factory = FakeSessionFactory()
+    app = _build_app(factory, unauth_limit=3, exempt_paths={"/test"})
+    client = TestClient(app)  # type: ignore[arg-type]
+
+    # Make 20 requests to the exempt path — all should succeed
+    for _ in range(20):
+        resp = client.get("/test", headers={"X-Forwarded-For": "1.2.3.4"})
+        assert resp.status_code == 200
+
+    # Now make a request to a non-exempt path from the same IP — should succeed (buckets are separate)
+    resp = client.get("/api/resource", headers={"X-Forwarded-For": "1.2.3.4"})
+    assert resp.status_code == 200
+
+
+def test_non_exempt_paths_still_rate_limited() -> None:
+    """Paths not in exempt list should still be rate-limited."""
+    factory = FakeSessionFactory()
+    app = _build_app(factory, unauth_limit=2, exempt_paths={"/test"})
+    client = TestClient(app)  # type: ignore[arg-type]
+
+    # Make 2 requests to non-exempt path
+    client.get("/api/resource", headers={"X-Forwarded-For": "5.5.5.5"})
+    client.get("/api/resource", headers={"X-Forwarded-For": "5.5.5.5"})
+
+    # Third request should be 429
+    resp = client.get("/api/resource", headers={"X-Forwarded-For": "5.5.5.5"})
+    assert resp.status_code == 429

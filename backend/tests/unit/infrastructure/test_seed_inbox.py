@@ -42,6 +42,21 @@ class FakeNotificationRepository(INotificationRepository):
         rows.sort(key=lambda n: n.created_at, reverse=True)
         return rows[offset : offset + limit]
 
+    async def list_inbox_cursor(
+        self,
+        user_id: UUID,
+        workspace_id: UUID,
+        *,
+        cursor: Any = None,
+        page_size: int = 50,
+    ) -> Any:
+        rows = [
+            n for n in self._store.values()
+            if n.recipient_id == user_id and n.workspace_id == workspace_id
+        ]
+        rows.sort(key=lambda n: n.created_at, reverse=True)
+        return rows[:page_size]
+
     async def mark_read(self, notification_id: UUID) -> None:
         if notification_id in self._store:
             self._store[notification_id].mark_read()
