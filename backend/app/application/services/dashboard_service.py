@@ -9,7 +9,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.ports.cache import ICache
@@ -17,7 +17,7 @@ from app.infrastructure.persistence.models.orm import TimelineEventORM, WorkItem
 
 logger = logging.getLogger(__name__)
 
-_CACHE_TTL = 60  # seconds
+_CACHE_TTL = 120  # seconds — per EP-12 design.md cache key table
 
 
 class DashboardService:

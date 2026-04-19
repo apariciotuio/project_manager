@@ -275,7 +275,7 @@ All SSE consumers in this codebase (EP-03 conversation streaming, EP-08 notifica
 
 - [x] [RED] Test `useSSE(url, onMessage, options?)`: connects to given URL via `EventSource`; calls `onMessage` per event; reconnects with exponential backoff on error (1s, 2s, 4s, max 30s); closes on unmount; accepts optional `reconnectOptions` to override backoff — 8 tests in `__tests__/hooks/use-sse.test.ts`
 - [x] [GREEN] Implement `hooks/use-sse.ts`: exports `useSSE(url, onMessage, options?)` with `SSEOptions` — backoff, `onBeforeReconnect`, `extraEvents`, `maxRetries`; `EventSource.close()` on unmount guaranteed (2026-04-18)
-- [ ] EP-03's `streamThread`, EP-08's `useSSENotifications`, and `useJobProgress` below must all delegate to `useSSE` — no direct `new EventSource(...)` calls outside `hooks/use-sse.ts` — `useJobProgress` delegates; EP-03/EP-08 pending their own EPs
+- [ ] EP-03's `streamThread`, EP-08's `useSSENotifications`, and `useJobProgress` below must all delegate to `useSSE` — `useJobProgress` delegates; EP-03/EP-08 consolidation **→ v2-carveout.md**
 
 ### Acceptance Criteria — useSSE
 
@@ -303,9 +303,9 @@ THEN `EventSource.close()` is called immediately; no further events processed
 
 ## Group 10 — Performance
 
-- [ ] Audit all images in codebase: replace with `next/image` where missing
-- [ ] Audit all list views: add `react-window` virtual rendering for lists that may exceed 100 items (inbox, work item list, search results)
-- [ ] [GREEN] Configure Lighthouse CI in pipeline: fail on LCP > 2.5s, CLS > 0.1, TBT > 300ms
+- [ ] Audit all images in codebase: replace with `next/image` where missing — **→ v2-carveout.md**
+- [ ] Audit all list views: add `react-window` virtual rendering for lists that may exceed 100 items — **→ v2-carveout.md**
+- [ ] [GREEN] Configure Lighthouse CI in pipeline: fail on LCP > 2.5s, CLS > 0.1, TBT > 300ms — **→ v2-carveout.md** (v2 CI epic)
 
 ---
 
@@ -337,13 +337,13 @@ THEN zero violations with impact `critical` or `serious` are present; the pipeli
 
 ## Group 11 — Accessibility
 
-- [ ] [RED] Test: all interactive elements reachable by Tab in DOM order
-- [ ] [RED] Test: modal dialogs trap focus (verify with `BottomSheet` and side drawers)
-- [ ] [RED] Test: status badges have text label, not color alone (e.g., "Approved" not just a green dot)
-- [ ] [GREEN] Add `aria-label` to all icon buttons and non-descriptive interactive elements across all components
-- [ ] [GREEN] Add `aria-live` region for dynamic content updates (notifications, status changes in EP-08)
-- [ ] [GREEN] Verify focus indicators are visible on all interactive elements (no `outline: none` without replacement)
-- [ ] Configure `axe-core` in CI: fail on violations with impact `critical` or `serious`
+- [ ] [RED] Test: all interactive elements reachable by Tab in DOM order — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] [RED] Test: modal dialogs trap focus — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] [RED] Test: status badges have text label, not color alone — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] [GREEN] Add `aria-label` to all icon buttons and non-descriptive interactive elements — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] [GREEN] Add `aria-live` region for dynamic content updates — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] [GREEN] Verify focus indicators are visible on all interactive elements — **→ v2-carveout.md** (EP-23 F-3)
+- [ ] Configure `axe-core` in CI: fail on violations with impact `critical` or `serious` — **→ v2-carveout.md** (v2 CI epic)
 
 ---
 

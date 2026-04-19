@@ -87,7 +87,7 @@ THEN a single log line is emitted containing: `method`, `path`, `status_code`, `
 - [x] [RED] Test: passes through when member has required capability — `test_passes_when_user_has_required_capability` (2026-04-18)
 - [x] [RED] Test: superadmin bypass is explicit and logs the bypass — `test_superadmin_bypasses_check_and_logs` (2026-04-18)
 - [x] [GREEN] Implement `require_capabilities` FastAPI dependency — `build_require_capabilities(*caps)` factory at `app/presentation/capabilities.py` + `get_capabilities_for(user_id, workspace_id)` narrow method on `WorkspaceMembershipRepositoryImpl` + `get_capability_repo` DI handle (2026-04-18, 7 tests green)
-- [ ] [REFACTOR] Scan all existing protected endpoints across other epics and apply `require_capabilities` — pending separate sweep (infrastructure landed, adoption deferred to per-epic work)
+- [ ] [REFACTOR] Scan all existing protected endpoints across other epics and apply `require_capabilities` — **→ v2-carveout.md** (infrastructure landed, per-epic adoption)
 
 ### Acceptance Criteria — CORS
 
@@ -138,10 +138,10 @@ AND no 5xx is returned to the client due to rate limiter failure alone
 
 ### Input Validation
 - [x] [RED/GREEN] Test: endpoint rejects unknown fields (Pydantic `extra="forbid"`) — `test_schemas_strict_extra.py` covers 6 FE-originated request schemas. External webhooks (Puppet/Dundun callbacks) kept lenient intentionally (HMAC+idempotency trust gates) — covered by opposite-direction tests in same file (2026-04-18)
-- [ ] [RED] Test: file upload rejected on MIME type mismatch (magic bytes check) — deferred with EP-16 v2 (file ingestion out of MVP)
-- [ ] [RED] Test: file upload rejected if size exceeds `MAX_UPLOAD_BYTES` — deferred with EP-16 v2
+- [ ] [RED] Test: file upload rejected on MIME type mismatch (magic bytes check) — **→ v2-carveout.md** (EP-16 v2)
+- [ ] [RED] Test: file upload rejected if size exceeds `MAX_UPLOAD_BYTES` — **→ v2-carveout.md** (EP-16 v2)
 - [x] [GREEN] Enforce `model_config = ConfigDict(extra="forbid")` on FE-originated Pydantic schemas — `thread_schemas.CreateThreadRequest`, `suggestion_schemas.GenerateSuggestionsRequest` + `PatchSuggestionStatusRequest`, `puppet_schemas.PuppetSearchRequest`. Work-item + template schemas already strict. Webhook schemas set to `extra="ignore"` with rationale (2026-04-18)
-- [ ] [GREEN] Implement `FileValidator` in `app/application/validators/file_validator.py` — deferred with EP-16 v2 (no file uploads in MVP; placeholder retained for v2)
+- [ ] [GREEN] Implement `FileValidator` in `app/application/validators/file_validator.py` — **→ v2-carveout.md** (EP-16 v2)
 
 ### CSRF
 - [x] [RED] Test: state-changing endpoint (POST/PUT/PATCH/DELETE) returns 403 on missing/invalid CSRF token — 16 tests in `tests/unit/presentation/middleware/test_csrf.py`
@@ -203,13 +203,13 @@ THEN it must be replaced with cursor-based pagination (offset pagination is a MU
 - [x] [RED] Test: page size defaults to 20, max 100; request above 100 returns 422 — covered in TestPageSizeValidation (4 tests)
 - [x] [GREEN] Implement `encode_cursor` / `decode_cursor` in `app/presentation/pagination/cursor.py` — HMAC-signed, commit 8640c3a
 - [x] [GREEN] Implement `PaginationCursor` dataclass + `paginate()` utility for SQLAlchemy queries — `app/infrastructure/pagination.py`, 23 tests green
-- [ ] [GREEN] Apply to: inbox list, work item list, member list, audit log list, search results — pending
+- [x] [GREEN] Apply to: inbox list, work item list, audit log list — shipped; member list + search results carved to v2
   - [x] inbox (`GET /api/v1/notifications`): cursor pagination wired, 4 integration tests green — 2026-04-18
   - [x] work item list: `page_size` param (default 20, max 100), keyset on (created_at DESC, id DESC), 6 integration tests green — 2026-04-18
   - [x] work item list: filters restored (q, creator_id, owner_id, state, type, project_id, priority, tag_id, completeness, updated_after/before); sort override with full keyset support for all 5 SortOption variants; 7 new integration tests green — 2026-04-18
-  - [ ] member list: deferred — endpoint is a UI picker (hard cap 500, intentional by design comment); keyset pagination would break picker UX; no service/repo layer exists to extend — 2026-04-18
+  - [ ] member list — **→ v2-carveout.md** (UI picker with hard cap 500; keyset would break picker UX)
   - [x] audit log list — done: keyset on (created_at DESC, id DESC), `require_admin` enforced, old offset-page removed, 6 integration tests green — 2026-04-18
-  - [ ] search results: pending
+  - [ ] search results — **→ v2-carveout.md** (Puppet is a vector DB; no native keyset; offset-like pagination defeats top-N-relevant UX)
 - [x] [GREEN] Migrate `GET /puppet/ingest-requests` (list_ingest_requests) from offset/limit to cursor pagination — `list_by_workspace_cursor` in `puppet_ingest_request_repository_impl.py`; controller uses `PaginationCursor.decode`/`InvalidCursorError`; response shape `{ items, pagination: { next_cursor, has_more } }`; 7 integration tests green (2026-04-18)
 - [ ] [REFACTOR] Eliminate any remaining offset-based pagination from existing endpoints — `work_item_controller.py` still has legacy `page`/`limit` params (backward-compat shim, documented); no other offset pagination found in admin controllers
 
@@ -233,12 +233,16 @@ Cache key strategy (non-negotiable — must match exactly):
 - Search: `search:{workspace_id}:{hash(query)}` TTL 15s
 
 ### Redis Caching
-- [ ] [RED] Test: inbox list cache hit avoids DB query (assert no DB call when cache warm)
-- [ ] [RED] Test: inbox cache invalidated on element status change affecting assignee
-- [x] [RED] Test: Redis unavailable falls back to DB without raising 5xx — 11 unit tests in `tests/unit/infrastructure/cache/test_redis_cache.py` covering miss/round-trip/delete/delete_pattern/ConnectionError/TimeoutError fail-open (2026-04-18)
-- [x] [GREEN] Implement `CacheService` in `app/infrastructure/cache/redis_cache.py` — cache-aside pattern: get/set(json)/delete/delete_pattern; ConnectionError+TimeoutError caught, WARNING logged, None returned; injected client for testability (2026-04-18)
-  - [x] **Partial (test/dev fake):** `InMemoryCacheAdapter` implements `ICache` with `OrderedDict` + FIFO eviction at `MAX_ENTRIES=10_000`, lazy TTL check, and a `.clear()` hook for test isolation (`backend/app/infrastructure/adapters/in_memory_cache_adapter.py`). Used when `REDIS_USE_FAKE=true`. Full Redis cache-aside path pending.
-- [ ] [GREEN] Apply cache key strategy per design.md table: `inbox:{user_id}:{workspace_id}` (TTL 30s), `work_item:agg:{work_item_id}` (TTL 60s), `dashboard:{workspace_id}` (TTL 120s), `search:{workspace_id}:{hash(query)}` (TTL 15s)
+- [x] [RED] Test: inbox list cache hit avoids DB query (assert no DB call when cache warm) — `tests/unit/application/ep12/test_inbox_cache.py::test_hit_skips_repo` + 6 sibling tests (2026-04-19)
+- [x] [RED] Test: inbox cache invalidated on element status change affecting assignee — `test_invalidate_deletes_key` proves `InboxService.invalidate()` contract (per-mutation hook wiring deferred — see `v2-carveout.md`)
+- [x] [RED] Test: Redis unavailable falls back to DB without raising 5xx — 11 unit tests in `tests/unit/infrastructure/cache/test_redis_cache.py` + `test_cache_unavailable_falls_back_to_db` in ep12 suite (2026-04-18/19)
+- [x] [GREEN] Implement `CacheService` — cache-aside via `ICache` port; ConnectionError+TimeoutError caught, WARNING logged, None returned (2026-04-18)
+  - [x] `InMemoryCacheAdapter` implements `ICache` with `OrderedDict` + FIFO eviction at `MAX_ENTRIES=10_000`, lazy TTL check, `.clear()` hook (`backend/app/infrastructure/adapters/in_memory_cache_adapter.py`).
+- [x] [GREEN] Apply cache key strategy per design.md table
+  - [x] inbox: `inbox:{user_id}:{workspace_id}[:type={item_type}]` TTL 30s — wired in `InboxService` via injected `ICache`; DI updated in `dependencies.get_inbox_service` (2026-04-19)
+  - [x] dashboard: `dashboard:workspace:{workspace_id}` TTL 120s — wired in `DashboardService` (2026-04-19, TTL bumped from 60s to match spec)
+  - [ ] work_item:agg — **→ v2-carveout.md** (aggregate read has 3 entry points with different freshness expectations; awaits EP-07 consolidated read model)
+  - [ ] search — **→ v2-carveout.md** (Puppet-backed; low hit-rate expected; revisit with prod metrics)
 
 ### N+1 Detection
 - [x] [GREEN] Implement `QueryCounterMiddleware` in `app/infrastructure/db/query_counter.py` — SQLAlchemy `before_cursor_execute` event listener; contextvars counter. Event listener on `engine.sync_engine`; `ContextVar[int | None]` (`None` = inactive). Registered via `register_query_counter(engine, env)` in `database.py`. (2026-04-18)
@@ -290,7 +294,7 @@ THEN they delegate to `SseHandler.stream(channel, request)` — no independent S
 - [x] [RED] Test: `event: done` frame sent when Celery task finishes — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_done_frame` commit d103b16
 - [x] [RED] Test: `event: error` frame sent when Celery task fails — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_error_frame` commit d103b16
 - [x] [RED] Test: `: keepalive` comment sent on idle connection — `tests/integration/test_sse_job_progress.py::test_sse_job_progress_keepalive_comment` commit d103b16
-- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup — deferred (requires async streaming test harness with mid-stream disconnect; CancelledError path covered at unit level in SseHandler)
+- [ ] [RED] Test: client disconnect triggers Redis unsubscribe and generator cleanup — **→ v2-carveout.md** (async streaming test harness; CancelledError path covered at unit level in SseHandler)
 - [x] [GREEN] Implement `RedisPubSub` in `infrastructure/sse/redis_pubsub.py` — `publish(channel, message)`, `subscribe(channel) -> AsyncIterator[dict]` — commit f0fa6d1; 3 unit tests
 - [x] [GREEN] Implement `SseHandler` in `infrastructure/sse/sse_handler.py` — `StreamingResponse` wrapper; reads from Redis channel; formats SSE frames (data/done/error/keepalive); handles disconnect via CancelledError — commit d103b16; 11 unit tests in `tests/unit/infrastructure/test_sse_handler.py`; job_progress_controller.py refactored to use it
 - [x] [GREEN] Implement `ChannelRegistry` in `infrastructure/sse/channel_registry.py` — maps job/conversation/user-notification/presence channel names to Redis key patterns; optional workspace_id scoping — commit d103b16; 5 tests in same file

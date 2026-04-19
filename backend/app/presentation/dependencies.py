@@ -16,43 +16,45 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.events.event_bus import EventBus, get_global_bus
 
 if TYPE_CHECKING:
-    from app.application.services.notification_service import ExtendedNotificationService
     from app.application.services.clarification_service import ClarificationService
-    from app.application.services.ready_gate_service import ReadyGateService
-    from app.application.services.review_request_service import ReviewRequestService
-    from app.application.services.review_response_service import ReviewResponseService
-    from app.application.services.validation_service import ValidationService
     from app.application.services.comment_service import CommentService
     from app.application.services.completeness_service import (
         CompletenessService,
         GapService,
     )
     from app.application.services.conversation_service import ConversationService
+    from app.application.services.dashboard_service import DashboardService
     from app.application.services.dependency_service import DependencyService
+    from app.application.services.diff_service import DiffService
     from app.application.services.draft_service import DraftService
     from app.application.services.export_service import ExportService
+    from app.application.services.inbox_service import InboxService
     from app.application.services.integration_service import IntegrationService
+    from app.application.services.kanban_service import KanbanService
     from app.application.services.next_step_service import NextStepService
+    from app.application.services.notification_service import ExtendedNotificationService
+    from app.application.services.person_dashboard_service import PersonDashboardService
+    from app.application.services.pipeline_service import PipelineQueryService
     from app.application.services.project_service import ProjectService
     from app.application.services.puppet_sync_service import PuppetSyncService
+    from app.application.services.ready_gate_service import ReadyGateService
+    from app.application.services.review_request_service import ReviewRequestService
+    from app.application.services.review_response_service import ReviewResponseService
     from app.application.services.review_service import ReviewService
+    from app.application.services.saved_search_service import SavedSearchService
+    from app.application.services.search_service import SearchService
     from app.application.services.section_service import SectionService
     from app.application.services.suggestion_service import SuggestionService
     from app.application.services.task_service import TaskService
+    from app.application.services.team_dashboard_service import TeamDashboardService
     from app.application.services.team_service import NotificationService, TeamService
-    from app.application.services.diff_service import DiffService
     from app.application.services.template_service import TemplateService
     from app.application.services.timeline_service import TimelineService
+    from app.application.services.validation_rule_template_service import (
+        ValidationRuleTemplateService,
+    )
+    from app.application.services.validation_service import ValidationService
     from app.application.services.versioning_service import VersioningService
-    from app.application.services.saved_search_service import SavedSearchService
-    from app.application.services.search_service import SearchService
-    from app.application.services.dashboard_service import DashboardService
-    from app.application.services.person_dashboard_service import PersonDashboardService
-    from app.application.services.team_dashboard_service import TeamDashboardService
-    from app.application.services.pipeline_service import PipelineQueryService
-    from app.application.services.kanban_service import KanbanService
-    from app.application.services.inbox_service import InboxService
-    from app.application.services.validation_rule_template_service import ValidationRuleTemplateService
     from app.domain.ports.cache import ICache
     from app.domain.ports.dundun import DundunClient
     from app.domain.repositories.timeline_repository import ITimelineEventRepository
@@ -896,7 +898,7 @@ def get_notification_service(
 
 def get_extended_notification_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "ExtendedNotificationService":
+) -> ExtendedNotificationService:
     from app.application.services.notification_service import ExtendedNotificationService
     from app.infrastructure.persistence.team_repository_impl import (
         NotificationRepositoryImpl,
@@ -909,11 +911,12 @@ def get_extended_notification_service(
 
 def get_inbox_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "InboxService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> InboxService:
     from app.application.services.inbox_service import InboxService
     from app.infrastructure.persistence.inbox_repository_impl import InboxRepositoryImpl
 
-    return InboxService(inbox_repo=InboxRepositoryImpl(session))
+    return InboxService(inbox_repo=InboxRepositoryImpl(session), cache=cache)
 
 
 # ---------------------------------------------------------------------------
@@ -933,7 +936,7 @@ def get_saved_search_repo(
 
 def get_saved_search_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "SavedSearchService":
+) -> SavedSearchService:
     from app.application.services.saved_search_service import SavedSearchService
     from app.infrastructure.persistence.saved_search_repository_impl import (
         SavedSearchRepositoryImpl,
@@ -944,45 +947,45 @@ def get_saved_search_service(
 
 def get_dashboard_service(
     session: AsyncSession = Depends(get_scoped_session),
-    cache: "ICache" = Depends(get_cache_adapter),
-) -> "DashboardService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> DashboardService:
     from app.application.services.dashboard_service import DashboardService
     return DashboardService(session=session, cache=cache)
 
 
 def get_person_dashboard_service(
     session: AsyncSession = Depends(get_scoped_session),
-    cache: "ICache" = Depends(get_cache_adapter),
-) -> "PersonDashboardService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> PersonDashboardService:
     from app.application.services.person_dashboard_service import PersonDashboardService
     return PersonDashboardService(session=session, cache=cache)
 
 
 def get_team_dashboard_service(
     session: AsyncSession = Depends(get_scoped_session),
-    cache: "ICache" = Depends(get_cache_adapter),
-) -> "TeamDashboardService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> TeamDashboardService:
     from app.application.services.team_dashboard_service import TeamDashboardService
     return TeamDashboardService(session=session, cache=cache)
 
 
 def get_pipeline_service(
     session: AsyncSession = Depends(get_scoped_session),
-    cache: "ICache" = Depends(get_cache_adapter),
-) -> "PipelineQueryService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> PipelineQueryService:
     from app.application.services.pipeline_service import PipelineQueryService
     return PipelineQueryService(session=session, cache=cache)
 
 
 def get_kanban_service(
     session: AsyncSession = Depends(get_scoped_session),
-    cache: "ICache" = Depends(get_cache_adapter),
-) -> "KanbanService":
+    cache: ICache = Depends(get_cache_adapter),
+) -> KanbanService:
     from app.application.services.kanban_service import KanbanService
     return KanbanService(session=session, cache=cache)
 
 
-def get_search_service() -> "SearchService":
+def get_search_service() -> SearchService:
     """Build SearchService with real or fake PuppetClient based on settings."""
     from app.application.services.search_service import SearchService
 
@@ -1078,7 +1081,7 @@ def get_project_service(
 
 def get_validation_rule_template_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "ValidationRuleTemplateService":
+) -> ValidationRuleTemplateService:
     from app.application.services.validation_rule_template_service import (
         ValidationRuleTemplateService,
     )
@@ -1121,7 +1124,7 @@ def get_integration_service(
 def get_export_service(
     session: AsyncSession = Depends(get_scoped_session),
     settings: Settings = Depends(get_settings),
-) -> "ExportService":
+) -> ExportService:
     from app.application.services.audit_service import AuditService
     from app.application.services.export_service import ExportService
     from app.infrastructure.adapters.jira_adapter import JiraClient
@@ -1148,7 +1151,7 @@ def get_export_service(
 
 def get_versioning_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "VersioningService":
+) -> VersioningService:
     from app.application.services.versioning_service import VersioningService
     from app.infrastructure.persistence.section_repository_impl import (
         SectionRepositoryImpl,
@@ -1172,7 +1175,7 @@ def get_versioning_service(
     )
 
 
-def get_diff_service() -> "DiffService":
+def get_diff_service() -> DiffService:
     from app.application.services.diff_service import DiffService
 
     return DiffService()
@@ -1180,7 +1183,7 @@ def get_diff_service() -> "DiffService":
 
 def get_timeline_service(
     session: AsyncSession = Depends(get_scoped_session),
-) -> "TimelineService":
+) -> TimelineService:
     from app.application.services.timeline_service import TimelineService
     from app.infrastructure.persistence.timeline_repository_impl import (
         TimelineEventRepositoryImpl,
